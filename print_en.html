@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 44 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 45 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -381,6 +381,7 @@ details[open] > summary { list-style: none; }
   <li>Models & pricing</li>
   <li>Cloud usage metering & spend</li>
   <li>Automations & webhooks</li>
+  <li>Slack & notifications</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -9152,6 +9153,185 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>This lesson's webhook SSRF defense is a model of 'defense in depth': protocol allowlist, port allowlist, hostname blocklist, IP CIDR blocklist, fail-closed, request-time check… gate after gate, not one big wall. Drawing on your own experience: why does security design favor 'many independent gates' over 'one perfect wall'? Beyond SSRF, where else does this idea transfer (auth, input validation, rate limiting)? What maintenance cost do independent layered defenses carry?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Slack & notifications</h1>
+
+<p class="lead">
+The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it. But many teams don't want one HTTP request — they want <strong>"a nicely-formatted, button-clickable alert popping up in our Slack channel"</strong>. This lesson covers how Langfuse makes <strong>Slack a first-class delivery channel</strong>: not just filling in a Slack webhook URL, but a full <strong>OAuth install</strong>, storing the workspace's <strong>bot token encrypted</strong>, channel-targeted delivery, and rich <strong>Block Kit</strong> messages with colors and buttons. You'll see Lesson 39's <strong>encryption</strong> reused to safeguard the token, and a separate <strong>notificationQueue</strong> handling in-app notifications (e.g. a comment @-mentioning you).
+"webhook is generic but crude, Slack is specific but refined" — this lesson shows how a mature platform treats an <strong>integration it truly cares about</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  The previous lesson's webhook is like <strong>dropping a letter in a mailbox</strong>: you write an address (URL), drop the letter (JSON) in, and whether they receive or read it is not your concern. Generic, but crude.
+  This lesson's Slack integration is like <strong>formally provisioning an enterprise messaging hookup for your company</strong>: first you go through an <strong>authorization flow</strong> (OAuth — you click "approve install" in Slack, Slack hands Langfuse a <strong>dedicated key</strong> = bot token); this key is so important it must be <strong>locked in a safe</strong> (encrypted at rest, reusing Lesson 39's AES-256-GCM); afterward Langfuse can, <strong>under the identity you authorized</strong>, send <strong>beautifully formatted</strong> messages to a <strong>chosen channel</strong> (Block Kit: title, body, timestamp, a "View in Langfuse" button, alerts even tinted red/amber/green by severity). Both are "notifications," but webhook drops a letter while Slack lays a dedicated line — <strong>the more an integration matters, the deeper it's worth building</strong>.
+</div>
+
+<h2>Step one: OAuth install, store the bot token encrypted</h2>
+<p>The Slack integration isn't a URL — it's a standard <strong>OAuth install</strong>. Langfuse uses <code>@slack/oauth</code>'s <strong>InstallProvider</strong> to host the whole authorization flow: the user clicks "Install to Slack" in Langfuse → redirected to Slack's consent page → picks a workspace, authorizes → Slack calls back to Langfuse with an auth code → InstallProvider exchanges it for a <strong>bot token</strong>, firing <code>storeInstallation</code>. The crux is right here: the token isn't stored in cleartext but <code>encrypt(botToken)</code> then <strong>upserted into the SlackIntegration table</strong> (<code>projectId @unique</code> — <strong>one workspace connection per project</strong>). This "key safekeeping" work directly reuses Lesson 39's AES-256-GCM.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Slack OAuth install flow: user clicks install in Langfuse, InstallProvider redirects to Slack consent, after the user authorizes Slack calls back, InstallProvider exchanges the bot token firing storeInstallation, which encrypts the token and upserts into the SlackIntegration table (projectId unique, one connection per project)">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">OAuth install: get a key, lock it in the safe</text>
+  <rect x="20" y="44" width="120" height="46" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="80" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">① user clicks install</text><text x="80" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">in Langfuse project settings</text>
+  <rect x="170" y="44" width="150" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="245" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">② InstallProvider</text><text x="245" y="78" text-anchor="middle" font-size="6.2" fill="var(--muted)">@slack/oauth hosts OAuth redirect</text>
+  <rect x="350" y="44" width="150" height="46" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="425" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ Slack consent</text><text x="425" y="78" text-anchor="middle" font-size="6.2" fill="var(--muted)">pick workspace · authorize</text>
+  <rect x="530" y="44" width="170" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="615" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">④ callback + exchange token</text><text x="615" y="78" text-anchor="middle" font-size="6.2" fill="var(--muted)">metadata carries projectId</text>
+  <rect x="250" y="124" width="220" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="144" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ storeInstallation</text><text x="360" y="160" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">encrypt(botToken) — reuses Lesson 39 AES-256-GCM</text>
+  <rect x="250" y="190" width="220" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="360" y="209" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">⑥ upsert SlackIntegration</text><text x="360" y="225" text-anchor="middle" font-size="6.4" fill="var(--muted)">projectId @unique · teamId/teamName · botToken(enc) · botUserId</text>
+  <line x1="140" y1="67" x2="168" y2="67" stroke="var(--teal)" stroke-width="1.3"/><polygon points="168,67 159,63 159,71" fill="var(--teal)"/>
+  <line x1="320" y1="67" x2="348" y2="67" stroke="var(--blue)" stroke-width="1.3"/><polygon points="348,67 339,63 339,71" fill="var(--blue)"/>
+  <line x1="500" y1="67" x2="528" y2="67" stroke="var(--faint)" stroke-width="1.3"/><polygon points="528,67 519,63 519,71" fill="var(--faint)"/>
+  <line x1="615" y1="90" x2="430" y2="122" stroke="var(--accent)" stroke-width="1.3"/><polygon points="430,122 440,121 436,114" fill="var(--accent)"/>
+  <line x1="360" y1="174" x2="360" y2="188" stroke="var(--accent)" stroke-width="1.3"/><polygon points="360,188 356,179 364,179" fill="var(--accent)"/>
+  <text x="360" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">The token never lands in cleartext — same treatment as Lesson 39's LLM API keys: encrypt at rest, decrypt at use</text>
+</svg>
+<div class="figcap"><b>OAuth install + encrypted safekeeping</b>: <code>SlackService.ts:134</code> uses <code>InstallProvider</code> to host OAuth; <code>storeInstallation</code> (:143) on callback runs <code>encrypt(installation.bot.token)</code> (:163) and <code>prisma.slackIntegration.upsert</code> (:157, by <code>projectId</code>). Model <code>schema.prisma:1805</code>: <code>projectId @unique</code>, teamId/teamName, encrypted botToken, botUserId.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">host</span><span class="name">InstallProvider (@slack/oauth)</span></div><div class="ld">Rather than hand-rolling OAuth code-exchange, it uses the official SDK's <code>InstallProvider</code> to host the whole redirect/callback/token-exchange. <code>handleInstallPath</code> renders the install page, <code>handleCallback</code> handles the callback (<code>oauth-handlers.ts</code>); projectId rides back through OAuth <code>metadata</code>.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">encrypt</span><span class="name">storeInstallation → encrypt</span></div><div class="ld">On a successful callback the bot token is <code>encrypt()</code>'d before landing in the DB — the <strong>same</strong> AES-256-GCM as Lesson 39's LLM API key safekeeping. The token is the key to "post as you"; it must never sit in cleartext in the database.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">model</span><span class="name">SlackIntegration (one per project)</span></div><div class="ld"><code>projectId @unique</code> enforces "one project to one Slack workspace." Stores teamId/teamName (which workspace), botUserId (bot identity), encrypted botToken. <code>upsert</code> makes "reinstall / switch workspace" naturally overwrite the old connection.</div></div>
+</div>
+
+
+<h2>Sending: decrypt token → WebClient → rich message</h2>
+<p>The token is stored; sending runs it backward: <code>getWebClientForProject</code> triggers <code>fetchInstallation</code> via InstallProvider's <code>authorize</code>, pulls the encrypted token from the DB, <code>decrypt</code>s it back, and builds a <code>WebClient</code> with <strong>automatic retry</strong> (retries: 3, maxRetryTime: 90s). Then <code>sendMessage</code> calls Slack's <code>chat.postMessage</code> to send to the chosen channel. The message itself isn't one line of plain text but <strong>Block Kit</strong> — a structured rich message: for an alert, <code>buildMonitorAlertSlackMessage</code> <strong>tints by severity</strong> (ALERT red / WARNING amber / OK green), assembling a title, a body (markdown converted to Slack format), a timestamp, and a "View in Langfuse" jump button.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Slack send flow: getWebClientForProject triggers fetchInstallation to pull the encrypted token and decrypt it, builds a WebClient with 3 retries, sendMessage calls chat.postMessage to the channel; the message is a Block Kit structure: a severity-tinted attachment with a title section, body section, timestamp context, and a view button in actions">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">decrypt token → retrying WebClient → Block Kit rich message</text>
+  <rect x="20" y="48" width="150" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="95" y="68" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">SlackIntegration</text><text x="95" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">encrypted botToken</text><text x="95" y="97" text-anchor="middle" font-size="6.2" fill="var(--muted)">at rest in DB</text>
+  <rect x="200" y="48" width="160" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="280" y="66" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">getWebClientForProject</text><text x="280" y="82" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">fetchInstallation → decrypt</text><text x="280" y="95" text-anchor="middle" font-size="6.2" fill="var(--muted)">restore cleartext bot token</text>
+  <rect x="390" y="48" width="150" height="58" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="465" y="66" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">WebClient</text><text x="465" y="82" text-anchor="middle" font-size="6.2" fill="var(--muted)">retries: 3</text><text x="465" y="95" text-anchor="middle" font-size="6.2" fill="var(--muted)">maxRetryTime: 90s</text>
+  <rect x="570" y="48" width="130" height="58" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="635" y="66" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">chat.postMessage</text><text x="635" y="82" text-anchor="middle" font-size="6.2" fill="var(--muted)">send to chosen channel</text><text x="635" y="95" text-anchor="middle" font-size="6.2" fill="var(--muted)">returns messageTs</text>
+  <rect x="150" y="140" width="420" height="86" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="158" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Block Kit rich message (severity-tinted attachment)</text>
+  <rect x="166" y="168" width="120" height="48" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="226" y="185" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">section title</text><text x="226" y="198" text-anchor="middle" font-size="5.8" fill="var(--muted)">*bold · may link*</text><text x="226" y="209" text-anchor="middle" font-size="5.8" fill="var(--muted)">section body (md)</text>
+  <rect x="298" y="168" width="120" height="48" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="358" y="185" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--ink)">context timestamp</text><text x="358" y="198" text-anchor="middle" font-size="5.8" fill="var(--muted)">⏱ ISO time</text><text x="358" y="209" text-anchor="middle" font-size="5.8" fill="var(--muted)">small helper info</text>
+  <rect x="430" y="168" width="124" height="48" rx="6" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="492" y="185" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--teal)">actions button</text><text x="492" y="198" text-anchor="middle" font-size="5.8" fill="var(--muted)">View in Langfuse</text><text x="492" y="209" text-anchor="middle" font-size="5.8" fill="var(--muted)">url → permalink</text>
+  <line x1="170" y1="77" x2="198" y2="77" stroke="var(--accent)" stroke-width="1.3"/><polygon points="198,77 189,73 189,81" fill="var(--accent)"/>
+  <line x1="360" y1="77" x2="388" y2="77" stroke="var(--blue)" stroke-width="1.3"/><polygon points="388,77 379,73 379,81" fill="var(--blue)"/>
+  <line x1="540" y1="77" x2="568" y2="77" stroke="var(--teal)" stroke-width="1.3"/><polygon points="568,77 559,73 559,81" fill="var(--teal)"/>
+  <line x1="635" y1="106" x2="500" y2="138" stroke="var(--faint)" stroke-width="1"/>
+  <line x1="92" y1="130" x2="92" y2="184" stroke="var(--accent)" stroke-width="3"/><text x="100" y="160" font-size="6" fill="var(--accent-ink)">ALERT red</text><text x="100" y="172" font-size="6" fill="var(--muted)">WARN amber/OK green</text>
+</svg>
+<div class="figcap"><b>The send path</b>: <code>getWebClientForProject</code> (<code>SlackService.ts:311</code>) via <code>authorize</code>→<code>fetchInstallation</code> pulls the token and <code>decrypt</code>s it (:215), builds a retrying <code>WebClient</code> (:324); <code>sendMessage</code> (:475) calls <code>chat.postMessage</code>. Block Kit is assembled by <code>buildMonitorAlertSlackMessage.ts</code>: severity→color (ALERT #dc3545 red / WARNING #ffc107 amber / OK #28a745 green), with title/body/timestamp/"View in Langfuse" button.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/SlackService.ts</span><span class="ln">store→fetch→send</span></div>
+  <pre class="code"><span class="cm">// store: on OAuth callback, encrypt the bot token at rest (reuses Lesson 39 encryption)</span>
+storeInstallation: <span class="kw">async</span> (installation) =&gt; {
+  <span class="kw">await</span> prisma.slackIntegration.<span class="fn">upsert</span>({ where: { projectId },
+    create: { projectId, teamId, teamName,
+              botToken: <span class="fn">encrypt</span>(installation.bot.token), botUserId } });  <span class="cm">// ciphertext at rest</span>
+}
+
+<span class="cm">// fetch: before sending, decrypt the token and build a retrying WebClient</span>
+<span class="kw">async</span> <span class="fn">getWebClientForProject</span>(projectId) {
+  <span class="kw">const</span> auth = <span class="kw">await</span> <span class="kw">this</span>.installer.<span class="fn">authorize</span>({ teamId: projectId });  <span class="cm">// → fetchInstallation → decrypt</span>
+  <span class="kw">return new</span> <span class="fn">WebClient</span>(auth.botToken, { retryConfig: { retries: <span class="st">3</span>, maxRetryTime: <span class="st">90_000</span> } });
+}
+
+<span class="cm">// send: Block Kit rich message → chat.postMessage</span>
+<span class="kw">async</span> <span class="fn">sendMessage</span>({ client, channelId, blocks, attachments }) {
+  <span class="kw">return</span> client.chat.<span class="fn">postMessage</span>({ channel: channelId, blocks, attachments,
+                                  unfurl_links: <span class="kw">false</span>, unfurl_media: <span class="kw">false</span> });
+}</pre>
+</div>
+
+
+<h2>Another line: the notificationQueue for in-app notifications</h2>
+<p>Slack is an "outbound" notification; there's another kind — "in-app" — like someone <strong>@-mentioning you</strong> in a comment. That goes through a separate <code>notificationQueue</code>: a standard BullMQ consumer that dispatches by <code>type</code>, currently handling <code>COMMENT_MENTION</code>, with an explicit "future notification types can be added here" extension point in the code. It sits <strong>alongside</strong> webhook/Slack as a delivery mechanism — the platform splits "how to notify people" into several channels, each with its own job.</p>
+
+<div class="cols">
+  <div class="col"><h4>📮 webhook (Lesson 44)</h4><p>Most generic: fill a URL, push JSON. Langfuse is the initiator holding no credentials; risk concentrates on SSRF. Best for wiring up <strong>any custom system</strong>.</p></div>
+  <div class="col"><h4>💬 Slack (this lesson)</h4><p>Most refined: OAuth authorization, encrypted token, channel-targeted Block Kit rich messages. Holds a token "representing you" — big capability, strict safekeeping. Best for <strong>team-collaboration notifications</strong>.</p></div>
+  <div class="col"><h4>🔔 in-app</h4><p>Most intimate: notificationQueue handles in-product events like <code>COMMENT_MENTION</code>, never leaving Langfuse. Best for <strong>pulling people back to the scene</strong> (e.g. a comment @-mentioning you).</p></div>
+</div>
+
+<table class="t">
+  <thead><tr><th>What this lesson reuses</th><th>From</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><b>AES-256-GCM encryption</b></td><td>Lesson 39 encryption.ts</td><td>the bot token is the key to "post as you"; it must be ciphertext at rest, decrypted at use</td></tr>
+    <tr><td><b>Singleton Service</b></td><td><code>SlackService.getInstance()</code></td><td>configure InstallProvider once and reuse, avoiding re-initializing the OAuth client</td></tr>
+    <tr><td><b>Cursor pagination</b></td><td><code>getChannelsRecursive</code></td><td>listing channels uses Slack's cursor pagination, fetching them all no matter how many (for the config UI)</td></tr>
+    <tr><td><b>Automatic retry</b></td><td><code>WebClient retryConfig</code></td><td>on a transient Slack API blip the SDK auto-retries 3×, same idea as Lesson 44's webhook backoff</td></tr>
+    <tr><td><b>BullMQ queue consumer</b></td><td><code>notificationQueue</code></td><td>in-app notifications go async, the same queue skeleton as ingestion/eval/webhook</td></tr>
+  </tbody>
+</table>
+
+<p>Read that table and you'll see: L45 has almost no "brand-new" infrastructure — it <strong>assembles</strong> the parts accumulated earlier — <strong>encryption, singleton, pagination, retry, queue</strong> — into a respectable Slack integration. This is exactly what a mature codebase looks like: <strong>new features are mostly new combinations of old capabilities</strong>, not reinventing the wheel each time.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does Slack go through the heavy OAuth + encrypted-token flow, while a webhook just needs a URL?</strong> Because their <strong>trust models</strong> differ. A webhook is "I push data to your endpoint" — Langfuse is the <strong>initiator</strong>, needing no credentials from the other side, so a URL suffices (the cost: all the SSRF-defense burden lands on URL validation, see Lesson 44). Slack instead requires "post a message <strong>as you</strong>, in your workspace" — which needs Slack to grant a <strong>key that represents you</strong> (the bot token). Once holding that key, Langfuse can target channels precisely, render rich messages, even read the channel list; but a leaked key = someone can impersonate you posting in your workspace. So it must be <strong>encrypted at rest</strong>, reusing the same AES-256-GCM that safeguards LLM API keys in Lesson 39. <strong>The greater the capability, the stricter the safekeeping</strong>: a URL-only webhook holds none of your credentials, a token-holding Slack must be treated as top secret.<br><br>
+  <strong>Why decrypt the token from the DB on every send, instead of caching and reusing the WebClient?</strong> Because the token may <strong>expire at any time</strong>: the user uninstalled the app on the Slack side, reinstalled to a different workspace, or the token got rotated. Every send goes through <code>fetchInstallation</code> → <code>decrypt</code> to get the <strong>current</strong> token, guaranteeing you always use the freshest, most-valid credential — the same <strong>"fetch the latest state right at the moment of use"</strong> wisdom as Lesson 38's prompt cache "validate freshness on read" and Lesson 44's "validate the real IP at request time." Caching a long-lived client clutching a sensitive token saves a trivial cost, far outweighed by the risk of "using an expired/revoked credential."
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Slack = a first-class delivery channel</strong>: versus Lesson 44's "naked webhook" (fill a URL, hurl JSON), Slack goes through a full OAuth install, encrypted token, channel-targeted delivery, Block Kit rich messages — a platform builds deep on integrations it truly values.</li>
+    <li><strong>OAuth install + encrypted at rest</strong>: <code>InstallProvider</code> (@slack/oauth) hosts authorization; <code>storeInstallation</code> <code>encrypt()</code>s the bot token then upserts into <code>SlackIntegration</code> (<code>projectId @unique</code>, one connection per project), reusing Lesson 39 AES-256-GCM.</li>
+    <li><strong>Sending: decrypt → WebClient → postMessage</strong>: <code>getWebClientForProject</code> pulls the token via <code>fetchInstallation</code>+<code>decrypt</code>, builds a retrying (3×) WebClient; <code>sendMessage</code> calls <code>chat.postMessage</code>.</li>
+    <li><strong>Block Kit rich messages</strong>: <code>buildMonitorAlertSlackMessage</code> tints by severity (ALERT red/WARNING amber/OK green), assembling title + body (md) + timestamp + "View in Langfuse" button — far more informative than plain-text notifications.</li>
+    <li><strong>notificationQueue for in-app notifications</strong>: a separate BullMQ consumer dispatching by type (COMMENT_MENTION @-mentions you), extensible. webhook/Slack/in-app are parallel delivery channels.</li>
+    <li><strong>New feature = new combination of old capabilities</strong>: encryption (L39) + singleton + cursor pagination + retry + queue assemble a respectable Slack integration. The trust model sets the safekeeping strength: holding a token demands top-secret encryption; decrypt at use time to guard against stale credentials.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Both are 'notification delivery', yet Lesson 44's webhook just needs a URL, while the Slack integration goes through a full OAuth install and stores the bot token encrypted. Why does Slack need such a heavy flow?</div>
+  <ol class="opts">
+    <li>different trust models: a webhook has Langfuse as initiator pushing data to your endpoint, needing none of your credentials (a URL suffices); Slack must 'post as you in your workspace', so Slack must grant a key representing you (bot token)—leaking it = someone can impersonate you, so it must be encrypted at rest</li>
+    <li>OAuth is just cosmetic; a URL could do it technically</li>
+    <li>Slack charges money, so it needs paid authorization</li>
+    <li>Slack's servers are slow, needing a pre-established connection</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. This embodies 'the greater the capability, the stricter the safekeeping'. A webhook is Langfuse actively pushing out, holding none of the peer's credentials, so risk concentrates on 'does the URL point somewhere dangerous' (SSRF, solved by URL validation in Lesson 44). Slack must obtain a bot token that 'represents you', wielding which it can post to your channels and read channel lists—a granted, impersonating power, so it must be encrypted at rest with AES-256-GCM like Lesson 39's LLM API key safekeeping. Each integration's 'heavy' or 'light' is set directly by its trust model.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Each time Langfuse sends a Slack message, it re-fetches the encrypted token from the DB, decrypts it, and builds a WebClient, rather than caching a long-lived WebClient. The main benefit of this choice is?</div>
+  <ol class="opts">
+    <li>guarantees always using the 'currently latest' token: the user may uninstall the app on Slack's side, reinstall to another workspace, or the token may be rotated—decrypting the latest token each time avoids using a stale credential, same as Lesson 38's prompt cache validating freshness on read and Lesson 44's checking the real IP at request time</li>
+    <li>decrypting is faster than caching</li>
+    <li>to give the database more read load</li>
+    <li>WebClient cannot be cached</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Caching a long-lived client clutching a sensitive token saves little, yet brings the real risk of 'using an expired/revoked credential': the token may invalidate via uninstall, reinstall, or rotation. Fetching the current token via fetchInstallation→decrypt each send always uses the freshest, most-valid credential. This is the same wisdom as Lesson 38's prompt 'validate-on-read whether it changed' and Lesson 44's 'check the real IP only at request time'—fetch the latest state right at the moment of use, not rely on a possibly-stale snapshot.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse's Slack alerts aren't plain text but Block Kit rich messages, and buildMonitorAlertSlackMessage tints them by severity. What's the design intent of this 'tinting'?</div>
+  <ol class="opts">
+    <li>color compresses message size</li>
+    <li>random tinting prevents message collapsing</li>
+    <li>Slack requires every message to have a color</li>
+    <li>let people gauge severity at a glance: ALERT red, WARNING amber, OK green—color is a faster signal than text; among many channel messages a red alert grabs attention first, baking 'alert readability/actionability' into the delivery layer</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. An alert's value isn't only 'delivered' but 'quickly and correctly understood and acted on'. The same text with a red/amber/green color bar makes severity obvious at a glance—human-factors engineering: color is a faster perceptual channel than reading text. Block Kit also adds a 'View in Langfuse' button for one-click jump to the scene. Baking these into the delivery layer reflects 'a notification isn't done by dumping info out, but by making the recipient act with least effort'. This is also where Slack is 'refined' versus a naked webhook.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson notes: L45 has almost no brand-new infrastructure but assembles parts accumulated earlier—encryption (L39), singleton, cursor pagination, auto-retry, BullMQ queue—into a respectable Slack integration. Recall your own projects: was there a 'seemingly new' feature that was actually a recombination of existing capabilities? What does recognizing such 'reusable skeletons' mean for an engineering team? And what problems can over-pursuing reuse bring (wrong abstractions, forced fits)?</li>
   </ul>
 </div>
 </div>

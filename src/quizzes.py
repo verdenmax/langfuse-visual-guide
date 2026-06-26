@@ -3125,6 +3125,76 @@ QUIZZES = {
             },
         ],
     },
+    "45-slack-and-notifications.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "同样是「通知投递」，第 44 课的 webhook 只要填一个 URL，而 Slack 集成却要走完整 OAuth 安装、把 bot 令牌加密入库。为什么 Slack 需要这么重的流程？",
+                    "en": "Both are 'notification delivery', yet Lesson 44's webhook just needs a URL, while the Slack integration goes through a full OAuth install and stores the bot token encrypted. Why does Slack need such a heavy flow?",
+                },
+                "opts": [
+                    {
+                        "zh": "信任模型不同：webhook 是 Langfuse 作为发起方把数据推给你的端点，不需要你的任何凭据(填URL即可)；Slack 要「以你的身份在你工作区发消息」，必须由 Slack 授予一把代表你的钥匙(bot令牌)——这把钥匙泄露=别人能冒充你，所以必须加密保管",
+                        "en": "different trust models: a webhook has Langfuse as initiator pushing data to your endpoint, needing none of your credentials (a URL suffices); Slack must 'post as you in your workspace', so Slack must grant a key representing you (bot token)—leaking it = someone can impersonate you, so it must be encrypted at rest",
+                    },
+                    {"zh": "Slack 的服务器比较慢，需要预先建立连接", "en": "Slack's servers are slow, needing a pre-established connection"},
+                    {"zh": "OAuth 只是为了好看，技术上 URL 也能实现", "en": "OAuth is just cosmetic; a URL could do it technically"},
+                    {"zh": "Slack 收费，所以要走付费授权", "en": "Slack charges money, so it needs paid authorization"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是「能力越大、保管越严」的体现。webhook 是 Langfuse 主动往外推，自己不持有对方任何凭据，所以风险集中在「URL 会不会指向危险目标」(SSRF，第44课用 URL 校验解决)。Slack 则要拿到一把「代表你」的 bot 令牌，凭它能往你的频道发消息、读频道列表——这是被授予的、可冒充你的权力，所以必须像第 39 课保管 LLM API Key 一样，用 AES-256-GCM 加密入库。两种集成的「重」与「轻」，直接由它们的信任模型决定。",
+                    "en": "This embodies 'the greater the capability, the stricter the safekeeping'. A webhook is Langfuse actively pushing out, holding none of the peer's credentials, so risk concentrates on 'does the URL point somewhere dangerous' (SSRF, solved by URL validation in Lesson 44). Slack must obtain a bot token that 'represents you', wielding which it can post to your channels and read channel lists—a granted, impersonating power, so it must be encrypted at rest with AES-256-GCM like Lesson 39's LLM API key safekeeping. Each integration's 'heavy' or 'light' is set directly by its trust model.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 每次给 Slack 发消息，都重新从数据库取出加密令牌、解密、构造 WebClient，而不是缓存一个 WebClient 长期复用。这个选择的主要好处是？",
+                    "en": "Each time Langfuse sends a Slack message, it re-fetches the encrypted token from the DB, decrypts it, and builds a WebClient, rather than caching a long-lived WebClient. The main benefit of this choice is?",
+                },
+                "opts": [
+                    {
+                        "zh": "保证永远用「当前最新」的令牌：用户可能在 Slack 侧卸载应用、重装到别的工作区、或令牌被轮换——每次解密取最新令牌就不会用到已失效的凭据，和第38课prompt缓存读时校验新鲜度、第44课请求时校验真实IP同理",
+                        "en": "guarantees always using the 'currently latest' token: the user may uninstall the app on Slack's side, reinstall to another workspace, or the token may be rotated—decrypting the latest token each time avoids using a stale credential, same as Lesson 38's prompt cache validating freshness on read and Lesson 44's checking the real IP at request time",
+                    },
+                    {"zh": "解密比缓存更快", "en": "decrypting is faster than caching"},
+                    {"zh": "为了让数据库有更多读负载", "en": "to give the database more read load"},
+                    {"zh": "WebClient 不能被缓存", "en": "WebClient cannot be cached"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "缓存一个长生命周期、握着敏感令牌的客户端，省下的开销很小，却带来「用了过期/已撤销凭据」的真实风险：令牌可能因卸载、重装、轮换而失效。每次发送都 fetchInstallation→decrypt 取当前令牌，就总用最新最有效的凭据。这和第 38 课 prompt「读时校验是否被改」、第 44 课「请求那一刻才校验真实 IP」是同一种智慧——贴着「使用的那一刻」取最新状态，而不是依赖一个可能过期的快照。",
+                    "en": "Caching a long-lived client clutching a sensitive token saves little, yet brings the real risk of 'using an expired/revoked credential': the token may invalidate via uninstall, reinstall, or rotation. Fetching the current token via fetchInstallation→decrypt each send always uses the freshest, most-valid credential. This is the same wisdom as Lesson 38's prompt 'validate-on-read whether it changed' and Lesson 44's 'check the real IP only at request time'—fetch the latest state right at the moment of use, not rely on a possibly-stale snapshot.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 给 Slack 发的告警不是一行纯文本，而是 Block Kit 富消息，且 buildMonitorAlertSlackMessage 会按 severity 给消息染色。这个「染色」的设计意图是？",
+                    "en": "Langfuse's Slack alerts aren't plain text but Block Kit rich messages, and buildMonitorAlertSlackMessage tints them by severity. What's the design intent of this 'tinting'?",
+                },
+                "opts": [
+                    {
+                        "zh": "让人一眼看出严重度：ALERT 红、WARNING 黄、OK 绿——颜色是比文字更快的信号，频道里一片消息中红色告警最先抓住注意力，这是把「告警可读性/可操作性」做进投递层",
+                        "en": "let people gauge severity at a glance: ALERT red, WARNING amber, OK green—color is a faster signal than text; among many channel messages a red alert grabs attention first, baking 'alert readability/actionability' into the delivery layer",
+                    },
+                    {"zh": "Slack 要求所有消息必须带颜色", "en": "Slack requires every message to have a color"},
+                    {"zh": "颜色能压缩消息体积", "en": "color compresses message size"},
+                    {"zh": "随机染色防止消息被折叠", "en": "random tinting prevents message collapsing"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "告警的价值不只在「送达」，更在「被快速正确地理解和响应」。同样的文字，配上红/黄/绿的颜色条，严重度一目了然——这是人因工程：颜色是比阅读文字更快的感知通道。Block Kit 还能加「在 Langfuse 中查看」按钮，让人一键跳到现场。把这些做进投递层，体现的是「通知不是把信息倒出去就完事，而是要让收信人最省力地行动」。这也是 Slack 相比裸 webhook「精致」的地方。",
+                    "en": "An alert's value isn't only 'delivered' but 'quickly and correctly understood and acted on'. The same text with a red/amber/green color bar makes severity obvious at a glance—human-factors engineering: color is a faster perceptual channel than reading text. Block Kit also adds a 'View in Langfuse' button for one-click jump to the scene. Baking these into the delivery layer reflects 'a notification isn't done by dumping info out, but by making the recipient act with least effort'. This is also where Slack is 'refined' versus a naked webhook.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课指出：L45 几乎没有全新的基础设施，而是把前面攒下的加密(L39)、单例、游标分页、自动重试、BullMQ 队列这些零件，组装成一个体面的 Slack 集成。请回想你做过的项目：有没有哪个「看起来很新」的功能，其实是已有能力的重新组合？识别出这种「可复用的骨架」对一个工程团队意味着什么？过度追求复用又可能带来什么问题（错误的抽象、强行套用）？",
+                "en": "This lesson notes: L45 has almost no brand-new infrastructure but assembles parts accumulated earlier—encryption (L39), singleton, cursor pagination, auto-retry, BullMQ queue—into a respectable Slack integration. Recall your own projects: was there a 'seemingly new' feature that was actually a recombination of existing capabilities? What does recognizing such 'reusable skeletons' mean for an engineering team? And what problems can over-pursuing reuse bring (wrong abstractions, forced fits)?",
+            },
+        ],
+    },
 }
 
 
