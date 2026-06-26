@@ -1585,6 +1585,76 @@ QUIZZES = {
             },
         ],
     },
+    "23-filtering-search-bar.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "用户的过滤来自侧栏、搜索栏、AI 三种入口，后端又有 ClickHouse 和 Postgres 两套。Langfuse 让它们都先汇成一个 FilterState 再编译成 SQL，最大的好处是？",
+                    "en": "Filters come from three entries (sidebar, search bar, AI), and there are two backends (ClickHouse, Postgres). Langfuse converges them into one FilterState before compiling to SQL. The biggest benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "把 N×M 的直连组合降成 N+M：每个输入只管译成 FilterState、每个后端只管从 FilterState 译出 SQL；校验与参数化只在中间做一次，新增输入白嫖所有后端与全部安全",
+                        "en": "it cuts the N×M direct-wiring combinatorics to N+M: each input only translates to FilterState, each backend only translates FilterState to SQL; validation and parameterization happen once in the middle, and a new input freeloads all backends and all the safety",
+                    },
+                    {"zh": "让查询变快", "en": "it makes queries faster"},
+                    {"zh": "可以不用 WHERE 条件", "en": "it removes the need for WHERE clauses"},
+                    {"zh": "让前端不用写代码", "en": "the frontend needs no code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若每个输入直连每个后端，是 N×M 套翻译 + N×M 处注入风险，新增输入要为每个后端重写。收敛到一个 FilterState 中间契约后变 N+M：输入只译入、后端只译出，校验/参数化集中一次。这是「单一中间表示」的核心收益。",
+                    "en": "Wiring each input to each backend is N×M translations + N×M injection risks, and a new input means rewriting for every backend. Converging to one FilterState contract makes it N+M: inputs only translate in, backends only translate out, validation/parameterization centralized once. The core gain of a single intermediate representation.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "FilterState 编译成 ClickHouse SQL 时，每个过滤器的 apply() 用随机命名的占位符（如 stringFilter_xY9z）传值，而不是把值拼进 SQL 字符串。这防住了什么？",
+                    "en": "When FilterState compiles to ClickHouse SQL, each filter's apply() passes values via randomly-named placeholders (e.g. stringFilter_xY9z) rather than splicing values into the SQL string. What does this prevent?",
+                },
+                "opts": [
+                    {
+                        "zh": "SQL 注入：用户输入的值永远是被绑定的参数、不进 SQL 文本，哪怕写 '; DROP TABLE… 也只当普通字符串匹配；加上工厂校验列存在/类型兼容，脏输入编译期就被挡下",
+                        "en": "SQL injection: user values are always bound parameters, never in the SQL text, so even '; DROP TABLE… is matched as a plain string; plus the factory's column-existence/type checks stop dirty input at compile time",
+                    },
+                    {"zh": "防止查询太慢", "en": "prevents slow queries"},
+                    {"zh": "防止结果太多", "en": "prevents too many results"},
+                    {"zh": "防止用户看到数据", "en": "prevents users from seeing data"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "参数化查询是防注入的根本：值绑定到占位符、由驱动安全代入，绝不与 SQL 文本拼接。随机参数名进一步避免命名冲突。工厂还前置校验列是否在 schema、类型是否兼容，并注入强制 project_id（第 10 课）——多道防线叠加。",
+                    "en": "Parameterized queries are the root of injection defense: values bind to placeholders and are safely substituted by the driver, never spliced into SQL text. Random param names avoid collisions. The factory also pre-checks column existence, type compatibility, and injects the mandatory project_id (L10) — layered defenses.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "AI filter 用大模型从自然语言生成过滤，可大模型可能编造不存在的列。Langfuse 怎么保证幻觉列绝不被应用？",
+                    "en": "The AI filter uses an LLM to generate filters from natural language, but the model may hallucinate nonexistent columns. How does Langfuse ensure hallucinated columns are never applied?",
+                },
+                "opts": [
+                    {
+                        "zh": "把模型输出往返一遍：用 filterStateToQueryText 转回搜索栏语法、再解析回 FilterState，只保留能干净往返的；还原不了的（幻觉/非法列）直接丢弃。能表达才能进——构造即合法",
+                        "en": "it round-trips the model output: convert back to search-bar grammar via filterStateToQueryText and re-parse to FilterState, keeping only what cleanly round-trips; un-restorable ones (hallucinated/illegal columns) are dropped. Only the expressible passes — valid by construction",
+                    },
+                    {"zh": "人工逐条审核模型输出", "en": "a human reviews each model output"},
+                    {"zh": "信任模型，直接应用", "en": "trusts the model and applies directly"},
+                    {"zh": "让模型自己检查", "en": "asks the model to check itself"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "generateFilter 调 Bedrock 生成候选，再通过 filterStateToQueryText 往返：只有能还原成合法搜索栏语法（即能降解成 FilterState 能表达的过滤）的才被采纳，其余 droppedCount++ 丢弃。因为输出必须能被 FilterState 表达，幻觉列从结构上就进不来——安全靠表示边界而非事后检查。",
+                    "en": "generateFilter calls Bedrock for candidates, then round-trips via filterStateToQueryText: only filters that restore to valid search-bar grammar (i.e. lower to what FilterState expresses) are accepted, the rest droppedCount++. Because the output must be expressible by FilterState, hallucinated columns can't enter structurally — safety from the representation's boundaries, not after-checks.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「让 AI 的输出必须能还原成一个受限中间表示，不能表达的就进不来」——这种『构造即合法』的护栏，比『生成后再用规则检查』强在哪？你能想到把它用到自己系统里哪个『让 LLM 生成结构化指令』的场景吗？",
+                "en": "'Make the AI output have to restore to a constrained intermediate representation, and the inexpressible can't enter' — how is this 'valid by construction' guardrail stronger than 'generate then check with rules'? Can you think of a 'let an LLM generate structured commands' scenario in your own systems where you'd apply it?",
+            },
+        ],
+    },
 }
 
 

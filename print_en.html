@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 22 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 23 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -359,6 +359,7 @@ details[open] > summary { list-style: none; }
   <li>The web app architecture</li>
   <li>The tRPC backbone</li>
   <li>The repository layer</li>
+  <li>Filtering & the search bar</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -5098,6 +5099,197 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Converge all data access into one executor, uniformly adding tracing, tags, retry, resource protection' — can you apply this to your systems? If your code is full of raw SQL/raw HTTP calls, converging them into one executor, which three capabilities would you add first, and why?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Filtering & the search bar</h1>
+
+<p class="lead">
+Lesson 22's executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
+many ways — clicking the sidebar facets, typing search-bar grammar, even describing it in natural language to AI — yet they all <strong>converge into one
+<code>FilterState</code></strong> (a set of typed conditions), which then compiles to <strong>parameterized SQL</strong> (ClickHouse or Postgres). One intermediate
+contract that both blocks SQL injection and makes the search bar and AI filters <strong>safe by construction</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🌐 Analogy</div>
+  Think of <code>FilterState</code> as the UN's <strong>interlingua</strong>. Attendees speak different mother tongues — some <strong>pick from a menu</strong> (sidebar
+  facets), some <strong>write a telegram</strong> (search-bar <code>key:value</code> grammar), some <strong>dictate a request</strong> (AI natural language) — but every
+  utterance is first translated into <strong>one standard interlingua</strong> (FilterState), then translated again into what the database speaks (ClickHouse SQL or
+  Postgres SQL). This translator has two iron rules: never <strong>splice the original words straight into the translation</strong> (pass values via placeholders, no
+  injection); and <strong>refuse on the spot what it can't understand or express</strong>, never paraphrasing nonsense (validation + round-trip dropping
+  hallucinations). <strong>All inputs converge to one intermediate representation, then fan out to various backends</strong> — that's the filtering system's skeleton.
+</div>
+
+
+<h2>One FilterState, compiled to two SQL backends</h2>
+<p><code>FilterState</code> is a set of <strong>typed conditions</strong>: each says "which column, what operator, what value" (e.g.
+<code>{column:"level", operator:"any of", value:["ERROR"]}</code>). To become SQL it passes a factory, <code>createFilterFromFilterState</code> — a step that
+<strong>both translates and gatekeeps</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="sidebar, search bar, AI inputs all converge to one FilterState; the factory verifies columns/types and injects the mandatory project_id, then compiles to parameterized ClickHouse or Postgres SQL">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Three inputs → one FilterState → two SQL backends</text>
+  <rect x="20" y="42" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="61" text-anchor="middle" font-size="8" fill="var(--ink)">sidebar facets</text>
+  <rect x="20" y="80" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="99" text-anchor="middle" font-size="8" fill="var(--ink)">search-bar grammar</text>
+  <rect x="20" y="118" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="137" text-anchor="middle" font-size="8" fill="var(--ink)">AI natural language</text>
+  <rect x="180" y="62" width="150" height="66" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="255" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">FilterState</text><text x="255" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">a set of typed conditions</text><text x="255" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">column·operator·value</text>
+  <rect x="368" y="48" width="160" height="94" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="448" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">factory: translate + gatekeep</text><text x="448" y="86" text-anchor="middle" font-size="7.5" fill="var(--ink)">① verify column in schema</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">② verify type compatible</text><text x="448" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ inject mandatory project_id</text><text x="448" y="130" text-anchor="middle" font-size="7" fill="var(--muted)">createFilterFromFilterState</text>
+  <rect x="566" y="50" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="636" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">ClickHouse SQL</text><text x="636" y="82" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · dashboards/lists</text>
+  <rect x="566" y="100" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="636" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres SQL</text><text x="636" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · evals/audit</text>
+  <line x1="140" y1="57" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="95" x2="178" y2="95" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="133" x2="178" y2="104" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="95" x2="366" y2="95" stroke="var(--accent)" stroke-width="1.6"/><polygon points="366,95 357,91 357,99" fill="var(--accent)"/>
+  <line x1="528" y1="80" x2="564" y2="70" stroke="var(--faint)" stroke-width="1.3"/><line x1="528" y1="110" x2="564" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="170" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">One FilterState + column defs compiles to ClickHouse or Postgres — two backends, one abstraction</text>
+  <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse stack: clickhouse-filter.ts (StringFilter/DateTimeFilter…) + factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres stack: filterToPrisma.ts → Prisma.Sql (Prisma tables: evals, audit…)</text>
+</svg>
+<div class="figcap"><b>One abstraction, two backends</b>: <code>FilterState</code> + column defs pass the factory <code>createFilterFromFilterState</code>, which verifies columns/types, injects the mandatory <code>project_id</code>, then compiles to parameterized SQL. ClickHouse stack in <code>clickhouse-sql/</code>, Postgres stack in <code>filterToPrisma.ts</code>. Source: <code>queries/clickhouse-sql/factory.ts:37,217</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">compile + gatekeep</span></div>
+  <pre class="code"><span class="cm">// factory: gatekeep each, then translate</span>
+<span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// column must be in CH schema</span>
+<span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// type must be compatible</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// force-inject project_id (L10)</span>
+
+<span class="cm">// each filter's apply(): pass values via random param names, never splice strings</span>
+<span class="fn">apply</span>(): ClickhouseFilter {
+  <span class="kw">const</span> varName = <span class="st">`stringFilter${</span><span class="fn">clickhouseCompliantRandomCharacters</span>()<span class="st">}`</span>;
+  <span class="kw">return</span> { query: <span class="st">`col = {${varName}: String}`</span>, params: { [varName]: <span class="kw">this</span>.value } };
+}</pre>
+</div>
+
+<p>Grasp this and you've got the filtering system's <strong>security bedrock</strong>: user-input values are <strong>never spliced into the SQL string</strong>, but bound
+to a <strong>randomly-named placeholder</strong> (<code>stringFilter_xY9z</code>), safely substituted by the DB driver. Even if you write <code>'; DROP TABLE…</code> in a
+filter value, it's matched as a plain string — <strong>injection has no foothold</strong>. Plus the factory's up-front checks for "does the column exist, is the type
+compatible" stop dirty input at compile time — another line of defense beyond Lesson 22's resource protection.</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 each input to each backend: N×M</h4><p>3 inputs × 2 backends = 6 translation logics, 6 places to each guard injection. Add a new input (say AI) and you must rewrite the wiring and security checks for <strong>every backend</strong> — a combinatorial explosion, and one spot always gets missed.</p></div>
+  <div class="col"><h4>😀 converge to FilterState: N+M</h4><p>Each input only "translates to FilterState", each backend only "translates FilterState to SQL". Validation and parameterization happen <strong>once in the middle</strong>. A new input is just +1 translator-in, freeloading all backends and all the safety.</p></div>
+</div>
+
+
+<h2>The search bar &amp; AI filter: two skins of one source of truth</h2>
+<p>Beyond the sidebar facets, Langfuse offers a keyboard-lover's <strong>search bar</strong> — a <code>key:value</code> grammar (e.g. <code>level:(ERROR OR
+WARNING)</code>, <code>latency:&gt;2</code>, <code>metadata.region:eu</code>). But remember one iron rule (in its README): <strong>the sidebar's
+<code>FilterState</code> is the single source of truth, and the bar is just a "controlled editor" over it</strong> — it reads from and writes to FilterState,
+keeping <strong>no second copy</strong>.</p>
+
+<table class="t">
+  <tr><th>search-bar syntax</th><th>meaning</th></tr>
+  <tr><td><code>level:(ERROR OR WARNING)</code></td><td>any-of</td></tr>
+  <tr><td><code>-env:dev</code></td><td>exclude (none-of)</td></tr>
+  <tr><td><code>latency:&gt;2</code> · <code>startTime:&gt;2026-06-01</code></td><td>numeric/time comparison</td></tr>
+  <tr><td><code>statusMessage:*chat*</code></td><td>text contains (<code>*</code> glob)</td></tr>
+  <tr><td><code>metadata.region:eu</code> · <code>scores.accuracy:&gt;0.8</code></td><td>nested / dot-path fields</td></tr>
+</table>
+
+<p>This grammar <strong>deliberately covers only what flat <code>FilterState</code> can express</strong>: shapes FilterState can't hold (cross-field OR, grouping
+parens) get a <strong>commit-blocking diagnostic</strong>, <strong>not a silent drop</strong> — better to say to your face "I can't express that" than hand you a
+plausible-but-wrong filter. That's the gift of "single source of truth": the bar can never disagree with the sidebar, because they're two skins of the same
+FilterState.</p>
+
+<p>Best of all is the <strong>AI filter</strong>: you say in natural language "show me last week's errors over 2 seconds latency", and <code>generateFilter</code>
+calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>hallucinates</strong> a nonexistent column? Langfuse's fix is elegant — it
+<strong>round-trips</strong> the model output:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="AI filter: natural language through the LLM produces candidate filters, then round-trips filterStateToQueryText, keeping only filters that restore to search-bar grammar; hallucinated columns are dropped">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter: round-trip validation, hallucinated columns can't enter</text>
+  <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">natural language</text><text x="78" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">"errors over 2s last week"</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">LLM generates</text><text x="222" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">candidates (maybe hallucinated cols)</text>
+  <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">round-trip: back to grammar</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
+  <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">restores → keep</text><text x="530" y="61" text-anchor="middle" font-size="6.6" fill="var(--muted)">apply to FilterState</text>
+  <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">can't → drop</text><text x="530" y="103" text-anchor="middle" font-size="6.6" fill="var(--faint)">droppedCount++</text>
+  <line x1="140" y1="68" x2="158" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="158,68 150,64 150,72" fill="var(--faint)"/>
+  <line x1="284" y1="68" x2="302" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="302,68 294,64 294,72" fill="var(--faint)"/>
+  <line x1="454" y1="60" x2="472" y2="50" stroke="var(--teal)" stroke-width="1.3"/><line x1="454" y1="76" x2="472" y2="90" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">only filters that "restore to valid grammar" are accepted — hallucinated/unknown columns can't get in</text>
+  <text x="360" y="160" text-anchor="middle" font-size="8" fill="var(--muted)">"valid by construction": safety not from after-checks but from "can't express → can't pass"</text>
+</svg>
+<div class="figcap"><b>The round-trip is the guardrail</b>: the model output is round-tripped through <code>filterStateToQueryText</code>; only filters that restore to valid search-bar grammar (i.e. lower to what FilterState can express) are kept, hallucinated columns <code>droppedCount++</code>. Source: <code>web/src/features/search-bar/server/router.ts:45,178-183</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>natural language in</h4><p>The user says, next to the bar, "errors over 2s latency last week"; <code>generateFilter</code> (protected procedure, enterprise) catches it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>feed the LLM</h4><p>Build a prompt from the v4 field registry, call Bedrock to generate <strong>candidate filters</strong> — possibly smuggling in nonexistent columns.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>round-trip</h4><p>Turn candidates back to search-bar grammar via <code>filterStateToQueryText</code>, then try to parse back to FilterState.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>keep real, drop fake</h4><p>Cleanly round-tripping ones are kept and applied; un-restorable ones (hallucinated/illegal columns) are <strong>dropped</strong> and counted in <code>droppedCount</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>land in the same source</h4><p>The result is written into the sidebar's <code>FilterState</code> — exactly the same source and path as your clicked and typed filters.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
+  "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
+  backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.
+  Converge to one <code>FilterState</code> contract and it becomes N+M: each input only "translates to FilterState", each backend only "translates FilterState to SQL",
+  validation and parameterization done <strong>once in the middle</strong>. The deeper layer is <strong>"valid by construction"</strong>: because the AI output must
+  <strong>restore to what FilterState can express</strong> to be accepted, hallucinated columns are <strong>structurally impossible</strong> to pass — safety no longer
+  depends on "remembering to add a check" but is <strong>guaranteed by the boundaries of the representation itself</strong>. This is the most elegant face of "single
+  source of truth + intermediate representation".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The many filtering entries (sidebar / search bar / AI) all <strong>converge to one <code>FilterState</code></strong> (a set of typed conditions), then compile to SQL.</li>
+    <li><strong>One abstraction, two backends</strong>: the same FilterState compiles via the factory to <strong>ClickHouse</strong> (<code>clickhouse-sql/</code>) or <strong>Postgres</strong> (<code>filterToPrisma.ts</code>).</li>
+    <li><strong>Injection safety</strong>: each filter's <code>apply()</code> passes values via <strong>randomly-named placeholders</strong>, never splicing strings; the factory also verifies column existence, type compatibility, and injects the mandatory <code>project_id</code> (L10).</li>
+    <li><strong>The search bar</strong> is FilterState's "controlled editor" (README: the sidebar FilterState is the single source of truth); its grammar covers only what FilterState can express, the rest <strong>blocking commit, not silently dropped</strong>.</li>
+    <li><strong>AI filter</strong> round-trips the model output through <code>filterStateToQueryText</code>, keeping only what restores to valid grammar — hallucinated columns <strong>can't enter by construction</strong>. Security by structure, not after-checks.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Filters come from three entries (sidebar, search bar, AI), and there are two backends (ClickHouse, Postgres). Langfuse converges them into one FilterState before compiling to SQL. The biggest benefit?</div>
+  <ol class="opts">
+    <li>it removes the need for WHERE clauses</li>
+    <li>the frontend needs no code</li>
+    <li>it makes queries faster</li>
+    <li>it cuts the N×M direct-wiring combinatorics to N+M: each input only translates to FilterState, each backend only translates FilterState to SQL; validation and parameterization happen once in the middle, and a new input freeloads all backends and all the safety</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Wiring each input to each backend is N×M translations + N×M injection risks, and a new input means rewriting for every backend. Converging to one FilterState contract makes it N+M: inputs only translate in, backends only translate out, validation/parameterization centralized once. The core gain of a single intermediate representation.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. When FilterState compiles to ClickHouse SQL, each filter's apply() passes values via randomly-named placeholders (e.g. stringFilter_xY9z) rather than splicing values into the SQL string. What does this prevent?</div>
+  <ol class="opts">
+    <li>prevents users from seeing data</li>
+    <li>prevents slow queries</li>
+    <li>SQL injection: user values are always bound parameters, never in the SQL text, so even '; DROP TABLE… is matched as a plain string; plus the factory's column-existence/type checks stop dirty input at compile time</li>
+    <li>prevents too many results</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Parameterized queries are the root of injection defense: values bind to placeholders and are safely substituted by the driver, never spliced into SQL text. Random param names avoid collisions. The factory also pre-checks column existence, type compatibility, and injects the mandatory project_id (L10) — layered defenses.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The AI filter uses an LLM to generate filters from natural language, but the model may hallucinate nonexistent columns. How does Langfuse ensure hallucinated columns are never applied?</div>
+  <ol class="opts">
+    <li>it round-trips the model output: convert back to search-bar grammar via filterStateToQueryText and re-parse to FilterState, keeping only what cleanly round-trips; un-restorable ones (hallucinated/illegal columns) are dropped. Only the expressible passes — valid by construction</li>
+    <li>a human reviews each model output</li>
+    <li>trusts the model and applies directly</li>
+    <li>asks the model to check itself</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. generateFilter calls Bedrock for candidates, then round-trips via filterStateToQueryText: only filters that restore to valid search-bar grammar (i.e. lower to what FilterState expresses) are accepted, the rest droppedCount++. Because the output must be expressible by FilterState, hallucinated columns can't enter structurally — safety from the representation's boundaries, not after-checks.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Make the AI output have to restore to a constrained intermediate representation, and the inexpressible can't enter' — how is this 'valid by construction' guardrail stronger than 'generate then check with rules'? Can you think of a 'let an LLM generate structured commands' scenario in your own systems where you'd apply it?</li>
   </ul>
 </div>
 </div>

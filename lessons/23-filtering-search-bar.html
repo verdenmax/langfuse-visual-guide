@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>23 · 过滤·搜索栏·查询构建 / Filtering &amp; the search bar - Langfuse 图解教程</title>
+<meta name="description" content="第四部分 · 查询链路｜过滤·搜索栏·查询构建 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="23 · 过滤·搜索栏·查询构建 / Filtering &amp; the search bar - Langfuse 图解教程">
+<meta property="og:description" content="第四部分 · 查询链路｜过滤·搜索栏·查询构建 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="23 · 过滤·搜索栏·查询构建 / Filtering &amp; the search bar - Langfuse 图解教程">
+<meta name="twitter:description" content="第四部分 · 查询链路｜过滤·搜索栏·查询构建 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></span>
+    <span class="pill">23 / 23</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
+    <h1><span class="lang-zh">过滤·搜索栏·查询构建</span><span class="lang-en">Filtering &amp; the search bar</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+第 22 课的执行器负责「把查询发出去」，可<strong>那些查询的 WHERE 条件是谁拼的</strong>？这一课就讲过滤。关键洞察是：用户过滤的方式五花八门——点侧栏面板、敲搜索栏语法、甚至用 AI 自然语言描述——
+但它们最终<strong>都汇成同一个 <code>FilterState</code></strong>（一组带类型的条件），再由它编译成<strong>参数化 SQL</strong>（ClickHouse 或 Postgres）。一个中间契约，
+既挡住了 SQL 注入，又让搜索栏、AI filter 这些花样都<strong>构造即安全</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🌐 生活类比</div>
+  把 <code>FilterState</code> 想成联合国的<strong>中间语</strong>。与会者说着不同的母语——有人<strong>点菜单</strong>（侧栏面板）、有人<strong>写电报</strong>（搜索栏 <code>key:value</code> 语法）、有人<strong>口述需求</strong>（AI 自然语言）——
+  但所有发言都先被译成<strong>同一种标准中间语</strong>（FilterState），再由它译成数据库听得懂的话（ClickHouse SQL 或 Postgres SQL）。这个译员有两条铁律：
+  一是<strong>绝不把原话直接塞进译文</strong>（用占位符传值，杜绝注入）；二是<strong>听不懂的、编不出的，当场打回，绝不胡乱转述</strong>（校验 + 往返丢弃幻觉）。<strong>所有输入收敛到一种中间表示，再分发到各种后端</strong>——这就是过滤系统的骨架。
+</div>
+
+
+<h2>一个 FilterState，编译到两套 SQL</h2>
+<p><code>FilterState</code> 是一组<strong>带类型的条件</strong>：每条说清「哪一列、什么运算符、什么值」（如 <code>{column:"level", operator:"any of", value:["ERROR"]}</code>）。
+它要变成 SQL，得过一个工厂 <code>createFilterFromFilterState</code>——这一步<strong>既翻译、又把关</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="侧栏、搜索栏、AI 三种输入都汇成一个 FilterState，经工厂校验列/类型并注入强制 project_id，再编译成参数化的 ClickHouse 或 Postgres SQL">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三种输入 → 一个 FilterState → 两套 SQL</text>
+  <rect x="20" y="42" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="61" text-anchor="middle" font-size="8" fill="var(--ink)">侧栏面板</text>
+  <rect x="20" y="80" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="99" text-anchor="middle" font-size="8" fill="var(--ink)">搜索栏语法</text>
+  <rect x="20" y="118" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="137" text-anchor="middle" font-size="8" fill="var(--ink)">AI 自然语言</text>
+  <rect x="180" y="62" width="150" height="66" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="255" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">FilterState</text><text x="255" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">一组带类型的条件</text><text x="255" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">列·运算符·值</text>
+  <rect x="368" y="48" width="160" height="94" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="448" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">工厂：翻译 + 把关</text><text x="448" y="86" text-anchor="middle" font-size="7.5" fill="var(--ink)">① 校验列是否在 schema</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">② 校验类型是否兼容</text><text x="448" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ 注入强制 project_id</text><text x="448" y="130" text-anchor="middle" font-size="7" fill="var(--muted)">createFilterFromFilterState</text>
+  <rect x="566" y="50" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="636" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">ClickHouse SQL</text><text x="636" y="82" text-anchor="middle" font-size="7" fill="var(--muted)">参数化 · 看板/列表</text>
+  <rect x="566" y="100" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="636" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres SQL</text><text x="636" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">参数化 · 评估/审计</text>
+  <line x1="140" y1="57" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="95" x2="178" y2="95" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="133" x2="178" y2="104" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="95" x2="366" y2="95" stroke="var(--accent)" stroke-width="1.6"/><polygon points="366,95 357,91 357,99" fill="var(--accent)"/>
+  <line x1="528" y1="80" x2="564" y2="70" stroke="var(--faint)" stroke-width="1.3"/><line x1="528" y1="110" x2="564" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="170" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">同一份 FilterState + 列定义，可编译到 ClickHouse 或 Postgres——两套后端共享一个抽象</text>
+  <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse 栈：clickhouse-filter.ts（StringFilter/DateTimeFilter…）+ factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres 栈：filterToPrisma.ts → Prisma.Sql（评估、审计等 Prisma 表）</text>
+</svg>
+<div class="figcap"><b>一个抽象，两套后端</b>：<code>FilterState</code> + 列定义经工厂 <code>createFilterFromFilterState</code> 校验列/类型、注入强制 <code>project_id</code>，再编译成参数化 SQL。ClickHouse 栈在 <code>clickhouse-sql/</code>，Postgres 栈在 <code>filterToPrisma.ts</code>。源码：<code>queries/clickhouse-sql/factory.ts:37,217</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">编译 + 把关</span></div>
+  <pre class="code"><span class="cm">// 工厂：逐个把关再翻译</span>
+<span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// 列必须在 CH schema 里</span>
+<span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// 类型必须兼容</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// 强制注入 project_id（第 10 课）</span>
+
+<span class="cm">// 每个过滤器的 apply()：用随机参数名传值，绝不拼接字符串</span>
+<span class="fn">apply</span>(): ClickhouseFilter {
+  <span class="kw">const</span> varName = <span class="st">`stringFilter${</span><span class="fn">clickhouseCompliantRandomCharacters</span>()<span class="st">}`</span>;
+  <span class="kw">return</span> { query: <span class="st">`col = {${varName}: String}`</span>, params: { [varName]: <span class="kw">this</span>.value } };
+}</pre>
+</div>
+
+<p>看清这段就抓住了过滤系统的<strong>安全底座</strong>：用户输入的值，<strong>永远不会被拼进 SQL 字符串</strong>，而是绑定到一个<strong>随机命名的占位符</strong>（<code>stringFilter_xY9z</code>），
+由数据库驱动安全地代入。哪怕你在过滤值里写 <code>'; DROP TABLE…</code>，它也只会被当成一个普通字符串去匹配，<strong>注入无从下手</strong>。加上工厂对「列是否存在、类型是否兼容」的前置校验，
+脏输入在编译期就被挡下——这正是第 22 课资源保护之外的另一道防线。</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 各输入直连各后端：N×M</h4><p>3 种输入 × 2 套后端 = 6 套翻译逻辑、6 处要各自防注入。新加一种输入（比如 AI），就得为<strong>每个后端</strong>重写对接、重写安全校验——组合爆炸，且总有一处会写漏。</p></div>
+  <div class="col"><h4>😀 收敛到 FilterState：N+M</h4><p>每个输入只管「译成 FilterState」，每个后端只管「从 FilterState 译出 SQL」。校验与参数化<strong>只在中间做一次</strong>。新加输入只需 +1 个译入器，<strong>白嫖</strong>所有后端与全部安全。</p></div>
+</div>
+
+
+<h2>搜索栏与 AI filter：同一个真源的两种皮肤</h2>
+<p>侧栏面板之外，Langfuse 还提供一个键盘党喜欢的<strong>搜索栏</strong>——一套 <code>key:value</code> 语法（如 <code>level:(ERROR OR WARNING)</code>、<code>latency:&gt;2</code>、<code>metadata.region:eu</code>）。
+但要记住一条铁律（写在它的 README 里）：<strong>侧栏的 <code>FilterState</code> 才是唯一真源，搜索栏只是它的一个「受控编辑器」</strong>——它从 FilterState 读、往 FilterState 写，自己<strong>不另存一份</strong>。</p>
+
+<table class="t">
+  <tr><th>搜索栏写法</th><th>含义</th></tr>
+  <tr><td><code>level:(ERROR OR WARNING)</code></td><td>任选其一（any-of）</td></tr>
+  <tr><td><code>-env:dev</code></td><td>排除（none-of）</td></tr>
+  <tr><td><code>latency:&gt;2</code> · <code>startTime:&gt;2026-06-01</code></td><td>数值/时间比较</td></tr>
+  <tr><td><code>statusMessage:*chat*</code></td><td>文本包含（<code>*</code> 通配）</td></tr>
+  <tr><td><code>metadata.region:eu</code> · <code>scores.accuracy:&gt;0.8</code></td><td>嵌套/点路径字段</td></tr>
+</table>
+
+<p>这套语法<strong>有意只覆盖扁平 <code>FilterState</code> 能表达的范围</strong>：跨字段 OR、分组括号这些 FilterState 装不下的形态，搜索栏会给出<strong>阻止提交的诊断提示</strong>，而<strong>不是悄悄丢掉</strong>——
+宁可当面说「这我编不出来」，也不给你一个似是而非的错误过滤。这正是「真源单一」带来的好处：搜索栏永远不会和侧栏不一致，因为它们本就是同一份 FilterState 的两种皮肤。</p>
+
+<p>最妙的是 <strong>AI filter</strong>：你用自然语言说「给我看上周延迟超过 2 秒的报错」，<code>generateFilter</code> 调用大模型（Bedrock）把它变成过滤。可大模型会<strong>胡编</strong>不存在的列怎么办？
+Langfuse 的解法堪称精巧——把模型输出<strong>往返一遍</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="AI filter：自然语言经大模型生成候选过滤，再往返 filterStateToQueryText，只保留能还原成搜索栏语法的过滤，幻觉列被丢弃">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter：往返校验，幻觉列进不来</text>
+  <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">自然语言</text><text x="78" y="80" text-anchor="middle" font-size="7" fill="var(--muted)">「上周超 2s 的报错」</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">大模型生成</text><text x="222" y="80" text-anchor="middle" font-size="7" fill="var(--muted)">候选过滤（可能含幻觉列）</text>
+  <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">往返：转回搜索栏语法</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
+  <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">能还原 → 保留</text><text x="530" y="61" text-anchor="middle" font-size="6.8" fill="var(--muted)">应用到 FilterState</text>
+  <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">还原不了 → 丢弃</text><text x="530" y="103" text-anchor="middle" font-size="6.8" fill="var(--faint)">droppedCount++</text>
+  <line x1="140" y1="68" x2="158" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="158,68 150,64 150,72" fill="var(--faint)"/>
+  <line x1="284" y1="68" x2="302" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="302,68 294,64 294,72" fill="var(--faint)"/>
+  <line x1="454" y1="60" x2="472" y2="50" stroke="var(--teal)" stroke-width="1.3"/><line x1="454" y1="76" x2="472" y2="90" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">只有「能还原成合法搜索栏语法」的过滤才被采纳——幻觉/不存在的列天然进不来</text>
+  <text x="360" y="160" text-anchor="middle" font-size="8" fill="var(--muted)">「构造即合法」：安全不靠事后检查，而靠「编不出就过不来」的结构</text>
+</svg>
+<div class="figcap"><b>往返即护栏</b>：模型输出被 <code>filterStateToQueryText</code> 往返一遍，只有能还原成合法搜索栏语法（即能降解成 FilterState 能表达的过滤）的才保留，幻觉列直接 <code>droppedCount++</code> 丢弃。源码：<code>web/src/features/search-bar/server/router.ts:45,178-183</code>。</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>自然语言进来</h4><p>用户在搜索栏旁说「上周延迟超 2 秒的报错」；<code>generateFilter</code>（受保护过程，企业版）接住。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>喂给大模型</h4><p>用 v4 字段注册表拼出提示词，调 Bedrock 生成<strong>候选过滤</strong>——此时可能夹带不存在的列。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>往返一遍</h4><p>把候选过滤通过 <code>filterStateToQueryText</code> 转回搜索栏语法，再尝试解析回 FilterState。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>留真去假</h4><p>能干净往返的保留、应用；还原不了的（幻觉/非法列）<strong>丢弃</strong>并计入 <code>droppedCount</code>。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>落到同一个真源</h4><p>最终结果写进侧栏那份 <code>FilterState</code>——和你手点、手敲的过滤<strong>完全同源同路</strong>。</p></div></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么不让搜索栏、AI 各自直接生成 SQL，非要都先收敛成 FilterState？</strong> 因为<strong>「输入面」和「后端」都不止一个</strong>。输入有侧栏、搜索栏、AI、未来还会更多；
+  后端有 ClickHouse、Postgres。如果让每个输入面各自直连每个后端，就是 N×M 套翻译逻辑、N×M 处注入风险——而且新加一种输入，就要把所有后端的对接、所有安全校验<strong>重写一遍</strong>。
+  收敛成一个 <code>FilterState</code> 中间契约后，事情变成 N+M：每个输入面只管「译成 FilterState」，每个后端只管「从 FilterState 译出 SQL」，校验与参数化<strong>只在中间做一次</strong>。
+  更深的一层是<strong>「构造即合法」</strong>：因为 AI 的输出必须<strong>能还原成 FilterState 能表达的形态</strong>才被采纳，幻觉列<strong>从结构上就不可能</strong>通过——安全不再依赖「记得加一道检查」，而是<strong>由表示本身的边界来保证</strong>。
+  这是「单一真源 + 中间表示」最优雅的一面。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>用户过滤的多种入口（侧栏 / 搜索栏 / AI）都<strong>汇成一个 <code>FilterState</code></strong>（带类型的条件组），再编译成 SQL。</li>
+    <li><strong>一个抽象、两套后端</strong>：同一份 FilterState 经工厂可编译到 <strong>ClickHouse</strong>（<code>clickhouse-sql/</code>）或 <strong>Postgres</strong>（<code>filterToPrisma.ts</code>）。</li>
+    <li><strong>注入安全</strong>：每个过滤器 <code>apply()</code> 用<strong>随机命名的占位符</strong>传值，绝不拼接字符串；工厂还校验列存在性、类型兼容，并注入强制 <code>project_id</code>（第 10 课）。</li>
+    <li><strong>搜索栏</strong>是 FilterState 的「受控编辑器」（README：侧栏 FilterState 是唯一真源）；语法只覆盖 FilterState 能表达的范围，编不出的<strong>阻止提交、不静默丢弃</strong>。</li>
+    <li><strong>AI filter</strong>把模型输出<strong>往返</strong> <code>filterStateToQueryText</code>，只留能还原成合法语法的——幻觉列<strong>构造上进不来</strong>。安全靠结构，不靠事后检查。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 用户的过滤来自侧栏、搜索栏、AI 三种入口，后端又有 ClickHouse 和 Postgres 两套。Langfuse 让它们都先汇成一个 FilterState 再编译成 SQL，最大的好处是？</div>
+  <ol class="opts">
+    <li>可以不用 WHERE 条件</li>
+    <li>让前端不用写代码</li>
+    <li>让查询变快</li>
+    <li>把 N×M 的直连组合降成 N+M：每个输入只管译成 FilterState、每个后端只管从 FilterState 译出 SQL；校验与参数化只在中间做一次，新增输入白嫖所有后端与全部安全</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若每个输入直连每个后端，是 N×M 套翻译 + N×M 处注入风险，新增输入要为每个后端重写。收敛到一个 FilterState 中间契约后变 N+M：输入只译入、后端只译出，校验/参数化集中一次。这是「单一中间表示」的核心收益。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. FilterState 编译成 ClickHouse SQL 时，每个过滤器的 apply() 用随机命名的占位符（如 stringFilter_xY9z）传值，而不是把值拼进 SQL 字符串。这防住了什么？</div>
+  <ol class="opts">
+    <li>防止用户看到数据</li>
+    <li>防止查询太慢</li>
+    <li>SQL 注入：用户输入的值永远是被绑定的参数、不进 SQL 文本，哪怕写 '; DROP TABLE… 也只当普通字符串匹配；加上工厂校验列存在/类型兼容，脏输入编译期就被挡下</li>
+    <li>防止结果太多</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。参数化查询是防注入的根本：值绑定到占位符、由驱动安全代入，绝不与 SQL 文本拼接。随机参数名进一步避免命名冲突。工厂还前置校验列是否在 schema、类型是否兼容，并注入强制 project_id（第 10 课）——多道防线叠加。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. AI filter 用大模型从自然语言生成过滤，可大模型可能编造不存在的列。Langfuse 怎么保证幻觉列绝不被应用？</div>
+  <ol class="opts">
+    <li>把模型输出往返一遍：用 filterStateToQueryText 转回搜索栏语法、再解析回 FilterState，只保留能干净往返的；还原不了的（幻觉/非法列）直接丢弃。能表达才能进——构造即合法</li>
+    <li>人工逐条审核模型输出</li>
+    <li>信任模型，直接应用</li>
+    <li>让模型自己检查</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。generateFilter 调 Bedrock 生成候选，再通过 filterStateToQueryText 往返：只有能还原成合法搜索栏语法（即能降解成 FilterState 能表达的过滤）的才被采纳，其余 droppedCount++ 丢弃。因为输出必须能被 FilterState 表达，幻觉列从结构上就进不来——安全靠表示边界而非事后检查。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「让 AI 的输出必须能还原成一个受限中间表示，不能表达的就进不来」——这种『构造即合法』的护栏，比『生成后再用规则检查』强在哪？你能想到把它用到自己系统里哪个『让 LLM 生成结构化指令』的场景吗？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Lesson 22's executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
+many ways — clicking the sidebar facets, typing search-bar grammar, even describing it in natural language to AI — yet they all <strong>converge into one
+<code>FilterState</code></strong> (a set of typed conditions), which then compiles to <strong>parameterized SQL</strong> (ClickHouse or Postgres). One intermediate
+contract that both blocks SQL injection and makes the search bar and AI filters <strong>safe by construction</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🌐 Analogy</div>
+  Think of <code>FilterState</code> as the UN's <strong>interlingua</strong>. Attendees speak different mother tongues — some <strong>pick from a menu</strong> (sidebar
+  facets), some <strong>write a telegram</strong> (search-bar <code>key:value</code> grammar), some <strong>dictate a request</strong> (AI natural language) — but every
+  utterance is first translated into <strong>one standard interlingua</strong> (FilterState), then translated again into what the database speaks (ClickHouse SQL or
+  Postgres SQL). This translator has two iron rules: never <strong>splice the original words straight into the translation</strong> (pass values via placeholders, no
+  injection); and <strong>refuse on the spot what it can't understand or express</strong>, never paraphrasing nonsense (validation + round-trip dropping
+  hallucinations). <strong>All inputs converge to one intermediate representation, then fan out to various backends</strong> — that's the filtering system's skeleton.
+</div>
+
+
+<h2>One FilterState, compiled to two SQL backends</h2>
+<p><code>FilterState</code> is a set of <strong>typed conditions</strong>: each says "which column, what operator, what value" (e.g.
+<code>{column:"level", operator:"any of", value:["ERROR"]}</code>). To become SQL it passes a factory, <code>createFilterFromFilterState</code> — a step that
+<strong>both translates and gatekeeps</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="sidebar, search bar, AI inputs all converge to one FilterState; the factory verifies columns/types and injects the mandatory project_id, then compiles to parameterized ClickHouse or Postgres SQL">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Three inputs → one FilterState → two SQL backends</text>
+  <rect x="20" y="42" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="61" text-anchor="middle" font-size="8" fill="var(--ink)">sidebar facets</text>
+  <rect x="20" y="80" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="99" text-anchor="middle" font-size="8" fill="var(--ink)">search-bar grammar</text>
+  <rect x="20" y="118" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="137" text-anchor="middle" font-size="8" fill="var(--ink)">AI natural language</text>
+  <rect x="180" y="62" width="150" height="66" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="255" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">FilterState</text><text x="255" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">a set of typed conditions</text><text x="255" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">column·operator·value</text>
+  <rect x="368" y="48" width="160" height="94" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="448" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">factory: translate + gatekeep</text><text x="448" y="86" text-anchor="middle" font-size="7.5" fill="var(--ink)">① verify column in schema</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">② verify type compatible</text><text x="448" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ inject mandatory project_id</text><text x="448" y="130" text-anchor="middle" font-size="7" fill="var(--muted)">createFilterFromFilterState</text>
+  <rect x="566" y="50" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="636" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">ClickHouse SQL</text><text x="636" y="82" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · dashboards/lists</text>
+  <rect x="566" y="100" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="636" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres SQL</text><text x="636" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · evals/audit</text>
+  <line x1="140" y1="57" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="95" x2="178" y2="95" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="133" x2="178" y2="104" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="95" x2="366" y2="95" stroke="var(--accent)" stroke-width="1.6"/><polygon points="366,95 357,91 357,99" fill="var(--accent)"/>
+  <line x1="528" y1="80" x2="564" y2="70" stroke="var(--faint)" stroke-width="1.3"/><line x1="528" y1="110" x2="564" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="170" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">One FilterState + column defs compiles to ClickHouse or Postgres — two backends, one abstraction</text>
+  <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse stack: clickhouse-filter.ts (StringFilter/DateTimeFilter…) + factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres stack: filterToPrisma.ts → Prisma.Sql (Prisma tables: evals, audit…)</text>
+</svg>
+<div class="figcap"><b>One abstraction, two backends</b>: <code>FilterState</code> + column defs pass the factory <code>createFilterFromFilterState</code>, which verifies columns/types, injects the mandatory <code>project_id</code>, then compiles to parameterized SQL. ClickHouse stack in <code>clickhouse-sql/</code>, Postgres stack in <code>filterToPrisma.ts</code>. Source: <code>queries/clickhouse-sql/factory.ts:37,217</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">compile + gatekeep</span></div>
+  <pre class="code"><span class="cm">// factory: gatekeep each, then translate</span>
+<span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// column must be in CH schema</span>
+<span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// type must be compatible</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// force-inject project_id (L10)</span>
+
+<span class="cm">// each filter's apply(): pass values via random param names, never splice strings</span>
+<span class="fn">apply</span>(): ClickhouseFilter {
+  <span class="kw">const</span> varName = <span class="st">`stringFilter${</span><span class="fn">clickhouseCompliantRandomCharacters</span>()<span class="st">}`</span>;
+  <span class="kw">return</span> { query: <span class="st">`col = {${varName}: String}`</span>, params: { [varName]: <span class="kw">this</span>.value } };
+}</pre>
+</div>
+
+<p>Grasp this and you've got the filtering system's <strong>security bedrock</strong>: user-input values are <strong>never spliced into the SQL string</strong>, but bound
+to a <strong>randomly-named placeholder</strong> (<code>stringFilter_xY9z</code>), safely substituted by the DB driver. Even if you write <code>'; DROP TABLE…</code> in a
+filter value, it's matched as a plain string — <strong>injection has no foothold</strong>. Plus the factory's up-front checks for "does the column exist, is the type
+compatible" stop dirty input at compile time — another line of defense beyond Lesson 22's resource protection.</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 each input to each backend: N×M</h4><p>3 inputs × 2 backends = 6 translation logics, 6 places to each guard injection. Add a new input (say AI) and you must rewrite the wiring and security checks for <strong>every backend</strong> — a combinatorial explosion, and one spot always gets missed.</p></div>
+  <div class="col"><h4>😀 converge to FilterState: N+M</h4><p>Each input only "translates to FilterState", each backend only "translates FilterState to SQL". Validation and parameterization happen <strong>once in the middle</strong>. A new input is just +1 translator-in, freeloading all backends and all the safety.</p></div>
+</div>
+
+
+<h2>The search bar &amp; AI filter: two skins of one source of truth</h2>
+<p>Beyond the sidebar facets, Langfuse offers a keyboard-lover's <strong>search bar</strong> — a <code>key:value</code> grammar (e.g. <code>level:(ERROR OR
+WARNING)</code>, <code>latency:&gt;2</code>, <code>metadata.region:eu</code>). But remember one iron rule (in its README): <strong>the sidebar's
+<code>FilterState</code> is the single source of truth, and the bar is just a "controlled editor" over it</strong> — it reads from and writes to FilterState,
+keeping <strong>no second copy</strong>.</p>
+
+<table class="t">
+  <tr><th>search-bar syntax</th><th>meaning</th></tr>
+  <tr><td><code>level:(ERROR OR WARNING)</code></td><td>any-of</td></tr>
+  <tr><td><code>-env:dev</code></td><td>exclude (none-of)</td></tr>
+  <tr><td><code>latency:&gt;2</code> · <code>startTime:&gt;2026-06-01</code></td><td>numeric/time comparison</td></tr>
+  <tr><td><code>statusMessage:*chat*</code></td><td>text contains (<code>*</code> glob)</td></tr>
+  <tr><td><code>metadata.region:eu</code> · <code>scores.accuracy:&gt;0.8</code></td><td>nested / dot-path fields</td></tr>
+</table>
+
+<p>This grammar <strong>deliberately covers only what flat <code>FilterState</code> can express</strong>: shapes FilterState can't hold (cross-field OR, grouping
+parens) get a <strong>commit-blocking diagnostic</strong>, <strong>not a silent drop</strong> — better to say to your face "I can't express that" than hand you a
+plausible-but-wrong filter. That's the gift of "single source of truth": the bar can never disagree with the sidebar, because they're two skins of the same
+FilterState.</p>
+
+<p>Best of all is the <strong>AI filter</strong>: you say in natural language "show me last week's errors over 2 seconds latency", and <code>generateFilter</code>
+calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>hallucinates</strong> a nonexistent column? Langfuse's fix is elegant — it
+<strong>round-trips</strong> the model output:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="AI filter: natural language through the LLM produces candidate filters, then round-trips filterStateToQueryText, keeping only filters that restore to search-bar grammar; hallucinated columns are dropped">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter: round-trip validation, hallucinated columns can't enter</text>
+  <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">natural language</text><text x="78" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">"errors over 2s last week"</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">LLM generates</text><text x="222" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">candidates (maybe hallucinated cols)</text>
+  <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">round-trip: back to grammar</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
+  <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">restores → keep</text><text x="530" y="61" text-anchor="middle" font-size="6.6" fill="var(--muted)">apply to FilterState</text>
+  <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">can't → drop</text><text x="530" y="103" text-anchor="middle" font-size="6.6" fill="var(--faint)">droppedCount++</text>
+  <line x1="140" y1="68" x2="158" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="158,68 150,64 150,72" fill="var(--faint)"/>
+  <line x1="284" y1="68" x2="302" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="302,68 294,64 294,72" fill="var(--faint)"/>
+  <line x1="454" y1="60" x2="472" y2="50" stroke="var(--teal)" stroke-width="1.3"/><line x1="454" y1="76" x2="472" y2="90" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">only filters that "restore to valid grammar" are accepted — hallucinated/unknown columns can't get in</text>
+  <text x="360" y="160" text-anchor="middle" font-size="8" fill="var(--muted)">"valid by construction": safety not from after-checks but from "can't express → can't pass"</text>
+</svg>
+<div class="figcap"><b>The round-trip is the guardrail</b>: the model output is round-tripped through <code>filterStateToQueryText</code>; only filters that restore to valid search-bar grammar (i.e. lower to what FilterState can express) are kept, hallucinated columns <code>droppedCount++</code>. Source: <code>web/src/features/search-bar/server/router.ts:45,178-183</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>natural language in</h4><p>The user says, next to the bar, "errors over 2s latency last week"; <code>generateFilter</code> (protected procedure, enterprise) catches it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>feed the LLM</h4><p>Build a prompt from the v4 field registry, call Bedrock to generate <strong>candidate filters</strong> — possibly smuggling in nonexistent columns.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>round-trip</h4><p>Turn candidates back to search-bar grammar via <code>filterStateToQueryText</code>, then try to parse back to FilterState.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>keep real, drop fake</h4><p>Cleanly round-tripping ones are kept and applied; un-restorable ones (hallucinated/illegal columns) are <strong>dropped</strong> and counted in <code>droppedCount</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>land in the same source</h4><p>The result is written into the sidebar's <code>FilterState</code> — exactly the same source and path as your clicked and typed filters.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
+  "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
+  backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.
+  Converge to one <code>FilterState</code> contract and it becomes N+M: each input only "translates to FilterState", each backend only "translates FilterState to SQL",
+  validation and parameterization done <strong>once in the middle</strong>. The deeper layer is <strong>"valid by construction"</strong>: because the AI output must
+  <strong>restore to what FilterState can express</strong> to be accepted, hallucinated columns are <strong>structurally impossible</strong> to pass — safety no longer
+  depends on "remembering to add a check" but is <strong>guaranteed by the boundaries of the representation itself</strong>. This is the most elegant face of "single
+  source of truth + intermediate representation".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The many filtering entries (sidebar / search bar / AI) all <strong>converge to one <code>FilterState</code></strong> (a set of typed conditions), then compile to SQL.</li>
+    <li><strong>One abstraction, two backends</strong>: the same FilterState compiles via the factory to <strong>ClickHouse</strong> (<code>clickhouse-sql/</code>) or <strong>Postgres</strong> (<code>filterToPrisma.ts</code>).</li>
+    <li><strong>Injection safety</strong>: each filter's <code>apply()</code> passes values via <strong>randomly-named placeholders</strong>, never splicing strings; the factory also verifies column existence, type compatibility, and injects the mandatory <code>project_id</code> (L10).</li>
+    <li><strong>The search bar</strong> is FilterState's "controlled editor" (README: the sidebar FilterState is the single source of truth); its grammar covers only what FilterState can express, the rest <strong>blocking commit, not silently dropped</strong>.</li>
+    <li><strong>AI filter</strong> round-trips the model output through <code>filterStateToQueryText</code>, keeping only what restores to valid grammar — hallucinated columns <strong>can't enter by construction</strong>. Security by structure, not after-checks.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Filters come from three entries (sidebar, search bar, AI), and there are two backends (ClickHouse, Postgres). Langfuse converges them into one FilterState before compiling to SQL. The biggest benefit?</div>
+  <ol class="opts">
+    <li>it removes the need for WHERE clauses</li>
+    <li>the frontend needs no code</li>
+    <li>it makes queries faster</li>
+    <li>it cuts the N×M direct-wiring combinatorics to N+M: each input only translates to FilterState, each backend only translates FilterState to SQL; validation and parameterization happen once in the middle, and a new input freeloads all backends and all the safety</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Wiring each input to each backend is N×M translations + N×M injection risks, and a new input means rewriting for every backend. Converging to one FilterState contract makes it N+M: inputs only translate in, backends only translate out, validation/parameterization centralized once. The core gain of a single intermediate representation.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. When FilterState compiles to ClickHouse SQL, each filter's apply() passes values via randomly-named placeholders (e.g. stringFilter_xY9z) rather than splicing values into the SQL string. What does this prevent?</div>
+  <ol class="opts">
+    <li>prevents users from seeing data</li>
+    <li>prevents slow queries</li>
+    <li>SQL injection: user values are always bound parameters, never in the SQL text, so even '; DROP TABLE… is matched as a plain string; plus the factory's column-existence/type checks stop dirty input at compile time</li>
+    <li>prevents too many results</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Parameterized queries are the root of injection defense: values bind to placeholders and are safely substituted by the driver, never spliced into SQL text. Random param names avoid collisions. The factory also pre-checks column existence, type compatibility, and injects the mandatory project_id (L10) — layered defenses.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The AI filter uses an LLM to generate filters from natural language, but the model may hallucinate nonexistent columns. How does Langfuse ensure hallucinated columns are never applied?</div>
+  <ol class="opts">
+    <li>it round-trips the model output: convert back to search-bar grammar via filterStateToQueryText and re-parse to FilterState, keeping only what cleanly round-trips; un-restorable ones (hallucinated/illegal columns) are dropped. Only the expressible passes — valid by construction</li>
+    <li>a human reviews each model output</li>
+    <li>trusts the model and applies directly</li>
+    <li>asks the model to check itself</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. generateFilter calls Bedrock for candidates, then round-trips via filterStateToQueryText: only filters that restore to valid search-bar grammar (i.e. lower to what FilterState expresses) are accepted, the rest droppedCount++. Because the output must be expressible by FilterState, hallucinated columns can't enter structurally — safety from the representation's boundaries, not after-checks.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Make the AI output have to restore to a constrained intermediate representation, and the inexpressible can't enter' — how is this 'valid by construction' guardrail stronger than 'generate then check with rules'? Can you think of a 'let an LLM generate structured commands' scenario in your own systems where you'd apply it?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="22-repository-layer.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">仓储层：从 ClickHouse 读</span><span class="lang-en">The repository layer</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

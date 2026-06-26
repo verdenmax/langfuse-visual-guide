@@ -93,6 +93,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("22-repository-layer.html", "仓储层：从 ClickHouse 读", "The repository layer",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("23-filtering-search-bar.html", "过滤·搜索栏·查询构建", "Filtering & the search bar",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -620,6 +622,8 @@ SUBTITLES = {
                               "appRouter aggregates ~64 routers; context injects session/prisma; procedure=stackable middleware; RBAC pulls projectId from input; security by structure"),
     "22-repository-layer.html": ("queryClickhouse 统一执行器 · OTel/log_comment 标签/退避重试/资源错误包装 · 回看时间窗 2天/1小时 · 流式变体",
                                 "queryClickhouse unified executor; OTel/log_comment tags/backoff retry/resource-error wrap; look-back windows 2d/1h; streaming variants"),
+    "23-filtering-search-bar.html": ("FilterState 中间契约 · 编译到 CH/PG 两套 SQL · 随机占位符防注入 · 强制 project_id · 搜索栏受控编辑器 · AI filter 往返丢幻觉",
+                                     "FilterState intermediate contract; compiles to CH/PG SQL; random placeholders block injection; mandatory project_id; search bar controlled editor; AI filter round-trip drops hallucinations"),
 }
 
 

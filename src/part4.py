@@ -883,3 +883,291 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
 </div>
 """)
 LESSON_22 = {"zh": "\n".join(_ZH22), "en": "\n".join(_EN22)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L23 · 过滤·搜索栏·查询构建 / Filtering & the search bar
+# ══════════════════════════════════════════════════════════════════════
+_ZH23 = []
+_EN23 = []
+
+_ZH23.append(r"""
+<p class="lead">
+第 22 课的执行器负责「把查询发出去」，可<strong>那些查询的 WHERE 条件是谁拼的</strong>？这一课就讲过滤。关键洞察是：用户过滤的方式五花八门——点侧栏面板、敲搜索栏语法、甚至用 AI 自然语言描述——
+但它们最终<strong>都汇成同一个 <code>FilterState</code></strong>（一组带类型的条件），再由它编译成<strong>参数化 SQL</strong>（ClickHouse 或 Postgres）。一个中间契约，
+既挡住了 SQL 注入，又让搜索栏、AI filter 这些花样都<strong>构造即安全</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🌐 生活类比</div>
+  把 <code>FilterState</code> 想成联合国的<strong>中间语</strong>。与会者说着不同的母语——有人<strong>点菜单</strong>（侧栏面板）、有人<strong>写电报</strong>（搜索栏 <code>key:value</code> 语法）、有人<strong>口述需求</strong>（AI 自然语言）——
+  但所有发言都先被译成<strong>同一种标准中间语</strong>（FilterState），再由它译成数据库听得懂的话（ClickHouse SQL 或 Postgres SQL）。这个译员有两条铁律：
+  一是<strong>绝不把原话直接塞进译文</strong>（用占位符传值，杜绝注入）；二是<strong>听不懂的、编不出的，当场打回，绝不胡乱转述</strong>（校验 + 往返丢弃幻觉）。<strong>所有输入收敛到一种中间表示，再分发到各种后端</strong>——这就是过滤系统的骨架。
+</div>
+""")
+
+# (L23 sections appended below)
+
+_ZH23.append(r"""
+<h2>一个 FilterState，编译到两套 SQL</h2>
+<p><code>FilterState</code> 是一组<strong>带类型的条件</strong>：每条说清「哪一列、什么运算符、什么值」（如 <code>{column:"level", operator:"any of", value:["ERROR"]}</code>）。
+它要变成 SQL，得过一个工厂 <code>createFilterFromFilterState</code>——这一步<strong>既翻译、又把关</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="侧栏、搜索栏、AI 三种输入都汇成一个 FilterState，经工厂校验列/类型并注入强制 project_id，再编译成参数化的 ClickHouse 或 Postgres SQL">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三种输入 → 一个 FilterState → 两套 SQL</text>
+  <rect x="20" y="42" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="61" text-anchor="middle" font-size="8" fill="var(--ink)">侧栏面板</text>
+  <rect x="20" y="80" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="99" text-anchor="middle" font-size="8" fill="var(--ink)">搜索栏语法</text>
+  <rect x="20" y="118" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="137" text-anchor="middle" font-size="8" fill="var(--ink)">AI 自然语言</text>
+  <rect x="180" y="62" width="150" height="66" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="255" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">FilterState</text><text x="255" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">一组带类型的条件</text><text x="255" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">列·运算符·值</text>
+  <rect x="368" y="48" width="160" height="94" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="448" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">工厂：翻译 + 把关</text><text x="448" y="86" text-anchor="middle" font-size="7.5" fill="var(--ink)">① 校验列是否在 schema</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">② 校验类型是否兼容</text><text x="448" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ 注入强制 project_id</text><text x="448" y="130" text-anchor="middle" font-size="7" fill="var(--muted)">createFilterFromFilterState</text>
+  <rect x="566" y="50" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="636" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">ClickHouse SQL</text><text x="636" y="82" text-anchor="middle" font-size="7" fill="var(--muted)">参数化 · 看板/列表</text>
+  <rect x="566" y="100" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="636" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres SQL</text><text x="636" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">参数化 · 评估/审计</text>
+  <line x1="140" y1="57" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="95" x2="178" y2="95" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="133" x2="178" y2="104" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="95" x2="366" y2="95" stroke="var(--accent)" stroke-width="1.6"/><polygon points="366,95 357,91 357,99" fill="var(--accent)"/>
+  <line x1="528" y1="80" x2="564" y2="70" stroke="var(--faint)" stroke-width="1.3"/><line x1="528" y1="110" x2="564" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="170" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">同一份 FilterState + 列定义，可编译到 ClickHouse 或 Postgres——两套后端共享一个抽象</text>
+  <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse 栈：clickhouse-filter.ts（StringFilter/DateTimeFilter…）+ factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres 栈：filterToPrisma.ts → Prisma.Sql（评估、审计等 Prisma 表）</text>
+</svg>
+<div class="figcap"><b>一个抽象，两套后端</b>：<code>FilterState</code> + 列定义经工厂 <code>createFilterFromFilterState</code> 校验列/类型、注入强制 <code>project_id</code>，再编译成参数化 SQL。ClickHouse 栈在 <code>clickhouse-sql/</code>，Postgres 栈在 <code>filterToPrisma.ts</code>。源码：<code>queries/clickhouse-sql/factory.ts:37,217</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">编译 + 把关</span></div>
+  <pre class="code"><span class="cm">// 工厂：逐个把关再翻译</span>
+<span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// 列必须在 CH schema 里</span>
+<span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// 类型必须兼容</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// 强制注入 project_id（第 10 课）</span>
+
+<span class="cm">// 每个过滤器的 apply()：用随机参数名传值，绝不拼接字符串</span>
+<span class="fn">apply</span>(): ClickhouseFilter {
+  <span class="kw">const</span> varName = <span class="st">`stringFilter${</span><span class="fn">clickhouseCompliantRandomCharacters</span>()<span class="st">}`</span>;
+  <span class="kw">return</span> { query: <span class="st">`col = {${varName}: String}`</span>, params: { [varName]: <span class="kw">this</span>.value } };
+}</pre>
+</div>
+
+<p>看清这段就抓住了过滤系统的<strong>安全底座</strong>：用户输入的值，<strong>永远不会被拼进 SQL 字符串</strong>，而是绑定到一个<strong>随机命名的占位符</strong>（<code>stringFilter_xY9z</code>），
+由数据库驱动安全地代入。哪怕你在过滤值里写 <code>'; DROP TABLE…</code>，它也只会被当成一个普通字符串去匹配，<strong>注入无从下手</strong>。加上工厂对「列是否存在、类型是否兼容」的前置校验，
+脏输入在编译期就被挡下——这正是第 22 课资源保护之外的另一道防线。</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 各输入直连各后端：N×M</h4><p>3 种输入 × 2 套后端 = 6 套翻译逻辑、6 处要各自防注入。新加一种输入（比如 AI），就得为<strong>每个后端</strong>重写对接、重写安全校验——组合爆炸，且总有一处会写漏。</p></div>
+  <div class="col"><h4>😀 收敛到 FilterState：N+M</h4><p>每个输入只管「译成 FilterState」，每个后端只管「从 FilterState 译出 SQL」。校验与参数化<strong>只在中间做一次</strong>。新加输入只需 +1 个译入器，<strong>白嫖</strong>所有后端与全部安全。</p></div>
+</div>
+""")
+
+# (search bar + AI filter section below)
+
+_ZH23.append(r"""
+<h2>搜索栏与 AI filter：同一个真源的两种皮肤</h2>
+<p>侧栏面板之外，Langfuse 还提供一个键盘党喜欢的<strong>搜索栏</strong>——一套 <code>key:value</code> 语法（如 <code>level:(ERROR OR WARNING)</code>、<code>latency:&gt;2</code>、<code>metadata.region:eu</code>）。
+但要记住一条铁律（写在它的 README 里）：<strong>侧栏的 <code>FilterState</code> 才是唯一真源，搜索栏只是它的一个「受控编辑器」</strong>——它从 FilterState 读、往 FilterState 写，自己<strong>不另存一份</strong>。</p>
+
+<table class="t">
+  <tr><th>搜索栏写法</th><th>含义</th></tr>
+  <tr><td><code>level:(ERROR OR WARNING)</code></td><td>任选其一（any-of）</td></tr>
+  <tr><td><code>-env:dev</code></td><td>排除（none-of）</td></tr>
+  <tr><td><code>latency:&gt;2</code> · <code>startTime:&gt;2026-06-01</code></td><td>数值/时间比较</td></tr>
+  <tr><td><code>statusMessage:*chat*</code></td><td>文本包含（<code>*</code> 通配）</td></tr>
+  <tr><td><code>metadata.region:eu</code> · <code>scores.accuracy:&gt;0.8</code></td><td>嵌套/点路径字段</td></tr>
+</table>
+
+<p>这套语法<strong>有意只覆盖扁平 <code>FilterState</code> 能表达的范围</strong>：跨字段 OR、分组括号这些 FilterState 装不下的形态，搜索栏会给出<strong>阻止提交的诊断提示</strong>，而<strong>不是悄悄丢掉</strong>——
+宁可当面说「这我编不出来」，也不给你一个似是而非的错误过滤。这正是「真源单一」带来的好处：搜索栏永远不会和侧栏不一致，因为它们本就是同一份 FilterState 的两种皮肤。</p>
+
+<p>最妙的是 <strong>AI filter</strong>：你用自然语言说「给我看上周延迟超过 2 秒的报错」，<code>generateFilter</code> 调用大模型（Bedrock）把它变成过滤。可大模型会<strong>胡编</strong>不存在的列怎么办？
+Langfuse 的解法堪称精巧——把模型输出<strong>往返一遍</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="AI filter：自然语言经大模型生成候选过滤，再往返 filterStateToQueryText，只保留能还原成搜索栏语法的过滤，幻觉列被丢弃">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter：往返校验，幻觉列进不来</text>
+  <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">自然语言</text><text x="78" y="80" text-anchor="middle" font-size="7" fill="var(--muted)">「上周超 2s 的报错」</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">大模型生成</text><text x="222" y="80" text-anchor="middle" font-size="7" fill="var(--muted)">候选过滤（可能含幻觉列）</text>
+  <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">往返：转回搜索栏语法</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
+  <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">能还原 → 保留</text><text x="530" y="61" text-anchor="middle" font-size="6.8" fill="var(--muted)">应用到 FilterState</text>
+  <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">还原不了 → 丢弃</text><text x="530" y="103" text-anchor="middle" font-size="6.8" fill="var(--faint)">droppedCount++</text>
+  <line x1="140" y1="68" x2="158" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="158,68 150,64 150,72" fill="var(--faint)"/>
+  <line x1="284" y1="68" x2="302" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="302,68 294,64 294,72" fill="var(--faint)"/>
+  <line x1="454" y1="60" x2="472" y2="50" stroke="var(--teal)" stroke-width="1.3"/><line x1="454" y1="76" x2="472" y2="90" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">只有「能还原成合法搜索栏语法」的过滤才被采纳——幻觉/不存在的列天然进不来</text>
+  <text x="360" y="160" text-anchor="middle" font-size="8" fill="var(--muted)">「构造即合法」：安全不靠事后检查，而靠「编不出就过不来」的结构</text>
+</svg>
+<div class="figcap"><b>往返即护栏</b>：模型输出被 <code>filterStateToQueryText</code> 往返一遍，只有能还原成合法搜索栏语法（即能降解成 FilterState 能表达的过滤）的才保留，幻觉列直接 <code>droppedCount++</code> 丢弃。源码：<code>web/src/features/search-bar/server/router.ts:45,178-183</code>。</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>自然语言进来</h4><p>用户在搜索栏旁说「上周延迟超 2 秒的报错」；<code>generateFilter</code>（受保护过程，企业版）接住。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>喂给大模型</h4><p>用 v4 字段注册表拼出提示词，调 Bedrock 生成<strong>候选过滤</strong>——此时可能夹带不存在的列。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>往返一遍</h4><p>把候选过滤通过 <code>filterStateToQueryText</code> 转回搜索栏语法，再尝试解析回 FilterState。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>留真去假</h4><p>能干净往返的保留、应用；还原不了的（幻觉/非法列）<strong>丢弃</strong>并计入 <code>droppedCount</code>。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>落到同一个真源</h4><p>最终结果写进侧栏那份 <code>FilterState</code>——和你手点、手敲的过滤<strong>完全同源同路</strong>。</p></div></div>
+</div>
+""")
+
+# (spark + key below)
+
+_ZH23.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么不让搜索栏、AI 各自直接生成 SQL，非要都先收敛成 FilterState？</strong> 因为<strong>「输入面」和「后端」都不止一个</strong>。输入有侧栏、搜索栏、AI、未来还会更多；
+  后端有 ClickHouse、Postgres。如果让每个输入面各自直连每个后端，就是 N×M 套翻译逻辑、N×M 处注入风险——而且新加一种输入，就要把所有后端的对接、所有安全校验<strong>重写一遍</strong>。
+  收敛成一个 <code>FilterState</code> 中间契约后，事情变成 N+M：每个输入面只管「译成 FilterState」，每个后端只管「从 FilterState 译出 SQL」，校验与参数化<strong>只在中间做一次</strong>。
+  更深的一层是<strong>「构造即合法」</strong>：因为 AI 的输出必须<strong>能还原成 FilterState 能表达的形态</strong>才被采纳，幻觉列<strong>从结构上就不可能</strong>通过——安全不再依赖「记得加一道检查」，而是<strong>由表示本身的边界来保证</strong>。
+  这是「单一真源 + 中间表示」最优雅的一面。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>用户过滤的多种入口（侧栏 / 搜索栏 / AI）都<strong>汇成一个 <code>FilterState</code></strong>（带类型的条件组），再编译成 SQL。</li>
+    <li><strong>一个抽象、两套后端</strong>：同一份 FilterState 经工厂可编译到 <strong>ClickHouse</strong>（<code>clickhouse-sql/</code>）或 <strong>Postgres</strong>（<code>filterToPrisma.ts</code>）。</li>
+    <li><strong>注入安全</strong>：每个过滤器 <code>apply()</code> 用<strong>随机命名的占位符</strong>传值，绝不拼接字符串；工厂还校验列存在性、类型兼容，并注入强制 <code>project_id</code>（第 10 课）。</li>
+    <li><strong>搜索栏</strong>是 FilterState 的「受控编辑器」（README：侧栏 FilterState 是唯一真源）；语法只覆盖 FilterState 能表达的范围，编不出的<strong>阻止提交、不静默丢弃</strong>。</li>
+    <li><strong>AI filter</strong>把模型输出<strong>往返</strong> <code>filterStateToQueryText</code>，只留能还原成合法语法的——幻觉列<strong>构造上进不来</strong>。安全靠结构，不靠事后检查。</li>
+  </ul>
+</div>
+""")
+
+_EN23.append(r"""
+<p class="lead">
+Lesson 22's executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
+many ways — clicking the sidebar facets, typing search-bar grammar, even describing it in natural language to AI — yet they all <strong>converge into one
+<code>FilterState</code></strong> (a set of typed conditions), which then compiles to <strong>parameterized SQL</strong> (ClickHouse or Postgres). One intermediate
+contract that both blocks SQL injection and makes the search bar and AI filters <strong>safe by construction</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🌐 Analogy</div>
+  Think of <code>FilterState</code> as the UN's <strong>interlingua</strong>. Attendees speak different mother tongues — some <strong>pick from a menu</strong> (sidebar
+  facets), some <strong>write a telegram</strong> (search-bar <code>key:value</code> grammar), some <strong>dictate a request</strong> (AI natural language) — but every
+  utterance is first translated into <strong>one standard interlingua</strong> (FilterState), then translated again into what the database speaks (ClickHouse SQL or
+  Postgres SQL). This translator has two iron rules: never <strong>splice the original words straight into the translation</strong> (pass values via placeholders, no
+  injection); and <strong>refuse on the spot what it can't understand or express</strong>, never paraphrasing nonsense (validation + round-trip dropping
+  hallucinations). <strong>All inputs converge to one intermediate representation, then fan out to various backends</strong> — that's the filtering system's skeleton.
+</div>
+""")
+
+_EN23.append(r"""
+<h2>One FilterState, compiled to two SQL backends</h2>
+<p><code>FilterState</code> is a set of <strong>typed conditions</strong>: each says "which column, what operator, what value" (e.g.
+<code>{column:"level", operator:"any of", value:["ERROR"]}</code>). To become SQL it passes a factory, <code>createFilterFromFilterState</code> — a step that
+<strong>both translates and gatekeeps</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="sidebar, search bar, AI inputs all converge to one FilterState; the factory verifies columns/types and injects the mandatory project_id, then compiles to parameterized ClickHouse or Postgres SQL">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Three inputs → one FilterState → two SQL backends</text>
+  <rect x="20" y="42" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="61" text-anchor="middle" font-size="8" fill="var(--ink)">sidebar facets</text>
+  <rect x="20" y="80" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="99" text-anchor="middle" font-size="8" fill="var(--ink)">search-bar grammar</text>
+  <rect x="20" y="118" width="120" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="137" text-anchor="middle" font-size="8" fill="var(--ink)">AI natural language</text>
+  <rect x="180" y="62" width="150" height="66" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="255" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">FilterState</text><text x="255" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">a set of typed conditions</text><text x="255" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">column·operator·value</text>
+  <rect x="368" y="48" width="160" height="94" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="448" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">factory: translate + gatekeep</text><text x="448" y="86" text-anchor="middle" font-size="7.5" fill="var(--ink)">① verify column in schema</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">② verify type compatible</text><text x="448" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ inject mandatory project_id</text><text x="448" y="130" text-anchor="middle" font-size="7" fill="var(--muted)">createFilterFromFilterState</text>
+  <rect x="566" y="50" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="636" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">ClickHouse SQL</text><text x="636" y="82" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · dashboards/lists</text>
+  <rect x="566" y="100" width="140" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="636" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres SQL</text><text x="636" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">parameterized · evals/audit</text>
+  <line x1="140" y1="57" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="95" x2="178" y2="95" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="133" x2="178" y2="104" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="95" x2="366" y2="95" stroke="var(--accent)" stroke-width="1.6"/><polygon points="366,95 357,91 357,99" fill="var(--accent)"/>
+  <line x1="528" y1="80" x2="564" y2="70" stroke="var(--faint)" stroke-width="1.3"/><line x1="528" y1="110" x2="564" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="170" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">One FilterState + column defs compiles to ClickHouse or Postgres — two backends, one abstraction</text>
+  <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse stack: clickhouse-filter.ts (StringFilter/DateTimeFilter…) + factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres stack: filterToPrisma.ts → Prisma.Sql (Prisma tables: evals, audit…)</text>
+</svg>
+<div class="figcap"><b>One abstraction, two backends</b>: <code>FilterState</code> + column defs pass the factory <code>createFilterFromFilterState</code>, which verifies columns/types, injects the mandatory <code>project_id</code>, then compiles to parameterized SQL. ClickHouse stack in <code>clickhouse-sql/</code>, Postgres stack in <code>filterToPrisma.ts</code>. Source: <code>queries/clickhouse-sql/factory.ts:37,217</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">compile + gatekeep</span></div>
+  <pre class="code"><span class="cm">// factory: gatekeep each, then translate</span>
+<span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// column must be in CH schema</span>
+<span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// type must be compatible</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// force-inject project_id (L10)</span>
+
+<span class="cm">// each filter's apply(): pass values via random param names, never splice strings</span>
+<span class="fn">apply</span>(): ClickhouseFilter {
+  <span class="kw">const</span> varName = <span class="st">`stringFilter${</span><span class="fn">clickhouseCompliantRandomCharacters</span>()<span class="st">}`</span>;
+  <span class="kw">return</span> { query: <span class="st">`col = {${varName}: String}`</span>, params: { [varName]: <span class="kw">this</span>.value } };
+}</pre>
+</div>
+
+<p>Grasp this and you've got the filtering system's <strong>security bedrock</strong>: user-input values are <strong>never spliced into the SQL string</strong>, but bound
+to a <strong>randomly-named placeholder</strong> (<code>stringFilter_xY9z</code>), safely substituted by the DB driver. Even if you write <code>'; DROP TABLE…</code> in a
+filter value, it's matched as a plain string — <strong>injection has no foothold</strong>. Plus the factory's up-front checks for "does the column exist, is the type
+compatible" stop dirty input at compile time — another line of defense beyond Lesson 22's resource protection.</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 each input to each backend: N×M</h4><p>3 inputs × 2 backends = 6 translation logics, 6 places to each guard injection. Add a new input (say AI) and you must rewrite the wiring and security checks for <strong>every backend</strong> — a combinatorial explosion, and one spot always gets missed.</p></div>
+  <div class="col"><h4>😀 converge to FilterState: N+M</h4><p>Each input only "translates to FilterState", each backend only "translates FilterState to SQL". Validation and parameterization happen <strong>once in the middle</strong>. A new input is just +1 translator-in, freeloading all backends and all the safety.</p></div>
+</div>
+""")
+
+_EN23.append(r"""
+<h2>The search bar &amp; AI filter: two skins of one source of truth</h2>
+<p>Beyond the sidebar facets, Langfuse offers a keyboard-lover's <strong>search bar</strong> — a <code>key:value</code> grammar (e.g. <code>level:(ERROR OR
+WARNING)</code>, <code>latency:&gt;2</code>, <code>metadata.region:eu</code>). But remember one iron rule (in its README): <strong>the sidebar's
+<code>FilterState</code> is the single source of truth, and the bar is just a "controlled editor" over it</strong> — it reads from and writes to FilterState,
+keeping <strong>no second copy</strong>.</p>
+
+<table class="t">
+  <tr><th>search-bar syntax</th><th>meaning</th></tr>
+  <tr><td><code>level:(ERROR OR WARNING)</code></td><td>any-of</td></tr>
+  <tr><td><code>-env:dev</code></td><td>exclude (none-of)</td></tr>
+  <tr><td><code>latency:&gt;2</code> · <code>startTime:&gt;2026-06-01</code></td><td>numeric/time comparison</td></tr>
+  <tr><td><code>statusMessage:*chat*</code></td><td>text contains (<code>*</code> glob)</td></tr>
+  <tr><td><code>metadata.region:eu</code> · <code>scores.accuracy:&gt;0.8</code></td><td>nested / dot-path fields</td></tr>
+</table>
+
+<p>This grammar <strong>deliberately covers only what flat <code>FilterState</code> can express</strong>: shapes FilterState can't hold (cross-field OR, grouping
+parens) get a <strong>commit-blocking diagnostic</strong>, <strong>not a silent drop</strong> — better to say to your face "I can't express that" than hand you a
+plausible-but-wrong filter. That's the gift of "single source of truth": the bar can never disagree with the sidebar, because they're two skins of the same
+FilterState.</p>
+
+<p>Best of all is the <strong>AI filter</strong>: you say in natural language "show me last week's errors over 2 seconds latency", and <code>generateFilter</code>
+calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>hallucinates</strong> a nonexistent column? Langfuse's fix is elegant — it
+<strong>round-trips</strong> the model output:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="AI filter: natural language through the LLM produces candidate filters, then round-trips filterStateToQueryText, keeping only filters that restore to search-bar grammar; hallucinated columns are dropped">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter: round-trip validation, hallucinated columns can't enter</text>
+  <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">natural language</text><text x="78" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">"errors over 2s last week"</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">LLM generates</text><text x="222" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">candidates (maybe hallucinated cols)</text>
+  <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">round-trip: back to grammar</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
+  <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">restores → keep</text><text x="530" y="61" text-anchor="middle" font-size="6.6" fill="var(--muted)">apply to FilterState</text>
+  <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">can't → drop</text><text x="530" y="103" text-anchor="middle" font-size="6.6" fill="var(--faint)">droppedCount++</text>
+  <line x1="140" y1="68" x2="158" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="158,68 150,64 150,72" fill="var(--faint)"/>
+  <line x1="284" y1="68" x2="302" y2="68" stroke="var(--faint)" stroke-width="1.4"/><polygon points="302,68 294,64 294,72" fill="var(--faint)"/>
+  <line x1="454" y1="60" x2="472" y2="50" stroke="var(--teal)" stroke-width="1.3"/><line x1="454" y1="76" x2="472" y2="90" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="140" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">only filters that "restore to valid grammar" are accepted — hallucinated/unknown columns can't get in</text>
+  <text x="360" y="160" text-anchor="middle" font-size="8" fill="var(--muted)">"valid by construction": safety not from after-checks but from "can't express → can't pass"</text>
+</svg>
+<div class="figcap"><b>The round-trip is the guardrail</b>: the model output is round-tripped through <code>filterStateToQueryText</code>; only filters that restore to valid search-bar grammar (i.e. lower to what FilterState can express) are kept, hallucinated columns <code>droppedCount++</code>. Source: <code>web/src/features/search-bar/server/router.ts:45,178-183</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>natural language in</h4><p>The user says, next to the bar, "errors over 2s latency last week"; <code>generateFilter</code> (protected procedure, enterprise) catches it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>feed the LLM</h4><p>Build a prompt from the v4 field registry, call Bedrock to generate <strong>candidate filters</strong> — possibly smuggling in nonexistent columns.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>round-trip</h4><p>Turn candidates back to search-bar grammar via <code>filterStateToQueryText</code>, then try to parse back to FilterState.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>keep real, drop fake</h4><p>Cleanly round-tripping ones are kept and applied; un-restorable ones (hallucinated/illegal columns) are <strong>dropped</strong> and counted in <code>droppedCount</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>land in the same source</h4><p>The result is written into the sidebar's <code>FilterState</code> — exactly the same source and path as your clicked and typed filters.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
+  "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
+  backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.
+  Converge to one <code>FilterState</code> contract and it becomes N+M: each input only "translates to FilterState", each backend only "translates FilterState to SQL",
+  validation and parameterization done <strong>once in the middle</strong>. The deeper layer is <strong>"valid by construction"</strong>: because the AI output must
+  <strong>restore to what FilterState can express</strong> to be accepted, hallucinated columns are <strong>structurally impossible</strong> to pass — safety no longer
+  depends on "remembering to add a check" but is <strong>guaranteed by the boundaries of the representation itself</strong>. This is the most elegant face of "single
+  source of truth + intermediate representation".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The many filtering entries (sidebar / search bar / AI) all <strong>converge to one <code>FilterState</code></strong> (a set of typed conditions), then compile to SQL.</li>
+    <li><strong>One abstraction, two backends</strong>: the same FilterState compiles via the factory to <strong>ClickHouse</strong> (<code>clickhouse-sql/</code>) or <strong>Postgres</strong> (<code>filterToPrisma.ts</code>).</li>
+    <li><strong>Injection safety</strong>: each filter's <code>apply()</code> passes values via <strong>randomly-named placeholders</strong>, never splicing strings; the factory also verifies column existence, type compatibility, and injects the mandatory <code>project_id</code> (L10).</li>
+    <li><strong>The search bar</strong> is FilterState's "controlled editor" (README: the sidebar FilterState is the single source of truth); its grammar covers only what FilterState can express, the rest <strong>blocking commit, not silently dropped</strong>.</li>
+    <li><strong>AI filter</strong> round-trips the model output through <code>filterStateToQueryText</code>, keeping only what restores to valid grammar — hallucinated columns <strong>can't enter by construction</strong>. Security by structure, not after-checks.</li>
+  </ul>
+</div>
+""")
+LESSON_23 = {"zh": "\n".join(_ZH23), "en": "\n".join(_EN23)}

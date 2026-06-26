@@ -34,4 +34,5 @@ CONTENT = {
     "20-web-app-architecture.html": part4.LESSON_20,
     "21-trpc-backbone.html": part4.LESSON_21,
     "22-repository-layer.html": part4.LESSON_22,
+    "23-filtering-search-bar.html": part4.LESSON_23,
 }
