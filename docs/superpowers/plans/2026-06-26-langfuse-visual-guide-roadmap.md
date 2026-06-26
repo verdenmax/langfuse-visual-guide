@@ -14,7 +14,7 @@ source-fidelity + dual review) → fix → commit**. See spec §6 for the audit 
 | M0 | Infrastructure & design system + L01 baseline | L01 | ☑ done |
 | M1 | Part 1 · 宏观全景 (finish) | L02–L05 | ☑ done |
 | M2 | Part 2 · 前置基础 | L06–L11 | ☑ done |
-| M3 | Part 3 · 摄取链路 | L12–L19 | ☐ todo |
+| M3 | Part 3 · 摄取链路 | L12–L19 | ☑ done |
 | M4 | Part 4 · 查询链路 | L20–L27 | ☐ todo |
 | M5 | Part 5 · 评估与评分 | L28–L33 | ☐ todo |
 | M6 | Parts 6+7 · 数据集/实验 + Prompt/Playground | L34–L39 | ☐ todo |
