@@ -675,6 +675,76 @@ QUIZZES = {
             },
         ],
     },
+    "10-multi-tenancy.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的多租户隔离，project 和 environment 的本质区别是什么？",
+                    "en": "In Langfuse multi-tenancy, what's the essential difference between project and environment?",
+                },
+                "opts": [
+                    {
+                        "zh": "project 是硬隔离（跨项目数据绝不可见，安全红线），environment 是软切片（同一项目内给 prod/staging/dev 贴标签，可分可合）",
+                        "en": "project is hard isolation (data never visible across projects, a security red line); environment is a soft slice (tagging prod/staging/dev within one project, separable or combinable)",
+                    },
+                    {"zh": "两者完全一样，只是名字不同", "en": "They're identical, just different names"},
+                    {"zh": "environment 比 project 隔离更强", "en": "environment isolates more strongly than project"},
+                    {"zh": "project 是软的，environment 是硬的", "en": "project is soft, environment is hard"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "“不同团队数据绝不能串”是安全红线 → project 硬隔离；“线上 vs 测试”只是同团队的视图偏好 → environment 软切片。强度不同，待遇不同。",
+                    "en": "'Different teams' data must never mix' is a security red line → project hard isolation; 'live vs test' is one team's view preference → environment soft slice. Different strengths, different treatment.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么说 Langfuse 的租户隔离“不是事后加一个 WHERE project_id 过滤”？",
+                    "en": "Why is Langfuse's tenant isolation 'not an afterthought WHERE project_id filter'?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为 project_id 被焊进 ClickHouse 排序键最前面：同项目数据物理相邻，“只看我的项目”退化成扫一段连续区间——隔离与高效合一，且结构性地不可能看到别人",
+                        "en": "Because project_id is welded into the front of the ClickHouse ordering key: one project's data is physically adjacent, so 'see only my project' becomes scanning a contiguous range — isolation and efficiency in one, and structurally impossible to see others",
+                    },
+                    {"zh": "因为 Langfuse 不支持过滤", "en": "Because Langfuse doesn't support filtering"},
+                    {"zh": "因为每个项目用独立的数据库实例", "en": "Because each project uses a separate database instance"},
+                    {"zh": "因为 project_id 是随机的", "en": "Because project_id is random"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若 project_id 只是普通过滤列，海量下既慢又危险（写漏过滤就串租户）。放进排序键最前，隔离变成“定位连续区间”，又快又结构性安全。代价：排序键难改、查询须带 project_id。",
+                    "en": "If project_id were an ordinary filter column, it'd be slow at scale and dangerous (miss the filter and you leak across tenants). Put it first in the ordering key and isolation becomes 'locate a contiguous range' — fast and structurally safe. Cost: hard-to-change ordering key, project_id required on queries.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "ClickHouse 里 environment 列定义为 LowCardinality(String) DEFAULT 'default' AFTER project_id。这三点各有什么用意？",
+                    "en": "The ClickHouse environment column is LowCardinality(String) DEFAULT 'default' AFTER project_id. What's the intent of each?",
+                },
+                "opts": [
+                    {
+                        "zh": "低基数：环境名就那么几个，省空间快查询；默认 default：不指定时自动归类、向后兼容老数据；紧跟 project_id：与之构成“项目+环境”定位前缀",
+                        "en": "Low-cardinality: few env names, saving space and speeding queries; default 'default': auto-classify when unspecified, backward-compatible with old data; right after project_id: forms a 'project+environment' locating prefix with it",
+                    },
+                    {"zh": "纯粹为了占位，没有用意", "en": "Pure placeholder, no intent"},
+                    {"zh": "为了让环境名可以无限多", "en": "To allow infinitely many env names"},
+                    {"zh": "为了删除 project_id", "en": "To remove project_id"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "LowCardinality 适合取值少的列（编码省空间、查得快）；DEFAULT 'default' 让老数据/未指定环境的数据天然归到 default（向后兼容）；AFTER project_id 让二者构成定位前缀，按“项目+环境”查同样高效。",
+                    "en": "LowCardinality suits low-distinct columns (compact encoding, fast queries); DEFAULT 'default' makes old/unspecified-env data fall into default (backward compatible); AFTER project_id forms a locating prefix so 'project+environment' queries stay efficient.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“把多租户隔离做进存储结构，而不是一道可能写漏的过滤”——这条思路你能用到自己的系统吗？把租户键放进主键/排序键最前，会给你带来什么好处和什么约束？",
+                "en": "'Bake multi-tenant isolation into the storage structure, not a filter you might forget' — can you apply this to your own system? What benefits and constraints come from putting the tenant key first in the primary/ordering key?",
+            },
+        ],
+    },
 }
 
 

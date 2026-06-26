@@ -19,4 +19,5 @@ CONTENT = {
     "07-dual-store-architecture.html": part2.LESSON_07,
     "08-clickhouse-wide-events.html": part2.LESSON_08,
     "09-postgres-metadata-schema.html": part2.LESSON_09,
+    "10-multi-tenancy.html": part2.LESSON_10,
 }

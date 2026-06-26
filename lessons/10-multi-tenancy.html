@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>10 · 多租户：org → project → environment / Multi-tenancy - Langfuse 图解教程</title>
+<meta name="description" content="第二部分 · 前置基础｜多租户：org → project → environment - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="10 · 多租户：org → project → environment / Multi-tenancy - Langfuse 图解教程">
+<meta property="og:description" content="第二部分 · 前置基础｜多租户：org → project → environment - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="10 · 多租户：org → project → environment / Multi-tenancy - Langfuse 图解教程">
+<meta name="twitter:description" content="第二部分 · 前置基础｜多租户：org → project → environment - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></span>
+    <span class="pill">10 / 10</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
+    <h1><span class="lang-zh">多租户：org → project → environment</span><span class="lang-en">Multi-tenancy</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+上一课说 <code>project</code> 是枢纽、是「数据边界」。这一课把这件事讲透：Langfuse 是个<strong>多租户</strong>平台——同一套部署要同时服务成千上万个互不相干的团队，
+它靠<strong>三层嵌套</strong>把大家的数据干净地隔开：<strong>organization（组织）→ project（项目）→ environment（环境）</strong>。
+理解这三层，你就明白了「为什么你只看得到自己的数据」「为什么 ClickHouse 排序键非要以 project_id 打头」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把多租户想成<strong>一栋写字楼</strong>：<strong>organization</strong> 是<strong>租下楼层的公司</strong>——签合同、付账单、管自己的员工（成员与计费在这一层）；
+  <strong>project</strong> 是公司里的<strong>一个部门</strong>，有独立的办公区和门禁，部门的东西不会跑到别的部门去；<strong>environment</strong> 则是部门内部再隔出的
+  「<strong>正式区 / 测试区</strong>」——同一个部门的人，把线上数据和测试数据分开摆，互不干扰。大家可能<strong>同在一栋楼</strong>（同一套部署、同一个数据库），
+  但靠层层<strong>门禁</strong>谁也串不了门。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="organization 包含多个 project，每个 project 内再分 production/staging/development 环境">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三层嵌套：组织 → 项目 → 环境</text>
+  <rect x="30" y="36" width="660" height="220" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="48" y="58" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Organization · 计费 + 成员（合同主体）</text>
+  <rect x="48" y="70" width="300" height="172" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="64" y="92" font-size="11" font-weight="700" fill="var(--blue)">Project A · 数据边界</text>
+  <rect x="64" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="198" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="64" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="129" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: staging</text>
+  <rect x="202" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="267" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: development</text>
+  <text x="198" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">一个 project 内可有多个 environment</text>
+  <rect x="372" y="70" width="300" height="172" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="388" y="92" font-size="11" font-weight="700" fill="var(--purple)">Project B · 另一个数据边界</text>
+  <rect x="388" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="388" y="150" width="268" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: default</text>
+  <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B 看不到 Project A 的任何数据</text>
+</svg>
+<div class="figcap"><b>三层嵌套</b>：一个 <b>organization</b> 下有多个 <b>project</b>，每个 project 内可再分多个 <b>environment</b>（如 production / staging / development，默认 <code>default</code>）。组织管计费与成员，<b>project 是硬数据边界</b>，environment 是项目内的软切片。</div>
+</div>
+
+<h2>三层各管什么</h2>
+<table class="t">
+  <tr><th>层级</th><th>管什么</th><th>隔离强度</th></tr>
+  <tr><td><b>Organization 组织</b></td><td>计费、成员、SSO、组织级 API key</td><td>最外层的「账户」边界</td></tr>
+  <tr><td><b>Project 项目</b></td><td>实际数据归属：trace/observation/score、prompt、配置全挂在某 project 下</td><td><strong>硬隔离</strong>：跨 project 互不可见</td></tr>
+  <tr><td><b>Environment 环境</b></td><td>同一 project 内区分 production / staging / development 等</td><td><strong>软切片</strong>：同 project 内可一起查、也可按环境过滤</td></tr>
+</table>
+
+<p>关键区别在最后两层：<strong>project 是「硬边界」</strong>——你拿着某 project 的 key，<strong>根本看不到</strong>别的 project 的数据；
+而 <strong>environment 是「软切片」</strong>——它在同一个 project 内部，把线上和测试的数据<strong>贴上标签</strong>分开，你既能只看 production，也能把几个环境放一起比。
+为什么这么设计？因为「不同团队的数据绝不能串」是<strong>安全红线</strong>（硬隔离），而「线上 vs 测试」只是同一团队<strong>自己的视图偏好</strong>（软切片），强度不同，待遇也不同。</p>
+
+<p>举个具体场景体会这三层。一家公司（<strong>organization</strong>）在 Langfuse 上签约、付费、邀请了 5 名工程师做成员。他们开了两个项目（<strong>project</strong>）：
+「客服机器人」和「文档问答」。这两个项目的数据<strong>互不可见</strong>——查客服机器人时绝不会混进文档问答的 trace。在「客服机器人」项目内，他们又用
+<strong>environment</strong> 把<strong>线上流量</strong>（production）和<strong>压测/调试流量</strong>（staging）分开，于是看线上成本时不会被压测数据污染，
+但需要时也能把两个环境放一起对比。最外层的「公司」只关心<strong>账单和谁是成员</strong>，不直接持有数据；数据全都落在某个 project + environment 上。
+这套「组织管钱和人、项目管数据、环境管视图」的分工，就是多租户的全部骨架。</p>
+
+
+<h2>project_id 是硬隔离键，贯穿始终</h2>
+<p>多租户隔离<strong>不是事后加一个 <code>WHERE project_id = ?</code> 过滤这么简单</strong>。在 Langfuse 里，<code>project_id</code> 是一条<strong>贯穿全链路</strong>的主线：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="project_id 从 API key 解析出来，写入时落到每行，ClickHouse 排序键以它打头，查询时据它定位">
+  <rect x="20" y="80" width="150" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">API key</text><text x="95" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">解析出 project_id</text>
+  <rect x="200" y="80" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="275" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">写入</text><text x="275" y="120" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">每行都带 project_id</text>
+  <rect x="380" y="80" width="160" height="54" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="460" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="460" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">ORDER BY project_id 打头</text>
+  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">查询</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">只扫该 project 区间</text>
+  <line x1="170" y1="107" x2="198" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="198,107 189,102 189,112" fill="var(--faint)"/>
+  <line x1="350" y1="107" x2="378" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="378,107 369,102 369,112" fill="var(--faint)"/>
+  <line x1="540" y1="107" x2="568" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="568,107 559,102 559,112" fill="var(--faint)"/>
+  <text x="360" y="40" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id：一把钥匙，串起鉴权·写入·存储·查询</text>
+  <text x="360" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">隔离不是“查时过滤”，而是把 project_id 焊进了排序键——隔离即定位，定位即高效</text>
+</svg>
+<div class="figcap"><b>project_id 贯穿全链路</b>：鉴权时从 API key 解析出 project_id（第 9 课 key 属于某 project）；写入时每行都带上它；ClickHouse 的排序键<b>以 project_id 打头</b>（第 8 课）；查询时据它定位到连续区间。所以隔离<b>不是</b>事后过滤，而是写进了物理排布——隔离和「查得快」是同一件事。</div>
+</div>
+
+<p>这条「project_id 贯穿全链路」的设计，最大的价值是<strong>把安全从「靠程序员记得写过滤」变成「靠结构保证」</strong>。想想看：如果隔离只靠每个查询都记得加 <code>WHERE project_id = ?</code>，
+那只要有一处查询忘了写、或写错了，就可能让 A 公司看到 B 公司的数据——这种 bug 在多租户系统里是<strong>灾难级</strong>的。Langfuse 的做法是把 project_id 焊进存储与鉴权的底层：
+仓储层的读取 API <strong>统一要求</strong>传入 project_id，tRPC 的 <code>protectedProjectProcedure</code> 在中间件里<strong>先</strong>校验你属不属于这个 project（第 21 课）。
+于是「越权看别人数据」不是「容易写错」，而是<strong>压根没有那条路</strong>。这就是「安全做进结构」与「安全靠自觉」的本质区别。</p>
+
+<h2>environment：项目内的软切片</h2>
+<p>environment 是后来加上的一层。看它在 ClickHouse 里的样子——三张宽事件表都加了一个 <code>environment</code> 列：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0008_add_environments_column.up.sql</span><span class="ln">ALTER</span></div>
+  <pre class="code">ALTER TABLE traces       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE observations ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;</pre>
+</div>
+
+<p>三个细节值得注意：① 类型是 <code>LowCardinality(String)</code>——环境名翻来覆去就那么几个（prod/staging/dev），低基数编码又省空间又查得快；
+② 默认值 <code>'default'</code>——你不显式指定环境时，数据自动落到 <code>default</code>，向后兼容（老数据天然属于 default）；③ 位置 <code>AFTER project_id</code>——
+它紧挨在 project_id 之后，二者一起构成「项目 + 环境」的定位前缀。所以 environment 是<strong>软切片</strong>：它只是行上的一个标签，你想按环境过滤就加个条件，不想分就忽略它。</p>
+
+<div class="cols">
+  <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
+  <div class="col"><h4>🏷️ environment = 软切片</h4><p>视图偏好：同一 project 内给数据贴 prod/staging/dev 标签，<strong>可分可合</strong>，只是查询时的一个过滤维度。</p></div>
+</div>
+
+<h2>一次请求怎么定位租户</h2>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>带上凭证</h4><p>SDK 用 API key（写入），或用户登录后带 session（读取）发起请求。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>解析出 project</h4><p>服务端从 key/session 解析出「这是哪个 project」，并校验是否有权限（第 9 课 ApiKey、第 21 课 <code>protectedProjectProcedure</code>）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>所有读写都锁定该 project</h4><p>写入时 project_id 落到每行；查询时 project_id 进排序键前缀。你<strong>没有办法</strong>越过它看到别的 project。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>可选：按 environment 再切</h4><p>在该 project 内，按需用 environment 过滤出 prod / staging。</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把 project_id 焊进排序键，而不是当成一个普通的过滤列？</strong> 因为这样<strong>「隔离」和「高效」就成了同一件事</strong>。如果 project_id 只是个普通列，
+  那「只看我的项目」就是一次全表过滤，海量数据下既慢又危险（万一过滤写漏了，就串了租户）。把它放进排序键<strong>最前面</strong>，同一 project 的数据物理相邻，
+  「只看我的项目」退化成「扫一段连续区间」——又快又<strong>结构性地</strong>不可能看到别人。代价是排序键一旦定了就难改、且要求几乎所有查询都带上 project_id（这正是仓储层 API 的统一约定）。
+  <strong>把多租户隔离做成存储结构的一部分，而不是一道可能写漏的过滤。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>三层嵌套</strong>：organization（计费/成员）⊃ project（数据边界）⊃ environment（项目内 prod/staging/dev）。</li>
+    <li><strong>project = 硬隔离</strong>（跨项目绝不可见），<strong>environment = 软切片</strong>（同项目内可分可合的标签）。</li>
+    <li><strong>project_id 贯穿全链路</strong>：从 API key 解析 → 写入每行 → ClickHouse 排序键打头 → 查询定位。隔离<strong>不是事后过滤，而是焊进排序键</strong>。</li>
+    <li><code>environment</code> 列：<code>LowCardinality(String) DEFAULT 'default' AFTER project_id</code>（第 8 课迁移 0008），低基数、向后兼容、紧贴 project_id。</li>
+    <li>取舍：把隔离做进存储结构 → 隔离与高效合一、且结构性安全；代价是排序键难改、查询须带 project_id。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的多租户隔离，project 和 environment 的本质区别是什么？</div>
+  <ol class="opts">
+    <li>project 是硬隔离（跨项目数据绝不可见，安全红线），environment 是软切片（同一项目内给 prod/staging/dev 贴标签，可分可合）</li>
+    <li>environment 比 project 隔离更强</li>
+    <li>两者完全一样，只是名字不同</li>
+    <li>project 是软的，environment 是硬的</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。“不同团队数据绝不能串”是安全红线 → project 硬隔离；“线上 vs 测试”只是同团队的视图偏好 → environment 软切片。强度不同，待遇不同。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 为什么说 Langfuse 的租户隔离“不是事后加一个 WHERE project_id 过滤”？</div>
+  <ol class="opts">
+    <li>因为 project_id 是随机的</li>
+    <li>因为每个项目用独立的数据库实例</li>
+    <li>因为 Langfuse 不支持过滤</li>
+    <li>因为 project_id 被焊进 ClickHouse 排序键最前面：同项目数据物理相邻，“只看我的项目”退化成扫一段连续区间——隔离与高效合一，且结构性地不可能看到别人</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若 project_id 只是普通过滤列，海量下既慢又危险（写漏过滤就串租户）。放进排序键最前，隔离变成“定位连续区间”，又快又结构性安全。代价：排序键难改、查询须带 project_id。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. ClickHouse 里 environment 列定义为 LowCardinality(String) DEFAULT 'default' AFTER project_id。这三点各有什么用意？</div>
+  <ol class="opts">
+    <li>为了删除 project_id</li>
+    <li>纯粹为了占位，没有用意</li>
+    <li>为了让环境名可以无限多</li>
+    <li>低基数：环境名就那么几个，省空间快查询；默认 default：不指定时自动归类、向后兼容老数据；紧跟 project_id：与之构成“项目+环境”定位前缀</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。LowCardinality 适合取值少的列（编码省空间、查得快）；DEFAULT 'default' 让老数据/未指定环境的数据天然归到 default（向后兼容）；AFTER project_id 让二者构成定位前缀，按“项目+环境”查同样高效。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>“把多租户隔离做进存储结构，而不是一道可能写漏的过滤”——这条思路你能用到自己的系统吗？把租户键放进主键/排序键最前，会给你带来什么好处和什么约束？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Last lesson called <code>project</code> the hub and the "data boundary". This lesson makes that concrete: Langfuse is a
+<strong>multi-tenant</strong> platform — one deployment serves thousands of unrelated teams at once, isolating their data cleanly via
+<strong>three nesting levels</strong>: <strong>organization → project → environment</strong>. Grasp these three and you understand
+"why you only see your own data" and "why the ClickHouse ordering key must start with project_id".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture multi-tenancy as an <strong>office building</strong>: the <strong>organization</strong> is the <strong>company renting a
+  floor</strong> — signs the lease, pays the bills, manages its staff (members and billing live here); the <strong>project</strong> is a
+  <strong>department</strong> with its own area and access control, whose stuff never wanders into another department; the
+  <strong>environment</strong> is a further "<strong>production / test area</strong>" split inside the department — the same people keep
+  live and test data apart. Everyone may be <strong>in one building</strong> (one deployment, one database), but layered <strong>access
+  controls</strong> keep them from crossing over.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="an organization contains multiple projects, each project splitting into production/staging/development environments">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">three nesting levels: org → project → environment</text>
+  <rect x="30" y="36" width="660" height="220" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="48" y="58" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Organization · billing + members (the lease holder)</text>
+  <rect x="48" y="70" width="300" height="172" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="64" y="92" font-size="11" font-weight="700" fill="var(--blue)">Project A · data boundary</text>
+  <rect x="64" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="198" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="64" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="129" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: staging</text>
+  <rect x="202" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="267" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: development</text>
+  <text x="198" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">a project may have multiple environments</text>
+  <rect x="372" y="70" width="300" height="172" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="388" y="92" font-size="11" font-weight="700" fill="var(--purple)">Project B · another data boundary</text>
+  <rect x="388" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="388" y="150" width="268" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: default</text>
+  <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B sees none of Project A's data</text>
+</svg>
+<div class="figcap"><b>Three nesting levels</b>: one <b>organization</b> holds multiple <b>projects</b>, each project may split into multiple <b>environments</b> (e.g. production / staging / development, default <code>default</code>). The org manages billing and members, the <b>project is the hard data boundary</b>, and the environment is a soft slice within a project.</div>
+</div>
+
+<h2>What each level governs</h2>
+<table class="t">
+  <tr><th>Level</th><th>Governs</th><th>Isolation strength</th></tr>
+  <tr><td><b>Organization</b></td><td>billing, members, SSO, org-level API keys</td><td>the outer "account" boundary</td></tr>
+  <tr><td><b>Project</b></td><td>where data actually belongs: trace/observation/score, prompts, config all hang under a project</td><td><strong>hard isolation</strong>: invisible across projects</td></tr>
+  <tr><td><b>Environment</b></td><td>distinguishes production / staging / development within one project</td><td><strong>soft slice</strong>: queryable together or filtered by env</td></tr>
+</table>
+
+<p>The key distinction is the last two: <strong>project is a "hard boundary"</strong> — hold one project's key and you simply
+<strong>cannot see</strong> another project's data; <strong>environment is a "soft slice"</strong> — within one project it <strong>tags</strong>
+live vs test data apart, so you can view only production, or compare several environments together. Why? Because "different teams' data must
+never mix" is a <strong>security red line</strong> (hard isolation), while "live vs test" is just one team's <strong>own view preference</strong>
+(soft slice) — different strengths, different treatment.</p>
+
+<p>A concrete scenario for all three levels. A company (<strong>organization</strong>) signs up and pays on Langfuse, inviting 5 engineers as
+members. They open two projects (<strong>project</strong>): "support bot" and "doc Q&amp;A". The two projects' data is <strong>mutually
+invisible</strong> — querying the support bot never mixes in doc-Q&amp;A traces. Within "support bot" they use <strong>environment</strong> to
+separate <strong>live traffic</strong> (production) from <strong>load-test/debug traffic</strong> (staging), so live cost isn't polluted by
+load-test data — yet they can compare the two environments together when needed. The outer "company" cares only about <strong>the bill and
+who's a member</strong>, holding no data directly; all data lands on some project + environment. This "org manages money and people, project
+manages data, environment manages views" division is the entire skeleton of multi-tenancy.</p>
+
+
+<h2>project_id is the hard isolation key, threaded throughout</h2>
+<p>Multi-tenant isolation is <strong>not as simple as adding a <code>WHERE project_id = ?</code> filter afterward</strong>. In Langfuse,
+<code>project_id</code> is a thread running <strong>through the whole pipeline</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="project_id is parsed from the API key, stamped on every row at write, leads the ClickHouse ordering key, and locates data at query time">
+  <rect x="20" y="80" width="150" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">API key</text><text x="95" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">resolves project_id</text>
+  <rect x="200" y="80" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="275" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">write</text><text x="275" y="120" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">every row carries project_id</text>
+  <rect x="380" y="80" width="160" height="54" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="460" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="460" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">ORDER BY project_id first</text>
+  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">query</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">scan only that project's range</text>
+  <line x1="170" y1="107" x2="198" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="198,107 189,102 189,112" fill="var(--faint)"/>
+  <line x1="350" y1="107" x2="378" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="378,107 369,102 369,112" fill="var(--faint)"/>
+  <line x1="540" y1="107" x2="568" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="568,107 559,102 559,112" fill="var(--faint)"/>
+  <text x="360" y="40" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id: one key threading auth · write · storage · query</text>
+  <text x="360" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">isolation isn't "filter at query time" — project_id is welded into the ordering key: isolate = locate = fast</text>
+</svg>
+<div class="figcap"><b>project_id threads the whole pipeline</b>: auth resolves project_id from the API key (L09: a key belongs to a project); writes stamp it on every row; ClickHouse's ordering key <b>starts with project_id</b> (L08); queries locate the contiguous range by it. So isolation is <b>not</b> an afterthought filter — it's baked into the physical layout; isolation and "fast" are the same thing.</div>
+</div>
+
+<p>This "project_id threads the whole pipeline" design's biggest value is turning <strong>security from "the programmer remembers to filter"
+into "the structure guarantees it"</strong>. Consider: if isolation relied on every query remembering to add <code>WHERE project_id = ?</code>,
+then one forgotten or wrong filter could let company A see company B's data — a <strong>catastrophic</strong> bug in a multi-tenant system.
+Langfuse instead welds project_id into the storage and auth foundations: the repository read APIs <strong>uniformly require</strong> a
+project_id, and tRPC's <code>protectedProjectProcedure</code> middleware checks <strong>first</strong> whether you belong to this project
+(L21). So "see another tenant's data by accident" isn't "easy to get wrong" — <strong>there simply is no such path</strong>. That's the
+essential difference between "security in the structure" and "security by discipline".</p>
+
+<h2>environment: a soft slice within a project</h2>
+<p>environment was added later. Here's how it looks in ClickHouse — all three wide-event tables gained an <code>environment</code> column:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0008_add_environments_column.up.sql</span><span class="ln">ALTER</span></div>
+  <pre class="code">ALTER TABLE traces       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE observations ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;</pre>
+</div>
+
+<p>Three details: (1) the type is <code>LowCardinality(String)</code> — env names are a small fixed set (prod/staging/dev), and
+low-cardinality encoding saves space and speeds queries; (2) the default <code>'default'</code> — without an explicit environment, data lands
+in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — it sits
+right after project_id, the two forming a "project + environment" locating prefix. So environment is a <strong>soft slice</strong>: just a tag
+on the row — add a condition to filter by env, or ignore it to see them together.</p>
+
+<div class="cols">
+  <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>
+  <div class="col"><h4>🏷️ environment = soft slice</h4><p>A view preference: within one project, tag data prod/staging/dev — <strong>separable or combinable</strong>, just one filter dimension at query time.</p></div>
+</div>
+
+<h2>How one request resolves the tenant</h2>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>carry a credential</h4><p>the SDK uses an API key (writes), or a logged-in user carries a session (reads), to make a request.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>resolve the project</h4><p>the server resolves "which project" from the key/session and checks access (L09 ApiKey, L21 <code>protectedProjectProcedure</code>).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>all reads/writes lock to that project</h4><p>writes stamp project_id on every row; queries put project_id in the ordering-key prefix. You <strong>cannot</strong> bypass it to see another project.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>optional: slice by environment</h4><p>within that project, filter prod / staging by environment as needed.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why weld project_id into the ordering key instead of treating it as an ordinary filter column?</strong> Because that makes
+  <strong>"isolation" and "efficiency" the same thing</strong>. If project_id were just a column, "see only my project" would be a full-table
+  filter — slow at scale and dangerous (miss the filter once and you leak across tenants). Put it <strong>first</strong> in the ordering key
+  and one project's data is physically adjacent, so "see only my project" degrades to "scan a contiguous range" — fast and
+  <strong>structurally</strong> unable to see others. The cost: the ordering key is hard to change once set, and nearly every query must carry
+  project_id (the repository layer's uniform contract). <strong>Make multi-tenant isolation part of the storage structure, not a filter you
+  might forget.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Three nesting levels</strong>: organization (billing/members) ⊃ project (data boundary) ⊃ environment (prod/staging/dev within a project).</li>
+    <li><strong>project = hard isolation</strong> (never visible across projects), <strong>environment = soft slice</strong> (a tag separable/combinable within a project).</li>
+    <li><strong>project_id threads the whole pipeline</strong>: resolved from the API key → stamped on every row → leads the ClickHouse ordering key → locates queries. Isolation is <strong>welded into the ordering key, not an afterthought filter</strong>.</li>
+    <li>the <code>environment</code> column: <code>LowCardinality(String) DEFAULT 'default' AFTER project_id</code> (migration 0008, L08) — low-cardinality, backward-compatible, right after project_id.</li>
+    <li>Tradeoff: baking isolation into storage → isolation and efficiency become one, and it's structurally safe; the cost is a hard-to-change ordering key and project_id required on queries.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. In Langfuse multi-tenancy, what's the essential difference between project and environment?</div>
+  <ol class="opts">
+    <li>project is hard isolation (data never visible across projects, a security red line); environment is a soft slice (tagging prod/staging/dev within one project, separable or combinable)</li>
+    <li>environment isolates more strongly than project</li>
+    <li>They're identical, just different names</li>
+    <li>project is soft, environment is hard</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'Different teams' data must never mix' is a security red line → project hard isolation; 'live vs test' is one team's view preference → environment soft slice. Different strengths, different treatment.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why is Langfuse's tenant isolation 'not an afterthought WHERE project_id filter'?</div>
+  <ol class="opts">
+    <li>Because project_id is random</li>
+    <li>Because each project uses a separate database instance</li>
+    <li>Because Langfuse doesn't support filtering</li>
+    <li>Because project_id is welded into the front of the ClickHouse ordering key: one project's data is physically adjacent, so 'see only my project' becomes scanning a contiguous range — isolation and efficiency in one, and structurally impossible to see others</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. If project_id were an ordinary filter column, it'd be slow at scale and dangerous (miss the filter and you leak across tenants). Put it first in the ordering key and isolation becomes 'locate a contiguous range' — fast and structurally safe. Cost: hard-to-change ordering key, project_id required on queries.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The ClickHouse environment column is LowCardinality(String) DEFAULT 'default' AFTER project_id. What's the intent of each?</div>
+  <ol class="opts">
+    <li>To remove project_id</li>
+    <li>Pure placeholder, no intent</li>
+    <li>To allow infinitely many env names</li>
+    <li>Low-cardinality: few env names, saving space and speeding queries; default 'default': auto-classify when unspecified, backward-compatible with old data; right after project_id: forms a 'project+environment' locating prefix with it</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. LowCardinality suits low-distinct columns (compact encoding, fast queries); DEFAULT 'default' makes old/unspecified-env data fall into default (backward compatible); AFTER project_id forms a locating prefix so 'project+environment' queries stay efficient.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Bake multi-tenant isolation into the storage structure, not a filter you might forget' — can you apply this to your own system? What benefits and constraints come from putting the tenant key first in the primary/ordering key?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="09-postgres-metadata-schema.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">元数据 schema（Postgres/Prisma）</span><span class="lang-en">The metadata schema (Postgres)</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

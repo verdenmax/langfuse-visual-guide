@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 9 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 10 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -346,6 +346,7 @@ details[open] > summary { list-style: none; }
   <li>The dual-store architecture</li>
   <li>ClickHouse & the wide-event tables</li>
   <li>The metadata schema (Postgres)</li>
+  <li>Multi-tenancy</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -2495,6 +2496,197 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Langfuse splits 'config' and 'data' into two databases. If your system also had 'small critical config' + 'massive events', how would you divide them? How would you tame the cross-store config-read cost (hint: caching)?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Multi-tenancy</h1>
+
+<p class="lead">
+Last lesson called <code>project</code> the hub and the "data boundary". This lesson makes that concrete: Langfuse is a
+<strong>multi-tenant</strong> platform — one deployment serves thousands of unrelated teams at once, isolating their data cleanly via
+<strong>three nesting levels</strong>: <strong>organization → project → environment</strong>. Grasp these three and you understand
+"why you only see your own data" and "why the ClickHouse ordering key must start with project_id".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture multi-tenancy as an <strong>office building</strong>: the <strong>organization</strong> is the <strong>company renting a
+  floor</strong> — signs the lease, pays the bills, manages its staff (members and billing live here); the <strong>project</strong> is a
+  <strong>department</strong> with its own area and access control, whose stuff never wanders into another department; the
+  <strong>environment</strong> is a further "<strong>production / test area</strong>" split inside the department — the same people keep
+  live and test data apart. Everyone may be <strong>in one building</strong> (one deployment, one database), but layered <strong>access
+  controls</strong> keep them from crossing over.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="an organization contains multiple projects, each project splitting into production/staging/development environments">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">three nesting levels: org → project → environment</text>
+  <rect x="30" y="36" width="660" height="220" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="48" y="58" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Organization · billing + members (the lease holder)</text>
+  <rect x="48" y="70" width="300" height="172" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="64" y="92" font-size="11" font-weight="700" fill="var(--blue)">Project A · data boundary</text>
+  <rect x="64" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="198" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="64" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="129" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: staging</text>
+  <rect x="202" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="267" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: development</text>
+  <text x="198" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">a project may have multiple environments</text>
+  <rect x="372" y="70" width="300" height="172" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="388" y="92" font-size="11" font-weight="700" fill="var(--purple)">Project B · another data boundary</text>
+  <rect x="388" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="388" y="150" width="268" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: default</text>
+  <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B sees none of Project A's data</text>
+</svg>
+<div class="figcap"><b>Three nesting levels</b>: one <b>organization</b> holds multiple <b>projects</b>, each project may split into multiple <b>environments</b> (e.g. production / staging / development, default <code>default</code>). The org manages billing and members, the <b>project is the hard data boundary</b>, and the environment is a soft slice within a project.</div>
+</div>
+
+<h2>What each level governs</h2>
+<table class="t">
+  <tr><th>Level</th><th>Governs</th><th>Isolation strength</th></tr>
+  <tr><td><b>Organization</b></td><td>billing, members, SSO, org-level API keys</td><td>the outer "account" boundary</td></tr>
+  <tr><td><b>Project</b></td><td>where data actually belongs: trace/observation/score, prompts, config all hang under a project</td><td><strong>hard isolation</strong>: invisible across projects</td></tr>
+  <tr><td><b>Environment</b></td><td>distinguishes production / staging / development within one project</td><td><strong>soft slice</strong>: queryable together or filtered by env</td></tr>
+</table>
+
+<p>The key distinction is the last two: <strong>project is a "hard boundary"</strong> — hold one project's key and you simply
+<strong>cannot see</strong> another project's data; <strong>environment is a "soft slice"</strong> — within one project it <strong>tags</strong>
+live vs test data apart, so you can view only production, or compare several environments together. Why? Because "different teams' data must
+never mix" is a <strong>security red line</strong> (hard isolation), while "live vs test" is just one team's <strong>own view preference</strong>
+(soft slice) — different strengths, different treatment.</p>
+
+<p>A concrete scenario for all three levels. A company (<strong>organization</strong>) signs up and pays on Langfuse, inviting 5 engineers as
+members. They open two projects (<strong>project</strong>): "support bot" and "doc Q&amp;A". The two projects' data is <strong>mutually
+invisible</strong> — querying the support bot never mixes in doc-Q&amp;A traces. Within "support bot" they use <strong>environment</strong> to
+separate <strong>live traffic</strong> (production) from <strong>load-test/debug traffic</strong> (staging), so live cost isn't polluted by
+load-test data — yet they can compare the two environments together when needed. The outer "company" cares only about <strong>the bill and
+who's a member</strong>, holding no data directly; all data lands on some project + environment. This "org manages money and people, project
+manages data, environment manages views" division is the entire skeleton of multi-tenancy.</p>
+
+
+<h2>project_id is the hard isolation key, threaded throughout</h2>
+<p>Multi-tenant isolation is <strong>not as simple as adding a <code>WHERE project_id = ?</code> filter afterward</strong>. In Langfuse,
+<code>project_id</code> is a thread running <strong>through the whole pipeline</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="project_id is parsed from the API key, stamped on every row at write, leads the ClickHouse ordering key, and locates data at query time">
+  <rect x="20" y="80" width="150" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">API key</text><text x="95" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">resolves project_id</text>
+  <rect x="200" y="80" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="275" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">write</text><text x="275" y="120" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">every row carries project_id</text>
+  <rect x="380" y="80" width="160" height="54" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="460" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="460" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">ORDER BY project_id first</text>
+  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">query</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">scan only that project's range</text>
+  <line x1="170" y1="107" x2="198" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="198,107 189,102 189,112" fill="var(--faint)"/>
+  <line x1="350" y1="107" x2="378" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="378,107 369,102 369,112" fill="var(--faint)"/>
+  <line x1="540" y1="107" x2="568" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="568,107 559,102 559,112" fill="var(--faint)"/>
+  <text x="360" y="40" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id: one key threading auth · write · storage · query</text>
+  <text x="360" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">isolation isn't "filter at query time" — project_id is welded into the ordering key: isolate = locate = fast</text>
+</svg>
+<div class="figcap"><b>project_id threads the whole pipeline</b>: auth resolves project_id from the API key (L09: a key belongs to a project); writes stamp it on every row; ClickHouse's ordering key <b>starts with project_id</b> (L08); queries locate the contiguous range by it. So isolation is <b>not</b> an afterthought filter — it's baked into the physical layout; isolation and "fast" are the same thing.</div>
+</div>
+
+<p>This "project_id threads the whole pipeline" design's biggest value is turning <strong>security from "the programmer remembers to filter"
+into "the structure guarantees it"</strong>. Consider: if isolation relied on every query remembering to add <code>WHERE project_id = ?</code>,
+then one forgotten or wrong filter could let company A see company B's data — a <strong>catastrophic</strong> bug in a multi-tenant system.
+Langfuse instead welds project_id into the storage and auth foundations: the repository read APIs <strong>uniformly require</strong> a
+project_id, and tRPC's <code>protectedProjectProcedure</code> middleware checks <strong>first</strong> whether you belong to this project
+(L21). So "see another tenant's data by accident" isn't "easy to get wrong" — <strong>there simply is no such path</strong>. That's the
+essential difference between "security in the structure" and "security by discipline".</p>
+
+<h2>environment: a soft slice within a project</h2>
+<p>environment was added later. Here's how it looks in ClickHouse — all three wide-event tables gained an <code>environment</code> column:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0008_add_environments_column.up.sql</span><span class="ln">ALTER</span></div>
+  <pre class="code">ALTER TABLE traces       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE observations ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;</pre>
+</div>
+
+<p>Three details: (1) the type is <code>LowCardinality(String)</code> — env names are a small fixed set (prod/staging/dev), and
+low-cardinality encoding saves space and speeds queries; (2) the default <code>'default'</code> — without an explicit environment, data lands
+in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — it sits
+right after project_id, the two forming a "project + environment" locating prefix. So environment is a <strong>soft slice</strong>: just a tag
+on the row — add a condition to filter by env, or ignore it to see them together.</p>
+
+<div class="cols">
+  <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>
+  <div class="col"><h4>🏷️ environment = soft slice</h4><p>A view preference: within one project, tag data prod/staging/dev — <strong>separable or combinable</strong>, just one filter dimension at query time.</p></div>
+</div>
+
+<h2>How one request resolves the tenant</h2>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>carry a credential</h4><p>the SDK uses an API key (writes), or a logged-in user carries a session (reads), to make a request.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>resolve the project</h4><p>the server resolves "which project" from the key/session and checks access (L09 ApiKey, L21 <code>protectedProjectProcedure</code>).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>all reads/writes lock to that project</h4><p>writes stamp project_id on every row; queries put project_id in the ordering-key prefix. You <strong>cannot</strong> bypass it to see another project.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>optional: slice by environment</h4><p>within that project, filter prod / staging by environment as needed.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why weld project_id into the ordering key instead of treating it as an ordinary filter column?</strong> Because that makes
+  <strong>"isolation" and "efficiency" the same thing</strong>. If project_id were just a column, "see only my project" would be a full-table
+  filter — slow at scale and dangerous (miss the filter once and you leak across tenants). Put it <strong>first</strong> in the ordering key
+  and one project's data is physically adjacent, so "see only my project" degrades to "scan a contiguous range" — fast and
+  <strong>structurally</strong> unable to see others. The cost: the ordering key is hard to change once set, and nearly every query must carry
+  project_id (the repository layer's uniform contract). <strong>Make multi-tenant isolation part of the storage structure, not a filter you
+  might forget.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Three nesting levels</strong>: organization (billing/members) ⊃ project (data boundary) ⊃ environment (prod/staging/dev within a project).</li>
+    <li><strong>project = hard isolation</strong> (never visible across projects), <strong>environment = soft slice</strong> (a tag separable/combinable within a project).</li>
+    <li><strong>project_id threads the whole pipeline</strong>: resolved from the API key → stamped on every row → leads the ClickHouse ordering key → locates queries. Isolation is <strong>welded into the ordering key, not an afterthought filter</strong>.</li>
+    <li>the <code>environment</code> column: <code>LowCardinality(String) DEFAULT 'default' AFTER project_id</code> (migration 0008, L08) — low-cardinality, backward-compatible, right after project_id.</li>
+    <li>Tradeoff: baking isolation into storage → isolation and efficiency become one, and it's structurally safe; the cost is a hard-to-change ordering key and project_id required on queries.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. In Langfuse multi-tenancy, what's the essential difference between project and environment?</div>
+  <ol class="opts">
+    <li>project is hard isolation (data never visible across projects, a security red line); environment is a soft slice (tagging prod/staging/dev within one project, separable or combinable)</li>
+    <li>environment isolates more strongly than project</li>
+    <li>They're identical, just different names</li>
+    <li>project is soft, environment is hard</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'Different teams' data must never mix' is a security red line → project hard isolation; 'live vs test' is one team's view preference → environment soft slice. Different strengths, different treatment.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why is Langfuse's tenant isolation 'not an afterthought WHERE project_id filter'?</div>
+  <ol class="opts">
+    <li>Because project_id is random</li>
+    <li>Because each project uses a separate database instance</li>
+    <li>Because Langfuse doesn't support filtering</li>
+    <li>Because project_id is welded into the front of the ClickHouse ordering key: one project's data is physically adjacent, so 'see only my project' becomes scanning a contiguous range — isolation and efficiency in one, and structurally impossible to see others</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. If project_id were an ordinary filter column, it'd be slow at scale and dangerous (miss the filter and you leak across tenants). Put it first in the ordering key and isolation becomes 'locate a contiguous range' — fast and structurally safe. Cost: hard-to-change ordering key, project_id required on queries.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The ClickHouse environment column is LowCardinality(String) DEFAULT 'default' AFTER project_id. What's the intent of each?</div>
+  <ol class="opts">
+    <li>To remove project_id</li>
+    <li>Pure placeholder, no intent</li>
+    <li>To allow infinitely many env names</li>
+    <li>Low-cardinality: few env names, saving space and speeding queries; default 'default': auto-classify when unspecified, backward-compatible with old data; right after project_id: forms a 'project+environment' locating prefix with it</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. LowCardinality suits low-distinct columns (compact encoding, fast queries); DEFAULT 'default' makes old/unspecified-env data fall into default (backward compatible); AFTER project_id forms a locating prefix so 'project+environment' queries stay efficient.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Bake multi-tenant isolation into the storage structure, not a filter you might forget' — can you apply this to your own system? What benefits and constraints come from putting the tenant key first in the primary/ordering key?</li>
   </ul>
 </div>
 </div>

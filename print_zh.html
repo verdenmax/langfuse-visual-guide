@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 9 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 10 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -346,6 +346,7 @@ details[open] > summary { list-style: none; }
   <li>双存储架构</li>
   <li>ClickHouse 与宽事件表</li>
   <li>元数据 schema（Postgres/Prisma）</li>
+  <li>多租户：org → project → environment</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -2312,6 +2313,181 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>Langfuse 把“配置”和“数据”分到两个库。如果你自己的系统也有“少而关键的配置”+“海量的事件”，你会怎么划分？跨库读配置的代价你打算怎么压（提示：缓存）？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>多租户：org → project → environment</h1>
+
+<p class="lead">
+上一课说 <code>project</code> 是枢纽、是「数据边界」。这一课把这件事讲透：Langfuse 是个<strong>多租户</strong>平台——同一套部署要同时服务成千上万个互不相干的团队，
+它靠<strong>三层嵌套</strong>把大家的数据干净地隔开：<strong>organization（组织）→ project（项目）→ environment（环境）</strong>。
+理解这三层，你就明白了「为什么你只看得到自己的数据」「为什么 ClickHouse 排序键非要以 project_id 打头」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把多租户想成<strong>一栋写字楼</strong>：<strong>organization</strong> 是<strong>租下楼层的公司</strong>——签合同、付账单、管自己的员工（成员与计费在这一层）；
+  <strong>project</strong> 是公司里的<strong>一个部门</strong>，有独立的办公区和门禁，部门的东西不会跑到别的部门去；<strong>environment</strong> 则是部门内部再隔出的
+  「<strong>正式区 / 测试区</strong>」——同一个部门的人，把线上数据和测试数据分开摆，互不干扰。大家可能<strong>同在一栋楼</strong>（同一套部署、同一个数据库），
+  但靠层层<strong>门禁</strong>谁也串不了门。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="organization 包含多个 project，每个 project 内再分 production/staging/development 环境">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三层嵌套：组织 → 项目 → 环境</text>
+  <rect x="30" y="36" width="660" height="220" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="48" y="58" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Organization · 计费 + 成员（合同主体）</text>
+  <rect x="48" y="70" width="300" height="172" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="64" y="92" font-size="11" font-weight="700" fill="var(--blue)">Project A · 数据边界</text>
+  <rect x="64" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="198" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="64" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="129" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: staging</text>
+  <rect x="202" y="150" width="130" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="267" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: development</text>
+  <text x="198" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">一个 project 内可有多个 environment</text>
+  <rect x="372" y="70" width="300" height="172" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="388" y="92" font-size="11" font-weight="700" fill="var(--purple)">Project B · 另一个数据边界</text>
+  <rect x="388" y="104" width="268" height="40" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="128" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: production</text>
+  <rect x="388" y="150" width="268" height="36" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="522" y="172" text-anchor="middle" font-size="9.5" fill="var(--ink)">env: default</text>
+  <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B 看不到 Project A 的任何数据</text>
+</svg>
+<div class="figcap"><b>三层嵌套</b>：一个 <b>organization</b> 下有多个 <b>project</b>，每个 project 内可再分多个 <b>environment</b>（如 production / staging / development，默认 <code>default</code>）。组织管计费与成员，<b>project 是硬数据边界</b>，environment 是项目内的软切片。</div>
+</div>
+
+<h2>三层各管什么</h2>
+<table class="t">
+  <tr><th>层级</th><th>管什么</th><th>隔离强度</th></tr>
+  <tr><td><b>Organization 组织</b></td><td>计费、成员、SSO、组织级 API key</td><td>最外层的「账户」边界</td></tr>
+  <tr><td><b>Project 项目</b></td><td>实际数据归属：trace/observation/score、prompt、配置全挂在某 project 下</td><td><strong>硬隔离</strong>：跨 project 互不可见</td></tr>
+  <tr><td><b>Environment 环境</b></td><td>同一 project 内区分 production / staging / development 等</td><td><strong>软切片</strong>：同 project 内可一起查、也可按环境过滤</td></tr>
+</table>
+
+<p>关键区别在最后两层：<strong>project 是「硬边界」</strong>——你拿着某 project 的 key，<strong>根本看不到</strong>别的 project 的数据；
+而 <strong>environment 是「软切片」</strong>——它在同一个 project 内部，把线上和测试的数据<strong>贴上标签</strong>分开，你既能只看 production，也能把几个环境放一起比。
+为什么这么设计？因为「不同团队的数据绝不能串」是<strong>安全红线</strong>（硬隔离），而「线上 vs 测试」只是同一团队<strong>自己的视图偏好</strong>（软切片），强度不同，待遇也不同。</p>
+
+<p>举个具体场景体会这三层。一家公司（<strong>organization</strong>）在 Langfuse 上签约、付费、邀请了 5 名工程师做成员。他们开了两个项目（<strong>project</strong>）：
+「客服机器人」和「文档问答」。这两个项目的数据<strong>互不可见</strong>——查客服机器人时绝不会混进文档问答的 trace。在「客服机器人」项目内，他们又用
+<strong>environment</strong> 把<strong>线上流量</strong>（production）和<strong>压测/调试流量</strong>（staging）分开，于是看线上成本时不会被压测数据污染，
+但需要时也能把两个环境放一起对比。最外层的「公司」只关心<strong>账单和谁是成员</strong>，不直接持有数据；数据全都落在某个 project + environment 上。
+这套「组织管钱和人、项目管数据、环境管视图」的分工，就是多租户的全部骨架。</p>
+
+
+<h2>project_id 是硬隔离键，贯穿始终</h2>
+<p>多租户隔离<strong>不是事后加一个 <code>WHERE project_id = ?</code> 过滤这么简单</strong>。在 Langfuse 里，<code>project_id</code> 是一条<strong>贯穿全链路</strong>的主线：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="project_id 从 API key 解析出来，写入时落到每行，ClickHouse 排序键以它打头，查询时据它定位">
+  <rect x="20" y="80" width="150" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">API key</text><text x="95" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">解析出 project_id</text>
+  <rect x="200" y="80" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="275" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">写入</text><text x="275" y="120" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">每行都带 project_id</text>
+  <rect x="380" y="80" width="160" height="54" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="460" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="460" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">ORDER BY project_id 打头</text>
+  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">查询</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">只扫该 project 区间</text>
+  <line x1="170" y1="107" x2="198" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="198,107 189,102 189,112" fill="var(--faint)"/>
+  <line x1="350" y1="107" x2="378" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="378,107 369,102 369,112" fill="var(--faint)"/>
+  <line x1="540" y1="107" x2="568" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="568,107 559,102 559,112" fill="var(--faint)"/>
+  <text x="360" y="40" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id：一把钥匙，串起鉴权·写入·存储·查询</text>
+  <text x="360" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">隔离不是“查时过滤”，而是把 project_id 焊进了排序键——隔离即定位，定位即高效</text>
+</svg>
+<div class="figcap"><b>project_id 贯穿全链路</b>：鉴权时从 API key 解析出 project_id（第 9 课 key 属于某 project）；写入时每行都带上它；ClickHouse 的排序键<b>以 project_id 打头</b>（第 8 课）；查询时据它定位到连续区间。所以隔离<b>不是</b>事后过滤，而是写进了物理排布——隔离和「查得快」是同一件事。</div>
+</div>
+
+<p>这条「project_id 贯穿全链路」的设计，最大的价值是<strong>把安全从「靠程序员记得写过滤」变成「靠结构保证」</strong>。想想看：如果隔离只靠每个查询都记得加 <code>WHERE project_id = ?</code>，
+那只要有一处查询忘了写、或写错了，就可能让 A 公司看到 B 公司的数据——这种 bug 在多租户系统里是<strong>灾难级</strong>的。Langfuse 的做法是把 project_id 焊进存储与鉴权的底层：
+仓储层的读取 API <strong>统一要求</strong>传入 project_id，tRPC 的 <code>protectedProjectProcedure</code> 在中间件里<strong>先</strong>校验你属不属于这个 project（第 21 课）。
+于是「越权看别人数据」不是「容易写错」，而是<strong>压根没有那条路</strong>。这就是「安全做进结构」与「安全靠自觉」的本质区别。</p>
+
+<h2>environment：项目内的软切片</h2>
+<p>environment 是后来加上的一层。看它在 ClickHouse 里的样子——三张宽事件表都加了一个 <code>environment</code> 列：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0008_add_environments_column.up.sql</span><span class="ln">ALTER</span></div>
+  <pre class="code">ALTER TABLE traces       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE observations ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;
+ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <span class="st">'default'</span> AFTER project_id;</pre>
+</div>
+
+<p>三个细节值得注意：① 类型是 <code>LowCardinality(String)</code>——环境名翻来覆去就那么几个（prod/staging/dev），低基数编码又省空间又查得快；
+② 默认值 <code>'default'</code>——你不显式指定环境时，数据自动落到 <code>default</code>，向后兼容（老数据天然属于 default）；③ 位置 <code>AFTER project_id</code>——
+它紧挨在 project_id 之后，二者一起构成「项目 + 环境」的定位前缀。所以 environment 是<strong>软切片</strong>：它只是行上的一个标签，你想按环境过滤就加个条件，不想分就忽略它。</p>
+
+<div class="cols">
+  <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
+  <div class="col"><h4>🏷️ environment = 软切片</h4><p>视图偏好：同一 project 内给数据贴 prod/staging/dev 标签，<strong>可分可合</strong>，只是查询时的一个过滤维度。</p></div>
+</div>
+
+<h2>一次请求怎么定位租户</h2>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>带上凭证</h4><p>SDK 用 API key（写入），或用户登录后带 session（读取）发起请求。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>解析出 project</h4><p>服务端从 key/session 解析出「这是哪个 project」，并校验是否有权限（第 9 课 ApiKey、第 21 课 <code>protectedProjectProcedure</code>）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>所有读写都锁定该 project</h4><p>写入时 project_id 落到每行；查询时 project_id 进排序键前缀。你<strong>没有办法</strong>越过它看到别的 project。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>可选：按 environment 再切</h4><p>在该 project 内，按需用 environment 过滤出 prod / staging。</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把 project_id 焊进排序键，而不是当成一个普通的过滤列？</strong> 因为这样<strong>「隔离」和「高效」就成了同一件事</strong>。如果 project_id 只是个普通列，
+  那「只看我的项目」就是一次全表过滤，海量数据下既慢又危险（万一过滤写漏了，就串了租户）。把它放进排序键<strong>最前面</strong>，同一 project 的数据物理相邻，
+  「只看我的项目」退化成「扫一段连续区间」——又快又<strong>结构性地</strong>不可能看到别人。代价是排序键一旦定了就难改、且要求几乎所有查询都带上 project_id（这正是仓储层 API 的统一约定）。
+  <strong>把多租户隔离做成存储结构的一部分，而不是一道可能写漏的过滤。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>三层嵌套</strong>：organization（计费/成员）⊃ project（数据边界）⊃ environment（项目内 prod/staging/dev）。</li>
+    <li><strong>project = 硬隔离</strong>（跨项目绝不可见），<strong>environment = 软切片</strong>（同项目内可分可合的标签）。</li>
+    <li><strong>project_id 贯穿全链路</strong>：从 API key 解析 → 写入每行 → ClickHouse 排序键打头 → 查询定位。隔离<strong>不是事后过滤，而是焊进排序键</strong>。</li>
+    <li><code>environment</code> 列：<code>LowCardinality(String) DEFAULT 'default' AFTER project_id</code>（第 8 课迁移 0008），低基数、向后兼容、紧贴 project_id。</li>
+    <li>取舍：把隔离做进存储结构 → 隔离与高效合一、且结构性安全；代价是排序键难改、查询须带 project_id。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的多租户隔离，project 和 environment 的本质区别是什么？</div>
+  <ol class="opts">
+    <li>project 是硬隔离（跨项目数据绝不可见，安全红线），environment 是软切片（同一项目内给 prod/staging/dev 贴标签，可分可合）</li>
+    <li>environment 比 project 隔离更强</li>
+    <li>两者完全一样，只是名字不同</li>
+    <li>project 是软的，environment 是硬的</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。“不同团队数据绝不能串”是安全红线 → project 硬隔离；“线上 vs 测试”只是同团队的视图偏好 → environment 软切片。强度不同，待遇不同。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 为什么说 Langfuse 的租户隔离“不是事后加一个 WHERE project_id 过滤”？</div>
+  <ol class="opts">
+    <li>因为 project_id 是随机的</li>
+    <li>因为每个项目用独立的数据库实例</li>
+    <li>因为 Langfuse 不支持过滤</li>
+    <li>因为 project_id 被焊进 ClickHouse 排序键最前面：同项目数据物理相邻，“只看我的项目”退化成扫一段连续区间——隔离与高效合一，且结构性地不可能看到别人</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若 project_id 只是普通过滤列，海量下既慢又危险（写漏过滤就串租户）。放进排序键最前，隔离变成“定位连续区间”，又快又结构性安全。代价：排序键难改、查询须带 project_id。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. ClickHouse 里 environment 列定义为 LowCardinality(String) DEFAULT 'default' AFTER project_id。这三点各有什么用意？</div>
+  <ol class="opts">
+    <li>为了删除 project_id</li>
+    <li>纯粹为了占位，没有用意</li>
+    <li>为了让环境名可以无限多</li>
+    <li>低基数：环境名就那么几个，省空间快查询；默认 default：不指定时自动归类、向后兼容老数据；紧跟 project_id：与之构成“项目+环境”定位前缀</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。LowCardinality 适合取值少的列（编码省空间、查得快）；DEFAULT 'default' 让老数据/未指定环境的数据天然归到 default（向后兼容）；AFTER project_id 让二者构成定位前缀，按“项目+环境”查同样高效。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>“把多租户隔离做进存储结构，而不是一道可能写漏的过滤”——这条思路你能用到自己的系统吗？把租户键放进主键/排序键最前，会给你带来什么好处和什么约束？</li>
   </ul>
 </div>
 </div>

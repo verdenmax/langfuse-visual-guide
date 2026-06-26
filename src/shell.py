@@ -67,6 +67,8 @@ PAGES = [
      "第二部分 · 前置基础", "Part 2 · Foundations"),
     ("09-postgres-metadata-schema.html", "元数据 schema（Postgres/Prisma）", "The metadata schema (Postgres)",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("10-multi-tenancy.html", "多租户：org → project → environment", "Multi-tenancy",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -568,6 +570,8 @@ SUBTITLES = {
                                        "ReplacingMergeTree; ordering key project_id-first; monthly partitions; ZSTD/Map/bloom; scan-less"),
     "09-postgres-metadata-schema.html": ("控制面 vs 数据面 · Project 枢纽 · 模型分组 · Legacy 残留 · API key 哈希",
                                          "control plane vs data plane; Project hub; model groups; Legacy remnants; hashed API keys"),
+    "10-multi-tenancy.html": ("三层嵌套 org→project→env · project 硬隔离 · environment 软切片 · project_id 贯穿",
+                              "three levels org→project→env; hard project isolation; soft environment slice; project_id threaded"),
 }
 
 
