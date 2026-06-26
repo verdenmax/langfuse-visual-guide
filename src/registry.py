@@ -49,4 +49,5 @@ CONTENT = {
     "33-monitors-and-alerting.html": part5.LESSON_33,
     "34-datasets-and-items.html": part6.LESSON_34,
     "35-dataset-runs.html": part6.LESSON_35,
+    "36-experiments-and-comparison.html": part6.LESSON_36,
 }

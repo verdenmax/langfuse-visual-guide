@@ -525,3 +525,258 @@ _EN35.append(r"""
 """)
 
 LESSON_35 = {"zh": "\n".join(_ZH35), "en": "\n".join(_EN35)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L36 · 实验与对比 / Experiments & comparison
+# ══════════════════════════════════════════════════════════════════════
+_ZH36 = []
+_EN36 = []
+
+_ZH36.append(r"""
+<p class="lead">
+前两课造好了「考卷」（数据集）和「考试机制」（run）。这一课讲怎么用它们<strong>做决策</strong>——这就是<strong>实验（experiment）</strong>。一次实验，就是拿一个具体的 <strong>prompt + 模型</strong>配置，在整个数据集上自动跑一遍（产出一次 run），再把<strong>多次 run 并排对比</strong>，挑出最优的那套。它把「改 prompt、换模型到底好不好」从<strong>拍脑袋</strong>变成<strong>有数据</strong>——这是 LLM 工程里最接近「科学方法」的一环。
+重点有三：实验是怎么<strong>服务端自动跑</strong>的（把题目填进 prompt 变量、调 LLM、产 trace）；评分怎么<strong>自动接上</strong>（复用第 30、35 课）；以及对比怎么用 <strong>baseline + 增量</strong>让你一眼看出涨跌。这一课也为 Part 7 的 prompt 管理埋下伏笔——实验里被考的那个 prompt，正是下一课的主角。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  实验像一场严谨的 <strong>A/B 对照试验</strong>。同一套题（数据集），A 组用「gpt-4o + prompt v1」、B 组用「claude + prompt v2」，各自<strong>认真考一场</strong>。
+  你不用亲自监考：系统自动<strong>替你出题</strong>（把每道题的输入填进 prompt 的变量空格）、自动<strong>阅卷</strong>（第 29–32 课的评分）、自动<strong>算总评</strong>（第 35 课按 run 聚合）。最后把两组成绩单<strong>并排摊开</strong>，还允许你钦定一组当<strong>基准（baseline）</strong>，其余组就显示「比基准高了多少 / 低了多少」。
+  于是那个让无数人纠结的问题——「我这个 prompt 改动，到底是变好了还是变坏了？」——不再靠感觉，而是<strong>一张并排的、带增量的成绩单</strong>说了算。
+</div>
+""")
+
+# (L36 sections below)
+
+_ZH36.append(r"""
+<h2>服务端自动跑：把题填进 prompt 变量，逐题调 LLM</h2>
+<p>Langfuse 的实验可以<strong>完全在服务端跑</strong>：你只需选一个数据集、一个带变量的 prompt、一个模型，剩下的交给 worker。<code>createExperimentJobClickhouse</code>（由 <code>ExperimentCreate</code> 队列驱动）会逐道题做三步：把这道题的 <code>input</code> 填进 prompt 的变量空格、用你选的 provider/model 调一次 LLM、把结果写成一条 trace + run item。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="服务端 prompt 实验：对数据集每道题，replaceVariablesInPrompt 把 item.input 填进 prompt 的变量占位符，用选定 provider/model 调 LLM，产出一条 trace（环境标 PromptExperiments、链接 prompt、钉住 item 版本）和一个 run item">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">逐题：填变量 → 调 LLM → 产 trace + run item</text>
+  <rect x="30" y="44" width="150" height="56" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">prompt（带变量）</text><text x="105" y="80" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">"回答 {{question}}"</text><text x="105" y="93" text-anchor="middle" font-size="6.4" fill="var(--muted)">第37课的 prompt</text>
+  <rect x="30" y="116" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="105" y="135" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">dataset item.input</text><text x="105" y="151" text-anchor="middle" font-size="6.6" fill="var(--muted)">{question: "退款政策?"}</text>
+  <rect x="225" y="80" width="150" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="300" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">replaceVariablesInPrompt</text><text x="300" y="116" text-anchor="middle" font-size="6.6" fill="var(--muted)">填空 → 完整 messages</text><text x="300" y="128" text-anchor="middle" font-size="6.4" fill="var(--faint)">"回答 退款政策?"</text>
+  <rect x="420" y="80" width="130" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="485" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">调 LLM</text><text x="485" y="116" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">provider/model</text><text x="485" y="128" text-anchor="middle" font-size="6.4" fill="var(--muted)">被考的配置</text>
+  <rect x="588" y="58" width="112" height="44" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="644" y="76" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">trace</text><text x="644" y="91" text-anchor="middle" font-size="6.0" fill="var(--muted)">env=PromptExperiments</text>
+  <rect x="588" y="112" width="112" height="44" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="644" y="130" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">run item</text><text x="644" y="145" text-anchor="middle" font-size="6.0" fill="var(--muted)">钉住 item 版本</text>
+  <line x1="180" y1="72" x2="223" y2="100" stroke="var(--faint)" stroke-width="1.2"/><line x1="180" y1="141" x2="223" y2="116" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="375" y1="108" x2="418" y2="108" stroke="var(--teal)" stroke-width="1.5"/><polygon points="418,108 409,104 409,112" fill="var(--teal)"/>
+  <line x1="550" y1="100" x2="586" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="586,86 577,85 580,93" fill="var(--accent)"/><line x1="550" y1="116" x2="586" y2="128" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">trace 还链接了被考的 prompt（第37课）、metadata 钉住 item 的 validFrom（第34/35课的版本回放）</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">环境标成 PromptExperiments —— 这正是第30课「langfuse- 前缀防无限循环」要识别的内部环境之一</text>
+</svg>
+<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processItem</code> 调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem 核心</span></div>
+  <pre class="code"><span class="cm">// 1) 把这道题的 input 填进 prompt 的变量空格 → 完整 messages</span>
+messages = replaceVariablesInPrompt(
+  config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
+
+<span class="cm">// 2) 组 trace：标实验环境、链接被考 prompt、钉住 item 版本</span>
+traceSinkParams = {
+  environment: <span class="st">LangfuseInternalTraceEnvironment.PromptExperiments</span>,
+  traceId, prompt: config.prompt,
+  experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
+
+<span class="cm">// 3) 用被考的 provider/model 调 LLM（结果写成这条 trace + run item）</span>
+modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>维度</th><th>服务端实验（本课主线）</th><th>远程 / SDK 实验</th></tr></thead>
+  <tbody>
+    <tr><td>谁跑应用</td><td>Langfuse worker（用你选的 prompt/模型）</td><td>你自己的代码 / 外部系统</td></tr>
+    <tr><td>怎么触发</td><td>UI 点「跑」→ <code>ExperimentCreate</code> 队列</td><td>数据集的 <code>remoteExperimentUrl</code> 回调你的服务</td></tr>
+    <tr><td>适合</td><td>纯 prompt/模型对比，零代码</td><td>复杂自定义链路（多步 agent、检索等）</td></tr>
+    <tr><td>共同点</td><td colspan="2">都产出 run + run item + trace，都走同一套自动评分与对比——下游完全一致</td></tr>
+  </tbody>
+</table>
+<p>两种模式殊途同归：无论谁来跑应用，最终都落成第 35 课的 run item + trace，享受同一套自动评分（第 30 课）与对比视图。<strong>「怎么产生答卷」可以不同，「怎么评判与对比」完全统一</strong>——又一次「一个下游，多个上游」的解耦。</p>
+""")
+
+_ZH36.append(r"""
+<h2>对比：选一组当基准，其余看增量</h2>
+<p>实验跑完，每条 trace 经第 30、35 课<strong>自动评分并按 run 聚合</strong>，于是每场 run 都有了一张「成绩单」（各 score 名的平均分）。对比的精髓不是看绝对分，而是<strong>并排 + 增量</strong>：你钦定一场 run 当 <strong>baseline（基准）</strong>，其余各场就显示「比基准高/低多少」。Langfuse 的实验对比页（<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>）正是干这个的。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="实验对比：多场 run 并排，选一场为 baseline，其余 run 的每个 score 显示相对 baseline 的增量（绿升红降），让 prompt/模型改动的好坏一眼可判">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">并排成绩单 + 相对基准的增量</text>
+  <rect x="40" y="44" width="180" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="130" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">run A（baseline）</text><text x="130" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v1</text><line x1="56" y1="92" x2="204" y2="92" stroke="var(--faint)"/><text x="130" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.78</text><text x="130" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.96</text><text x="130" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 1.2s</text><text x="130" y="178" text-anchor="middle" font-size="6.6" fill="var(--blue)">★ 基准（其余跟它比）</text>
+  <rect x="270" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">run B</text><text x="360" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">claude + prompt v2</text><line x1="286" y1="92" x2="434" y2="92" stroke="var(--faint)"/><text x="360" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.85 <tspan fill="var(--teal)">▲+0.07</tspan></text><text x="360" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.97 <tspan fill="var(--teal)">▲+0.01</tspan></text><text x="360" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 2.1s <tspan fill="var(--accent-ink)">▼+0.9</tspan></text><text x="360" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">更准但更慢</text>
+  <rect x="500" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="590" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--muted)">run C</text><text x="590" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v3</text><line x1="516" y1="92" x2="664" y2="92" stroke="var(--faint)"/><text x="590" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.74 <tspan fill="var(--accent-ink)">▼−0.04</tspan></text><text x="590" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.96 —</text><text x="590" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 1.1s <tspan fill="var(--teal)">▲−0.1</tspan></text><text x="590" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">这版 prompt 反而退步</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">绝对分难判好坏，增量一目了然：B 用准度换了延迟、C 的 prompt 改动是负优化——决策有据可依</text>
+</svg>
+<div class="figcap"><b>对比靠「基准 + 增量」</b>：钦定一场 run 为 baseline，其余每个 score 显示相对增量（升/降）。源码：<code>web/src/features/experiments/components/</code> 的 <code>ExperimentBaselineControls</code>、<code>ExperimentComparisonSelector</code>、<code>ExperimentChartsGrid</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>选 baseline</h4><p><code>ExperimentBaselineControls</code> 让你钦定一场 run 当参照系——通常是「线上现役」那套配置，于是所有候选都和「现状」比，回答「换了会更好吗」。</p></div>
+  <div class="col"><h4>挑要比的 run</h4><p><code>ExperimentComparisonSelector</code> 选若干场 run 并排。同一套题、不同配置，公平可比（因为第 34 课的版本化保证了考的是同一批题）。</p></div>
+  <div class="col"><h4>看多维增量</h4><p><code>ExperimentChartsGrid</code> 把每个 score 维度画成对比图。好坏往往是<strong>多维权衡</strong>（更准但更慢更贵），增量视图让取舍一目了然。</p></div>
+</div>
+""")
+
+# (L36 sec3 loop below)
+
+_ZH36.append(r"""
+<h2>闭环：一套科学的「改前先验证」方法</h2>
+<p>把 Part 6 三课串起来，你得到的是一台<strong>持续改进的飞轮</strong>。它让「优化 LLM 应用」这件本来很玄的事，落地成一个可重复、有数据支撑的工程流程：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（第34课），让考卷紧贴真实分布。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>跑实验</h4><p>对一个候选 prompt/模型配置，服务端在整套题上跑一场 run（本课），产出一批 trace。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>自动评分</h4><p>第30、35课自动给每条 trace 评分、按 run 聚合出这场的成绩单。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>对比决策</h4><p>和 baseline（现役配置）并排看增量：真的更好就上线，退步就否决——不靠感觉。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>回到第1步</h4><p>上线后又会遇到新的难 case，再提拔成题……飞轮转起来，应用越改越稳。</p></div></div>
+</div>
+
+<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量打分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
+""")
+
+_ZH36.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 Langfuse 要在服务端帮你跑实验，而不是只让你在本地跑完把结果传上来？</strong> 两种都支持（数据集上的 <code>remoteExperimentUrl</code> 就是给本地/外部跑的），但服务端跑有独特价值：<strong>零代码、强一致</strong>。产品经理或非工程师也能在 UI 上选个数据集、改个 prompt、点「跑」，不必写一行脚本；而且服务端跑能<strong>统一</strong>变量替换、版本钉定、评分调度、环境标记——把「实验该怎么做对」固化进平台，而不是指望每个人的本地脚本都写得严谨。代价是平台要承担 LLM 调用的成本与并发，所以它走 <code>ExperimentCreate</code> 队列、复用第 30 课那套调度韧性。<br><br>
+  <strong>为什么对比要用「baseline + 增量」，而不是直接看绝对分？</strong> 因为<strong>绝对分几乎没有意义，相对变化才有</strong>。「有用性 0.78」是好是坏？没有参照根本说不清。但「比现役配置高了 0.07」就是一个能据以决策的事实。更重要的是，质量往往是<strong>多维权衡</strong>：B 配置更准但更慢更贵。把每个维度的增量并排摊开，决策者才能做出「这点准度提升值不值这点延迟代价」的<strong>清醒取舍</strong>——而不是被单一指标牵着走。这也呼应第 33 课监控「只在变化时告警」：<strong>有信息量的永远是「变化」，不是「绝对值」。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>实验 = prompt × 数据集 × 模型，服务端自动跑</strong>：<code>createExperimentJobClickhouse</code> 逐题用 <code>replaceVariablesInPrompt</code> 填变量、调选定 provider/model、产 trace + run item，全程零代码。</li>
+    <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（第37课）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
+    <li><strong>评分自动接上</strong>：复用第 30 课 <code>dataset-run-item-upsert</code> 触发、第 35 课按 run 聚合，跑完即有成绩单，无需手动。</li>
+    <li><strong>对比靠 baseline + 增量</strong>：<code>ExperimentBaselineControls</code> 选基准、<code>ExperimentComparisonSelector</code> 挑 run、<code>ExperimentChartsGrid</code> 画多维增量——绝对分难判，相对变化才能决策。</li>
+    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能打分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
+  </ul>
+</div>
+""")
+
+_EN36.append(r"""
+<p class="lead">
+The last two lessons built the "exam paper" (the dataset) and the "exam mechanism" (the run). This lesson is about using them to <strong>make decisions</strong>—that's an <strong>experiment</strong>. One experiment takes a specific <strong>prompt + model</strong> config, runs it automatically over the whole dataset (producing one run), then places <strong>multiple runs side by side</strong> to pick the best. It turns "is changing this prompt or model actually better" from <strong>gut feeling</strong> into <strong>data</strong>—the closest thing to the "scientific method" in LLM engineering.
+Three focuses: how an experiment <strong>runs server-side automatically</strong> (fill the question into the prompt's variables, call the LLM, produce a trace); how scoring <strong>auto-connects</strong> (reusing Lessons 30 and 35); and how comparison uses <strong>baseline + deltas</strong> so you see gains/losses at a glance. This lesson also sets up Part 7's prompt management—the prompt being tested in an experiment is the next lesson's protagonist.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  An experiment is like a rigorous <strong>A/B controlled trial</strong>. The same questions (dataset): group A uses "gpt-4o + prompt v1", group B uses "claude + prompt v2", each <strong>sits the exam properly</strong>.
+  You needn't proctor yourself: the system automatically <strong>sets the questions</strong> (fills each question's input into the prompt's variable blanks), automatically <strong>grades</strong> (Lessons 29–32's scoring), automatically <strong>computes the grade</strong> (Lesson 35's aggregate-by-run). Finally it <strong>lays the report cards side by side</strong>, and lets you anoint one group as the <strong>baseline</strong>, so the rest show "how much above/below baseline".
+  So the question that vexes everyone—"is my prompt change actually better or worse?"—no longer rests on feeling, but on <strong>a side-by-side report card with deltas</strong>.
+</div>
+""")
+
+_EN36.append(r"""
+<h2>Run server-side automatically: fill the question into prompt variables, call the LLM per item</h2>
+<p>Langfuse experiments can run <strong>entirely server-side</strong>: you just pick a dataset, a prompt with variables, and a model—the worker does the rest. <code>createExperimentJobClickhouse</code> (driven by the <code>ExperimentCreate</code> queue) does three steps per question: fill the question's <code>input</code> into the prompt's variable blanks, call the LLM with your chosen provider/model, and write the result as a trace + run item.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="Server-side prompt experiment: for each dataset question, replaceVariablesInPrompt fills item.input into the prompt's variable placeholders, calls the LLM with the chosen provider/model, producing a trace (environment tagged PromptExperiments, linked to the prompt, pinning the item version) and a run item">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">per question: fill variables → call LLM → produce trace + run item</text>
+  <rect x="30" y="44" width="150" height="56" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">prompt (with variables)</text><text x="105" y="80" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">"answer {{question}}"</text><text x="105" y="93" text-anchor="middle" font-size="6.4" fill="var(--muted)">Lesson 37's prompt</text>
+  <rect x="30" y="116" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="105" y="135" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">dataset item.input</text><text x="105" y="151" text-anchor="middle" font-size="6.6" fill="var(--muted)">{question: "refund policy?"}</text>
+  <rect x="225" y="80" width="150" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="300" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">replaceVariablesInPrompt</text><text x="300" y="116" text-anchor="middle" font-size="6.6" fill="var(--muted)">fill blanks → full messages</text><text x="300" y="128" text-anchor="middle" font-size="6.4" fill="var(--faint)">"answer refund policy?"</text>
+  <rect x="420" y="80" width="130" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="485" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">call LLM</text><text x="485" y="116" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">provider/model</text><text x="485" y="128" text-anchor="middle" font-size="6.4" fill="var(--muted)">the config under test</text>
+  <rect x="588" y="58" width="112" height="44" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="644" y="76" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">trace</text><text x="644" y="91" text-anchor="middle" font-size="5.8" fill="var(--muted)">env=PromptExperiments</text>
+  <rect x="588" y="112" width="112" height="44" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="644" y="130" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">run item</text><text x="644" y="145" text-anchor="middle" font-size="6.0" fill="var(--muted)">pins item version</text>
+  <line x1="180" y1="72" x2="223" y2="100" stroke="var(--faint)" stroke-width="1.2"/><line x1="180" y1="141" x2="223" y2="116" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="375" y1="108" x2="418" y2="108" stroke="var(--teal)" stroke-width="1.5"/><polygon points="418,108 409,104 409,112" fill="var(--teal)"/>
+  <line x1="550" y1="100" x2="586" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="586,86 577,85 580,93" fill="var(--accent)"/><line x1="550" y1="116" x2="586" y2="128" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">the trace also links the prompt under test (L37); metadata pins the item's validFrom (L34/35 version replay)</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
+</svg>
+<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processItem</code> calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem core</span></div>
+  <pre class="code"><span class="cm">// 1) fill this question's input into the prompt's variable blanks → full messages</span>
+messages = replaceVariablesInPrompt(
+  config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
+
+<span class="cm">// 2) build the trace: tag experiment env, link the prompt under test, pin item version</span>
+traceSinkParams = {
+  environment: <span class="st">LangfuseInternalTraceEnvironment.PromptExperiments</span>,
+  traceId, prompt: config.prompt,
+  experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
+
+<span class="cm">// 3) call the LLM with the provider/model under test (result becomes this trace + run item)</span>
+modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>dimension</th><th>server-side experiment (this lesson)</th><th>remote / SDK experiment</th></tr></thead>
+  <tbody>
+    <tr><td>who runs the app</td><td>the Langfuse worker (your chosen prompt/model)</td><td>your own code / external system</td></tr>
+    <tr><td>how triggered</td><td>click "run" in the UI → <code>ExperimentCreate</code> queue</td><td>the dataset's <code>remoteExperimentUrl</code> calls back your service</td></tr>
+    <tr><td>suits</td><td>pure prompt/model comparison, zero-code</td><td>complex custom pipelines (multi-step agents, retrieval, etc.)</td></tr>
+    <tr><td>in common</td><td colspan="2">both produce run + run item + trace, both use the same auto-scoring and comparison—downstream is identical</td></tr>
+  </tbody>
+</table>
+<p>Both modes converge: whoever runs the app, the result lands as Lesson 35's run item + trace, enjoying the same auto-scoring (Lesson 30) and comparison views. <strong>"How the answer sheet is produced" can differ; "how it's judged and compared" is fully unified</strong>—another "one downstream, many upstreams" decoupling.</p>
+""")
+
+# (en sec2/3/spark below)
+
+_EN36.append(r"""
+<h2>Comparison: anoint one as baseline, view the rest as deltas</h2>
+<p>Once the experiment runs, each trace is <strong>auto-scored and aggregated by run</strong> via Lessons 30 and 35, so every run has a "report card" (the average of each score name). The essence of comparison isn't absolute scores but <strong>side-by-side + deltas</strong>: you anoint one run as the <strong>baseline</strong>, and the rest show "how much above/below baseline". Langfuse's experiment comparison page (<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>) does exactly this.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Experiment comparison: multiple runs side by side, one chosen as baseline, the rest showing each score's delta relative to baseline (green up, red down), making the goodness of a prompt/model change judgeable at a glance">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">side-by-side report cards + deltas vs baseline</text>
+  <rect x="40" y="44" width="180" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="130" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">run A (baseline)</text><text x="130" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v1</text><line x1="56" y1="92" x2="204" y2="92" stroke="var(--faint)"/><text x="130" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.78</text><text x="130" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">toxicity-pass 0.96</text><text x="130" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 1.2s</text><text x="130" y="178" text-anchor="middle" font-size="6.6" fill="var(--blue)">★ baseline (others compared to it)</text>
+  <rect x="270" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">run B</text><text x="360" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">claude + prompt v2</text><line x1="286" y1="92" x2="434" y2="92" stroke="var(--faint)"/><text x="360" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.85 <tspan fill="var(--teal)">▲+0.07</tspan></text><text x="360" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">tox-pass 0.97 <tspan fill="var(--teal)">▲+0.01</tspan></text><text x="360" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 2.1s <tspan fill="var(--accent-ink)">▼+0.9</tspan></text><text x="360" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">more accurate but slower</text>
+  <rect x="500" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="590" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--muted)">run C</text><text x="590" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v3</text><line x1="516" y1="92" x2="664" y2="92" stroke="var(--faint)"/><text x="590" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.74 <tspan fill="var(--accent-ink)">▼−0.04</tspan></text><text x="590" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">tox-pass 0.96 —</text><text x="590" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 1.1s <tspan fill="var(--teal)">▲−0.1</tspan></text><text x="590" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">this prompt regressed</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">absolute scores are hard to judge; deltas are obvious: B traded latency for accuracy, C's prompt change is a regression—decisions grounded</text>
+</svg>
+<div class="figcap"><b>Comparison via "baseline + deltas"</b>: anoint one run as baseline, each score shows its relative delta (up/down). Source: <code>web/src/features/experiments/components/</code>'s <code>ExperimentBaselineControls</code>, <code>ExperimentComparisonSelector</code>, <code>ExperimentChartsGrid</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>pick a baseline</h4><p><code>ExperimentBaselineControls</code> lets you anoint one run as the reference—usually the "production-active" config, so all candidates compare to "the status quo", answering "would changing be better".</p></div>
+  <div class="col"><h4>choose runs to compare</h4><p><code>ExperimentComparisonSelector</code> picks several runs side by side. Same questions, different configs, fairly comparable (Lesson 34's versioning guarantees they tested the same questions).</p></div>
+  <div class="col"><h4>view multi-dimensional deltas</h4><p><code>ExperimentChartsGrid</code> charts each score dimension as a comparison. Goodness is often a <strong>multi-dimensional trade-off</strong> (more accurate but slower, costlier); the delta view makes the trade-off obvious.</p></div>
+</div>
+""")
+
+_EN36.append(r"""
+<h2>The loop: a scientific "verify before you change" method</h2>
+<p>String Part 6's three lessons together and you get a <strong>continuous-improvement flywheel</strong>. It turns "optimizing an LLM app"—usually mystical—into a repeatable, data-backed engineering process:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>build a dataset</h4><p>Promote real botched production cases into test questions (L34), keeping the exam close to the real distribution.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>run an experiment</h4><p>For a candidate prompt/model config, the server runs a run over the whole set (this lesson), producing a batch of traces.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>auto-score</h4><p>Lessons 30, 35 automatically score each trace and aggregate this run's report card.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>compare & decide</h4><p>Side by side with the baseline (active config), view deltas: truly better → ship, regressed → reject—not by feeling.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>back to step 1</h4><p>After shipping you hit new hard cases, promote them into questions… the flywheel turns, the app grows steadier.</p></div></div>
+</div>
+
+<p>That's the whole value of Part 6: it upgrades Part 5's "can score quality" into "<strong>can make decisions with scores</strong>". And the core variable the experiment keeps testing—<strong>the prompt</strong>—is the protagonist of the next part (Part 7): how it's versioned, served at speed, and tuned interactively in the Playground. Evaluation tells you "how good now", experiments tell you "would changing be better", and prompt management gives you the confidence to <strong>change safely</strong>.</p>
+""")
+
+_EN36.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does Langfuse run experiments server-side for you rather than just letting you run locally and upload results?</strong> Both are supported (the dataset's <code>remoteExperimentUrl</code> is for local/external runs), but server-side has unique value: <strong>zero-code, strongly consistent</strong>. A product manager or non-engineer can pick a dataset, tweak a prompt, and click "run" in the UI—no script needed; and server-side runs <strong>unify</strong> variable substitution, version pinning, eval scheduling, and environment tagging—baking "how to do an experiment right" into the platform, rather than hoping every person's local script is rigorous. The cost is the platform bearing LLM-call cost and concurrency, so it goes through the <code>ExperimentCreate</code> queue, reusing Lesson 30's scheduling resilience.<br><br>
+  <strong>Why compare with "baseline + deltas" rather than absolute scores?</strong> Because <strong>absolute scores mean almost nothing; relative change is what matters</strong>. Is "helpfulness 0.78" good or bad? Without a reference you can't say. But "0.07 above the active config" is a fact you can act on. More importantly, quality is often a <strong>multi-dimensional trade-off</strong>: config B is more accurate but slower and costlier. Laying each dimension's delta side by side lets a decision-maker make the <strong>clear-eyed trade-off</strong> "is this much accuracy gain worth this much latency cost"—rather than being led by a single metric. This echoes Lesson 33's monitor "alert only on change": <strong>what carries information is always "the change", not "the absolute value".</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>An experiment = prompt × dataset × model, run server-side</strong>: <code>createExperimentJobClickhouse</code> per question uses <code>replaceVariablesInPrompt</code> to fill variables, calls the chosen provider/model, produces a trace + run item—all zero-code.</li>
+    <li><strong>Experiment traces carry rich context</strong>: environment tagged <code>PromptExperiments</code>, linking the <code>prompt</code> under test (L37), metadata pinning <code>itemVersion=validFrom</code> (L34/35 version replay)—reproducible and traceable.</li>
+    <li><strong>Scoring auto-connects</strong>: reusing Lesson 30's <code>dataset-run-item-upsert</code> trigger and Lesson 35's aggregate-by-run, a report card appears once the run finishes, no manual work.</li>
+    <li><strong>Comparison via baseline + deltas</strong>: <code>ExperimentBaselineControls</code> picks the baseline, <code>ExperimentComparisonSelector</code> chooses runs, <code>ExperimentChartsGrid</code> charts multi-dimensional deltas—absolute scores are hard to judge, relative change drives decisions.</li>
+    <li><strong>Part 6 closes the loop</strong>: dataset → experiment → score → compare → decide → (new hard cases flow back to the dataset). It upgrades "can score" into "can decide with scores"; the next part's prompt gives you the confidence to "change safely".</li>
+  </ul>
+</div>
+""")
+
+LESSON_36 = {"zh": "\n".join(_ZH36), "en": "\n".join(_EN36)}

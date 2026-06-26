@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 35 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 36 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -372,6 +372,7 @@ details[open] > summary { list-style: none; }
   <li>Monitors & alerting</li>
   <li>Datasets & items</li>
   <li>Dataset runs & run items</li>
+  <li>Experiments & comparison</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -7525,6 +7526,172 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>The traces a dataset run produces are 'indistinguishable' from production traces—same observation tree, same scores, same ingestion path. What are the benefits of this 'experiments reuse production infrastructure' design? Imagine if experiment data went through a completely separate storage and query stack—what duplication and inconsistency risks would that bring?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Experiments & comparison</h1>
+
+<p class="lead">
+The last two lessons built the "exam paper" (the dataset) and the "exam mechanism" (the run). This lesson is about using them to <strong>make decisions</strong>—that's an <strong>experiment</strong>. One experiment takes a specific <strong>prompt + model</strong> config, runs it automatically over the whole dataset (producing one run), then places <strong>multiple runs side by side</strong> to pick the best. It turns "is changing this prompt or model actually better" from <strong>gut feeling</strong> into <strong>data</strong>—the closest thing to the "scientific method" in LLM engineering.
+Three focuses: how an experiment <strong>runs server-side automatically</strong> (fill the question into the prompt's variables, call the LLM, produce a trace); how scoring <strong>auto-connects</strong> (reusing Lessons 30 and 35); and how comparison uses <strong>baseline + deltas</strong> so you see gains/losses at a glance. This lesson also sets up Part 7's prompt management—the prompt being tested in an experiment is the next lesson's protagonist.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  An experiment is like a rigorous <strong>A/B controlled trial</strong>. The same questions (dataset): group A uses "gpt-4o + prompt v1", group B uses "claude + prompt v2", each <strong>sits the exam properly</strong>.
+  You needn't proctor yourself: the system automatically <strong>sets the questions</strong> (fills each question's input into the prompt's variable blanks), automatically <strong>grades</strong> (Lessons 29–32's scoring), automatically <strong>computes the grade</strong> (Lesson 35's aggregate-by-run). Finally it <strong>lays the report cards side by side</strong>, and lets you anoint one group as the <strong>baseline</strong>, so the rest show "how much above/below baseline".
+  So the question that vexes everyone—"is my prompt change actually better or worse?"—no longer rests on feeling, but on <strong>a side-by-side report card with deltas</strong>.
+</div>
+
+
+<h2>Run server-side automatically: fill the question into prompt variables, call the LLM per item</h2>
+<p>Langfuse experiments can run <strong>entirely server-side</strong>: you just pick a dataset, a prompt with variables, and a model—the worker does the rest. <code>createExperimentJobClickhouse</code> (driven by the <code>ExperimentCreate</code> queue) does three steps per question: fill the question's <code>input</code> into the prompt's variable blanks, call the LLM with your chosen provider/model, and write the result as a trace + run item.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="Server-side prompt experiment: for each dataset question, replaceVariablesInPrompt fills item.input into the prompt's variable placeholders, calls the LLM with the chosen provider/model, producing a trace (environment tagged PromptExperiments, linked to the prompt, pinning the item version) and a run item">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">per question: fill variables → call LLM → produce trace + run item</text>
+  <rect x="30" y="44" width="150" height="56" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">prompt (with variables)</text><text x="105" y="80" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">"answer {{question}}"</text><text x="105" y="93" text-anchor="middle" font-size="6.4" fill="var(--muted)">Lesson 37's prompt</text>
+  <rect x="30" y="116" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="105" y="135" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">dataset item.input</text><text x="105" y="151" text-anchor="middle" font-size="6.6" fill="var(--muted)">{question: "refund policy?"}</text>
+  <rect x="225" y="80" width="150" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="300" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">replaceVariablesInPrompt</text><text x="300" y="116" text-anchor="middle" font-size="6.6" fill="var(--muted)">fill blanks → full messages</text><text x="300" y="128" text-anchor="middle" font-size="6.4" fill="var(--faint)">"answer refund policy?"</text>
+  <rect x="420" y="80" width="130" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="485" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">call LLM</text><text x="485" y="116" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">provider/model</text><text x="485" y="128" text-anchor="middle" font-size="6.4" fill="var(--muted)">the config under test</text>
+  <rect x="588" y="58" width="112" height="44" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="644" y="76" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">trace</text><text x="644" y="91" text-anchor="middle" font-size="5.8" fill="var(--muted)">env=PromptExperiments</text>
+  <rect x="588" y="112" width="112" height="44" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="644" y="130" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">run item</text><text x="644" y="145" text-anchor="middle" font-size="6.0" fill="var(--muted)">pins item version</text>
+  <line x1="180" y1="72" x2="223" y2="100" stroke="var(--faint)" stroke-width="1.2"/><line x1="180" y1="141" x2="223" y2="116" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="375" y1="108" x2="418" y2="108" stroke="var(--teal)" stroke-width="1.5"/><polygon points="418,108 409,104 409,112" fill="var(--teal)"/>
+  <line x1="550" y1="100" x2="586" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="586,86 577,85 580,93" fill="var(--accent)"/><line x1="550" y1="116" x2="586" y2="128" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">the trace also links the prompt under test (L37); metadata pins the item's validFrom (L34/35 version replay)</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
+</svg>
+<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processItem</code> calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem core</span></div>
+  <pre class="code"><span class="cm">// 1) fill this question's input into the prompt's variable blanks → full messages</span>
+messages = replaceVariablesInPrompt(
+  config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
+
+<span class="cm">// 2) build the trace: tag experiment env, link the prompt under test, pin item version</span>
+traceSinkParams = {
+  environment: <span class="st">LangfuseInternalTraceEnvironment.PromptExperiments</span>,
+  traceId, prompt: config.prompt,
+  experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
+
+<span class="cm">// 3) call the LLM with the provider/model under test (result becomes this trace + run item)</span>
+modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>dimension</th><th>server-side experiment (this lesson)</th><th>remote / SDK experiment</th></tr></thead>
+  <tbody>
+    <tr><td>who runs the app</td><td>the Langfuse worker (your chosen prompt/model)</td><td>your own code / external system</td></tr>
+    <tr><td>how triggered</td><td>click "run" in the UI → <code>ExperimentCreate</code> queue</td><td>the dataset's <code>remoteExperimentUrl</code> calls back your service</td></tr>
+    <tr><td>suits</td><td>pure prompt/model comparison, zero-code</td><td>complex custom pipelines (multi-step agents, retrieval, etc.)</td></tr>
+    <tr><td>in common</td><td colspan="2">both produce run + run item + trace, both use the same auto-scoring and comparison—downstream is identical</td></tr>
+  </tbody>
+</table>
+<p>Both modes converge: whoever runs the app, the result lands as Lesson 35's run item + trace, enjoying the same auto-scoring (Lesson 30) and comparison views. <strong>"How the answer sheet is produced" can differ; "how it's judged and compared" is fully unified</strong>—another "one downstream, many upstreams" decoupling.</p>
+
+
+<h2>Comparison: anoint one as baseline, view the rest as deltas</h2>
+<p>Once the experiment runs, each trace is <strong>auto-scored and aggregated by run</strong> via Lessons 30 and 35, so every run has a "report card" (the average of each score name). The essence of comparison isn't absolute scores but <strong>side-by-side + deltas</strong>: you anoint one run as the <strong>baseline</strong>, and the rest show "how much above/below baseline". Langfuse's experiment comparison page (<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>) does exactly this.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Experiment comparison: multiple runs side by side, one chosen as baseline, the rest showing each score's delta relative to baseline (green up, red down), making the goodness of a prompt/model change judgeable at a glance">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">side-by-side report cards + deltas vs baseline</text>
+  <rect x="40" y="44" width="180" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="130" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">run A (baseline)</text><text x="130" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v1</text><line x1="56" y1="92" x2="204" y2="92" stroke="var(--faint)"/><text x="130" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.78</text><text x="130" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">toxicity-pass 0.96</text><text x="130" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 1.2s</text><text x="130" y="178" text-anchor="middle" font-size="6.6" fill="var(--blue)">★ baseline (others compared to it)</text>
+  <rect x="270" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">run B</text><text x="360" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">claude + prompt v2</text><line x1="286" y1="92" x2="434" y2="92" stroke="var(--faint)"/><text x="360" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.85 <tspan fill="var(--teal)">▲+0.07</tspan></text><text x="360" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">tox-pass 0.97 <tspan fill="var(--teal)">▲+0.01</tspan></text><text x="360" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 2.1s <tspan fill="var(--accent-ink)">▼+0.9</tspan></text><text x="360" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">more accurate but slower</text>
+  <rect x="500" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="590" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--muted)">run C</text><text x="590" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v3</text><line x1="516" y1="92" x2="664" y2="92" stroke="var(--faint)"/><text x="590" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">helpfulness 0.74 <tspan fill="var(--accent-ink)">▼−0.04</tspan></text><text x="590" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">tox-pass 0.96 —</text><text x="590" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">latency 1.1s <tspan fill="var(--teal)">▲−0.1</tspan></text><text x="590" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">this prompt regressed</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">absolute scores are hard to judge; deltas are obvious: B traded latency for accuracy, C's prompt change is a regression—decisions grounded</text>
+</svg>
+<div class="figcap"><b>Comparison via "baseline + deltas"</b>: anoint one run as baseline, each score shows its relative delta (up/down). Source: <code>web/src/features/experiments/components/</code>'s <code>ExperimentBaselineControls</code>, <code>ExperimentComparisonSelector</code>, <code>ExperimentChartsGrid</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>pick a baseline</h4><p><code>ExperimentBaselineControls</code> lets you anoint one run as the reference—usually the "production-active" config, so all candidates compare to "the status quo", answering "would changing be better".</p></div>
+  <div class="col"><h4>choose runs to compare</h4><p><code>ExperimentComparisonSelector</code> picks several runs side by side. Same questions, different configs, fairly comparable (Lesson 34's versioning guarantees they tested the same questions).</p></div>
+  <div class="col"><h4>view multi-dimensional deltas</h4><p><code>ExperimentChartsGrid</code> charts each score dimension as a comparison. Goodness is often a <strong>multi-dimensional trade-off</strong> (more accurate but slower, costlier); the delta view makes the trade-off obvious.</p></div>
+</div>
+
+
+<h2>The loop: a scientific "verify before you change" method</h2>
+<p>String Part 6's three lessons together and you get a <strong>continuous-improvement flywheel</strong>. It turns "optimizing an LLM app"—usually mystical—into a repeatable, data-backed engineering process:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>build a dataset</h4><p>Promote real botched production cases into test questions (L34), keeping the exam close to the real distribution.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>run an experiment</h4><p>For a candidate prompt/model config, the server runs a run over the whole set (this lesson), producing a batch of traces.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>auto-score</h4><p>Lessons 30, 35 automatically score each trace and aggregate this run's report card.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>compare & decide</h4><p>Side by side with the baseline (active config), view deltas: truly better → ship, regressed → reject—not by feeling.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>back to step 1</h4><p>After shipping you hit new hard cases, promote them into questions… the flywheel turns, the app grows steadier.</p></div></div>
+</div>
+
+<p>That's the whole value of Part 6: it upgrades Part 5's "can score quality" into "<strong>can make decisions with scores</strong>". And the core variable the experiment keeps testing—<strong>the prompt</strong>—is the protagonist of the next part (Part 7): how it's versioned, served at speed, and tuned interactively in the Playground. Evaluation tells you "how good now", experiments tell you "would changing be better", and prompt management gives you the confidence to <strong>change safely</strong>.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does Langfuse run experiments server-side for you rather than just letting you run locally and upload results?</strong> Both are supported (the dataset's <code>remoteExperimentUrl</code> is for local/external runs), but server-side has unique value: <strong>zero-code, strongly consistent</strong>. A product manager or non-engineer can pick a dataset, tweak a prompt, and click "run" in the UI—no script needed; and server-side runs <strong>unify</strong> variable substitution, version pinning, eval scheduling, and environment tagging—baking "how to do an experiment right" into the platform, rather than hoping every person's local script is rigorous. The cost is the platform bearing LLM-call cost and concurrency, so it goes through the <code>ExperimentCreate</code> queue, reusing Lesson 30's scheduling resilience.<br><br>
+  <strong>Why compare with "baseline + deltas" rather than absolute scores?</strong> Because <strong>absolute scores mean almost nothing; relative change is what matters</strong>. Is "helpfulness 0.78" good or bad? Without a reference you can't say. But "0.07 above the active config" is a fact you can act on. More importantly, quality is often a <strong>multi-dimensional trade-off</strong>: config B is more accurate but slower and costlier. Laying each dimension's delta side by side lets a decision-maker make the <strong>clear-eyed trade-off</strong> "is this much accuracy gain worth this much latency cost"—rather than being led by a single metric. This echoes Lesson 33's monitor "alert only on change": <strong>what carries information is always "the change", not "the absolute value".</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>An experiment = prompt × dataset × model, run server-side</strong>: <code>createExperimentJobClickhouse</code> per question uses <code>replaceVariablesInPrompt</code> to fill variables, calls the chosen provider/model, produces a trace + run item—all zero-code.</li>
+    <li><strong>Experiment traces carry rich context</strong>: environment tagged <code>PromptExperiments</code>, linking the <code>prompt</code> under test (L37), metadata pinning <code>itemVersion=validFrom</code> (L34/35 version replay)—reproducible and traceable.</li>
+    <li><strong>Scoring auto-connects</strong>: reusing Lesson 30's <code>dataset-run-item-upsert</code> trigger and Lesson 35's aggregate-by-run, a report card appears once the run finishes, no manual work.</li>
+    <li><strong>Comparison via baseline + deltas</strong>: <code>ExperimentBaselineControls</code> picks the baseline, <code>ExperimentComparisonSelector</code> chooses runs, <code>ExperimentChartsGrid</code> charts multi-dimensional deltas—absolute scores are hard to judge, relative change drives decisions.</li>
+    <li><strong>Part 6 closes the loop</strong>: dataset → experiment → score → compare → decide → (new hard cases flow back to the dataset). It upgrades "can score" into "can decide with scores"; the next part's prompt gives you the confidence to "change safely".</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What does Langfuse's server-side experiment (createExperimentJobClickhouse) do for each dataset question?</div>
+  <ol class="opts">
+    <li>scores the item directly without calling an LLM</li>
+    <li>runs the model in the frontend via JavaScript</li>
+    <li>replaceVariablesInPrompt fills this question's input into the prompt's variable blanks, calls the LLM once with the chosen provider/model, writing a trace (tagged PromptExperiments env, linking the prompt under test, pinning the item version) + run item</li>
+    <li>just copies the item to a new table</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processItem's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. The experiment comparison page shows results via 'baseline + deltas' rather than listing absolute scores. Why does this aid decisions?</div>
+  <ol class="opts">
+    <li>absolute scores mean almost nothing ('helpfulness 0.78' good or bad?), relative change does ('0.07 above active' is actionable); and quality is often a multi-dimensional trade-off, with side-by-side deltas making 'is the accuracy gain worth the latency cost' obvious</li>
+    <li>absolute scores leak privacy</li>
+    <li>a baseline encrypts results</li>
+    <li>deltas use less CPU</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'Helpfulness 0.78' can't be judged without a reference, but '0.07 above the active config' is an actionable fact. More importantly quality is often a multi-dimensional trade-off (B more accurate but slower/costlier); laying each dimension's delta side by side lets decision-makers trade off clearly rather than be led by one metric. This echoes Lesson 33's 'alert only on change'—information lives in change, not absolutes. ExperimentBaselineControls/ComparisonSelector/ChartsGrid implement this.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Stringing Part 6's three lessons together, the 'dataset→experiment→score→compare→decide' loop essentially upgrades Part 5's capability into what?</div>
+  <ol class="opts">
+    <li>into real-time monitoring</li>
+    <li>into a faster database</li>
+    <li>into auto-writing prompts</li>
+    <li>from 'can score quality' into 'can make decisions with scores': verify on a fixed test set before changing a prompt/model, judging by data not feeling—the closest thing to the scientific method in LLM engineering</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Part 5 lets you 'see and score'; Part 6 lets you 'decide on that basis'. The dataset is a fixed exam, an experiment is a controlled trial, comparison is a report card with deltas—so 'is this change good' goes from gut feeling to data. The loop self-reinforces: post-ship hard cases get promoted into questions, the flywheel steadies the app. The repeatedly-tested prompt is the next part's protagonist.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Experiments turn 'verify before changing a prompt' into a scientific method. But it rests on premises: your dataset represents real traffic, and your scoring reflects real quality. Imagine one premise fails (e.g. a narrow dataset, or an LLM judge with systematic bias)—how would the comparison's conclusions mislead you? How would you guard against this 'the evaluation system itself is unreliable' risk? (Hint: revisit Lesson 32's human annotation as ground truth.)</li>
   </ul>
 </div>
 </div>

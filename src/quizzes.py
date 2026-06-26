@@ -2495,6 +2495,76 @@ QUIZZES = {
             },
         ],
     },
+    "36-experiments-and-comparison.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的服务端实验（createExperimentJobClickhouse）对数据集的每道题做什么？",
+                    "en": "What does Langfuse's server-side experiment (createExperimentJobClickhouse) do for each dataset question?",
+                },
+                "opts": [
+                    {
+                        "zh": "replaceVariablesInPrompt 把这道题的 input 填进 prompt 的变量空格，用选定 provider/model 调一次 LLM，写成一条 trace（标 PromptExperiments 环境、链接被考 prompt、钉住 item 版本）+ run item",
+                        "en": "replaceVariablesInPrompt fills this question's input into the prompt's variable blanks, calls the LLM once with the chosen provider/model, writing a trace (tagged PromptExperiments env, linking the prompt under test, pinning the item version) + run item",
+                    },
+                    {"zh": "只把数据项复制到一张新表", "en": "just copies the item to a new table"},
+                    {"zh": "在前端用 JavaScript 跑模型", "en": "runs the model in the frontend via JavaScript"},
+                    {"zh": "直接给数据项打分，不调 LLM", "en": "scores the item directly without calling an LLM"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "processItem 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。",
+                    "en": "processItem's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "实验对比页用「baseline + 增量」展示结果，而不是直接列绝对分。为什么这种设计更利于决策？",
+                    "en": "The experiment comparison page shows results via 'baseline + deltas' rather than listing absolute scores. Why does this aid decisions?",
+                },
+                "opts": [
+                    {
+                        "zh": "绝对分几乎没意义（「有用性 0.78」是好是坏说不清），相对变化才有（「比现役高 0.07」可据以决策）；且质量常是多维权衡，并排增量让「准度提升值不值延迟代价」这种取舍一目了然",
+                        "en": "absolute scores mean almost nothing ('helpfulness 0.78' good or bad?), relative change does ('0.07 above active' is actionable); and quality is often a multi-dimensional trade-off, with side-by-side deltas making 'is the accuracy gain worth the latency cost' obvious",
+                    },
+                    {"zh": "增量计算更省 CPU", "en": "deltas use less CPU"},
+                    {"zh": "绝对分会泄露隐私", "en": "absolute scores leak privacy"},
+                    {"zh": "baseline 能加密结果", "en": "a baseline encrypts results"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "「有用性 0.78」没有参照根本判不了好坏，但「比现役配置高 0.07」是能决策的事实。更重要的是质量常是多维权衡（B 更准但更慢更贵），把每维增量并排，决策者才能清醒取舍而非被单一指标牵着走。这呼应第33课监控「只在变化时告警」——有信息量的永远是变化，不是绝对值。ExperimentBaselineControls/ComparisonSelector/ChartsGrid 实现这套对比。",
+                    "en": "'Helpfulness 0.78' can't be judged without a reference, but '0.07 above the active config' is an actionable fact. More importantly quality is often a multi-dimensional trade-off (B more accurate but slower/costlier); laying each dimension's delta side by side lets decision-makers trade off clearly rather than be led by one metric. This echoes Lesson 33's 'alert only on change'—information lives in change, not absolutes. ExperimentBaselineControls/ComparisonSelector/ChartsGrid implement this.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "把 Part 6 三课串起来，Langfuse 提供的「数据集→实验→评分→对比→决策」回路，本质上把第 5 部分的能力升级成了什么？",
+                    "en": "Stringing Part 6's three lessons together, the 'dataset→experiment→score→compare→decide' loop essentially upgrades Part 5's capability into what?",
+                },
+                "opts": [
+                    {
+                        "zh": "从「能给质量打分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环",
+                        "en": "from 'can score quality' into 'can make decisions with scores': verify on a fixed test set before changing a prompt/model, judging by data not feeling—the closest thing to the scientific method in LLM engineering",
+                    },
+                    {"zh": "升级成自动写 prompt", "en": "into auto-writing prompts"},
+                    {"zh": "升级成实时监控", "en": "into real-time monitoring"},
+                    {"zh": "升级成更快的数据库", "en": "into a faster database"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "第5部分让你「能看见、能打分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。",
+                    "en": "Part 5 lets you 'see and score'; Part 6 lets you 'decide on that basis'. The dataset is a fixed exam, an experiment is a controlled trial, comparison is a report card with deltas—so 'is this change good' goes from gut feeling to data. The loop self-reinforces: post-ship hard cases get promoted into questions, the flywheel steadies the app. The repeatedly-tested prompt is the next part's protagonist.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "实验把「改 prompt 前先验证」变成了科学方法。但它依赖一个前提：你的数据集能代表真实流量、你的评分能反映真实质量。设想这两个前提其中之一不成立（比如数据集偏窄、或 LLM 裁判有系统性偏差），实验对比的结论会怎样误导你？你会怎么防范这种「评估体系本身不可靠」的风险？（提示：回顾第32课人工标注当 ground truth。）",
+                "en": "Experiments turn 'verify before changing a prompt' into a scientific method. But it rests on premises: your dataset represents real traffic, and your scoring reflects real quality. Imagine one premise fails (e.g. a narrow dataset, or an LLM judge with systematic bias)—how would the comparison's conclusions mislead you? How would you guard against this 'the evaluation system itself is unreliable' risk? (Hint: revisit Lesson 32's human annotation as ground truth.)",
+            },
+        ],
+    },
 }
 
 

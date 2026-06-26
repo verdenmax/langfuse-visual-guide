@@ -119,6 +119,8 @@ PAGES = [
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
     ("35-dataset-runs.html", "数据集运行与运行项", "Dataset runs & run items",
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
+    ("36-experiments-and-comparison.html", "实验与对比", "Experiments & comparison",
+     "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
 ]
 
 
@@ -672,6 +674,8 @@ SUBTITLES = {
                                    "a dataset = a set of test cases (item: input+expectedOutput+metadata); questions promotable from real traces (sourceTraceId); items versioned by key (id,projectId,validFrom); editing = close old (stamp validTo) + insert new (SCD Type 2); a run pins validFrom for reproducible experiments"),
     "35-dataset-runs.html": ("run=一场考试(某配置跑整套题) · run item 把 runId+itemId→traceId 三元钉一起 · run 的 trace 就是普通 trace 复用前5部分 · 镜像 CH dataset_run_items_rmt 反范式快照题面(ReplacingMergeTree) · dataset-run-item-upsert 自动触发评分 · 按 run 聚合 agg_scores_avg",
                              "a run = an exam sitting (a config runs the whole set); a run item pins runId+itemId→traceId three-way; a run's trace is an ordinary trace reusing the first five parts; mirrored to CH dataset_run_items_rmt with a denormalized question snapshot (ReplacingMergeTree); dataset-run-item-upsert auto-triggers scoring; aggregate by run via agg_scores_avg"),
+    "36-experiments-and-comparison.html": ("实验=prompt×数据集×模型服务端自动跑(createExperimentJobClickhouse 逐题 replaceVariablesInPrompt→调LLM→产trace) · trace 标 PromptExperiments+链接prompt+钉item版本 · 评分自动接第30/35课 · 对比靠 baseline+增量(绝对分难判) · Part6 闭环把能打分升级为能决策",
+                                            "experiment = prompt × dataset × model run server-side (createExperimentJobClickhouse per question replaceVariablesInPrompt→call LLM→produce trace); trace tagged PromptExperiments + links prompt + pins item version; scoring auto-connects via L30/35; comparison via baseline + deltas (absolute scores hard to judge); Part 6 closes the loop upgrading scoring into deciding"),
 }
 
 

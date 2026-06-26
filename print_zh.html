@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 35 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 36 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -372,6 +372,7 @@ details[open] > summary { list-style: none; }
   <li>监控器与告警</li>
   <li>数据集与数据项</li>
   <li>数据集运行与运行项</li>
+  <li>实验与对比</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -7095,6 +7096,172 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>一次 dataset run 产生的 trace 和生产 trace「毫无二致」——同样的观测树、同样能挂 score、同样走摄取链路。这种「实验复用生产基础设施」的设计有什么好处？设想如果实验数据走一套完全独立的存储与查询栈，会带来哪些重复建设和不一致风险？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>实验与对比</h1>
+
+<p class="lead">
+前两课造好了「考卷」（数据集）和「考试机制」（run）。这一课讲怎么用它们<strong>做决策</strong>——这就是<strong>实验（experiment）</strong>。一次实验，就是拿一个具体的 <strong>prompt + 模型</strong>配置，在整个数据集上自动跑一遍（产出一次 run），再把<strong>多次 run 并排对比</strong>，挑出最优的那套。它把「改 prompt、换模型到底好不好」从<strong>拍脑袋</strong>变成<strong>有数据</strong>——这是 LLM 工程里最接近「科学方法」的一环。
+重点有三：实验是怎么<strong>服务端自动跑</strong>的（把题目填进 prompt 变量、调 LLM、产 trace）；评分怎么<strong>自动接上</strong>（复用第 30、35 课）；以及对比怎么用 <strong>baseline + 增量</strong>让你一眼看出涨跌。这一课也为 Part 7 的 prompt 管理埋下伏笔——实验里被考的那个 prompt，正是下一课的主角。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  实验像一场严谨的 <strong>A/B 对照试验</strong>。同一套题（数据集），A 组用「gpt-4o + prompt v1」、B 组用「claude + prompt v2」，各自<strong>认真考一场</strong>。
+  你不用亲自监考：系统自动<strong>替你出题</strong>（把每道题的输入填进 prompt 的变量空格）、自动<strong>阅卷</strong>（第 29–32 课的评分）、自动<strong>算总评</strong>（第 35 课按 run 聚合）。最后把两组成绩单<strong>并排摊开</strong>，还允许你钦定一组当<strong>基准（baseline）</strong>，其余组就显示「比基准高了多少 / 低了多少」。
+  于是那个让无数人纠结的问题——「我这个 prompt 改动，到底是变好了还是变坏了？」——不再靠感觉，而是<strong>一张并排的、带增量的成绩单</strong>说了算。
+</div>
+
+
+<h2>服务端自动跑：把题填进 prompt 变量，逐题调 LLM</h2>
+<p>Langfuse 的实验可以<strong>完全在服务端跑</strong>：你只需选一个数据集、一个带变量的 prompt、一个模型，剩下的交给 worker。<code>createExperimentJobClickhouse</code>（由 <code>ExperimentCreate</code> 队列驱动）会逐道题做三步：把这道题的 <code>input</code> 填进 prompt 的变量空格、用你选的 provider/model 调一次 LLM、把结果写成一条 trace + run item。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="服务端 prompt 实验：对数据集每道题，replaceVariablesInPrompt 把 item.input 填进 prompt 的变量占位符，用选定 provider/model 调 LLM，产出一条 trace（环境标 PromptExperiments、链接 prompt、钉住 item 版本）和一个 run item">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">逐题：填变量 → 调 LLM → 产 trace + run item</text>
+  <rect x="30" y="44" width="150" height="56" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">prompt（带变量）</text><text x="105" y="80" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">"回答 {{question}}"</text><text x="105" y="93" text-anchor="middle" font-size="6.4" fill="var(--muted)">第37课的 prompt</text>
+  <rect x="30" y="116" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="105" y="135" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">dataset item.input</text><text x="105" y="151" text-anchor="middle" font-size="6.6" fill="var(--muted)">{question: "退款政策?"}</text>
+  <rect x="225" y="80" width="150" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="300" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">replaceVariablesInPrompt</text><text x="300" y="116" text-anchor="middle" font-size="6.6" fill="var(--muted)">填空 → 完整 messages</text><text x="300" y="128" text-anchor="middle" font-size="6.4" fill="var(--faint)">"回答 退款政策?"</text>
+  <rect x="420" y="80" width="130" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="485" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">调 LLM</text><text x="485" y="116" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">provider/model</text><text x="485" y="128" text-anchor="middle" font-size="6.4" fill="var(--muted)">被考的配置</text>
+  <rect x="588" y="58" width="112" height="44" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="644" y="76" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">trace</text><text x="644" y="91" text-anchor="middle" font-size="6.0" fill="var(--muted)">env=PromptExperiments</text>
+  <rect x="588" y="112" width="112" height="44" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="644" y="130" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">run item</text><text x="644" y="145" text-anchor="middle" font-size="6.0" fill="var(--muted)">钉住 item 版本</text>
+  <line x1="180" y1="72" x2="223" y2="100" stroke="var(--faint)" stroke-width="1.2"/><line x1="180" y1="141" x2="223" y2="116" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="375" y1="108" x2="418" y2="108" stroke="var(--teal)" stroke-width="1.5"/><polygon points="418,108 409,104 409,112" fill="var(--teal)"/>
+  <line x1="550" y1="100" x2="586" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="586,86 577,85 580,93" fill="var(--accent)"/><line x1="550" y1="116" x2="586" y2="128" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">trace 还链接了被考的 prompt（第37课）、metadata 钉住 item 的 validFrom（第34/35课的版本回放）</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">环境标成 PromptExperiments —— 这正是第30课「langfuse- 前缀防无限循环」要识别的内部环境之一</text>
+</svg>
+<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processItem</code> 调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem 核心</span></div>
+  <pre class="code"><span class="cm">// 1) 把这道题的 input 填进 prompt 的变量空格 → 完整 messages</span>
+messages = replaceVariablesInPrompt(
+  config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
+
+<span class="cm">// 2) 组 trace：标实验环境、链接被考 prompt、钉住 item 版本</span>
+traceSinkParams = {
+  environment: <span class="st">LangfuseInternalTraceEnvironment.PromptExperiments</span>,
+  traceId, prompt: config.prompt,
+  experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
+
+<span class="cm">// 3) 用被考的 provider/model 调 LLM（结果写成这条 trace + run item）</span>
+modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>维度</th><th>服务端实验（本课主线）</th><th>远程 / SDK 实验</th></tr></thead>
+  <tbody>
+    <tr><td>谁跑应用</td><td>Langfuse worker（用你选的 prompt/模型）</td><td>你自己的代码 / 外部系统</td></tr>
+    <tr><td>怎么触发</td><td>UI 点「跑」→ <code>ExperimentCreate</code> 队列</td><td>数据集的 <code>remoteExperimentUrl</code> 回调你的服务</td></tr>
+    <tr><td>适合</td><td>纯 prompt/模型对比，零代码</td><td>复杂自定义链路（多步 agent、检索等）</td></tr>
+    <tr><td>共同点</td><td colspan="2">都产出 run + run item + trace，都走同一套自动评分与对比——下游完全一致</td></tr>
+  </tbody>
+</table>
+<p>两种模式殊途同归：无论谁来跑应用，最终都落成第 35 课的 run item + trace，享受同一套自动评分（第 30 课）与对比视图。<strong>「怎么产生答卷」可以不同，「怎么评判与对比」完全统一</strong>——又一次「一个下游，多个上游」的解耦。</p>
+
+
+<h2>对比：选一组当基准，其余看增量</h2>
+<p>实验跑完，每条 trace 经第 30、35 课<strong>自动评分并按 run 聚合</strong>，于是每场 run 都有了一张「成绩单」（各 score 名的平均分）。对比的精髓不是看绝对分，而是<strong>并排 + 增量</strong>：你钦定一场 run 当 <strong>baseline（基准）</strong>，其余各场就显示「比基准高/低多少」。Langfuse 的实验对比页（<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>）正是干这个的。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="实验对比：多场 run 并排，选一场为 baseline，其余 run 的每个 score 显示相对 baseline 的增量（绿升红降），让 prompt/模型改动的好坏一眼可判">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">并排成绩单 + 相对基准的增量</text>
+  <rect x="40" y="44" width="180" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="130" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">run A（baseline）</text><text x="130" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v1</text><line x1="56" y1="92" x2="204" y2="92" stroke="var(--faint)"/><text x="130" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.78</text><text x="130" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.96</text><text x="130" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 1.2s</text><text x="130" y="178" text-anchor="middle" font-size="6.6" fill="var(--blue)">★ 基准（其余跟它比）</text>
+  <rect x="270" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">run B</text><text x="360" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">claude + prompt v2</text><line x1="286" y1="92" x2="434" y2="92" stroke="var(--faint)"/><text x="360" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.85 <tspan fill="var(--teal)">▲+0.07</tspan></text><text x="360" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.97 <tspan fill="var(--teal)">▲+0.01</tspan></text><text x="360" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 2.1s <tspan fill="var(--accent-ink)">▼+0.9</tspan></text><text x="360" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">更准但更慢</text>
+  <rect x="500" y="44" width="180" height="150" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="590" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--muted)">run C</text><text x="590" y="82" text-anchor="middle" font-size="6.8" fill="var(--muted)">gpt-4o + prompt v3</text><line x1="516" y1="92" x2="664" y2="92" stroke="var(--faint)"/><text x="590" y="110" text-anchor="middle" font-size="7.5" fill="var(--ink)">有用性 0.74 <tspan fill="var(--accent-ink)">▼−0.04</tspan></text><text x="590" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">毒性通过 0.96 —</text><text x="590" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">延迟 1.1s <tspan fill="var(--teal)">▲−0.1</tspan></text><text x="590" y="178" text-anchor="middle" font-size="6.6" fill="var(--muted)">这版 prompt 反而退步</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">绝对分难判好坏，增量一目了然：B 用准度换了延迟、C 的 prompt 改动是负优化——决策有据可依</text>
+</svg>
+<div class="figcap"><b>对比靠「基准 + 增量」</b>：钦定一场 run 为 baseline，其余每个 score 显示相对增量（升/降）。源码：<code>web/src/features/experiments/components/</code> 的 <code>ExperimentBaselineControls</code>、<code>ExperimentComparisonSelector</code>、<code>ExperimentChartsGrid</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>选 baseline</h4><p><code>ExperimentBaselineControls</code> 让你钦定一场 run 当参照系——通常是「线上现役」那套配置，于是所有候选都和「现状」比，回答「换了会更好吗」。</p></div>
+  <div class="col"><h4>挑要比的 run</h4><p><code>ExperimentComparisonSelector</code> 选若干场 run 并排。同一套题、不同配置，公平可比（因为第 34 课的版本化保证了考的是同一批题）。</p></div>
+  <div class="col"><h4>看多维增量</h4><p><code>ExperimentChartsGrid</code> 把每个 score 维度画成对比图。好坏往往是<strong>多维权衡</strong>（更准但更慢更贵），增量视图让取舍一目了然。</p></div>
+</div>
+
+
+<h2>闭环：一套科学的「改前先验证」方法</h2>
+<p>把 Part 6 三课串起来，你得到的是一台<strong>持续改进的飞轮</strong>。它让「优化 LLM 应用」这件本来很玄的事，落地成一个可重复、有数据支撑的工程流程：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（第34课），让考卷紧贴真实分布。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>跑实验</h4><p>对一个候选 prompt/模型配置，服务端在整套题上跑一场 run（本课），产出一批 trace。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>自动评分</h4><p>第30、35课自动给每条 trace 评分、按 run 聚合出这场的成绩单。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>对比决策</h4><p>和 baseline（现役配置）并排看增量：真的更好就上线，退步就否决——不靠感觉。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>回到第1步</h4><p>上线后又会遇到新的难 case，再提拔成题……飞轮转起来，应用越改越稳。</p></div></div>
+</div>
+
+<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量打分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 Langfuse 要在服务端帮你跑实验，而不是只让你在本地跑完把结果传上来？</strong> 两种都支持（数据集上的 <code>remoteExperimentUrl</code> 就是给本地/外部跑的），但服务端跑有独特价值：<strong>零代码、强一致</strong>。产品经理或非工程师也能在 UI 上选个数据集、改个 prompt、点「跑」，不必写一行脚本；而且服务端跑能<strong>统一</strong>变量替换、版本钉定、评分调度、环境标记——把「实验该怎么做对」固化进平台，而不是指望每个人的本地脚本都写得严谨。代价是平台要承担 LLM 调用的成本与并发，所以它走 <code>ExperimentCreate</code> 队列、复用第 30 课那套调度韧性。<br><br>
+  <strong>为什么对比要用「baseline + 增量」，而不是直接看绝对分？</strong> 因为<strong>绝对分几乎没有意义，相对变化才有</strong>。「有用性 0.78」是好是坏？没有参照根本说不清。但「比现役配置高了 0.07」就是一个能据以决策的事实。更重要的是，质量往往是<strong>多维权衡</strong>：B 配置更准但更慢更贵。把每个维度的增量并排摊开，决策者才能做出「这点准度提升值不值这点延迟代价」的<strong>清醒取舍</strong>——而不是被单一指标牵着走。这也呼应第 33 课监控「只在变化时告警」：<strong>有信息量的永远是「变化」，不是「绝对值」。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>实验 = prompt × 数据集 × 模型，服务端自动跑</strong>：<code>createExperimentJobClickhouse</code> 逐题用 <code>replaceVariablesInPrompt</code> 填变量、调选定 provider/model、产 trace + run item，全程零代码。</li>
+    <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（第37课）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
+    <li><strong>评分自动接上</strong>：复用第 30 课 <code>dataset-run-item-upsert</code> 触发、第 35 课按 run 聚合，跑完即有成绩单，无需手动。</li>
+    <li><strong>对比靠 baseline + 增量</strong>：<code>ExperimentBaselineControls</code> 选基准、<code>ExperimentComparisonSelector</code> 挑 run、<code>ExperimentChartsGrid</code> 画多维增量——绝对分难判，相对变化才能决策。</li>
+    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能打分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的服务端实验（createExperimentJobClickhouse）对数据集的每道题做什么？</div>
+  <ol class="opts">
+    <li>直接给数据项打分，不调 LLM</li>
+    <li>在前端用 JavaScript 跑模型</li>
+    <li>replaceVariablesInPrompt 把这道题的 input 填进 prompt 的变量空格，用选定 provider/model 调一次 LLM，写成一条 trace（标 PromptExperiments 环境、链接被考 prompt、钉住 item 版本）+ run item</li>
+    <li>只把数据项复制到一张新表</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。processItem 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 实验对比页用「baseline + 增量」展示结果，而不是直接列绝对分。为什么这种设计更利于决策？</div>
+  <ol class="opts">
+    <li>绝对分几乎没意义（「有用性 0.78」是好是坏说不清），相对变化才有（「比现役高 0.07」可据以决策）；且质量常是多维权衡，并排增量让「准度提升值不值延迟代价」这种取舍一目了然</li>
+    <li>绝对分会泄露隐私</li>
+    <li>baseline 能加密结果</li>
+    <li>增量计算更省 CPU</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。「有用性 0.78」没有参照根本判不了好坏，但「比现役配置高 0.07」是能决策的事实。更重要的是质量常是多维权衡（B 更准但更慢更贵），把每维增量并排，决策者才能清醒取舍而非被单一指标牵着走。这呼应第33课监控「只在变化时告警」——有信息量的永远是变化，不是绝对值。ExperimentBaselineControls/ComparisonSelector/ChartsGrid 实现这套对比。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 把 Part 6 三课串起来，Langfuse 提供的「数据集→实验→评分→对比→决策」回路，本质上把第 5 部分的能力升级成了什么？</div>
+  <ol class="opts">
+    <li>升级成实时监控</li>
+    <li>升级成更快的数据库</li>
+    <li>升级成自动写 prompt</li>
+    <li>从「能给质量打分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。第5部分让你「能看见、能打分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>实验把「改 prompt 前先验证」变成了科学方法。但它依赖一个前提：你的数据集能代表真实流量、你的评分能反映真实质量。设想这两个前提其中之一不成立（比如数据集偏窄、或 LLM 裁判有系统性偏差），实验对比的结论会怎样误导你？你会怎么防范这种「评估体系本身不可靠」的风险？（提示：回顾第32课人工标注当 ground truth。）</li>
   </ul>
 </div>
 </div>
