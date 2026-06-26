@@ -334,11 +334,12 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 2 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 3 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
   <li>可观测性 2.0 与宽事件</li>
+  <li>三大支柱深入：trace/observation/score</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -903,6 +904,278 @@ workflows. Batch processing can help, but it should not make fresh production be
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>想象你维护一个公司内部的 LLM 网关，老板突然问“上周哪个部门、用哪个模型、花了最多钱”。如果你只有传统的“平均成本”指标，会卡在哪？换成宽事件后这个问题怎么变简单？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>三大支柱深入：trace/observation/score</h1>
+
+<p class="lead">
+第 1 课认识了 trace / observation / score 三个名字，这一课把它们<strong>拆开看里子</strong>：每个到底有哪些字段、为什么这样设计、
+又怎么落到 ClickHouse 的三张表上。它们的「真身」是 <code>packages/shared/src/domain/</code> 下的三个 Zod schema——
+<strong>读懂这三个 schema，等于拿到了理解 Langfuse 后面所有功能的钥匙</strong>，因为评估、数据集、仪表盘……最终都在操作这三种对象。
+打个比方，如果说第 1 课给了你一张「Langfuse 全景照」，这一课就是把照片里的三个主角拉到跟前，挨个看清他们的<strong>五官</strong>——
+记住他们长什么样，后面无论他们出现在哪一课的剧情里，你都能一眼认出。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把一次完整的用户交互想成医院里<strong>一个病历夹</strong>（trace）：夹子封面只写几行身份信息（谁、什么时候、贴了哪些标签）。
+  夹子里<strong>一页页具体记录</strong>才是重点（observation）：这页是「拍了 CT」、那页是「开了药」、再一页是「医生下了诊断」——
+  每页都详细写明用了什么、花了多久、多少钱。最后，<strong>页边的红笔批注</strong>（score）给某一页或整个夹子打分：「这个诊断准确吗？9 分」。
+  封面薄、内页厚、批注点睛——这正是三大支柱的分工。把这套「夹子—内页—批注」的画面记住，下面看字段时就不会迷路：凡是「整次交互级」的信息往封面（trace）放，凡是「某一步级」的信息往内页（observation）放，凡是「评判级」的信息就是批注（score）。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 330" role="img" aria-label="observation 通过 parentObservationId 指向父节点，从而拼出一棵调用树">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">observation 靠 parentObservationId 拼成一棵树</text>
+  <rect x="40" y="34" width="640" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="52" y="52" font-size="11" font-weight="700" fill="var(--accent-ink)">trace（关联句柄）· traceId 把下面这些 observation 串起来</text>
+  <rect x="280" y="78" width="170" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="365" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">A · span: agent-run</text>
+  <text x="365" y="115" text-anchor="middle" font-size="9.5" fill="var(--muted)">parentObservationId = null（根）</text>
+  <rect x="110" y="168" width="180" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="200" y="188" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">B · span: retrieve</text>
+  <text x="200" y="205" text-anchor="middle" font-size="9.5" fill="var(--muted)">parent = A</text>
+  <rect x="470" y="168" width="180" height="56" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="560" y="187" text-anchor="middle" font-size="11" font-weight="700" fill="var(--amber)">C · generation: gpt-4o</text>
+  <text x="560" y="203" text-anchor="middle" font-size="9" fill="var(--muted)">parent = A · 1,240 tok · $0.012</text>
+  <text x="560" y="216" text-anchor="middle" font-size="9" fill="var(--muted)">latency 1.8s · prompt v3</text>
+  <rect x="110" y="258" width="180" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="200" y="278" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">D · span: rerank</text>
+  <text x="200" y="295" text-anchor="middle" font-size="9.5" fill="var(--muted)">parent = B</text>
+  <line x1="200" y1="168" x2="320" y2="126" stroke="var(--faint)" stroke-width="1.6"/><polygon points="320,126 309,127 314,134" fill="var(--faint)"/>
+  <line x1="560" y1="168" x2="410" y2="126" stroke="var(--faint)" stroke-width="1.6"/><polygon points="410,126 416,134 421,127" fill="var(--faint)"/>
+  <line x1="200" y1="258" x2="200" y2="218" stroke="var(--faint)" stroke-width="1.6"/><polygon points="200,218 195,228 205,228" fill="var(--faint)"/>
+  <text x="250" y="150" font-size="9" fill="var(--faint)">parentObservationId →</text>
+</svg>
+<div class="figcap"><b>树是「指」出来的</b>：observation 表里并没有「children」字段；每个 observation 只记一个 <code>parentObservationId</code> 指向父节点，UI 再据此<b>反向拼出</b>整棵调用树（第 25 课）。根节点的 parent 为 null。这种「只存父指针」的设计，让写入时各 observation <b>互相独立、可乱序到达</b>——非常契合异步摄取。</div>
+</div>
+
+<h2>trace：薄薄的关联句柄</h2>
+<p>先看最简单的 trace。它的领域模型 <code>TraceDomain</code> 字段很少，几乎都是<strong>身份与标记</strong>，没有什么「重」数据：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/traces.ts</span><span class="ln">TraceDomain</span></div>
+  <pre class="code"><span class="kw">export const</span> TraceDomain = z.<span class="fn">object</span>({
+  id: z.<span class="fn">string</span>(),            <span class="cm">// trace 的唯一 id</span>
+  name: z.<span class="fn">string</span>().nullable(),
+  timestamp: z.<span class="fn">date</span>(),
+  environment: z.<span class="fn">string</span>(),    <span class="cm">// 多租户隔离维度（第 10 课）</span>
+  tags: z.<span class="fn">array</span>(z.string()),
+  bookmarked: z.<span class="fn">boolean</span>(),
+  public: z.<span class="fn">boolean</span>(),
+  sessionId: z.<span class="fn">string</span>().nullable(), <span class="cm">// 串成会话（第 26 课）</span>
+  userId: z.<span class="fn">string</span>().nullable(),
+  input: jsonSchema.<span class="fn">nullable</span>(),   <span class="cm">// 整次交互的输入/输出</span>
+  output: jsonSchema.<span class="fn">nullable</span>(),
+  metadata: MetadataDomain,
+  projectId: z.<span class="fn">string</span>(),
+});</pre>
+</div>
+
+<p>注意 trace 上几乎没有「成本」「token」「模型」这类字段——<strong>那些都在 observation 上</strong>。trace 的职责就是<strong>把一次交互的所有 observation 关联起来</strong>，
+外加几个方便检索的标记：<code>userId</code>（哪个用户）、<code>sessionId</code>（哪一轮会话）、<code>tags</code>（自定义标签）、<code>bookmarked</code>（人工收藏）、
+<code>public</code>（是否可公开分享）。这印证了第 1 课那句话：<strong>trace 是关联句柄，不是主分析单元</strong>。</p>
+
+<p>别小看这几个「标记」字段，它们各自对应一个真实的产品功能：<code>bookmarked</code> 让你在排查时把可疑 trace <strong>收藏</strong>起来稍后细看；
+<code>public</code> 控制这条 trace 能否生成一个<strong>公开分享链接</strong>（第 27 课），方便你把一个坏 case 甩给同事而不用对方登录；
+<code>environment</code> 把 prod / staging / dev 的数据<strong>隔离</strong>开（第 10 课），避免测试流量污染线上看板；<code>release</code> 和
+<code>version</code> 记录「这条 trace 来自应用的哪个版本」，于是上线后回归时，你能直接<strong>按版本对比</strong>质量与成本。换句话说，trace 虽薄，
+但每个字段都是为「事后好查、好分享、好归类」而精心挑选的。</p>
+
+<h2>observation：真正的主角</h2>
+<p>observation 才是「厚」的那一个。先看类型——很多人以为只有 3 种，其实当前领域模型 <code>ObservationType</code> 有 <strong>10 种</strong>：</p>
+
+<p>在看字段之前，先理解上面那张树图背后的一个关键设计：observation 之间的父子关系，<strong>只靠子节点上的一个 <code>parentObservationId</code> 指针</strong>表达，
+父节点完全不知道自己有哪些孩子。这看似简单，却是为<strong>异步摄取</strong>量身定做的——因为每个 observation 都<strong>自带</strong>「我爸是谁」，它们就能
+<strong>各自独立、乱序到达</strong>服务端：子节点比父节点先到也没关系，反正等查询时 UI 再按指针把树拼出来（第 25 课）。如果反过来让父节点维护一个 children 列表，
+那就得「等所有孩子到齐才能写父节点」，在高并发异步管线里这是灾难。<strong>一个小小的指针方向选择，背后是整条摄取链路的可行性。</strong></p>
+
+<table class="t">
+  <tr><th>类型</th><th>含义</th><th>典型场景</th></tr>
+  <tr><td class="mono">GENERATION</td><td>一次 LLM 调用</td><td>带 model / token / cost 的那种</td></tr>
+  <tr><td class="mono">SPAN</td><td>一段有耗时的逻辑</td><td>检索、预处理、整段流程</td></tr>
+  <tr><td class="mono">EVENT</td><td>一个瞬时事件</td><td>打点、状态变化</td></tr>
+  <tr><td class="mono">AGENT</td><td>一个 agent 步骤</td><td>agent 框架的一轮决策</td></tr>
+  <tr><td class="mono">TOOL</td><td>一次工具调用</td><td>function/tool call</td></tr>
+  <tr><td class="mono">CHAIN</td><td>一条链</td><td>LangChain 式的链路</td></tr>
+  <tr><td class="mono">RETRIEVER</td><td>一次检索</td><td>向量/关键词召回</td></tr>
+  <tr><td class="mono">EMBEDDING</td><td>一次向量化</td><td>embedding 调用</td></tr>
+  <tr><td class="mono">EVALUATOR</td><td>一次评估</td><td>评审步骤</td></tr>
+  <tr><td class="mono">GUARDRAIL</td><td>一次护栏检查</td><td>安全/合规拦截</td></tr>
+</table>
+
+<p>这 10 种里，<code>SPAN / EVENT / GENERATION</code> 是<strong>最基础的三型</strong>（最早的 <code>LegacyPrismaObservationType</code> 就只有这 3 个），
+其余 7 种是后来为更精细地刻画 agent/RAG 流程而加的「更具体的 span」。除了类型，observation 还有 <code>level</code>（DEBUG/DEFAULT/WARNING/ERROR）
+表示严重程度。真正让它「厚」的，是下面这一大堆<strong>富属性字段</strong>：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/observations.ts</span><span class="ln">ObservationSchema（节选）</span></div>
+  <pre class="code">  parentObservationId: z.string().nullable(), <span class="cm">// 拼树用的父指针</span>
+  model: z.string().nullable(),               <span class="cm">// 哪个模型</span>
+  modelParameters: jsonSchema.nullable(),
+  input: jsonSchema.nullable(),
+  output: jsonSchema.nullable(),
+  promptId / promptName / promptVersion,      <span class="cm">// 关联到哪版 prompt（第 37 课）</span>
+  latency, timeToFirstToken,                  <span class="cm">// 延迟 / 首 token 时延</span>
+  usageDetails, costDetails,                  <span class="cm">// 用量 / 成本明细（Map）</span>
+  inputUsage / outputUsage / totalUsage,      <span class="cm">// 聚合后的 token 数</span>
+  inputCost / outputCost / totalCost,         <span class="cm">// 聚合后的成本</span>
+  toolDefinitions, toolCalls, toolCallNames,  <span class="cm">// 工具调用信息</span></pre>
+</div>
+
+<p>看到没——一条 observation 就把「这步用了哪个模型、吃了多少 token、花了多少钱、多久、关联哪版 prompt、调了哪些工具」<strong>全装下了</strong>。
+这正是第 2 课说的「宽事件」：高基数上下文整行内联，于是「按模型看成本」「按 prompt 版本比延迟」都成了对这张宽表的普通查询。</p>
+
+<p>这里有个容易混淆、但很能体现设计用心的细节：用量和成本各有<strong>两套字段</strong>——<code>providedUsageDetails</code> / <code>providedCostDetails</code>
+是 <strong>SDK 上报时「自带」</strong>的（你的应用如果知道 token 数和价格，可以直接报上来），而 <code>usageDetails</code> / <code>costDetails</code>
+是 <strong>Langfuse 自己「算出来」</strong>的（摄取时按模型定价表计算，第 16 课）。两套并存的好处是：<strong>你报的我尊重，你没报的我兜底</strong>——
+既允许应用精确控制，又保证即使应用什么都不报，Langfuse 也能根据 model 名匹配定价、把成本补齐。这种「provided 优先、computed 兜底」的模式，
+在后面成本计算一课会反复出现。</p>
+
+<p>还有两个不起眼但排错时极有用的字段：<code>level</code>（DEBUG / DEFAULT / WARNING / ERROR）和 <code>statusMessage</code>。前者给每个 observation 标上
+<strong>严重程度</strong>，后者记一句<strong>状态说明</strong>（比如报错信息）。有了它们，你就能在成千上万条 observation 里一键过滤出
+<code>level = ERROR</code> 的那些——直接定位「哪一步挂了、报了什么」，而不必从头翻整棵树。这又一次体现了「把高基数上下文留在每一步上」的价值：
+连「这步是不是出错了」都是可查询、可聚合的一列。</p>
+
+
+<h2>score：评判</h2>
+<p>第三支柱 score 把「可观测」升级成「可评估」。它的两个核心维度是<strong>来源（source）</strong>和<strong>数据类型（dataType）</strong>，都定义在
+<code>packages/shared/src/domain/scores.ts</code>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="score 来自 EVAL/ANNOTATION/API 三种来源，可挂到 trace 或 observation 上">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score：从三种来源，打给 trace 或 observation</text>
+  <rect x="30" y="50" width="150" height="40" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="105" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">EVAL</text><text x="105" y="83" text-anchor="middle" font-size="9" fill="var(--muted)">LLM/代码自动评审</text>
+  <rect x="30" y="105" width="150" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="105" y="123" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">ANNOTATION</text><text x="105" y="138" text-anchor="middle" font-size="9" fill="var(--muted)">人工标注</text>
+  <rect x="30" y="160" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="105" y="178" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">API</text><text x="105" y="193" text-anchor="middle" font-size="9" fill="var(--muted)">SDK 直接提交</text>
+  <rect x="300" y="100" width="120" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">score</text><text x="360" y="138" text-anchor="middle" font-size="9" fill="var(--accent-ink)">value + dataType</text>
+  <line x1="180" y1="70" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,112 287,110 291,118" fill="var(--faint)"/>
+  <line x1="180" y1="125" x2="298" y2="125" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,125 288,120 288,130" fill="var(--faint)"/>
+  <line x1="180" y1="180" x2="298" y2="138" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,138 287,138 291,131" fill="var(--faint)"/>
+  <rect x="540" y="72" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">trace</text><text x="615" y="105" text-anchor="middle" font-size="9" fill="var(--muted)">给整次交互打分</text>
+  <rect x="540" y="138" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="156" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">observation</text><text x="615" y="171" text-anchor="middle" font-size="9" fill="var(--muted)">给某一步打分</text>
+  <line x1="420" y1="118" x2="538" y2="92" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,92 527,92 531,99" fill="var(--accent)"/>
+  <line x1="420" y1="132" x2="538" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,158 527,151 531,160" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>score 的两端</b>：左边是「谁打的分」——<code>EVAL</code>（自动评审，第 29–31 课）、<code>ANNOTATION</code>（人工，第 32 课）、<code>API</code>（SDK 提交）；右边是「打给谁」——可挂在 <b>trace</b>（整次交互）或某个 <b>observation</b>（具体一步）上。中间的 score 本身带一个值和一个 dataType。</div>
+</div>
+
+<p>score 的<strong>数据类型</strong>有 5 种（<code>ScoreDataTypeArray</code>）：<code>NUMERIC</code> 数值、<code>CATEGORICAL</code> 分类、
+<code>BOOLEAN</code> 布尔、<code>CORRECTION</code> 订正、<code>TEXT</code> 文本。来源（<code>ScoreSourceArray</code>）有 3 种：
+<code>API</code> / <code>EVAL</code> / <code>ANNOTATION</code>。一条规则值得记住：<strong>ANNOTATION 来源的 score 必须带一个匹配的
+<code>configId</code></strong>（唯一例外是 CORRECTION 类型），这样它才能在标注队列 UI 里正确渲染——见 <code>scores.ts</code> 的
+<code>isAnnotationScoreMissingConfigId</code>。</p>
+
+<table class="t">
+  <tr><th>dataType</th><th>取值长什么样</th><th>典型用途</th></tr>
+  <tr><td class="mono">NUMERIC</td><td>一个数，如 0.9</td><td>相关性、帮助度等连续评分</td></tr>
+  <tr><td class="mono">CATEGORICAL</td><td>一个标签，如「正确」</td><td>把输出分到若干类别</td></tr>
+  <tr><td class="mono">BOOLEAN</td><td>true / false</td><td>是否通过、是否安全</td></tr>
+  <tr><td class="mono">CORRECTION</td><td>一段订正后的文本</td><td>人工把错误输出改对（不需要 configId）</td></tr>
+  <tr><td class="mono">TEXT</td><td>一段自由文本（≤500 字）</td><td>评语、理由</td></tr>
+</table>
+
+<p>三种<strong>来源</strong>也不是随便分的，它们对应着不同的「打分主体」，权限也不同：<code>EVAL</code> 是 Langfuse <strong>内部评估器</strong>的产物
+（LLM-as-judge、代码评估，第 29–31 课），<strong>保留给系统内部</strong>使用；<code>ANNOTATION</code> 是人在 UI 里手动标注；<code>API</code> 则是你的应用
+通过 SDK 直接提交（比如把用户点的「👍/👎」上报成分数）。源码里有个细节能印证这点：公共建分接口允许的来源只有 <code>API</code> 和 <code>ANNOTATION</code>
+两种（<code>PublicApiCreateScoreSourceDomain</code>），<code>EVAL</code> 被刻意排除在外——因为它是平台自己产生的，不该由外部冒充。这种「按来源划权限」的小设计，
+保证了「谁打的分」这件事可信。</p>
+
+<p>为什么三支柱要落到<strong>三张分开的 ClickHouse 表</strong>，而不是塞进一张大表？因为它们的<strong>访问模式不同</strong>：observation 量最大、查询最频繁、字段最宽；
+score 数量少、常按 trace/observation 关联查；trace 居中、是列表页的主入口。分表能让每张表用<strong>最适合自己的排序键与分区</strong>（第 8 课），
+互不拖累。这又是一次「按访问模式选存储」的体现——和「为什么 Postgres + ClickHouse 并存」（第 7 课）是同一种思路，只是粒度更细。</p>
+
+<h2>三者如何落到 ClickHouse 与 sessions</h2>
+<p>这三个领域对象，在分析存储里<strong>一一对应三张 ClickHouse 表</strong>（第 8 课细讲）。要区分两个层次：<code>domain/*.ts</code> 里的 Zod schema 是
+<strong>「形状契约」</strong>——前端、后端、SDK 都按它理解数据；而 ClickHouse 的建表 SQL 是<strong>「物理存储」</strong>——决定数据在磁盘上怎么排、怎么压、怎么扫。
+同一个概念，一个管「长什么样」，一个管「怎么存」：</p>
+
+<div class="cols">
+  <div class="col"><h4>领域模型（TS）</h4><p><code>domain/traces.ts</code><br><code>domain/observations.ts</code><br><code>domain/scores.ts</code><br><span class="mono">前端后端共用的形状</span></p></div>
+  <div class="col"><h4>ClickHouse 表（宽事件）</h4><p><code>0001_traces.up.sql</code><br><code>0002_observations.up.sql</code><br><code>0003_scores.up.sql</code><br><span class="mono">ReplacingMergeTree · 按月分区</span></p></div>
+</div>
+
+<p>还有一个常被忽略的「第四类」聚合：<strong>session（会话）</strong>。它不是一张宽事件表，而是靠 trace 上的 <code>sessionId</code>
+把<strong>多次 trace 串成一段连续对话</strong>（比如用户和你的 bot 来回聊了十轮）。session 的元数据在 Postgres 的 <code>TraceSession</code> 模型里，
+聚合视图则在查询时算出来（第 26 课）。所以严格说，Langfuse 的核心数据是「三支柱 + 会话聚合」。</p>
+
+<p>举个会话的例子：用户在客服 bot 上连问了三轮——「我的订单到哪了？」→「那能改地址吗？」→「帮我改成公司地址」。这<strong>三轮</strong>各自是一个独立的 trace
+（每轮一次完整问答），但它们带着<strong>同一个 <code>sessionId</code></strong>。于是在「会话」视图里，你能把这三个 trace 当成一段连续对话来看：整段聊了多久、
+一共花了多少钱、用户在第几轮开始不耐烦。这种「单次看 trace、连续看 session」的双视角，正是因为 <code>sessionId</code> 这一个字段把关联关系<strong>提前埋在了写入里</strong>，
+查询时不必再做复杂的会话切分。</p>
+
+<p>把三支柱合起来看，你会发现一个漂亮的分工：<strong>trace 负责「关联」、observation 负责「记录」、score 负责「评判」、session 负责「串联」</strong>。
+四者各司其职、字段不重复堆砌，又都能在一次查询里被关联起来。后面五十多课无论讲摄取、查询、评估还是仪表盘，操作的都是这四种对象——
+现在把它们的形状刻进脑子里，后面会轻松很多。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把「重」字段都堆在 observation，而让 trace 这么薄？</strong> 因为查询绝大多数发生在「步」这个粒度：你想按模型、按 prompt 版本、
+  按工具调用去聚合和过滤，这些维度天然属于<strong>某一步</strong>，而不是整次交互。把它们放在 observation 上，常用查询就成了对 observations 宽表的直接列谓词；
+  trace 只需保留关联和少数检索标记。代价是同一信息（如 userId）可能要在 trace 和 observation 间<strong>冗余</strong>一份——这正是第 2 课「谨慎反范式化」的体现。
+  反过来理解这个取舍：Langfuse <strong>主动</strong>付出一点重复，换来用户每天高频运行的查询<strong>无需连表、足够快</strong>。在可观测的数据规模下，这笔账几乎总是划算的。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>trace</strong> 很薄：几乎只有身份与标记（<code>userId/sessionId/tags/bookmarked/public</code>），职责是<strong>关联</strong>。</li>
+    <li><strong>observation</strong> 很厚：<code>ObservationType</code> 有 <strong>10 种</strong>（核心三型 SPAN/EVENT/GENERATION），靠 <code>parentObservationId</code> 拼树，内联 model/usage/cost/prompt/tool 等富属性。</li>
+    <li><strong>score</strong> 两维度：来源（<code>API/EVAL/ANNOTATION</code>）× 数据类型（<code>NUMERIC/CATEGORICAL/BOOLEAN/CORRECTION/TEXT</code>），可挂 trace 或 observation。</li>
+    <li>三者 1:1 落到 <strong>三张 ClickHouse 宽事件表</strong>；<strong>session</strong> 靠 <code>sessionId</code> 把多个 trace 串成会话。</li>
+    <li>读懂这三个 <code>domain/*.ts</code> schema，就拿到了理解后面所有功能的钥匙，因为评估、数据集、仪表盘最终都在操作它们。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 为什么 Langfuse 把 model/token/cost/prompt 等“重”字段都放在 observation 上，而让 trace 只有身份与少数标记？</div>
+  <ol class="opts">
+    <li>因为 trace 不允许有任何字段</li>
+    <li>因为这样能减少 SVG 数量</li>
+    <li>因为绝大多数查询发生在“步”这个粒度（按模型、按 prompt 版本聚合过滤），把这些维度放在 observation 上，常用查询就成了对宽表的直接列谓词；trace 只需负责关联</li>
+    <li>因为 observation 存在 Postgres，trace 存在 ClickHouse</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。查询的粒度决定了字段的归属。把高频过滤/聚合维度放在 observation 上，热查询变成列谓词、无需 JOIN；trace 保持薄、只做关联。代价是 userId 等可能在两边冗余，这正是“谨慎反范式化”。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. observation 之间的父子关系只用子节点上的一个 parentObservationId 指针表达。这个设计对“异步摄取”有什么关键好处？</div>
+  <ol class="opts">
+    <li>每个 observation 自带“我爸是谁”，于是它们能各自独立、乱序到达服务端；子节点先于父节点到也没关系，查询时 UI 再按指针拼出整棵树</li>
+    <li>它把树结构存成了一张额外的关系表</li>
+    <li>它要求所有 observation 必须按顺序写入</li>
+    <li>它让父节点能实时统计自己有几个孩子</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。若反过来让父节点维护 children 列表，就得“等所有孩子到齐才能写父节点”，在高并发异步管线里是灾难。只存子节点的父指针，写入彻底解耦、可乱序，是摄取链路可行的关键（第 25 课拼树）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. observation 上为什么同时有 providedUsageDetails 和 usageDetails（成本同理）两套字段？</div>
+  <ol class="opts">
+    <li>provided 给前端用，usage 给后端用</li>
+    <li>provided 是 SDK 上报时自带的，usage 是 Langfuse 摄取时按模型定价自己算的；“你报的我尊重、你没报的我兜底”</li>
+    <li>一个存 token，一个存金额</li>
+    <li>两者完全相同，纯属冗余</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。两套并存兼顾“应用精确控制”和“平台兜底”：应用知道精确用量就直接报（provided），不报时 Langfuse 按 model 名匹配定价表算出来（computed）。这套“provided 优先、computed 兜底”在成本计算课（第 16 课）会展开。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>如果让你设计 score 的“来源”枚举，你会不会也像 Langfuse 一样禁止外部 API 提交 EVAL 来源的分数？说说这么做在“信任谁打的分”上的意义。</li>
   </ul>
 </div>
 </div>

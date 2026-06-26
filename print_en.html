@@ -334,11 +334,12 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 2 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 3 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
   <li>Observability 2.0 & wide events</li>
+  <li>The three pillars in depth</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -950,6 +951,306 @@ This is why Langfuse's ingestion, though <strong>async</strong>, keeps processin
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Imagine you run an internal LLM gateway and your boss asks 'which department, on which model, spent the most last week'. If you only had a traditional 'average cost' metric, where would you get stuck? How does a wide event make this easy?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The three pillars in depth</h1>
+
+<p class="lead">
+Lesson 1 introduced the names trace / observation / score; this lesson <strong>opens them up</strong>: exactly which fields each
+has, why it's designed that way, and how each lands in one of three ClickHouse tables. Their "true form" is three Zod schemas under
+<code>packages/shared/src/domain/</code> — <strong>read these three schemas and you hold the key to every later Langfuse
+feature</strong>, because evaluation, datasets, dashboards… all ultimately operate on these three objects.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture one full user interaction as a hospital <strong>chart folder</strong> (trace): the cover has just a few identity lines
+  (who, when, which tags). The <strong>pages inside</strong> are the point (observations): this page is "ran a CT scan", that one
+  "prescribed a drug", another "the doctor reached a diagnosis" — each page detailing what was used, how long it took, how much it
+  cost. Finally, <strong>red-pen margin notes</strong> (score) rate a page or the whole folder: "is this diagnosis accurate? 9/10".
+  Thin cover, thick pages, pinpoint notes — exactly the division of the three pillars. Hold this "folder — pages — notes" image and
+  you won't get lost in the fields below: whatever is "whole-interaction level" goes on the cover (trace), whatever is "single-step
+  level" goes on a page (observation), and whatever is "judgment level" is a margin note (score).
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 330" role="img" aria-label="observations point to their parent via parentObservationId, forming a call tree">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">observations form a tree via parentObservationId</text>
+  <rect x="40" y="34" width="640" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="52" y="52" font-size="11" font-weight="700" fill="var(--accent-ink)">trace (correlation handle) · its traceId strings the observations below</text>
+  <rect x="280" y="78" width="170" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="365" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">A · span: agent-run</text>
+  <text x="365" y="115" text-anchor="middle" font-size="9.5" fill="var(--muted)">parentObservationId = null (root)</text>
+  <rect x="110" y="168" width="180" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="200" y="188" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">B · span: retrieve</text>
+  <text x="200" y="205" text-anchor="middle" font-size="9.5" fill="var(--muted)">parent = A</text>
+  <rect x="470" y="168" width="180" height="56" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="560" y="187" text-anchor="middle" font-size="11" font-weight="700" fill="var(--amber)">C · generation: gpt-4o</text>
+  <text x="560" y="203" text-anchor="middle" font-size="9" fill="var(--muted)">parent = A · 1,240 tok · $0.012</text>
+  <text x="560" y="216" text-anchor="middle" font-size="9" fill="var(--muted)">latency 1.8s · prompt v3</text>
+  <rect x="110" y="258" width="180" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="200" y="278" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">D · span: rerank</text>
+  <text x="200" y="295" text-anchor="middle" font-size="9.5" fill="var(--muted)">parent = B</text>
+  <line x1="200" y1="168" x2="320" y2="126" stroke="var(--faint)" stroke-width="1.6"/><polygon points="320,126 309,127 314,134" fill="var(--faint)"/>
+  <line x1="560" y1="168" x2="410" y2="126" stroke="var(--faint)" stroke-width="1.6"/><polygon points="410,126 416,134 421,127" fill="var(--faint)"/>
+  <line x1="200" y1="258" x2="200" y2="218" stroke="var(--faint)" stroke-width="1.6"/><polygon points="200,218 195,228 205,228" fill="var(--faint)"/>
+  <text x="250" y="150" font-size="9" fill="var(--faint)">parentObservationId →</text>
+</svg>
+<div class="figcap"><b>The tree is "pointed" into existence</b>: the observations table has no "children" field; each observation stores one <code>parentObservationId</code> pointing at its parent, and the UI <b>reconstructs</b> the call tree from that (L25). The root's parent is null. Storing only a parent pointer lets observations be <b>independent and arrive out of order</b> at write time — ideal for async ingestion.</div>
+</div>
+
+<h2>trace: the thin correlation handle</h2>
+<p>Start with the simplest, the trace. Its domain model <code>TraceDomain</code> has few fields, almost all <strong>identity and
+markers</strong>, no "heavy" data:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/traces.ts</span><span class="ln">TraceDomain</span></div>
+  <pre class="code"><span class="kw">export const</span> TraceDomain = z.<span class="fn">object</span>({
+  id: z.<span class="fn">string</span>(),            <span class="cm">// the trace's unique id</span>
+  name: z.<span class="fn">string</span>().nullable(),
+  timestamp: z.<span class="fn">date</span>(),
+  environment: z.<span class="fn">string</span>(),    <span class="cm">// tenancy isolation dimension (L10)</span>
+  tags: z.<span class="fn">array</span>(z.string()),
+  bookmarked: z.<span class="fn">boolean</span>(),
+  public: z.<span class="fn">boolean</span>(),
+  sessionId: z.<span class="fn">string</span>().nullable(), <span class="cm">// strung into a session (L26)</span>
+  userId: z.<span class="fn">string</span>().nullable(),
+  input: jsonSchema.<span class="fn">nullable</span>(),   <span class="cm">// the whole interaction's I/O</span>
+  output: jsonSchema.<span class="fn">nullable</span>(),
+  metadata: MetadataDomain,
+  projectId: z.<span class="fn">string</span>(),
+});</pre>
+</div>
+
+<p>Notice there's almost no "cost", "token" or "model" field on the trace — <strong>those all live on observations</strong>. The
+trace's job is to <strong>correlate all observations of one interaction</strong>, plus a few searchable markers: <code>userId</code>
+(which user), <code>sessionId</code> (which conversation), <code>tags</code> (custom labels), <code>bookmarked</code> (human
+favorite), <code>public</code> (shareable). This confirms Lesson 1's line: <strong>the trace is a correlation handle, not the
+primary analytical unit</strong>.</p>
+
+<p>Don't underrate those "marker" fields — each maps to a real product feature: <code>bookmarked</code> lets you <strong>favorite</strong>
+a suspicious trace during triage to revisit later; <code>public</code> controls whether the trace can produce a <strong>public share
+link</strong> (L27), so you can hand a bad case to a colleague without making them log in; <code>environment</code>
+<strong>isolates</strong> prod / staging / dev data (L10) so test traffic doesn't pollute production dashboards; <code>release</code>
+and <code>version</code> record "which app version this trace came from", so after a deploy you can <strong>compare quality and cost
+by version</strong>. In short, the trace is thin, but every field is hand-picked for "easy to find, share and categorize later".</p>
+
+<h2>observation: the real star</h2>
+<p>The observation is the "heavy" one. Types first — many assume there are only 3, but the current <code>ObservationType</code> has
+<strong>10</strong>:</p>
+
+<p>Before the fields, grasp one key design behind that tree figure: the parent-child relationship among observations is expressed
+<strong>only by a <code>parentObservationId</code> pointer on the child</strong> — the parent has no idea which children it has. Simple
+as it looks, this is tailor-made for <strong>async ingestion</strong>: because each observation <strong>carries</strong> "who my
+parent is", they can <strong>arrive independently and out of order</strong> at the server — a child arriving before its parent is
+fine, since the UI rebuilds the tree from the pointers at query time (L25). Flip it — make the parent maintain a children list — and
+you'd have to "wait for all children before writing the parent", a disaster in a high-concurrency async pipeline. <strong>One small
+choice of pointer direction underwrites the whole ingestion path's feasibility.</strong></p>
+
+<table class="t">
+  <tr><th>Type</th><th>Meaning</th><th>Typical use</th></tr>
+  <tr><td class="mono">GENERATION</td><td>one LLM call</td><td>the kind with model / token / cost</td></tr>
+  <tr><td class="mono">SPAN</td><td>a timed unit of logic</td><td>retrieval, preprocessing, a whole flow</td></tr>
+  <tr><td class="mono">EVENT</td><td>an instantaneous event</td><td>a marker, a state change</td></tr>
+  <tr><td class="mono">AGENT</td><td>an agent step</td><td>one decision round in an agent framework</td></tr>
+  <tr><td class="mono">TOOL</td><td>a tool call</td><td>function/tool call</td></tr>
+  <tr><td class="mono">CHAIN</td><td>a chain</td><td>a LangChain-style chain</td></tr>
+  <tr><td class="mono">RETRIEVER</td><td>a retrieval</td><td>vector/keyword recall</td></tr>
+  <tr><td class="mono">EMBEDDING</td><td>an embedding</td><td>embedding call</td></tr>
+  <tr><td class="mono">EVALUATOR</td><td>an evaluation</td><td>a judging step</td></tr>
+  <tr><td class="mono">GUARDRAIL</td><td>a guardrail check</td><td>safety/compliance gate</td></tr>
+</table>
+
+<p>Of the 10, <code>SPAN / EVENT / GENERATION</code> are the <strong>three foundational types</strong> (the original
+<code>LegacyPrismaObservationType</code> had only these); the other 7 are "more specific spans" added to describe agent/RAG flows
+more precisely. Besides type, an observation has a <code>level</code> (DEBUG/DEFAULT/WARNING/ERROR) for severity. What truly makes
+it "heavy" is the pile of <strong>rich-attribute fields</strong> below:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/observations.ts</span><span class="ln">ObservationSchema (excerpt)</span></div>
+  <pre class="code">  parentObservationId: z.string().nullable(), <span class="cm">// parent pointer for the tree</span>
+  model: z.string().nullable(),               <span class="cm">// which model</span>
+  modelParameters: jsonSchema.nullable(),
+  input: jsonSchema.nullable(),
+  output: jsonSchema.nullable(),
+  promptId / promptName / promptVersion,      <span class="cm">// which prompt version (L37)</span>
+  latency, timeToFirstToken,                  <span class="cm">// latency / time to first token</span>
+  usageDetails, costDetails,                  <span class="cm">// usage / cost breakdown (Map)</span>
+  inputUsage / outputUsage / totalUsage,      <span class="cm">// aggregated token counts</span>
+  inputCost / outputCost / totalCost,         <span class="cm">// aggregated cost</span>
+  toolDefinitions, toolCalls, toolCallNames,  <span class="cm">// tool-call info</span></pre>
+</div>
+
+<p>See it — one observation captures "which model this step used, how many tokens, how much money, how long, which prompt version,
+which tools" <strong>all at once</strong>. This is exactly Lesson 2's "wide event": high-cardinality context inlined on the row, so
+"cost by model" and "latency by prompt version" become ordinary queries over this wide table.</p>
+
+<p>One easily-confused detail that shows real design care: usage and cost each have <strong>two sets of fields</strong> —
+<code>providedUsageDetails</code> / <code>providedCostDetails</code> are <strong>what the SDK "brought" at report time</strong> (if your
+app knows the token count and price, it can send them directly), while <code>usageDetails</code> / <code>costDetails</code> are
+<strong>what Langfuse "computed" itself</strong> (at ingestion, from the model pricing table, L16). Keeping both has a clear payoff:
+<strong>respect what you sent, backfill what you didn't</strong> — apps can control things precisely, yet even if an app sends
+nothing, Langfuse can match the model name to pricing and fill in the cost. This "provided wins, computed backfills" pattern recurs
+in the cost lesson.</p>
+
+<p>Two more humble-but-invaluable fields for debugging: <code>level</code> (DEBUG / DEFAULT / WARNING / ERROR) and
+<code>statusMessage</code>. The former tags each observation with a <strong>severity</strong>; the latter records a <strong>status
+line</strong> (e.g. an error message). With them you can filter tens of thousands of observations down to those with
+<code>level = ERROR</code> in one click — jumping straight to "which step failed and what it said" instead of scanning the whole
+tree. Again the value of "keep high-cardinality context on each step": even "did this step error" is a queryable, aggregatable
+column.</p>
+
+
+<h2>score: the verdict</h2>
+<p>The third pillar, score, upgrades "observable" into "evaluable". Its two core dimensions are <strong>source</strong> and
+<strong>dataType</strong>, both defined in <code>packages/shared/src/domain/scores.ts</code>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="A score comes from EVAL/ANNOTATION/API and attaches to a trace or an observation">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score: from three sources, onto a trace or observation</text>
+  <rect x="30" y="50" width="150" height="40" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="105" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">EVAL</text><text x="105" y="83" text-anchor="middle" font-size="9" fill="var(--muted)">LLM/code auto-judge</text>
+  <rect x="30" y="105" width="150" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="105" y="123" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">ANNOTATION</text><text x="105" y="138" text-anchor="middle" font-size="9" fill="var(--muted)">human annotation</text>
+  <rect x="30" y="160" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="105" y="178" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">API</text><text x="105" y="193" text-anchor="middle" font-size="9" fill="var(--muted)">submitted via SDK</text>
+  <rect x="300" y="100" width="120" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">score</text><text x="360" y="138" text-anchor="middle" font-size="9" fill="var(--accent-ink)">value + dataType</text>
+  <line x1="180" y1="70" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,112 287,110 291,118" fill="var(--faint)"/>
+  <line x1="180" y1="125" x2="298" y2="125" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,125 288,120 288,130" fill="var(--faint)"/>
+  <line x1="180" y1="180" x2="298" y2="138" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,138 287,138 291,131" fill="var(--faint)"/>
+  <rect x="540" y="72" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">trace</text><text x="615" y="105" text-anchor="middle" font-size="9" fill="var(--muted)">rate the whole interaction</text>
+  <rect x="540" y="138" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="156" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">observation</text><text x="615" y="171" text-anchor="middle" font-size="9" fill="var(--muted)">rate one step</text>
+  <line x1="420" y1="118" x2="538" y2="92" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,92 527,92 531,99" fill="var(--accent)"/>
+  <line x1="420" y1="132" x2="538" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,158 527,151 531,160" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>Score's two ends</b>: on the left, "who scored" — <code>EVAL</code> (auto-judge, L29–31), <code>ANNOTATION</code> (human, L32), <code>API</code> (SDK); on the right, "scored what" — attaches to a <b>trace</b> (whole interaction) or an <b>observation</b> (one step). The score itself carries a value and a dataType.</div>
+</div>
+
+<p>A score's <strong>dataType</strong> is one of 5 (<code>ScoreDataTypeArray</code>): <code>NUMERIC</code>, <code>CATEGORICAL</code>,
+<code>BOOLEAN</code>, <code>CORRECTION</code>, <code>TEXT</code>. Its <strong>source</strong> (<code>ScoreSourceArray</code>) is one
+of 3: <code>API</code> / <code>EVAL</code> / <code>ANNOTATION</code>. One rule worth remembering: <strong>an ANNOTATION-sourced score
+must carry a matching <code>configId</code></strong> (the sole exception is the CORRECTION type), so it renders correctly in the
+annotation-queue UI — see <code>isAnnotationScoreMissingConfigId</code> in <code>scores.ts</code>.</p>
+
+<table class="t">
+  <tr><th>dataType</th><th>What the value looks like</th><th>Typical use</th></tr>
+  <tr><td class="mono">NUMERIC</td><td>a number, e.g. 0.9</td><td>relevance, helpfulness — continuous scores</td></tr>
+  <tr><td class="mono">CATEGORICAL</td><td>a label, e.g. "correct"</td><td>bucket the output into classes</td></tr>
+  <tr><td class="mono">BOOLEAN</td><td>true / false</td><td>passed?, safe?</td></tr>
+  <tr><td class="mono">CORRECTION</td><td>a corrected text</td><td>a human fixes a wrong output (no configId needed)</td></tr>
+  <tr><td class="mono">TEXT</td><td>free text (≤500 chars)</td><td>a comment, a rationale</td></tr>
+</table>
+
+<p>The three <strong>sources</strong> aren't arbitrary either — they correspond to different "scoring authors" with different
+permissions: <code>EVAL</code> is the output of Langfuse's <strong>internal evaluators</strong> (LLM-as-judge, code evals, L29–31) and
+is <strong>reserved for the system</strong>; <code>ANNOTATION</code> is a human labeling in the UI; <code>API</code> is your app
+submitting directly via the SDK (e.g. reporting a user's "👍/👎" as a score). A source-code detail confirms this: the public
+create-score endpoint allows only <code>API</code> and <code>ANNOTATION</code> sources
+(<code>PublicApiCreateScoreSourceDomain</code>), deliberately excluding <code>EVAL</code> — because it's platform-generated and
+shouldn't be impersonated from outside. This little "permission by source" design keeps "who scored" trustworthy.</p>
+
+<p>Why do the three pillars land in <strong>three separate ClickHouse tables</strong> rather than one big table? Because their
+<strong>access patterns differ</strong>: observations are the largest, most-queried, widest; scores are few and usually queried by
+trace/observation association; traces sit in the middle as the list-page entry point. Separate tables let each use the
+<strong>ordering key and partitioning best for itself</strong> (L08) without dragging on the others. This is again "choose storage by
+access pattern" — the same idea as "why Postgres + ClickHouse coexist" (L07), just at finer granularity.</p>
+
+<h2>How the three land in ClickHouse and sessions</h2>
+<p>These three domain objects map <strong>one-to-one to three ClickHouse tables</strong> in analytical storage (detailed in L08). Keep
+two layers distinct: the Zod schema in <code>domain/*.ts</code> is the <strong>"shape contract"</strong> — frontend, backend and SDK
+all read data by it; the ClickHouse CREATE TABLE SQL is the <strong>"physical storage"</strong> — deciding how data is ordered,
+compressed and scanned on disk. Same concept: one governs "what it looks like", the other "how it's stored":</p>
+
+<div class="cols">
+  <div class="col"><h4>Domain model (TS)</h4><p><code>domain/traces.ts</code><br><code>domain/observations.ts</code><br><code>domain/scores.ts</code><br><span class="mono">shape shared by frontend & backend</span></p></div>
+  <div class="col"><h4>ClickHouse table (wide event)</h4><p><code>0001_traces.up.sql</code><br><code>0002_observations.up.sql</code><br><code>0003_scores.up.sql</code><br><span class="mono">ReplacingMergeTree · monthly partitions</span></p></div>
+</div>
+
+<p>There's an easily-missed "fourth" aggregation: the <strong>session</strong>. It isn't a wide-event table; it's the trace's
+<code>sessionId</code> stringing <strong>multiple traces into one continuous conversation</strong> (e.g. ten back-and-forth turns
+with your bot). Session metadata lives in Postgres' <code>TraceSession</code> model; the aggregate view is computed at query time
+(L26). So strictly, Langfuse's core data is "three pillars + session aggregation".</p>
+
+<p>A session example: a user asks a support bot three turns in a row — "where's my order?" → "can I change the address?" → "change it
+to my office address". Those <strong>three turns</strong> are each an independent trace (one full Q&amp;A each), but they carry the
+<strong>same <code>sessionId</code></strong>. So in the "session" view you can see the three traces as one continuous conversation:
+how long the whole chat took, how much it cost in total, at which turn the user got impatient. This "single trace vs continuous
+session" dual view works precisely because the one <code>sessionId</code> field <strong>plants the relationship at write time</strong>,
+so queries need no complex session segmentation.</p>
+
+<p>Put the pillars together and a clean division of labor appears: <strong>trace correlates, observation records, score judges,
+session links</strong>. Each does its job, no field is piled up redundantly, yet all can be joined in one query. Whether later
+lessons cover ingestion, querying, evaluation or dashboards, they all operate on these four objects — carve their shapes into your
+mind now and the rest gets much easier.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why pile the "heavy" fields on the observation and keep the trace so thin?</strong> Because the vast majority of queries
+  happen at the "step" granularity: you aggregate and filter by model, by prompt version, by tool call — dimensions that naturally
+  belong to <strong>one step</strong>, not the whole interaction. Put them on the observation and common queries become direct column
+  predicates over the observations wide table; the trace just keeps correlation and a few search markers. The cost is that some info
+  (e.g. userId) may be <strong>redundant</strong> across trace and observation — exactly Lesson 2's "denormalize carefully".
+  Read the trade the other way: Langfuse <strong>chooses</strong> to pay a little duplication so that the queries users run all day
+  stay JOIN-free and fast. At observability scale, that trade almost always wins.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>trace</strong> is thin: mostly identity and markers (<code>userId/sessionId/tags/bookmarked/public</code>); its job is to <strong>correlate</strong>.</li>
+    <li><strong>observation</strong> is heavy: <code>ObservationType</code> has <strong>10</strong> values (core three SPAN/EVENT/GENERATION), builds a tree via <code>parentObservationId</code>, inlines model/usage/cost/prompt/tool rich attributes.</li>
+    <li><strong>score</strong> has two dimensions: source (<code>API/EVAL/ANNOTATION</code>) × dataType (<code>NUMERIC/CATEGORICAL/BOOLEAN/CORRECTION/TEXT</code>); attaches to a trace or observation.</li>
+    <li>The three map 1:1 to <strong>three ClickHouse wide-event tables</strong>; a <strong>session</strong> strings traces via <code>sessionId</code>.</li>
+    <li>Read these three <code>domain/*.ts</code> schemas and you hold the key to every later feature.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse put the 'heavy' fields (model/token/cost/prompt) on the observation while the trace has only identity and a few markers?</div>
+  <ol class="opts">
+    <li>Because a trace may not have any fields</li>
+    <li>Because it reduces the number of SVGs</li>
+    <li>Because most queries happen at the 'step' granularity (aggregate/filter by model, by prompt version); putting those dimensions on the observation makes common queries direct column predicates over the wide table, while the trace just correlates</li>
+    <li>Because observations live in Postgres and traces in ClickHouse</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Query granularity decides where fields belong. Put the hot filter/aggregate dimensions on the observation so hot queries become column predicates without JOINs; keep the trace thin for correlation. The cost is some redundancy (e.g. userId) — exactly 'denormalize carefully'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Parent-child links among observations are expressed only by a parentObservationId pointer on the child. What's the key benefit for async ingestion?</div>
+  <ol class="opts">
+    <li>Each observation carries 'who my parent is', so they can arrive independently and out of order; a child arriving before its parent is fine, and the UI rebuilds the tree from pointers at query time</li>
+    <li>It stores the tree as an extra relational table</li>
+    <li>It requires all observations to be written in order</li>
+    <li>It lets the parent count its children in real time</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. If the parent maintained a children list, you'd have to 'wait for all children before writing the parent' — a disaster in a high-concurrency async pipeline. Storing only the child's parent pointer fully decouples writes and allows any order, key to the ingestion path (tree rebuilt in L25).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why does an observation carry both providedUsageDetails and usageDetails (and similarly for cost)?</div>
+  <ol class="opts">
+    <li>'provided' is for the frontend, 'usage' for the backend</li>
+    <li>'provided' is what the SDK reported, 'usage' is what Langfuse computed at ingestion from model pricing; 'respect what you sent, backfill what you didn't'</li>
+    <li>One stores tokens, the other money</li>
+    <li>They are identical, pure redundancy</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Having both balances 'app precision' and 'platform backfill': if the app knows exact usage it reports it (provided); if not, Langfuse computes it from the model pricing table (computed). This 'provided wins, computed backfills' is expanded in the cost lesson (L16).</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>If you designed the score 'source' enum, would you also forbid external API callers from submitting EVAL-sourced scores like Langfuse does? Discuss what this means for trusting 'who scored'.</li>
   </ul>
 </div>
 </div>

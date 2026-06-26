@@ -11,4 +11,5 @@ import part1
 CONTENT = {
     "01-what-is-langfuse.html": part1.LESSON_01,
     "02-observability-2-and-wide-events.html": part1.LESSON_02,
+    "03-three-pillars-deep.html": part1.LESSON_03,
 }
