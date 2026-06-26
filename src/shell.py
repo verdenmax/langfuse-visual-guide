@@ -91,6 +91,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("21-trpc-backbone.html", "tRPC 骨架", "The tRPC backbone",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("22-repository-layer.html", "仓储层：从 ClickHouse 读", "The repository layer",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -616,6 +618,8 @@ SUBTITLES = {
                                      "Next.js; mostly Pages Router; three APIs (tRPC/REST/App-Router); features vertical slices; internal type-safety vs external stable contract"),
     "21-trpc-backbone.html": ("appRouter 聚合 ~64 路由 · context 注入 session/prisma · procedure=可叠中间件栈 · RBAC 从输入取 projectId · 安全靠结构",
                               "appRouter aggregates ~64 routers; context injects session/prisma; procedure=stackable middleware; RBAC pulls projectId from input; security by structure"),
+    "22-repository-layer.html": ("queryClickhouse 统一执行器 · OTel/log_comment 标签/退避重试/资源错误包装 · 回看时间窗 2天/1小时 · 流式变体",
+                                "queryClickhouse unified executor; OTel/log_comment tags/backoff retry/resource-error wrap; look-back windows 2d/1h; streaming variants"),
 }
 
 

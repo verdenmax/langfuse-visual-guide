@@ -1515,6 +1515,76 @@ QUIZZES = {
             },
         ],
     },
+    "22-repository-layer.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 让所有 ClickHouse 读取都经过一个 queryClickhouse() 执行器，而不是各处直接写查询。这样做最核心的收益是？",
+                    "en": "Langfuse routes all ClickHouse reads through one queryClickhouse() executor rather than writing queries everywhere. The core benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "横切关注（OTel 追踪、查询标签、退避重试、资源错误包装）一次实现、处处生效；加一项能力全平台查询一起获得，不会有的写有的漏、写法不一",
+                        "en": "cross-cutting concerns (OTel tracing, query tags, backoff retry, resource-error wrapping) are implemented once and apply everywhere; add a capability and every query gains it, with no some-write-some-omit inconsistency",
+                    },
+                    {"zh": "让查询语法更简单", "en": "to make query syntax simpler"},
+                    {"zh": "因为 ClickHouse 只接受一个连接", "en": "because ClickHouse accepts only one connection"},
+                    {"zh": "为了隐藏 SQL 不让人看", "en": "to hide the SQL from view"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "可观测性、追责、重试、资源保护都和「业务查什么」无关却每条查询都需要。收敛到一个执行器，它们一次实现、处处复用；散落各处的裸查询必然写法不一、漏东漏西。这与第 6 课「把复杂度收敛到一处」一脉相承。",
+                    "en": "Observability, accountability, retry, resource protection are unrelated to 'what business queries' yet needed by every query. Converged into one executor they're implemented once and reused; scattered raw queries inevitably drift and omit. In line with L06's 'converge complexity to one place'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "queryClickhouse 通过 log_comment 给每条 SQL 打上 project/面/路由标签。这个标签的实际用处是？",
+                    "en": "queryClickhouse tags every SQL via log_comment with project/surface/route. What's the practical use?",
+                },
+                "opts": [
+                    {
+                        "zh": "标签随查询进入 ClickHouse 的查询日志；当某条慢查询拖垮集群时，运维能直接在日志里按标签定位是哪个 project/面/路由的元凶——把可观测性焊进数据访问层",
+                        "en": "the tags enter ClickHouse's query log with the query; when a slow query drags the cluster down, operators can locate the culprit project/surface/route by tag right in the log — observability welded into the data-access layer",
+                    },
+                    {"zh": "标签用来加密查询", "en": "the tags encrypt the query"},
+                    {"zh": "标签让查询更快", "en": "the tags speed up the query"},
+                    {"zh": "标签替代了 WHERE 条件", "en": "the tags replace the WHERE clause"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "sendClickhouseQuery 把标签塞进 clickhouse_settings.log_comment，于是每条打到 CH 的 SQL 都自带「谁/哪个面/哪个路由发起」。出现慢查询或资源耗尽时，可在 CH 自己的查询日志里按标签追责——这是散落各处的裸查询永远做不到的。",
+                    "en": "sendClickhouseQuery stuffs tags into clickhouse_settings.log_comment, so every SQL hitting CH carries 'who/which surface/which route initiated it'. On a slow query or resource exhaustion, you can trace the culprit by tag in CH's own query log — impossible for scattered raw queries.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "把一条 trace 的观测拼起来时，Langfuse 不全表扫 observations，而是只在 trace 时间戳前后一个有界窗口（如 2 天）内找。为什么能、且为什么要这样？",
+                    "en": "To stitch a trace's observations, Langfuse doesn't full-scan observations but searches only a bounded window (e.g. 2 days) around the trace timestamp. Why can it, and why must it?",
+                },
+                "opts": [
+                    {
+                        "zh": "能：trace/observation/score 是三张独立宽表、靠时间关联，且一条 trace 的观测几乎都集中在它发生后很短时间内；要：否则跨表 JOIN 要扫几个月上亿行，把分析库当事务库用必然拖垮集群",
+                        "en": "can: trace/observation/score are three independent wide tables correlated by time, and a trace's observations almost all cluster shortly after it; must: otherwise the cross-table JOIN scans months and billions of rows, crashing the cluster by using an analytical store like a transactional one",
+                    },
+                    {"zh": "因为 2 天前的数据会被自动删除", "en": "because data older than 2 days is auto-deleted"},
+                    {"zh": "因为 ClickHouse 不支持大于 2 天的查询", "en": "because ClickHouse can't query beyond 2 days"},
+                    {"zh": "纯粹是随便定的限制", "en": "an arbitrary limit"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "第 8 课让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。",
+                    "en": "L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「把所有数据访问收敛到一个执行器，统一加上追踪、标签、重试、资源保护」——这条原则你能用到自己的系统吗？如果你的代码里到处是裸 SQL/裸 HTTP 调用，把它们收敛到一个执行器，你最想先统一加上哪三样能力？为什么？",
+                "en": "'Converge all data access into one executor, uniformly adding tracing, tags, retry, resource protection' — can you apply this to your systems? If your code is full of raw SQL/raw HTTP calls, converging them into one executor, which three capabilities would you add first, and why?",
+            },
+        ],
+    },
 }
 
 

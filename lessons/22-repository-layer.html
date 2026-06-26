@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>22 · 仓储层：从 ClickHouse 读 / The repository layer - Langfuse 图解教程</title>
+<meta name="description" content="第四部分 · 查询链路｜仓储层：从 ClickHouse 读 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="22 · 仓储层：从 ClickHouse 读 / The repository layer - Langfuse 图解教程">
+<meta property="og:description" content="第四部分 · 查询链路｜仓储层：从 ClickHouse 读 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="22 · 仓储层：从 ClickHouse 读 / The repository layer - Langfuse 图解教程">
+<meta name="twitter:description" content="第四部分 · 查询链路｜仓储层：从 ClickHouse 读 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></span>
+    <span class="pill">22 / 22</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
+    <h1><span class="lang-zh">仓储层：从 ClickHouse 读</span><span class="lang-en">The repository layer</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+上一课结束在「resolver 调 <code>@langfuse/shared</code> 的仓储读库」。这一课就推开<strong>仓储层</strong>那扇门，看它怎么从 ClickHouse 把数据捞出来。核心是一条纪律：
+<strong>所有分析查询都汇到同一个执行器</strong>——<code>queryClickhouse()</code>。它给每条查询<strong>统一</strong>套上：OTel 追踪、查询<strong>标签</strong>、失败<strong>退避重试</strong>、
+资源错误<strong>友好包装</strong>。再加上一个让跨表 JOIN 变得便宜的关键技巧——<strong>回看时间窗</strong>。看懂这一层，就看懂了 Langfuse 所有读取的「总闸门」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏬 生活类比</div>
+  把 ClickHouse 想成一个巨大的<strong>仓库</strong>。如果让每个工人（每段查询代码）<strong>各自闯进仓库</strong>乱翻，既没人记录谁拿了什么，出了乱子也无从追查。
+  Langfuse 的做法是开<strong>唯一一个领料窗口</strong>（<code>queryClickhouse</code>）：所有人都从这儿递单子。窗口管理员会<strong>登记是谁来领的</strong>（查询标签）、<strong>给你贴张追踪票</strong>（OTel span）、
+  <strong>货架一时占用就稍等再试</strong>（退避重试）；要是你一张单子想搬走整个仓库（内存超限），他不会让仓库塌掉，而是礼貌地退回一句「<strong>把范围缩小点再来</strong>」（资源错误）。
+  一个窗口，把观测、追责、容错全管住了。
+</div>
+
+
+<h2>唯一的领料窗口：queryClickhouse</h2>
+<p>每段读取代码都不直接连 ClickHouse，而是把查询和一组<strong>标签</strong>交给 <code>queryClickhouse()</code>。它在真正发查询的外面，<strong>统一</strong>裹了好几层横切关注：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="众多服务与路由都经 queryClickhouse 这一个执行器读 ClickHouse，沿途套上 OTel span、查询标签、退避重试、资源错误包装">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">所有读取汇到一个执行器</text>
+  <rect x="20" y="46" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="67" text-anchor="middle" font-size="8" fill="var(--ink)">traces 服务</text>
+  <rect x="20" y="86" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="107" text-anchor="middle" font-size="8" fill="var(--ink)">dashboard 引擎</text>
+  <rect x="20" y="126" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="147" text-anchor="middle" font-size="8" fill="var(--ink)">public API</text>
+  <rect x="20" y="166" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="187" text-anchor="middle" font-size="8" fill="var(--muted)">…几十处调用</text>
+  <rect x="200" y="58" width="230" height="130" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="80" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">queryClickhouse()</text>
+  <rect x="216" y="92" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="106" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel span（每条查询可追踪）</text>
+  <rect x="216" y="116" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">② log_comment 标签（谁/哪个面/路由）</text>
+  <rect x="216" y="140" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="154" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ backOff 退避重试（网络抖动）</text>
+  <rect x="216" y="164" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="315" y="178" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">④ 资源错误友好包装</text>
+  <rect x="488" y="92" width="120" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="548" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="548" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">JSONEachRow</text>
+  <rect x="488" y="158" width="120" height="42" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="548" y="176" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">流式变体</text><text x="548" y="190" text-anchor="middle" font-size="6.8" fill="var(--muted)">Stream / WithProgress(SSE)</text>
+  <line x1="140" y1="63" x2="198" y2="100" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="103" x2="198" y2="118" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="143" x2="198" y2="136" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="183" x2="198" y2="155" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>一个窗口，四样统一</b>：<code>queryClickhouse()</code> 给每条查询裹上 OTel span、<code>log_comment</code> 标签、退避重试、资源错误包装，再发往 ClickHouse（大读走 <code>queryClickhouseStream</code>/<code>WithProgress</code>）。源码：<code>packages/shared/src/server/repositories/clickhouse.ts:639</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
+  <pre class="code"><span class="kw">export async function</span> <span class="fn">queryClickhouse</span>&lt;T&gt;(opts) {
+  <span class="fn">assertNoLegacyEventsRead</span>(opts.query);          <span class="cm">// 守卫：别读旧 events 表</span>
+  <span class="kw">return await</span> <span class="fn">instrumentAsync</span>({ name: <span class="st">"clickhouse-query"</span> }, <span class="kw">async</span> (span) =&gt; {
+    <span class="fn">setSpanQueryAttributes</span>(span, opts.query);        <span class="cm">// ① 把 SQL 挂到 OTel span</span>
+    <span class="kw">return await</span> <span class="fn">backOff</span>(                          <span class="cm">// ③ 网络错可重试，指数退避</span>
+      () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② 内部设 log_comment=JSON(tags)</span>
+      { numOfAttempts, retry: isRetryableError },
+    ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
+  });                                                <span class="cm">// ④ 内存/超时 → 友好错误（第 21 课接住）</span>
+}</pre>
+</div>
+
+<p>这四样里，<strong>查询标签</strong>尤其值得一提。<code>sendClickhouseQuery</code> 会把标签塞进 ClickHouse 的 <code>log_comment</code> 设置（即查询日志的注释字段）：
+于是<strong>每一条打到 ClickHouse 的 SQL，都自带「是哪个 project、哪个面（UI/公共 API/worker）、哪个路由发起的」</strong>。当某条慢查询拖垮集群时，运维能直接在 ClickHouse 的查询日志里
+按标签定位元凶——这是把<strong>可观测性焊进数据访问层</strong>的一招，散落各处的裸查询永远做不到。</p>
+
+<p>同一个领料窗口还备了<strong>几种取货方式</strong>，应对不同读取场景——但它们共享同一套追踪/标签/重试机制：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">一次取回全部</span></div><div class="ld">最常用：跑查询、把结果一次性读成数组返回。绝大多数列表、详情、聚合都走它。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">边读边吐</span></div><div class="ld">大读不必把整个结果攒在内存里，而是<strong>流式</strong>一行行吐出——批量导出（第 12 课提过的导出）这类「结果可能巨大」的场景靠它，内存有界。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">带进度的流</span></div><div class="ld">给 <strong>SSE 流式仪表盘</strong>用：一边查一边把进度推给前端，让大仪表盘查询「有反馈、不假死」。</div></div>
+</div>
+
+
+<h2>回看时间窗：让跨表 JOIN 不再扫全表</h2>
+<p>还记得第 8 课吗——trace、observation、score 是<strong>三张独立的宽表</strong>，彼此没有外键，而是靠<strong>时间</strong>关联。问题来了：要把一条 trace 的观测和评分拼起来，
+难道要在动辄几个月、上亿行的 observations 表里全表搜一遍？那会慢到无法接受。仓储层的答案是<strong>回看时间窗</strong>：利用「一条 trace 的观测，几乎都集中在它发生后的一小段时间内」这个事实，
+只在一个<strong>有界的时间范围</strong>里找。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="按 trace 时间戳划出有界回看窗：观测在 2 天内、评分在 1 小时内，只扫这几个分区而非全表">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">以 trace 时间戳为锚，只看有界的回看窗</text>
+  <line x1="40" y1="86" x2="700" y2="86" stroke="var(--faint)" stroke-width="1.5"/><text x="690" y="80" text-anchor="end" font-size="7.5" fill="var(--faint)">时间 →</text>
+  <circle cx="360" cy="86" r="6" fill="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">trace.timestamp（锚点）</text>
+  <rect x="300" y="100" width="180" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="117" text-anchor="middle" font-size="8" fill="var(--accent-ink)">观测窗：start_time ≥ 锚 − 2 天</text>
+  <rect x="336" y="132" width="96" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="384" y="148" text-anchor="middle" font-size="7.5" fill="var(--ink)">评分窗：1 小时</text>
+  <rect x="40" y="100" width="250" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="165" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">窗外：不扫</text><text x="165" y="138" text-anchor="middle" font-size="7" fill="var(--faint)">（几个月的旧分区被跳过）</text>
+  <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">窗外：不扫</text>
+  <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 天 · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 小时</text>
+</svg>
+<div class="figcap"><b>有界回看，跳过旧分区</b>：以 trace 的 <code>timestamp</code> 为锚，观测只在 <code>start_time ≥ 锚 − 2 天</code> 内找、评分在 1 小时内找。这些常量被注入 WHERE 子句，配合第 8 课「按月分区」让 JOIN <strong>只碰几个分区</strong>。源码：<code>repositories/constants.ts:4,9</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 不设窗：全表 JOIN</h4><p>为一条 trace 找观测，要在整张 observations 表（几个月、上亿行）里搜。每次列表查询都这样，集群很快被拖垮——这正是把分析库当事务库用的典型翻车。</p></div>
+  <div class="col"><h4>😀 设回看窗：有界扫描</h4><p>把 <code>start_time ≥ trace.timestamp − 2 天</code> 注入 WHERE，配合按月分区，JOIN <strong>只读那几个相关分区</strong>。扫描量从「几个月」骤降到「两天」，查询飞快。</p></div>
+</div>
+
+<p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 98% 的观测在 trace 后 5 分钟内）把窗设成 2 天，留足安全裕量，几乎不会真漏。
+<strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
+
+
+<table class="t">
+  <tr><th>这一层加了什么</th><th>解决什么</th></tr>
+  <tr><td><b>OTel span</b></td><td>每条查询可追踪、可看耗时——观测性焊进数据层</td></tr>
+  <tr><td><b>log_comment 标签</b></td><td>每条 SQL 自带 project/面/路由，慢查询能在 CH 查询日志里按标签追责</td></tr>
+  <tr><td><b>退避重试</b></td><td>网络抖动等可重试错误自动重试，不打扰调用方</td></tr>
+  <tr><td><b>资源错误包装</b></td><td>内存/超时翻成友好的 <code>ClickHouseResourceError</code>，交第 21 课给出「缩小范围」建议</td></tr>
+  <tr><td><b>回看时间窗</b></td><td>跨表 JOIN 只扫有界分区，把全表扫描挡在门外</td></tr>
+  <tr><td><b>legacy 守卫 + 流式变体</b></td><td>禁读旧 events 表；大读用 Stream、SSE 仪表盘用 WithProgress</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把所有读取硬挤到一个执行器里，而不是哪儿要查哪儿写 SQL？</strong> 因为<strong>横切关注最忌散落</strong>。可观测性、追责、重试、资源保护——这些和「业务查什么」无关、
+  却每条查询都需要的能力，如果让一百处裸查询各自实现，必然有的写、有的漏、写法还不一致。收敛成<strong>一个执行器</strong>，它们就<strong>一次实现、处处生效</strong>：
+  加一项能力（比如新的查询标签维度），全平台的查询<strong>一起获得</strong>。回看时间窗则是另一种智慧：它承认第 8 课「三张独立宽表、靠时间关联」的设计代价（JOIN 没有外键可走），
+  并用「数据的真实时间局部性」把这个代价摊薄到几乎为零。<strong>一个总闸门管住所有共性，一条务实的时间线管住所有 JOIN</strong>——这就是仓储层的全部精髓。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>所有 ClickHouse 读取都汇到一个执行器 <code>queryClickhouse()</code>，沿途统一套上 <strong>OTel span、查询标签、退避重试、资源错误包装</strong>。</li>
+    <li><strong>查询标签</strong>经 <code>log_comment</code> 进 ClickHouse 查询日志，每条 SQL 自带 project/面/路由——慢查询可按标签追责。</li>
+    <li><strong>资源错误</strong>（内存/超时）被包装成 <code>ClickHouseResourceError</code>，交第 21 课的错误中间件翻成「缩小时间范围」的可操作建议。</li>
+    <li><strong>回看时间窗</strong>：trace/observation/score 是三张独立宽表、靠时间关联；JOIN 时以 trace 时间戳为锚、只在 2 天（观测）/1 小时（评分）内找，避免全表扫描。</li>
+    <li>取舍：横切能力收敛到一处「一次实现处处生效」；时间窗用「真实时间局部性」摊薄第 8 课分表的 JOIN 成本，以极小长尾正确性换巨大成本节省。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 让所有 ClickHouse 读取都经过一个 queryClickhouse() 执行器，而不是各处直接写查询。这样做最核心的收益是？</div>
+  <ol class="opts">
+    <li>因为 ClickHouse 只接受一个连接</li>
+    <li>让查询语法更简单</li>
+    <li>为了隐藏 SQL 不让人看</li>
+    <li>横切关注（OTel 追踪、查询标签、退避重试、资源错误包装）一次实现、处处生效；加一项能力全平台查询一起获得，不会有的写有的漏、写法不一</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。可观测性、追责、重试、资源保护都和「业务查什么」无关却每条查询都需要。收敛到一个执行器，它们一次实现、处处复用；散落各处的裸查询必然写法不一、漏东漏西。这与第 6 课「把复杂度收敛到一处」一脉相承。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. queryClickhouse 通过 log_comment 给每条 SQL 打上 project/面/路由标签。这个标签的实际用处是？</div>
+  <ol class="opts">
+    <li>标签让查询更快</li>
+    <li>标签替代了 WHERE 条件</li>
+    <li>标签随查询进入 ClickHouse 的查询日志；当某条慢查询拖垮集群时，运维能直接在日志里按标签定位是哪个 project/面/路由的元凶——把可观测性焊进数据访问层</li>
+    <li>标签用来加密查询</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。sendClickhouseQuery 把标签塞进 clickhouse_settings.log_comment，于是每条打到 CH 的 SQL 都自带「谁/哪个面/哪个路由发起」。出现慢查询或资源耗尽时，可在 CH 自己的查询日志里按标签追责——这是散落各处的裸查询永远做不到的。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 把一条 trace 的观测拼起来时，Langfuse 不全表扫 observations，而是只在 trace 时间戳前后一个有界窗口（如 2 天）内找。为什么能、且为什么要这样？</div>
+  <ol class="opts">
+    <li>纯粹是随便定的限制</li>
+    <li>因为 2 天前的数据会被自动删除</li>
+    <li>因为 ClickHouse 不支持大于 2 天的查询</li>
+    <li>能：trace/observation/score 是三张独立宽表、靠时间关联，且一条 trace 的观测几乎都集中在它发生后很短时间内；要：否则跨表 JOIN 要扫几个月上亿行，把分析库当事务库用必然拖垮集群</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。第 8 课让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「把所有数据访问收敛到一个执行器，统一加上追踪、标签、重试、资源保护」——这条原则你能用到自己的系统吗？如果你的代码里到处是裸 SQL/裸 HTTP 调用，把它们收敛到一个执行器，你最想先统一加上哪三样能力？为什么？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+The last lesson ended at "the resolver calls a <code>@langfuse/shared</code> repository to read". This lesson opens that <strong>repository layer</strong> door and
+shows how it pulls data out of ClickHouse. The core is a discipline: <strong>every analytical query funnels through one executor</strong> —
+<code>queryClickhouse()</code>. It <strong>uniformly</strong> wraps each query with OTel tracing, query <strong>tags</strong>, backoff <strong>retry</strong>, and
+friendly resource-error <strong>wrapping</strong>. Plus a key trick that makes cross-table JOINs cheap — the <strong>look-back window</strong>. Get this layer and
+you get the "master valve" for all of Langfuse's reads.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏬 Analogy</div>
+  Think of ClickHouse as a vast <strong>warehouse</strong>. If every worker (each piece of query code) <strong>barges into the warehouse</strong> to rummage on their
+  own, nobody records who took what, and when things go wrong there's no trail. Langfuse instead opens <strong>one single dispatch window</strong>
+  (<code>queryClickhouse</code>): everyone hands in their slip here. The clerk <strong>logs who's collecting</strong> (query tags), <strong>stamps a tracking
+  ticket</strong> (OTel span), and <strong>waits and retries if a shelf is briefly busy</strong> (backoff). If your slip tries to haul off the whole warehouse
+  (out of memory), the clerk won't let the warehouse collapse — they politely hand back "<strong>narrow it down and come again</strong>" (resource error). One
+  window handles observability, accountability, and fault tolerance all at once.
+</div>
+
+
+<h2>The one dispatch window: queryClickhouse</h2>
+<p>No reading code connects to ClickHouse directly; it hands the query and a set of <strong>tags</strong> to <code>queryClickhouse()</code>. Around the actual
+query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="many services and routers read ClickHouse through the one queryClickhouse executor, wrapped with OTel span, query tags, backoff retry, resource-error wrapping">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">All reads funnel into one executor</text>
+  <rect x="20" y="46" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="67" text-anchor="middle" font-size="8" fill="var(--ink)">traces service</text>
+  <rect x="20" y="86" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="107" text-anchor="middle" font-size="8" fill="var(--ink)">dashboard engine</text>
+  <rect x="20" y="126" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="147" text-anchor="middle" font-size="8" fill="var(--ink)">public API</text>
+  <rect x="20" y="166" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="187" text-anchor="middle" font-size="8" fill="var(--muted)">…dozens of callers</text>
+  <rect x="200" y="58" width="230" height="130" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="80" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">queryClickhouse()</text>
+  <rect x="216" y="92" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="106" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel span (every query traceable)</text>
+  <rect x="216" y="116" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="130" text-anchor="middle" font-size="7" fill="var(--ink)">② log_comment tags (who/surface/route)</text>
+  <rect x="216" y="140" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="154" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ backOff retry (network blips)</text>
+  <rect x="216" y="164" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="315" y="178" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">④ friendly resource-error wrap</text>
+  <rect x="488" y="92" width="120" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="548" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="548" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">JSONEachRow</text>
+  <rect x="488" y="158" width="120" height="42" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="548" y="176" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">streaming variants</text><text x="548" y="190" text-anchor="middle" font-size="6.6" fill="var(--muted)">Stream / WithProgress(SSE)</text>
+  <line x1="140" y1="63" x2="198" y2="100" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="103" x2="198" y2="118" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="143" x2="198" y2="136" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="183" x2="198" y2="155" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>One window, four things unified</b>: <code>queryClickhouse()</code> wraps each query with an OTel span, <code>log_comment</code> tags, backoff retry, and resource-error wrapping, then sends it to ClickHouse (big reads via <code>queryClickhouseStream</code>/<code>WithProgress</code>). Source: <code>packages/shared/src/server/repositories/clickhouse.ts:639</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
+  <pre class="code"><span class="kw">export async function</span> <span class="fn">queryClickhouse</span>&lt;T&gt;(opts) {
+  <span class="fn">assertNoLegacyEventsRead</span>(opts.query);          <span class="cm">// guard: don't read legacy events tables</span>
+  <span class="kw">return await</span> <span class="fn">instrumentAsync</span>({ name: <span class="st">"clickhouse-query"</span> }, <span class="kw">async</span> (span) =&gt; {
+    <span class="fn">setSpanQueryAttributes</span>(span, opts.query);        <span class="cm">// ① attach SQL to the OTel span</span>
+    <span class="kw">return await</span> <span class="fn">backOff</span>(                          <span class="cm">// ③ retry retryable (network) errors</span>
+      () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② sets log_comment=JSON(tags) inside</span>
+      { numOfAttempts, retry: isRetryableError },
+    ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
+  });                                                <span class="cm">// ④ memory/timeout → friendly error (caught by L21)</span>
+}</pre>
+</div>
+
+<p>Of these four, the <strong>query tags</strong> deserve a special mention. <code>sendClickhouseQuery</code> stuffs the tags into ClickHouse's
+<code>log_comment</code> setting (the query log's comment field): so <strong>every SQL hitting ClickHouse carries "which project, which surface (UI/public
+API/worker), which route initiated it"</strong>. When one slow query drags down the cluster, operators can locate the culprit by tag directly in ClickHouse's own
+query log — a way to <strong>weld observability into the data-access layer</strong> that scattered raw queries can never achieve.</p>
+
+<p>The same dispatch window also offers <strong>several pickup modes</strong> for different read scenarios — but they share the same tracing/tags/retry machinery:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">fetch all at once</span></div><div class="ld">The common case: run the query, read the whole result into an array, return. Most lists, details, aggregations go through it.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">stream as it reads</span></div><div class="ld">Big reads needn't buffer the whole result in memory; they <strong>stream</strong> row by row — batch exports (the exports mentioned in L12) and other "result might be huge" cases use it, with bounded memory.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">streaming with progress</span></div><div class="ld">For <strong>SSE streaming dashboards</strong>: pushes progress to the frontend as it queries, so big dashboard queries "give feedback, don't freeze".</div></div>
+</div>
+
+
+<h2>Look-back windows: cross-table JOINs without full scans</h2>
+<p>Remember Lesson 8 — trace, observation, score are <strong>three independent wide tables</strong>, with no foreign keys, correlated by <strong>time</strong>. The
+problem: to stitch a trace's observations and scores together, must we full-scan an observations table of months and billions of rows? Unacceptably slow. The
+repository layer's answer is the <strong>look-back window</strong>: exploiting the fact that "a trace's observations almost all cluster in a short window after it
+happened", it searches only within a <strong>bounded time range</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="a bounded look-back window anchored at the trace timestamp: observations within 2 days, scores within 1 hour, scanning only those partitions not the whole table">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Anchored at the trace timestamp, only a bounded look-back window</text>
+  <line x1="40" y1="86" x2="700" y2="86" stroke="var(--faint)" stroke-width="1.5"/><text x="690" y="80" text-anchor="end" font-size="7.5" fill="var(--faint)">time →</text>
+  <circle cx="360" cy="86" r="6" fill="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">trace.timestamp (anchor)</text>
+  <rect x="300" y="100" width="180" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="117" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">obs window: start_time ≥ anchor − 2 days</text>
+  <rect x="336" y="132" width="96" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="384" y="148" text-anchor="middle" font-size="7.5" fill="var(--ink)">score window: 1 hour</text>
+  <rect x="40" y="100" width="250" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="165" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">outside: not scanned</text><text x="165" y="138" text-anchor="middle" font-size="7" fill="var(--faint)">(months of old partitions skipped)</text>
+  <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">outside: not scanned</text>
+  <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 days · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 hour</text>
+</svg>
+<div class="figcap"><b>Bounded look-back, skip old partitions</b>: anchored at the trace's <code>timestamp</code>, observations are found within <code>start_time ≥ anchor − 2 days</code>, scores within 1 hour. These constants are injected into WHERE clauses, with Lesson 8's monthly partitioning letting JOINs <strong>touch only a few partitions</strong>. Source: <code>repositories/constants.ts:4,9</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 no window: full-table JOIN</h4><p>To find a trace's observations, search the whole observations table (months, billions of rows). Every list query doing this would soon drag the cluster down — the classic crash of using an analytical store like a transactional one.</p></div>
+  <div class="col"><h4>😀 look-back window: bounded scan</h4><p>Inject <code>start_time ≥ trace.timestamp − 2 days</code> into WHERE, and with monthly partitioning the JOIN <strong>reads only those few relevant partitions</strong>. The scan shrinks from "months" to "two days" — queries fly.</p></div>
+</div>
+
+<p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
+is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
+(~98% of observations finish within 5 minutes of the trace), Langfuse sets the window to 2 days, leaving ample safety margin, so it almost never truly misses.
+<strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
+
+<table class="t">
+  <tr><th>what this layer adds</th><th>what it solves</th></tr>
+  <tr><td><b>OTel span</b></td><td>every query traceable, its latency visible — observability welded into the data layer</td></tr>
+  <tr><td><b>log_comment tags</b></td><td>every SQL carries project/surface/route, so slow queries can be traced by tag in CH's query log</td></tr>
+  <tr><td><b>backoff retry</b></td><td>retryable errors (network blips) auto-retry without bothering the caller</td></tr>
+  <tr><td><b>resource-error wrapping</b></td><td>memory/timeout become a friendly <code>ClickHouseResourceError</code>, handed to L21 for "narrow it" advice</td></tr>
+  <tr><td><b>look-back window</b></td><td>cross-table JOINs scan only bounded partitions, keeping full scans out</td></tr>
+  <tr><td><b>legacy guard + streaming variants</b></td><td>forbids reading legacy events; big reads use Stream, SSE dashboards use WithProgress</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why cram all reads into one executor, instead of writing SQL wherever you need it?</strong> Because <strong>cross-cutting concerns most dread being
+  scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
+  a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're
+  <strong>implemented once, in effect everywhere</strong>: add a capability (say a new query-tag dimension) and every query platform-wide <strong>gains it
+  together</strong>. The look-back window is another kind of wisdom: it accepts the cost of Lesson 8's "three independent wide tables, correlated by time" design
+  (JOINs have no foreign key to follow), and uses "the data's real temporal locality" to amortize that cost to near zero. <strong>One master valve for all
+  commonalities, one pragmatic timeline for all JOINs</strong> — that's the whole essence of the repository layer.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>All ClickHouse reads funnel into one executor <code>queryClickhouse()</code>, uniformly wrapped with <strong>OTel span, query tags, backoff retry, resource-error wrapping</strong>.</li>
+    <li><strong>Query tags</strong> go via <code>log_comment</code> into ClickHouse's query log, so every SQL carries project/surface/route — slow queries traceable by tag.</li>
+    <li><strong>Resource errors</strong> (memory/timeout) are wrapped into <code>ClickHouseResourceError</code>, handed to L21's error middleware for "narrow the time range" advice.</li>
+    <li><strong>Look-back windows</strong>: trace/observation/score are three independent wide tables correlated by time; JOINs anchor at the trace timestamp and search only within 2 days (obs) / 1 hour (scores), avoiding full scans.</li>
+    <li>Tradeoff: cross-cutting capabilities converge to one place "implemented once, everywhere"; the time window uses "real temporal locality" to amortize Lesson 8's split-table JOIN cost, trading a tiny long-tail of correctness for huge cost savings.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse routes all ClickHouse reads through one queryClickhouse() executor rather than writing queries everywhere. The core benefit?</div>
+  <ol class="opts">
+    <li>because ClickHouse accepts only one connection</li>
+    <li>to make query syntax simpler</li>
+    <li>to hide the SQL from view</li>
+    <li>cross-cutting concerns (OTel tracing, query tags, backoff retry, resource-error wrapping) are implemented once and apply everywhere; add a capability and every query gains it, with no some-write-some-omit inconsistency</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Observability, accountability, retry, resource protection are unrelated to 'what business queries' yet needed by every query. Converged into one executor they're implemented once and reused; scattered raw queries inevitably drift and omit. In line with L06's 'converge complexity to one place'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. queryClickhouse tags every SQL via log_comment with project/surface/route. What's the practical use?</div>
+  <ol class="opts">
+    <li>the tags speed up the query</li>
+    <li>the tags replace the WHERE clause</li>
+    <li>the tags enter ClickHouse's query log with the query; when a slow query drags the cluster down, operators can locate the culprit project/surface/route by tag right in the log — observability welded into the data-access layer</li>
+    <li>the tags encrypt the query</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. sendClickhouseQuery stuffs tags into clickhouse_settings.log_comment, so every SQL hitting CH carries 'who/which surface/which route initiated it'. On a slow query or resource exhaustion, you can trace the culprit by tag in CH's own query log — impossible for scattered raw queries.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. To stitch a trace's observations, Langfuse doesn't full-scan observations but searches only a bounded window (e.g. 2 days) around the trace timestamp. Why can it, and why must it?</div>
+  <ol class="opts">
+    <li>an arbitrary limit</li>
+    <li>because data older than 2 days is auto-deleted</li>
+    <li>because ClickHouse can't query beyond 2 days</li>
+    <li>can: trace/observation/score are three independent wide tables correlated by time, and a trace's observations almost all cluster shortly after it; must: otherwise the cross-table JOIN scans months and billions of rows, crashing the cluster by using an analytical store like a transactional one</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Converge all data access into one executor, uniformly adding tracing, tags, retry, resource protection' — can you apply this to your systems? If your code is full of raw SQL/raw HTTP calls, converging them into one executor, which three capabilities would you add first, and why?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="21-trpc-backbone.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">tRPC 骨架</span><span class="lang-en">The tRPC backbone</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

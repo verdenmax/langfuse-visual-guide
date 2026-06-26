@@ -604,3 +604,282 @@ _EN21.append(r"""
 </div>
 """)
 LESSON_21 = {"zh": "\n".join(_ZH21), "en": "\n".join(_EN21)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L22 · 仓储层：从 ClickHouse 读 / The repository layer
+# ══════════════════════════════════════════════════════════════════════
+_ZH22 = []
+_EN22 = []
+
+_ZH22.append(r"""
+<p class="lead">
+上一课结束在「resolver 调 <code>@langfuse/shared</code> 的仓储读库」。这一课就推开<strong>仓储层</strong>那扇门，看它怎么从 ClickHouse 把数据捞出来。核心是一条纪律：
+<strong>所有分析查询都汇到同一个执行器</strong>——<code>queryClickhouse()</code>。它给每条查询<strong>统一</strong>套上：OTel 追踪、查询<strong>标签</strong>、失败<strong>退避重试</strong>、
+资源错误<strong>友好包装</strong>。再加上一个让跨表 JOIN 变得便宜的关键技巧——<strong>回看时间窗</strong>。看懂这一层，就看懂了 Langfuse 所有读取的「总闸门」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏬 生活类比</div>
+  把 ClickHouse 想成一个巨大的<strong>仓库</strong>。如果让每个工人（每段查询代码）<strong>各自闯进仓库</strong>乱翻，既没人记录谁拿了什么，出了乱子也无从追查。
+  Langfuse 的做法是开<strong>唯一一个领料窗口</strong>（<code>queryClickhouse</code>）：所有人都从这儿递单子。窗口管理员会<strong>登记是谁来领的</strong>（查询标签）、<strong>给你贴张追踪票</strong>（OTel span）、
+  <strong>货架一时占用就稍等再试</strong>（退避重试）；要是你一张单子想搬走整个仓库（内存超限），他不会让仓库塌掉，而是礼貌地退回一句「<strong>把范围缩小点再来</strong>」（资源错误）。
+  一个窗口，把观测、追责、容错全管住了。
+</div>
+""")
+
+# (L22 sections appended below)
+
+_ZH22.append(r"""
+<h2>唯一的领料窗口：queryClickhouse</h2>
+<p>每段读取代码都不直接连 ClickHouse，而是把查询和一组<strong>标签</strong>交给 <code>queryClickhouse()</code>。它在真正发查询的外面，<strong>统一</strong>裹了好几层横切关注：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="众多服务与路由都经 queryClickhouse 这一个执行器读 ClickHouse，沿途套上 OTel span、查询标签、退避重试、资源错误包装">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">所有读取汇到一个执行器</text>
+  <rect x="20" y="46" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="67" text-anchor="middle" font-size="8" fill="var(--ink)">traces 服务</text>
+  <rect x="20" y="86" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="107" text-anchor="middle" font-size="8" fill="var(--ink)">dashboard 引擎</text>
+  <rect x="20" y="126" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="147" text-anchor="middle" font-size="8" fill="var(--ink)">public API</text>
+  <rect x="20" y="166" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="187" text-anchor="middle" font-size="8" fill="var(--muted)">…几十处调用</text>
+  <rect x="200" y="58" width="230" height="130" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="80" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">queryClickhouse()</text>
+  <rect x="216" y="92" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="106" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel span（每条查询可追踪）</text>
+  <rect x="216" y="116" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="130" text-anchor="middle" font-size="7.5" fill="var(--ink)">② log_comment 标签（谁/哪个面/路由）</text>
+  <rect x="216" y="140" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="154" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ backOff 退避重试（网络抖动）</text>
+  <rect x="216" y="164" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="315" y="178" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">④ 资源错误友好包装</text>
+  <rect x="488" y="92" width="120" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="548" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="548" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">JSONEachRow</text>
+  <rect x="488" y="158" width="120" height="42" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="548" y="176" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">流式变体</text><text x="548" y="190" text-anchor="middle" font-size="6.8" fill="var(--muted)">Stream / WithProgress(SSE)</text>
+  <line x1="140" y1="63" x2="198" y2="100" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="103" x2="198" y2="118" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="143" x2="198" y2="136" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="183" x2="198" y2="155" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>一个窗口，四样统一</b>：<code>queryClickhouse()</code> 给每条查询裹上 OTel span、<code>log_comment</code> 标签、退避重试、资源错误包装，再发往 ClickHouse（大读走 <code>queryClickhouseStream</code>/<code>WithProgress</code>）。源码：<code>packages/shared/src/server/repositories/clickhouse.ts:639</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
+  <pre class="code"><span class="kw">export async function</span> <span class="fn">queryClickhouse</span>&lt;T&gt;(opts) {
+  <span class="fn">assertNoLegacyEventsRead</span>(opts.query);          <span class="cm">// 守卫：别读旧 events 表</span>
+  <span class="kw">return await</span> <span class="fn">instrumentAsync</span>({ name: <span class="st">"clickhouse-query"</span> }, <span class="kw">async</span> (span) =&gt; {
+    <span class="fn">setSpanQueryAttributes</span>(span, opts.query);        <span class="cm">// ① 把 SQL 挂到 OTel span</span>
+    <span class="kw">return await</span> <span class="fn">backOff</span>(                          <span class="cm">// ③ 网络错可重试，指数退避</span>
+      () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② 内部设 log_comment=JSON(tags)</span>
+      { numOfAttempts, retry: isRetryableError },
+    ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
+  });                                                <span class="cm">// ④ 内存/超时 → 友好错误（第 21 课接住）</span>
+}</pre>
+</div>
+
+<p>这四样里，<strong>查询标签</strong>尤其值得一提。<code>sendClickhouseQuery</code> 会把标签塞进 ClickHouse 的 <code>log_comment</code> 设置（即查询日志的注释字段）：
+于是<strong>每一条打到 ClickHouse 的 SQL，都自带「是哪个 project、哪个面（UI/公共 API/worker）、哪个路由发起的」</strong>。当某条慢查询拖垮集群时，运维能直接在 ClickHouse 的查询日志里
+按标签定位元凶——这是把<strong>可观测性焊进数据访问层</strong>的一招，散落各处的裸查询永远做不到。</p>
+
+<p>同一个领料窗口还备了<strong>几种取货方式</strong>，应对不同读取场景——但它们共享同一套追踪/标签/重试机制：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">一次取回全部</span></div><div class="ld">最常用：跑查询、把结果一次性读成数组返回。绝大多数列表、详情、聚合都走它。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">边读边吐</span></div><div class="ld">大读不必把整个结果攒在内存里，而是<strong>流式</strong>一行行吐出——批量导出（第 12 课提过的导出）这类「结果可能巨大」的场景靠它，内存有界。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">带进度的流</span></div><div class="ld">给 <strong>SSE 流式仪表盘</strong>用：一边查一边把进度推给前端，让大仪表盘查询「有反馈、不假死」。</div></div>
+</div>
+""")
+
+# (look-back windows section below)
+
+_ZH22.append(r"""
+<h2>回看时间窗：让跨表 JOIN 不再扫全表</h2>
+<p>还记得第 8 课吗——trace、observation、score 是<strong>三张独立的宽表</strong>，彼此没有外键，而是靠<strong>时间</strong>关联。问题来了：要把一条 trace 的观测和评分拼起来，
+难道要在动辄几个月、上亿行的 observations 表里全表搜一遍？那会慢到无法接受。仓储层的答案是<strong>回看时间窗</strong>：利用「一条 trace 的观测，几乎都集中在它发生后的一小段时间内」这个事实，
+只在一个<strong>有界的时间范围</strong>里找。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="按 trace 时间戳划出有界回看窗：观测在 2 天内、评分在 1 小时内，只扫这几个分区而非全表">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">以 trace 时间戳为锚，只看有界的回看窗</text>
+  <line x1="40" y1="86" x2="700" y2="86" stroke="var(--faint)" stroke-width="1.5"/><text x="690" y="80" text-anchor="end" font-size="7.5" fill="var(--faint)">时间 →</text>
+  <circle cx="360" cy="86" r="6" fill="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">trace.timestamp（锚点）</text>
+  <rect x="300" y="100" width="180" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="117" text-anchor="middle" font-size="8" fill="var(--accent-ink)">观测窗：start_time ≥ 锚 − 2 天</text>
+  <rect x="336" y="132" width="96" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="384" y="148" text-anchor="middle" font-size="7.5" fill="var(--ink)">评分窗：1 小时</text>
+  <rect x="40" y="100" width="250" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="165" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">窗外：不扫</text><text x="165" y="138" text-anchor="middle" font-size="7" fill="var(--faint)">（几个月的旧分区被跳过）</text>
+  <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">窗外：不扫</text>
+  <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 天 · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 小时</text>
+</svg>
+<div class="figcap"><b>有界回看，跳过旧分区</b>：以 trace 的 <code>timestamp</code> 为锚，观测只在 <code>start_time ≥ 锚 − 2 天</code> 内找、评分在 1 小时内找。这些常量被注入 WHERE 子句，配合第 8 课「按月分区」让 JOIN <strong>只碰几个分区</strong>。源码：<code>repositories/constants.ts:4,9</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 不设窗：全表 JOIN</h4><p>为一条 trace 找观测，要在整张 observations 表（几个月、上亿行）里搜。每次列表查询都这样，集群很快被拖垮——这正是把分析库当事务库用的典型翻车。</p></div>
+  <div class="col"><h4>😀 设回看窗：有界扫描</h4><p>把 <code>start_time ≥ trace.timestamp − 2 天</code> 注入 WHERE，配合按月分区，JOIN <strong>只读那几个相关分区</strong>。扫描量从「几个月」骤降到「两天」，查询飞快。</p></div>
+</div>
+
+<p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 98% 的观测在 trace 后 5 分钟内）把窗设成 2 天，留足安全裕量，几乎不会真漏。
+<strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
+""")
+
+# (spark + key below)
+
+_ZH22.append(r"""
+<table class="t">
+  <tr><th>这一层加了什么</th><th>解决什么</th></tr>
+  <tr><td><b>OTel span</b></td><td>每条查询可追踪、可看耗时——观测性焊进数据层</td></tr>
+  <tr><td><b>log_comment 标签</b></td><td>每条 SQL 自带 project/面/路由，慢查询能在 CH 查询日志里按标签追责</td></tr>
+  <tr><td><b>退避重试</b></td><td>网络抖动等可重试错误自动重试，不打扰调用方</td></tr>
+  <tr><td><b>资源错误包装</b></td><td>内存/超时翻成友好的 <code>ClickHouseResourceError</code>，交第 21 课给出「缩小范围」建议</td></tr>
+  <tr><td><b>回看时间窗</b></td><td>跨表 JOIN 只扫有界分区，把全表扫描挡在门外</td></tr>
+  <tr><td><b>legacy 守卫 + 流式变体</b></td><td>禁读旧 events 表；大读用 Stream、SSE 仪表盘用 WithProgress</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把所有读取硬挤到一个执行器里，而不是哪儿要查哪儿写 SQL？</strong> 因为<strong>横切关注最忌散落</strong>。可观测性、追责、重试、资源保护——这些和「业务查什么」无关、
+  却每条查询都需要的能力，如果让一百处裸查询各自实现，必然有的写、有的漏、写法还不一致。收敛成<strong>一个执行器</strong>，它们就<strong>一次实现、处处生效</strong>：
+  加一项能力（比如新的查询标签维度），全平台的查询<strong>一起获得</strong>。回看时间窗则是另一种智慧：它承认第 8 课「三张独立宽表、靠时间关联」的设计代价（JOIN 没有外键可走），
+  并用「数据的真实时间局部性」把这个代价摊薄到几乎为零。<strong>一个总闸门管住所有共性，一条务实的时间线管住所有 JOIN</strong>——这就是仓储层的全部精髓。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>所有 ClickHouse 读取都汇到一个执行器 <code>queryClickhouse()</code>，沿途统一套上 <strong>OTel span、查询标签、退避重试、资源错误包装</strong>。</li>
+    <li><strong>查询标签</strong>经 <code>log_comment</code> 进 ClickHouse 查询日志，每条 SQL 自带 project/面/路由——慢查询可按标签追责。</li>
+    <li><strong>资源错误</strong>（内存/超时）被包装成 <code>ClickHouseResourceError</code>，交第 21 课的错误中间件翻成「缩小时间范围」的可操作建议。</li>
+    <li><strong>回看时间窗</strong>：trace/observation/score 是三张独立宽表、靠时间关联；JOIN 时以 trace 时间戳为锚、只在 2 天（观测）/1 小时（评分）内找，避免全表扫描。</li>
+    <li>取舍：横切能力收敛到一处「一次实现处处生效」；时间窗用「真实时间局部性」摊薄第 8 课分表的 JOIN 成本，以极小长尾正确性换巨大成本节省。</li>
+  </ul>
+</div>
+""")
+
+_EN22.append(r"""
+<p class="lead">
+The last lesson ended at "the resolver calls a <code>@langfuse/shared</code> repository to read". This lesson opens that <strong>repository layer</strong> door and
+shows how it pulls data out of ClickHouse. The core is a discipline: <strong>every analytical query funnels through one executor</strong> —
+<code>queryClickhouse()</code>. It <strong>uniformly</strong> wraps each query with OTel tracing, query <strong>tags</strong>, backoff <strong>retry</strong>, and
+friendly resource-error <strong>wrapping</strong>. Plus a key trick that makes cross-table JOINs cheap — the <strong>look-back window</strong>. Get this layer and
+you get the "master valve" for all of Langfuse's reads.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏬 Analogy</div>
+  Think of ClickHouse as a vast <strong>warehouse</strong>. If every worker (each piece of query code) <strong>barges into the warehouse</strong> to rummage on their
+  own, nobody records who took what, and when things go wrong there's no trail. Langfuse instead opens <strong>one single dispatch window</strong>
+  (<code>queryClickhouse</code>): everyone hands in their slip here. The clerk <strong>logs who's collecting</strong> (query tags), <strong>stamps a tracking
+  ticket</strong> (OTel span), and <strong>waits and retries if a shelf is briefly busy</strong> (backoff). If your slip tries to haul off the whole warehouse
+  (out of memory), the clerk won't let the warehouse collapse — they politely hand back "<strong>narrow it down and come again</strong>" (resource error). One
+  window handles observability, accountability, and fault tolerance all at once.
+</div>
+""")
+
+_EN22.append(r"""
+<h2>The one dispatch window: queryClickhouse</h2>
+<p>No reading code connects to ClickHouse directly; it hands the query and a set of <strong>tags</strong> to <code>queryClickhouse()</code>. Around the actual
+query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="many services and routers read ClickHouse through the one queryClickhouse executor, wrapped with OTel span, query tags, backoff retry, resource-error wrapping">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">All reads funnel into one executor</text>
+  <rect x="20" y="46" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="67" text-anchor="middle" font-size="8" fill="var(--ink)">traces service</text>
+  <rect x="20" y="86" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="107" text-anchor="middle" font-size="8" fill="var(--ink)">dashboard engine</text>
+  <rect x="20" y="126" width="120" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="147" text-anchor="middle" font-size="8" fill="var(--ink)">public API</text>
+  <rect x="20" y="166" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="187" text-anchor="middle" font-size="8" fill="var(--muted)">…dozens of callers</text>
+  <rect x="200" y="58" width="230" height="130" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="80" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">queryClickhouse()</text>
+  <rect x="216" y="92" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="106" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel span (every query traceable)</text>
+  <rect x="216" y="116" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="130" text-anchor="middle" font-size="7" fill="var(--ink)">② log_comment tags (who/surface/route)</text>
+  <rect x="216" y="140" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="154" text-anchor="middle" font-size="7.5" fill="var(--ink)">③ backOff retry (network blips)</text>
+  <rect x="216" y="164" width="198" height="20" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="315" y="178" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">④ friendly resource-error wrap</text>
+  <rect x="488" y="92" width="120" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="548" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="548" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">JSONEachRow</text>
+  <rect x="488" y="158" width="120" height="42" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="548" y="176" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">streaming variants</text><text x="548" y="190" text-anchor="middle" font-size="6.6" fill="var(--muted)">Stream / WithProgress(SSE)</text>
+  <line x1="140" y1="63" x2="198" y2="100" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="103" x2="198" y2="118" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="143" x2="198" y2="136" stroke="var(--faint)" stroke-width="1.3"/><line x1="140" y1="183" x2="198" y2="155" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>One window, four things unified</b>: <code>queryClickhouse()</code> wraps each query with an OTel span, <code>log_comment</code> tags, backoff retry, and resource-error wrapping, then sends it to ClickHouse (big reads via <code>queryClickhouseStream</code>/<code>WithProgress</code>). Source: <code>packages/shared/src/server/repositories/clickhouse.ts:639</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
+  <pre class="code"><span class="kw">export async function</span> <span class="fn">queryClickhouse</span>&lt;T&gt;(opts) {
+  <span class="fn">assertNoLegacyEventsRead</span>(opts.query);          <span class="cm">// guard: don't read legacy events tables</span>
+  <span class="kw">return await</span> <span class="fn">instrumentAsync</span>({ name: <span class="st">"clickhouse-query"</span> }, <span class="kw">async</span> (span) =&gt; {
+    <span class="fn">setSpanQueryAttributes</span>(span, opts.query);        <span class="cm">// ① attach SQL to the OTel span</span>
+    <span class="kw">return await</span> <span class="fn">backOff</span>(                          <span class="cm">// ③ retry retryable (network) errors</span>
+      () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② sets log_comment=JSON(tags) inside</span>
+      { numOfAttempts, retry: isRetryableError },
+    ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
+  });                                                <span class="cm">// ④ memory/timeout → friendly error (caught by L21)</span>
+}</pre>
+</div>
+
+<p>Of these four, the <strong>query tags</strong> deserve a special mention. <code>sendClickhouseQuery</code> stuffs the tags into ClickHouse's
+<code>log_comment</code> setting (the query log's comment field): so <strong>every SQL hitting ClickHouse carries "which project, which surface (UI/public
+API/worker), which route initiated it"</strong>. When one slow query drags down the cluster, operators can locate the culprit by tag directly in ClickHouse's own
+query log — a way to <strong>weld observability into the data-access layer</strong> that scattered raw queries can never achieve.</p>
+
+<p>The same dispatch window also offers <strong>several pickup modes</strong> for different read scenarios — but they share the same tracing/tags/retry machinery:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">fetch all at once</span></div><div class="ld">The common case: run the query, read the whole result into an array, return. Most lists, details, aggregations go through it.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">stream as it reads</span></div><div class="ld">Big reads needn't buffer the whole result in memory; they <strong>stream</strong> row by row — batch exports (the exports mentioned in L12) and other "result might be huge" cases use it, with bounded memory.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">streaming with progress</span></div><div class="ld">For <strong>SSE streaming dashboards</strong>: pushes progress to the frontend as it queries, so big dashboard queries "give feedback, don't freeze".</div></div>
+</div>
+""")
+
+_EN22.append(r"""
+<h2>Look-back windows: cross-table JOINs without full scans</h2>
+<p>Remember Lesson 8 — trace, observation, score are <strong>three independent wide tables</strong>, with no foreign keys, correlated by <strong>time</strong>. The
+problem: to stitch a trace's observations and scores together, must we full-scan an observations table of months and billions of rows? Unacceptably slow. The
+repository layer's answer is the <strong>look-back window</strong>: exploiting the fact that "a trace's observations almost all cluster in a short window after it
+happened", it searches only within a <strong>bounded time range</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="a bounded look-back window anchored at the trace timestamp: observations within 2 days, scores within 1 hour, scanning only those partitions not the whole table">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Anchored at the trace timestamp, only a bounded look-back window</text>
+  <line x1="40" y1="86" x2="700" y2="86" stroke="var(--faint)" stroke-width="1.5"/><text x="690" y="80" text-anchor="end" font-size="7.5" fill="var(--faint)">time →</text>
+  <circle cx="360" cy="86" r="6" fill="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">trace.timestamp (anchor)</text>
+  <rect x="300" y="100" width="180" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="390" y="117" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">obs window: start_time ≥ anchor − 2 days</text>
+  <rect x="336" y="132" width="96" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="384" y="148" text-anchor="middle" font-size="7.5" fill="var(--ink)">score window: 1 hour</text>
+  <rect x="40" y="100" width="250" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="165" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">outside: not scanned</text><text x="165" y="138" text-anchor="middle" font-size="7" fill="var(--faint)">(months of old partitions skipped)</text>
+  <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">outside: not scanned</text>
+  <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 days · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 hour</text>
+</svg>
+<div class="figcap"><b>Bounded look-back, skip old partitions</b>: anchored at the trace's <code>timestamp</code>, observations are found within <code>start_time ≥ anchor − 2 days</code>, scores within 1 hour. These constants are injected into WHERE clauses, with Lesson 8's monthly partitioning letting JOINs <strong>touch only a few partitions</strong>. Source: <code>repositories/constants.ts:4,9</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 no window: full-table JOIN</h4><p>To find a trace's observations, search the whole observations table (months, billions of rows). Every list query doing this would soon drag the cluster down — the classic crash of using an analytical store like a transactional one.</p></div>
+  <div class="col"><h4>😀 look-back window: bounded scan</h4><p>Inject <code>start_time ≥ trace.timestamp − 2 days</code> into WHERE, and with monthly partitioning the JOIN <strong>reads only those few relevant partitions</strong>. The scan shrinks from "months" to "two days" — queries fly.</p></div>
+</div>
+
+<p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
+is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
+(~98% of observations finish within 5 minutes of the trace), Langfuse sets the window to 2 days, leaving ample safety margin, so it almost never truly misses.
+<strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
+
+<table class="t">
+  <tr><th>what this layer adds</th><th>what it solves</th></tr>
+  <tr><td><b>OTel span</b></td><td>every query traceable, its latency visible — observability welded into the data layer</td></tr>
+  <tr><td><b>log_comment tags</b></td><td>every SQL carries project/surface/route, so slow queries can be traced by tag in CH's query log</td></tr>
+  <tr><td><b>backoff retry</b></td><td>retryable errors (network blips) auto-retry without bothering the caller</td></tr>
+  <tr><td><b>resource-error wrapping</b></td><td>memory/timeout become a friendly <code>ClickHouseResourceError</code>, handed to L21 for "narrow it" advice</td></tr>
+  <tr><td><b>look-back window</b></td><td>cross-table JOINs scan only bounded partitions, keeping full scans out</td></tr>
+  <tr><td><b>legacy guard + streaming variants</b></td><td>forbids reading legacy events; big reads use Stream, SSE dashboards use WithProgress</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why cram all reads into one executor, instead of writing SQL wherever you need it?</strong> Because <strong>cross-cutting concerns most dread being
+  scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
+  a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're
+  <strong>implemented once, in effect everywhere</strong>: add a capability (say a new query-tag dimension) and every query platform-wide <strong>gains it
+  together</strong>. The look-back window is another kind of wisdom: it accepts the cost of Lesson 8's "three independent wide tables, correlated by time" design
+  (JOINs have no foreign key to follow), and uses "the data's real temporal locality" to amortize that cost to near zero. <strong>One master valve for all
+  commonalities, one pragmatic timeline for all JOINs</strong> — that's the whole essence of the repository layer.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>All ClickHouse reads funnel into one executor <code>queryClickhouse()</code>, uniformly wrapped with <strong>OTel span, query tags, backoff retry, resource-error wrapping</strong>.</li>
+    <li><strong>Query tags</strong> go via <code>log_comment</code> into ClickHouse's query log, so every SQL carries project/surface/route — slow queries traceable by tag.</li>
+    <li><strong>Resource errors</strong> (memory/timeout) are wrapped into <code>ClickHouseResourceError</code>, handed to L21's error middleware for "narrow the time range" advice.</li>
+    <li><strong>Look-back windows</strong>: trace/observation/score are three independent wide tables correlated by time; JOINs anchor at the trace timestamp and search only within 2 days (obs) / 1 hour (scores), avoiding full scans.</li>
+    <li>Tradeoff: cross-cutting capabilities converge to one place "implemented once, everywhere"; the time window uses "real temporal locality" to amortize Lesson 8's split-table JOIN cost, trading a tiny long-tail of correctness for huge cost savings.</li>
+  </ul>
+</div>
+""")
+LESSON_22 = {"zh": "\n".join(_ZH22), "en": "\n".join(_EN22)}
