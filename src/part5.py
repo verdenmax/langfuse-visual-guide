@@ -558,3 +558,330 @@ _EN29.append(r"""
 </div>
 """)
 LESSON_29 = {"zh": "\n".join(_ZH29), "en": "\n".join(_EN29)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L30 · eval 执行流水线 / The eval execution pipeline
+# ══════════════════════════════════════════════════════════════════════
+_ZH30 = []
+_EN30 = []
+
+_ZH30.append(r"""
+<p class="lead">
+上一课讲了「一次评判怎么跑」，但留了个大问题：<strong>谁来触发它？什么时候？评哪些 trace？</strong> 你不可能给每条 trace 手动点「评估」。这一课讲<strong>调度流水线</strong>——一个 trace 事件进来，系统怎么自动算出「该用哪些评估器评它」、给每个开一张<strong>待办工单</strong>（JobExecution），排进执行队列，最后跑出分。
+我们会看到 <code>createEvalJobs</code> 的扇出与匹配、<strong>去重 / 抽样 / 延迟</strong>三个闸门、JobExecution 的<strong>状态生命周期</strong>（PENDING→COMPLETED/ERROR/CANCELLED/DELAYED），以及一个微妙但关键的<strong>无限循环防护</strong>——因为评估本身也产生 trace。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  想象一条工厂流水线的<strong>质检调度</strong>。每当一件产品下线（一个 trace 事件到达），<strong>调度员</strong>（<code>createEvalJobs</code>）翻出所有<strong>启用中的质检规程</strong>（ACTIVE 评估器），逐条问「这件产品符合这条规程的适用范围吗？」（按 filter 匹配 trace）。
+  符合的，就开一张<strong>质检工单</strong>（JobExecution，初始 PENDING）放进<strong>排队筐</strong>（执行队列）——但有三道闸：这张工单<strong>已经开过就不重复开</strong>（去重）、按<strong>抽检比例</strong>决定抽不抽（采样）、还能让工单<strong>等一会儿再做</strong>（延迟，等产品彻底定型）。
+  若产品在后续工序里<strong>被撤下生产线</strong>（第二个事件让 trace 不再匹配），还没做的工单就<strong>作废</strong>（CANCELLED）。最妙的一道防呆：质检过程本身也会产出一件「产品」（评估也生成 trace），<strong>必须拦住它，否则质检又触发质检，无限套娃</strong>。
+</div>
+""")
+
+_ZH30.append(r"""
+<h2>从一个事件到一队工单：两级队列</h2>
+<p>评估是<strong>事件驱动</strong>的。当一条 trace 写入（<code>TraceUpsert</code> 事件，第 14 课那条摄取队列的下游），worker 的「创建器」就跑 <code>createEvalJobs</code>。它不直接评，而是把工作<strong>拆成两级队列</strong>：第一级负责「该评谁」（创建工单），第二级负责「真正评」（执行）。这种分离是这套系统能扛量、能重试、能采样的关键。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="两级队列：trace-upsert 事件触发 createEvalJobs，扇出到项目内所有 ACTIVE 评估器，逐个按 filter 匹配并经去重/采样/延迟闸门，创建 PENDING 的 JobExecution 入执行队列；执行队列消费端跑 LLM-as-a-judge 并在完成时写分、标 COMPLETED">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">两级队列：创建工单 → 执行评估</text>
+  <rect x="16" y="40" width="120" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="76" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">trace 写入</text><text x="76" y="76" text-anchor="middle" font-size="6.8" fill="var(--muted)">TraceUpsert 事件</text>
+  <rect x="160" y="34" width="150" height="60" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="235" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① 创建器</text><text x="235" y="70" text-anchor="middle" font-size="7" fill="var(--accent-ink)">createEvalJobs</text><text x="235" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">扇出到所有 ACTIVE 评估器</text>
+  <rect x="160" y="104" width="150" height="92" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="235" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">逐个评估器</text><text x="235" y="138" text-anchor="middle" font-size="6.8" fill="var(--muted)">filter 匹配 trace？</text><text x="235" y="154" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">闸1 去重</text><text x="235" y="168" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">闸2 采样</text><text x="235" y="182" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">闸3 延迟</text>
+  <rect x="356" y="104" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="431" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② JobExecution</text><text x="431" y="140" text-anchor="middle" font-size="7" fill="var(--muted)">status = PENDING</text><text x="431" y="152" text-anchor="middle" font-size="6.6" fill="var(--muted)">落 Postgres + 入执行队列</text>
+  <rect x="356" y="40" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-dasharray="4 3"/><text x="431" y="59" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">执行队列</text><text x="431" y="75" text-anchor="middle" font-size="6.6" fill="var(--muted)">EvaluationExecution（可延迟）</text>
+  <rect x="552" y="92" width="152" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="628" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">③ 执行消费端</text><text x="628" y="128" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">跑 L29 裁判流水线</text><text x="628" y="142" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">写分 → ingestion 队列</text><text x="628" y="158" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">标 COMPLETED + 记 scoreId</text>
+  <line x1="136" y1="64" x2="158" y2="64" stroke="var(--teal)" stroke-width="1.5"/><polygon points="158,64 149,60 149,68" fill="var(--teal)"/>
+  <line x1="235" y1="94" x2="235" y2="102" stroke="var(--faint)" stroke-width="1.3"/><polygon points="235,104 231,95 239,95" fill="var(--faint)"/>
+  <line x1="310" y1="135" x2="354" y2="135" stroke="var(--blue)" stroke-width="1.5"/><polygon points="354,135 345,131 345,139" fill="var(--blue)"/>
+  <line x1="431" y1="104" x2="431" y2="92" stroke="var(--faint)" stroke-width="1.3"/><polygon points="431,90 427,99 435,99" fill="var(--teal)"/>
+  <line x1="506" y1="80" x2="550" y2="110" stroke="var(--accent)" stroke-width="1.5"/><polygon points="550,110 541,106 544,114" fill="var(--accent)"/>
+  <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">第一级只决定「该评谁、开不开工单」（轻、快、纯 Postgres）；第二级才真正调 LLM（慢、可能失败、要重试）</text>
+  <text x="360" y="242" text-anchor="middle" font-size="8" fill="var(--faint)">两级分离 = 把「调度」与「干活」解耦，各自独立扩容、重试、限流</text>
+</svg>
+<div class="figcap"><b>创建与执行分离</b>：<code>worker/src/queues/evalQueue.ts</code> 里，<code>TraceUpsert</code>（:25）/<code>CreateEvalQueue</code>（:98）触发 <code>createEvalJobs</code>；它产出 PENDING 工单并入 <code>EvaluationExecution</code> 队列（:126 消费）。大项目还可分流到 <code>EvaluationExecutionSecondaryQueue</code>（:151）隔离。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-part"><div class="lh"><span class="badge">扇出</span><span class="name">取出所有启用的评估器</span></div><div class="ld"><code>createEvalJobs</code> 先查这个项目下所有 <code>jobType=EVAL</code>、<code>status=ACTIVE</code>、未被 <code>blockedAt</code> 的 JobConfiguration。一条 trace 可能同时命中多个评估器（如「有用性」+「毒性」），所以是一对多的扇出。若一个都没有，还会<strong>缓存「本项目无评估器」</strong>，省掉后续每条 trace 的空查。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">匹配</span><span class="name">这条 trace 符合评估器的目标吗</span></div><div class="ld">每个评估器都带一个 <strong>filter</strong>（如「环境=production 且 name=chat」）。系统优先<strong>在内存里</strong>用已缓存的 trace 判断（<code>InMemoryFilterService.evaluateFilter</code>，:422）；只有当 filter 需要查库才回 ClickHouse。匹配上才继续，否则跳过。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">建单</span><span class="name">开一张 PENDING 工单并入队</span></div><div class="ld">过了三道闸（下一节）后，创建一行 <code>JobExecution(status=PENDING)</code> 落 Postgres，并把它的 id 推进执行队列，带上 <code>config.delay</code> 毫秒延迟。工单落库的意义：它是<strong>有状态、可追溯</strong>的——日后能查「这条 trace 被哪些评估器评过、结果如何」。</div></div>
+</div>
+
+<p>谁会触发这套创建器？不止「线上来了条新 trace」一种。<code>createEvalJobs</code> 有三个入口（<code>evalQueue.ts</code>），<code>sourceEventType</code> 字段记下它从哪来：</p>
+<div class="cols">
+  <div class="col"><h4>线上 trace（trace-upsert）</h4><p>最常见：用户的真实调用写入 trace，<code>evalJobTraceCreatorQueueProcessor</code> 接住。这也是那条需要 <code>langfuse-</code> 防循环的入口。</p></div>
+  <div class="col"><h4>数据集运行（dataset-run-item-upsert）</h4><p>跑实验时，数据集里每个条目过一遍模型也会触发评估（第 35 课）。<code>evalJobDatasetCreatorQueueProcessor</code> 接住，带 <code>datasetItemId</code>——这就是为什么变量映射能取 dataset_item 的列。</p></div>
+  <div class="col"><h4>回填（CreateEvalQueue）</h4><p>新建/改了评估器后，想对<strong>历史</strong> trace 也补评，由这条队列驱动；<code>timeScope</code> 控制一个评估器是只评新数据还是也评历史。</p></div>
+</div>
+""")
+
+# (L30 sec2 gates below)
+
+_ZH30.append(r"""
+<h2>三道闸：去重、采样、延迟</h2>
+<p>匹配上了，也不一定立刻开工单。<code>createEvalJobs</code> 在创建前串了三道闸——每一道都解决一个真实的生产问题：</p>
+
+<table class="t">
+  <thead><tr><th>闸门</th><th>它问什么</th><th>不通过会怎样</th><th>解决的问题</th></tr></thead>
+  <tbody>
+    <tr><td><b>① 去重</b></td><td>这条 (评估器, trace) 已经有工单了吗？</td><td>跳过，不再建</td><td>同一 trace 的多个事件（创建、更新）重复触发，不该评好几遍</td></tr>
+    <tr><td><b>② 采样</b></td><td><code>Math.random() &gt; config.sampling</code>？</td><td>本次抽不中，跳过</td><td>评估要花 LLM 钱；只抽 10% 的流量评，成本可控</td></tr>
+    <tr><td><b>③ 延迟</b></td><td>（不拦截，而是推迟）</td><td>工单带 <code>config.delay</code> 毫秒入队</td><td>等整条 trace 的所有 observation 都到齐了再评，避免评到半截数据</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts</span><span class="ln">三道闸 + 建单 + 入队</span></div>
+  <pre class="code"><span class="cm">// 闸1 去重：批量查过的已有工单里，已存在就不再建</span>
+<span class="kw">if</span> (existingJob.length &gt; 0) { logger.debug(<span class="st">"already exists"</span>); <span class="kw">continue</span>; }
+
+<span class="cm">// 闸2 采样：sampling∈[0,1] 是抽中概率，抽不中就跳过</span>
+<span class="kw">if</span> (Number(config.sampling) !== 1) {
+  <span class="kw">if</span> (Math.random() &gt; Number(config.sampling)) { <span class="kw">continue</span>; }   <span class="cm">// sampled out</span>
+}
+
+<span class="cm">// 建单：一行 PENDING 的 JobExecution 落 Postgres</span>
+<span class="kw">await</span> prisma.jobExecution.create({ data: {
+  id: jobExecutionId, projectId, jobConfigurationId: config.id,
+  jobInputTraceId: event.traceId, jobTemplateId: config.evalTemplateId,
+  status: <span class="st">"PENDING"</span>, startTime: <span class="kw">new</span> Date() } });
+
+<span class="cm">// 闸3 延迟：推进执行队列时带上 config.delay 毫秒</span>
+<span class="kw">await</span> EvalExecutionQueue.getInstance({ shardingKey })?.add(
+  QueueName.EvaluationExecution,
+  { payload: { projectId, jobExecutionId, delay: config.delay } },
+  { delay: config.delay });   <span class="cm">// 毫秒</span></pre>
+</div>
+
+<p>还有一道「反向闸」：如果某条 trace 后来<strong>不再匹配</strong>评估器的 filter（第二个 trace 事件改了它的属性，把它「踢出」目标集合），而它之前已有工单，系统会把那张<strong>还没跑完的工单标成 CANCELLED</strong>（用 <code>updateMany</code> 且排除 COMPLETED，避免误改已完成的）。评估的目标集合是<strong>动态</strong>的——选中了能取消，这让调度对「数据后到、属性后改」很有韧性。</p>
+""")
+
+# (L30 sec3 lifecycle below)
+
+_ZH30.append(r"""
+<h2>工单的一生：状态机与无限循环防护</h2>
+<p>JobExecution 是一台<strong>状态机</strong>。它出生于 PENDING，命运有四种终局；中间还可能因限流而 DELAYED 后重试。下图是它的完整生命周期：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="JobExecution 状态机：PENDING 创建后进入执行；成功则 COMPLETED 并记录产出的 scoreId；非可重试错误或重试预算耗尽则 ERROR；被后续事件取消选中则 CANCELLED；遇限流则 DELAYED 约 120 分钟后重试回到执行">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">JobExecution 状态生命周期</text>
+  <rect x="40" y="100" width="110" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="95" y="120" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">PENDING</text><text x="95" y="135" text-anchor="middle" font-size="6.6" fill="var(--muted)">建单时</text>
+  <rect x="220" y="100" width="120" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="280" y="120" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">执行中</text><text x="280" y="135" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">跑 L29 裁判</text>
+  <rect x="420" y="34" width="130" height="44" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)" stroke-width="2"/><text x="485" y="53" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">COMPLETED ✓</text><text x="485" y="68" text-anchor="middle" font-size="6.4" fill="var(--muted)">记 jobOutputScoreId</text>
+  <rect x="420" y="92" width="130" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="485" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">DELAYED</text><text x="485" y="124" text-anchor="middle" font-size="6.2" fill="var(--muted)">限流，~120min 后重试</text>
+  <rect x="420" y="146" width="130" height="40" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="485" y="164" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ERROR ✗</text><text x="485" y="178" text-anchor="middle" font-size="6.2" fill="var(--muted)">不可重试/预算耗尽</text>
+  <rect x="220" y="170" width="120" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="280" y="188" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="280" y="201" text-anchor="middle" font-size="6.2" fill="var(--muted)">被后续事件取消选中</text>
+  <line x1="150" y1="123" x2="218" y2="123" stroke="var(--accent)" stroke-width="1.6"/><polygon points="218,123 209,119 209,127" fill="var(--accent)"/>
+  <line x1="340" y1="110" x2="418" y2="62" stroke="var(--teal)" stroke-width="1.6"/><polygon points="418,62 408,62 412,70" fill="var(--teal)"/>
+  <line x1="340" y1="118" x2="418" y2="112" stroke="var(--faint)" stroke-width="1.4"/><polygon points="418,112 409,108 409,116" fill="var(--faint)"/>
+  <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
+  <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.2" fill="var(--teal)">重试回执行</text>
+  <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">四种终局 + 一个可重试中间态；DELAYED→执行的环让限流不致命，而是「稍后再试」</text>
+</svg>
+<div class="figcap"><b>状态枚举来自真实 schema</b>：<code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code>（<code>schema.prisma:1080-1086</code>）。完成时 <code>evalCompletion.ts:82-92</code> 把分写进 ingestion 队列、再把工单标 COMPLETED 并填 <code>jobOutputScoreId</code> 与 <code>executionTraceId</code>——工单从此<strong>双向链接</strong>到「它产出的分」和「裁判自己的 trace」。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts:240 · evalCompletion.ts:82</span><span class="ln">防循环 + 收尾</span></div>
+  <pre class="code"><span class="cm">// 无限循环防护：来自 trace-upsert 且环境以 "langfuse" 开头的内部 trace，直接不建评估工单</span>
+<span class="cm">// 否则：用户 trace → 评估 → 评估自己的 trace → 又触发评估 → 无限套娃</span>
+<span class="kw">if</span> (sourceEventType === <span class="st">"trace-upsert"</span> &amp;&amp;
+    event.traceEnvironment?.startsWith(<span class="st">"langfuse"</span>)) {
+  <span class="kw">return</span>;   <span class="cm">// 跳过：这是评估自身产生的 trace</span>
+}
+
+<span class="cm">// 收尾：分写进 ingestion 队列，工单标 COMPLETED 并双向链接产出物</span>
+<span class="kw">await</span> deps.enqueueScoreIngestion({ projectId, scoreId, eventId });
+<span class="kw">await</span> deps.updateJobExecution({ id: jobExecutionId, projectId, data: {
+  status: <span class="st">"COMPLETED"</span>, endTime: <span class="kw">new</span> Date(),
+  jobOutputScoreId,                       <span class="cm">// ← 链到「评出的那条分」</span>
+  executionTraceId: result.executionTraceId } });  <span class="cm">// ← 链到「裁判自己的 trace」</span></pre>
+</div>
+""")
+
+# (L30 spark+key below)
+
+_ZH30.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么要拆成「创建」和「执行」两级队列，而不是一步评完？</strong> 因为这两件事的<strong>性质截然不同</strong>。创建（匹配、去重、采样）是<strong>轻、快、纯数据库</strong>的活，失败了重跑代价小；执行（调 LLM）是<strong>慢、花钱、会被限流、可能超时</strong>的活。
+  混在一起，慢的会拖死快的、贵的没法单独采样、失败的没法独立重试。拆开后：第一级可以高吞吐地决定「该评谁」，第二级可以带<strong>延迟、采样、独立重试、甚至分流到二级队列</strong>地慢慢消化。这正是第 14 课「队列解耦」思想在评估域的复刻。<br><br>
+  <strong>为什么 JobExecution 必须落 Postgres，而不只是一条队列消息？</strong> 因为它要<strong>有状态、可追溯、可去重、可取消</strong>。队列消息是「阅后即焚」的，但工单要回答「这条 trace 被哪些评估器评过、跑成功没、产出哪条分」——这些都需要一行<strong>持久、可更新</strong>的记录。<code>jobOutputScoreId</code> 和 <code>executionTraceId</code> 两个外链，让你能从「一条分」反查「哪个工单、哪个评估器、哪次裁判调用产生了它」，<strong>全链路可审计</strong>。<br><br>
+  <strong>最微妙的一处：无限循环防护。</strong> 评估本身要调 LLM，而 Langfuse 会观测每一次 LLM 调用——于是裁判的调用<strong>也变成一条 trace</strong>。若不拦截，这条「评估产生的 trace」又会触发评估，套娃到天荒地老。Langfuse 的解法是给内部 trace 打上 <code>langfuse-</code> 环境前缀，并在创建器入口直接挡掉。<strong>一个能观测一切的系统，必须小心别把自己卷进去</strong>——这是自指系统的经典陷阱。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>评估是事件驱动的</strong>：trace 写入（TraceUpsert）触发 <code>createEvalJobs</code>，把一条 trace 扇出到项目内所有 ACTIVE 评估器，一对多创建工单。</li>
+    <li><strong>两级队列</strong>：第一级「创建器」轻快地决定「该评谁」（匹配+建单），第二级「执行队列」带延迟/采样/重试地真正调 LLM——解耦让系统能扛量、能重试、能限流。</li>
+    <li><strong>三道闸</strong>：去重（同 trace 多事件不重复评）、采样（<code>config.sampling</code> 概率控成本）、延迟（<code>config.delay</code> 等数据到齐）；外加反向的「取消」（后续事件让 trace 不再匹配 → CANCELLED）。</li>
+    <li><strong>filter 匹配优先在内存做</strong>：用缓存的 trace + <code>InMemoryFilterService.evaluateFilter</code>，只有复杂过滤才回 ClickHouse 查——省一次次的库查。</li>
+    <li><strong>JobExecution 是落库的状态机</strong>：PENDING→COMPLETED/ERROR/CANCELLED，限流则 DELAYED 后重试；完成时双向链接 <code>jobOutputScoreId</code> 与 <code>executionTraceId</code>，全链路可审计。</li>
+    <li><strong>无限循环防护</strong>：评估自身的 LLM 调用也会成为 trace；用 <code>langfuse-</code> 环境前缀在创建器入口挡掉，避免「评估触发评估」的自指套娃。</li>
+  </ul>
+</div>
+""")
+
+_EN30.append(r"""
+<p class="lead">
+Last lesson covered "how one verdict runs", but left a big question: <strong>who triggers it? when? which traces get evaluated?</strong> You can't click "evaluate" on every trace by hand. This lesson is the <strong>scheduling pipeline</strong>—how a trace event automatically fans out into "which evaluators should judge it", opens a <strong>work ticket</strong> (JobExecution) for each, queues it, and finally produces a score.
+We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of <strong>dedup / sampling / delay</strong>, JobExecution's <strong>status lifecycle</strong> (PENDING→COMPLETED/ERROR/CANCELLED/DELAYED), and a subtle but crucial <strong>infinite-loop safeguard</strong>—because evaluation itself produces traces.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture the <strong>QC dispatch</strong> on a factory line. Each time a product rolls off (a trace event arrives), the <strong>dispatcher</strong> (<code>createEvalJobs</code>) pulls out all <strong>active QC procedures</strong> (ACTIVE evaluators) and asks of each "does this product fall within this procedure's scope?" (match the trace by filter).
+  For matches, it opens a <strong>QC ticket</strong> (JobExecution, initially PENDING) into a <strong>queue basket</strong> (the execution queue)—but through three gates: <strong>don't re-open a ticket already opened</strong> (dedup), <strong>decide by sampling rate</strong> whether to inspect at all (sampling), and <strong>let the ticket wait a bit</strong> before doing it (delay, until the product fully sets).
+  If the product is later <strong>pulled off the line</strong> (a second event makes the trace no longer match), an un-run ticket is <strong>voided</strong> (CANCELLED). The neatest fail-safe: the QC process itself yields a "product" (evaluation also generates a trace), and you <strong>must stop it, or QC triggers QC, nesting forever</strong>.
+</div>
+""")
+
+_EN30.append(r"""
+<h2>From one event to a queue of tickets: two-stage queues</h2>
+<p>Evaluation is <strong>event-driven</strong>. When a trace is written (a <code>TraceUpsert</code> event, downstream of Lesson 14's ingestion queue), the worker's "creator" runs <code>createEvalJobs</code>. It doesn't evaluate directly—it splits the work into <strong>two queue stages</strong>: the first decides "whom to evaluate" (create tickets), the second does "the actual judging" (execution). This separation is the key to scaling, retrying, and sampling.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Two-stage queues: a trace-upsert event triggers createEvalJobs, fanning out to all ACTIVE evaluators in the project; each is matched by filter and passes dedup/sampling/delay gates, creating a PENDING JobExecution into the execution queue; the execution consumer runs LLM-as-a-judge and on completion writes the score and marks COMPLETED">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two-stage queues: create tickets → execute evaluation</text>
+  <rect x="16" y="40" width="120" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="76" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">trace written</text><text x="76" y="76" text-anchor="middle" font-size="6.8" fill="var(--muted)">TraceUpsert event</text>
+  <rect x="160" y="34" width="150" height="60" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="235" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① creator</text><text x="235" y="70" text-anchor="middle" font-size="7" fill="var(--accent-ink)">createEvalJobs</text><text x="235" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">fan out to all ACTIVE evaluators</text>
+  <rect x="160" y="104" width="150" height="92" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="235" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">per evaluator</text><text x="235" y="138" text-anchor="middle" font-size="6.8" fill="var(--muted)">filter matches trace?</text><text x="235" y="154" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">gate1 dedup</text><text x="235" y="168" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">gate2 sampling</text><text x="235" y="182" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">gate3 delay</text>
+  <rect x="356" y="104" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="431" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② JobExecution</text><text x="431" y="140" text-anchor="middle" font-size="7" fill="var(--muted)">status = PENDING</text><text x="431" y="152" text-anchor="middle" font-size="6.6" fill="var(--muted)">Postgres row + into exec queue</text>
+  <rect x="356" y="40" width="150" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-dasharray="4 3"/><text x="431" y="59" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">execution queue</text><text x="431" y="75" text-anchor="middle" font-size="6.6" fill="var(--muted)">EvaluationExecution (delayable)</text>
+  <rect x="552" y="92" width="152" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="628" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">③ exec consumer</text><text x="628" y="128" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">runs the L29 judge pipeline</text><text x="628" y="142" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">write score → ingestion queue</text><text x="628" y="158" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">mark COMPLETED + record scoreId</text>
+  <line x1="136" y1="64" x2="158" y2="64" stroke="var(--teal)" stroke-width="1.5"/><polygon points="158,64 149,60 149,68" fill="var(--teal)"/>
+  <line x1="235" y1="94" x2="235" y2="102" stroke="var(--faint)" stroke-width="1.3"/><polygon points="235,104 231,95 239,95" fill="var(--faint)"/>
+  <line x1="310" y1="135" x2="354" y2="135" stroke="var(--blue)" stroke-width="1.5"/><polygon points="354,135 345,131 345,139" fill="var(--blue)"/>
+  <line x1="431" y1="104" x2="431" y2="92" stroke="var(--faint)" stroke-width="1.3"/><polygon points="431,90 427,99 435,99" fill="var(--teal)"/>
+  <line x1="506" y1="80" x2="550" y2="110" stroke="var(--accent)" stroke-width="1.5"/><polygon points="550,110 541,106 544,114" fill="var(--accent)"/>
+  <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">stage one only decides "whom to evaluate, open a ticket?" (light, fast, pure Postgres); stage two calls the LLM (slow, may fail, must retry)</text>
+  <text x="360" y="242" text-anchor="middle" font-size="8" fill="var(--faint)">two-stage split = decouple "scheduling" from "doing the work", each scaling/retrying/rate-limiting independently</text>
+</svg>
+<div class="figcap"><b>Creation and execution split</b>: in <code>worker/src/queues/evalQueue.ts</code>, <code>TraceUpsert</code> (:25)/<code>CreateEvalQueue</code> (:98) trigger <code>createEvalJobs</code>; it emits PENDING tickets into the <code>EvaluationExecution</code> queue (consumed at :126). Large projects can also offload to <code>EvaluationExecutionSecondaryQueue</code> (:151) for isolation.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-part"><div class="lh"><span class="badge">fan-out</span><span class="name">pull all active evaluators</span></div><div class="ld"><code>createEvalJobs</code> first queries all JobConfigurations in this project with <code>jobType=EVAL</code>, <code>status=ACTIVE</code>, not <code>blockedAt</code>. One trace may hit several evaluators at once (e.g. "helpfulness" + "toxicity"), so it's a one-to-many fan-out. If there are none, it <strong>caches "no evaluators for this project"</strong> to skip the empty query on every future trace.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">match</span><span class="name">does this trace fit the evaluator's target</span></div><div class="ld">Each evaluator carries a <strong>filter</strong> (e.g. "environment=production and name=chat"). The system prefers to judge <strong>in memory</strong> using the cached trace (<code>InMemoryFilterService.evaluateFilter</code>, :422); only when the filter needs a DB lookup does it go back to ClickHouse. Continue only on a match, else skip.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">create</span><span class="name">open a PENDING ticket and enqueue</span></div><div class="ld">After the three gates (next section), it creates a <code>JobExecution(status=PENDING)</code> row in Postgres and pushes its id into the execution queue with a <code>config.delay</code> ms delay. Why persist the ticket: it is <strong>stateful and auditable</strong>—later you can ask "which evaluators evaluated this trace, and with what outcome".</div></div>
+</div>
+
+<p>Who triggers this creator? Not only "a new trace arrived live". <code>createEvalJobs</code> has three entry points (<code>evalQueue.ts</code>), and a <code>sourceEventType</code> field records where it came from:</p>
+<div class="cols">
+  <div class="col"><h4>live trace (trace-upsert)</h4><p>The common case: a user's real call writes a trace, caught by <code>evalJobTraceCreatorQueueProcessor</code>. This is also the entry needing the <code>langfuse-</code> loop guard.</p></div>
+  <div class="col"><h4>dataset run (dataset-run-item-upsert)</h4><p>When running experiments, each dataset item passing through the model also triggers evaluation (Lesson 35). Caught by <code>evalJobDatasetCreatorQueueProcessor</code> with a <code>datasetItemId</code>—which is why variable mapping can read dataset_item columns.</p></div>
+  <div class="col"><h4>backfill (CreateEvalQueue)</h4><p>After creating/changing an evaluator, to also score <strong>historic</strong> traces, this queue drives it; <code>timeScope</code> controls whether an evaluator scores only new data or history too.</p></div>
+</div>
+""")
+
+# (en sec2/3/spark below)
+
+_EN30.append(r"""
+<h2>Three gates: dedup, sampling, delay</h2>
+<p>A match doesn't mean a ticket opens immediately. Before creating, <code>createEvalJobs</code> chains three gates—each solving a real production problem:</p>
+
+<table class="t">
+  <thead><tr><th>gate</th><th>what it asks</th><th>if it fails</th><th>problem solved</th></tr></thead>
+  <tbody>
+    <tr><td><b>① dedup</b></td><td>does a ticket for this (evaluator, trace) already exist?</td><td>skip, don't create</td><td>multiple events on the same trace (create, update) shouldn't trigger several evals</td></tr>
+    <tr><td><b>② sampling</b></td><td><code>Math.random() &gt; config.sampling</code>?</td><td>not sampled in, skip</td><td>evaluation costs LLM money; sampling only 10% keeps cost in check</td></tr>
+    <tr><td><b>③ delay</b></td><td>(doesn't block, defers)</td><td>ticket enqueued with <code>config.delay</code> ms</td><td>wait until all of a trace's observations have arrived, to avoid judging half the data</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts</span><span class="ln">three gates + create + enqueue</span></div>
+  <pre class="code"><span class="cm">// gate1 dedup: from the batch-queried existing tickets, skip if one exists</span>
+<span class="kw">if</span> (existingJob.length &gt; 0) { logger.debug(<span class="st">"already exists"</span>); <span class="kw">continue</span>; }
+
+<span class="cm">// gate2 sampling: sampling∈[0,1] is the keep probability; skip if not sampled</span>
+<span class="kw">if</span> (Number(config.sampling) !== 1) {
+  <span class="kw">if</span> (Math.random() &gt; Number(config.sampling)) { <span class="kw">continue</span>; }   <span class="cm">// sampled out</span>
+}
+
+<span class="cm">// create: one PENDING JobExecution row in Postgres</span>
+<span class="kw">await</span> prisma.jobExecution.create({ data: {
+  id: jobExecutionId, projectId, jobConfigurationId: config.id,
+  jobInputTraceId: event.traceId, jobTemplateId: config.evalTemplateId,
+  status: <span class="st">"PENDING"</span>, startTime: <span class="kw">new</span> Date() } });
+
+<span class="cm">// gate3 delay: push to the execution queue with config.delay ms</span>
+<span class="kw">await</span> EvalExecutionQueue.getInstance({ shardingKey })?.add(
+  QueueName.EvaluationExecution,
+  { payload: { projectId, jobExecutionId, delay: config.delay } },
+  { delay: config.delay });   <span class="cm">// milliseconds</span></pre>
+</div>
+
+<p>There's also a "reverse gate": if a trace later <strong>no longer matches</strong> the evaluator's filter (a second trace event changed its attributes, kicking it out of the target set) and it already had a ticket, the system marks that <strong>un-run ticket CANCELLED</strong> (via <code>updateMany</code> excluding COMPLETED, to avoid touching finished ones). The evaluation target set is <strong>dynamic</strong>—selected can become deselected, making scheduling resilient to "data arriving late, attributes changing late".</p>
+""")
+
+_EN30.append(r"""
+<h2>A ticket's life: the state machine and the infinite-loop safeguard</h2>
+<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with four possible endings; in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="JobExecution state machine: PENDING after creation enters execution; success becomes COMPLETED recording the produced scoreId; a non-retryable error or exhausted retry budget becomes ERROR; deselected by a later event becomes CANCELLED; a rate-limit becomes DELAYED retrying after about 120 minutes back into execution">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">JobExecution status lifecycle</text>
+  <rect x="40" y="100" width="110" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="95" y="120" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">PENDING</text><text x="95" y="135" text-anchor="middle" font-size="6.6" fill="var(--muted)">on create</text>
+  <rect x="220" y="100" width="120" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="280" y="120" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">executing</text><text x="280" y="135" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">runs the L29 judge</text>
+  <rect x="420" y="34" width="130" height="44" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)" stroke-width="2"/><text x="485" y="53" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">COMPLETED ✓</text><text x="485" y="68" text-anchor="middle" font-size="6.4" fill="var(--muted)">records jobOutputScoreId</text>
+  <rect x="420" y="92" width="130" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="485" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">DELAYED</text><text x="485" y="124" text-anchor="middle" font-size="6.0" fill="var(--muted)">rate-limit, retry ~120min</text>
+  <rect x="420" y="146" width="130" height="40" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="485" y="164" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ERROR ✗</text><text x="485" y="178" text-anchor="middle" font-size="6.0" fill="var(--muted)">non-retryable/budget out</text>
+  <rect x="220" y="170" width="120" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="280" y="188" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="280" y="201" text-anchor="middle" font-size="6.0" fill="var(--muted)">deselected by later event</text>
+  <line x1="150" y1="123" x2="218" y2="123" stroke="var(--accent)" stroke-width="1.6"/><polygon points="218,123 209,119 209,127" fill="var(--accent)"/>
+  <line x1="340" y1="110" x2="418" y2="62" stroke="var(--teal)" stroke-width="1.6"/><polygon points="418,62 408,62 412,70" fill="var(--teal)"/>
+  <line x1="340" y1="118" x2="418" y2="112" stroke="var(--faint)" stroke-width="1.4"/><polygon points="418,112 409,108 409,116" fill="var(--faint)"/>
+  <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
+  <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.2" fill="var(--teal)">retry back to exec</text>
+  <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">four endings + one retryable middle state; the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
+</svg>
+<div class="figcap"><b>The status enum is from the real schema</b>: <code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code> (<code>schema.prisma:1080-1086</code>). On success <code>evalCompletion.ts:82-92</code> writes the score into the ingestion queue, then marks the ticket COMPLETED and fills <code>jobOutputScoreId</code> and <code>executionTraceId</code>—the ticket is now <strong>bidirectionally linked</strong> to "the score it produced" and "the judge's own trace".</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts:240 · evalCompletion.ts:82</span><span class="ln">loop guard + finish</span></div>
+  <pre class="code"><span class="cm">// loop guard: internal traces from trace-upsert whose env starts with "langfuse" → create no eval ticket</span>
+<span class="cm">// otherwise: user trace → eval → eval's own trace → triggers eval again → nesting forever</span>
+<span class="kw">if</span> (sourceEventType === <span class="st">"trace-upsert"</span> &amp;&amp;
+    event.traceEnvironment?.startsWith(<span class="st">"langfuse"</span>)) {
+  <span class="kw">return</span>;   <span class="cm">// skip: this is a trace produced by evaluation itself</span>
+}
+
+<span class="cm">// finish: score into the ingestion queue, ticket marked COMPLETED and bidirectionally linked</span>
+<span class="kw">await</span> deps.enqueueScoreIngestion({ projectId, scoreId, eventId });
+<span class="kw">await</span> deps.updateJobExecution({ id: jobExecutionId, projectId, data: {
+  status: <span class="st">"COMPLETED"</span>, endTime: <span class="kw">new</span> Date(),
+  jobOutputScoreId,                       <span class="cm">// ← links to "the score produced"</span>
+  executionTraceId: result.executionTraceId } });  <span class="cm">// ← links to "the judge's own trace"</span></pre>
+</div>
+""")
+
+_EN30.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why split into "creation" and "execution" queues rather than evaluate in one step?</strong> Because the two are <strong>fundamentally different</strong>. Creation (matching, dedup, sampling) is <strong>light, fast, pure-database</strong> work, cheap to re-run on failure; execution (calling the LLM) is <strong>slow, costly, rate-limited, may time out</strong>.
+  Mixed together, the slow drags down the fast, the expensive can't be sampled separately, and failures can't be retried independently. Split: stage one decides "whom to evaluate" at high throughput, stage two digests slowly with <strong>delay, sampling, independent retry, even offload to a secondary queue</strong>. This is Lesson 14's "queue decoupling" replayed in the eval domain.<br><br>
+  <strong>Why must a JobExecution live in Postgres, not just be a queue message?</strong> Because it must be <strong>stateful, auditable, dedup-able, cancellable</strong>. A queue message is "read once, gone", but a ticket must answer "which evaluators evaluated this trace, did it succeed, which score did it produce"—all needing a <strong>durable, updatable</strong> row. The two foreign links <code>jobOutputScoreId</code> and <code>executionTraceId</code> let you trace from "a score" back to "which ticket, which evaluator, which judge call produced it"—<strong>fully auditable end to end</strong>.<br><br>
+  <strong>The subtlest part: the infinite-loop safeguard.</strong> Evaluation calls the LLM, and Langfuse observes every LLM call—so the judge's call <strong>becomes a trace too</strong>. Unstopped, that "eval-produced trace" would trigger evaluation again, nesting endlessly. Langfuse's fix: tag internal traces with a <code>langfuse-</code> environment prefix and block them right at the creator's entry. <strong>A system that can observe everything must be careful not to observe itself into a loop</strong>—the classic trap of self-referential systems.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Evaluation is event-driven</strong>: a trace write (TraceUpsert) triggers <code>createEvalJobs</code>, fanning one trace out to all ACTIVE evaluators in the project, creating tickets one-to-many.</li>
+    <li><strong>Two-stage queues</strong>: stage one "creator" lightly decides "whom to evaluate" (match + create ticket), stage two "execution queue" actually calls the LLM with delay/sampling/retry—decoupling lets the system scale, retry, and rate-limit.</li>
+    <li><strong>Three gates</strong>: dedup (multiple events on one trace don't re-evaluate), sampling (<code>config.sampling</code> probability to control cost), delay (<code>config.delay</code> to wait for data); plus a reverse "cancel" (a later event makes the trace no longer match → CANCELLED).</li>
+    <li><strong>Filter matching prefers memory</strong>: cached trace + <code>InMemoryFilterService.evaluateFilter</code>, going back to ClickHouse only for complex filters—saving repeated DB queries.</li>
+    <li><strong>JobExecution is a persisted state machine</strong>: PENDING→COMPLETED/ERROR/CANCELLED, or DELAYED then retry on rate-limit; on completion it bidirectionally links <code>jobOutputScoreId</code> and <code>executionTraceId</code>—auditable end to end.</li>
+    <li><strong>Infinite-loop safeguard</strong>: evaluation's own LLM call also becomes a trace; a <code>langfuse-</code> environment prefix blocks it at the creator's entry, avoiding "eval triggers eval" self-referential nesting.</li>
+  </ul>
+</div>
+""")
+
+LESSON_30 = {"zh": "\n".join(_ZH30), "en": "\n".join(_EN30)}

@@ -107,6 +107,8 @@ PAGES = [
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
     ("29-llm-as-a-judge.html", "LLM 当裁判", "LLM-as-a-judge",
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
+    ("30-eval-execution-pipeline.html", "eval 执行流水线", "The eval execution pipeline",
+     "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
 ]
 
 
@@ -648,6 +650,8 @@ SUBTITLES = {
                               "score = evaluation's atomic unit (name/value/dataType/source); three scales numeric/categorical/boolean; boolean is a locked special category; config is a name's schema for comparability; three sources API/EVAL/ANNOTATION write one scores table"),
     "29-llm-as-a-judge.html": ("用一个 LLM 给另一个 LLM 打分 · 三件套模板/评估器/执行 · 变量映射把 trace 列填进 {{占位符}} · 结构化输出 {score,reasoning} · reasoning→comment · source=EVAL 经 SCORE_CREATE 回流第12课摄取链路",
                                "use one LLM to score another; three pieces template/evaluator/execution; variable mapping fills trace columns into {{placeholders}}; structured output {score,reasoning}; reasoning→comment; source=EVAL flows back via SCORE_CREATE through L12 ingestion"),
+    "30-eval-execution-pipeline.html": ("事件驱动 createEvalJobs 扇出到 ACTIVE 评估器 · 两级队列创建/执行解耦 · 三道闸去重/采样/延迟 · JobExecution 状态机 PENDING→COMPLETED/ERROR/CANCELLED/DELAYED · langfuse- 前缀防无限循环",
+                                        "event-driven createEvalJobs fans out to ACTIVE evaluators; two-stage queues decouple create/execute; three gates dedup/sampling/delay; JobExecution state machine PENDING→COMPLETED/ERROR/CANCELLED/DELAYED; langfuse- prefix guards against infinite loops"),
 }
 
 

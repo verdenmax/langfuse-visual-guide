@@ -2075,6 +2075,76 @@ QUIZZES = {
             },
         ],
     },
+    "30-eval-execution-pipeline.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的评估调度把工作拆成「创建」和「执行」两级队列。这种分离最核心的好处是？",
+                    "en": "Langfuse's eval scheduling splits work into 'creation' and 'execution' two-stage queues. The core benefit of this separation is?",
+                },
+                "opts": [
+                    {
+                        "zh": "两件事性质不同：创建是轻快的纯数据库匹配，执行是慢、花钱、会限流的 LLM 调用——分开后各自独立扩容、采样、重试，慢的不拖死快的",
+                        "en": "the two differ in nature: creation is light pure-DB matching, execution is slow, costly, rate-limited LLM calls — split apart they scale/sample/retry independently, and the slow doesn't drag down the fast",
+                    },
+                    {"zh": "让评估结果更准确", "en": "makes eval results more accurate"},
+                    {"zh": "减少数据库表的数量", "en": "reduces the number of DB tables"},
+                    {"zh": "省掉 LLM 调用", "en": "avoids the LLM call"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "创建（匹配、去重、采样）轻快、失败重跑代价小；执行（调 LLM）慢、贵、会被限流、可能超时。混在一起则慢拖快、贵的没法单独采样、失败没法独立重试。两级队列让第一级高吞吐决定「该评谁」，第二级带延迟/采样/重试/分流地慢慢消化——正是第 14 课「队列解耦」在评估域的复刻。",
+                    "en": "Creation (match, dedup, sample) is light and cheap to re-run; execution (LLM call) is slow, costly, rate-limited, may time out. Mixed, the slow drags the fast, the costly can't be sampled alone, failures can't retry independently. Two-stage queues let stage one decide 'whom' at high throughput and stage two digest slowly with delay/sampling/retry/offload — Lesson 14's queue decoupling in the eval domain.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "评估本身要调 LLM，而 Langfuse 会把每次 LLM 调用记成一条 trace。createEvalJobs 里有一段「如果 trace 环境以 langfuse 开头就直接 return」的代码。它防的是什么？",
+                    "en": "Evaluation calls the LLM, and Langfuse records each LLM call as a trace. createEvalJobs has code that 'returns immediately if the trace environment starts with langfuse'. What does it prevent?",
+                },
+                "opts": [
+                    {
+                        "zh": "无限循环：用户 trace 触发评估 → 评估的 LLM 调用又成一条 trace → 又触发评估 → 无限套娃；给内部 trace 打 langfuse- 前缀并在入口挡掉即可斩断",
+                        "en": "an infinite loop: a user trace triggers eval → the eval's LLM call becomes a trace → triggers eval again → nesting forever; tagging internal traces with a langfuse- prefix and blocking them at the entry breaks the cycle",
+                    },
+                    {"zh": "防止内部 trace 被用户看到", "en": "hides internal traces from users"},
+                    {"zh": "加快内部 trace 的写入", "en": "speeds up writing internal traces"},
+                    {"zh": "防止重复计费", "en": "prevents double billing"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是自指系统的经典陷阱：一个能观测一切的系统，会把自己的评估调用也观测成 trace，从而触发对自己的评估。Langfuse 让内部 trace 用 LangfuseInternalTraceEnvironment（langfuse- 前缀），并在 createEvalJobs 入口对 trace-upsert 来源的这类 trace 直接 return，斩断递归。fetchLLMCompletion 还强制内部 trace 必须带该前缀，形成双重保险。",
+                    "en": "A classic self-reference trap: a system that observes everything observes its own eval call as a trace, triggering eval on itself. Langfuse marks internal traces with LangfuseInternalTraceEnvironment (langfuse- prefix) and returns early at createEvalJobs for such trace-upsert-sourced traces, cutting the recursion. fetchLLMCompletion also enforces that internal traces carry the prefix — a dual safeguard.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "一行 JobExecution 落在 Postgres 里，而不只是一条「阅后即焚」的队列消息。为什么评估系统需要这样一个有状态、可更新的工单？",
+                    "en": "A JobExecution row lives in Postgres, not just a 'read-once' queue message. Why does the eval system need such a stateful, updatable ticket?",
+                },
+                "opts": [
+                    {
+                        "zh": "它要支持去重、取消、追溯：能回答「这条 trace 被哪些评估器评过、成功没、产出哪条分」，并通过 jobOutputScoreId/executionTraceId 双向链到产出的分与裁判自己的 trace",
+                        "en": "it must support dedup, cancellation, and audit: answering 'which evaluators evaluated this trace, did it succeed, which score did it produce', and via jobOutputScoreId/executionTraceId bidirectionally linking to the produced score and the judge's own trace",
+                    },
+                    {"zh": "Postgres 比队列快", "en": "Postgres is faster than a queue"},
+                    {"zh": "为了不用 Redis", "en": "to avoid using Redis"},
+                    {"zh": "队列不能存 JSON", "en": "queues can't store JSON"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "队列消息消费即逝，无法回答「评过没、结果如何」。JobExecution 是落库的状态机（PENDING→COMPLETED/ERROR/CANCELLED/DELAYED），支持：去重（已有工单就不重复建）、取消（trace 被后续事件踢出目标集合则标 CANCELLED）、追溯（jobOutputScoreId 链到评出的分、executionTraceId 链到裁判的 trace），全链路可审计。",
+                    "en": "A queue message is gone on consume, unable to answer 'evaluated yet, what outcome'. JobExecution is a persisted state machine (PENDING→COMPLETED/ERROR/CANCELLED/DELAYED) supporting: dedup (don't recreate an existing ticket), cancel (mark CANCELLED if a later event kicks the trace out of the target set), and audit (jobOutputScoreId links to the score, executionTraceId links to the judge's trace) — auditable end to end.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "评估系统给了三道闸：去重、采样、延迟。假设你的生产流量每天一百万条 trace，每条评估要调一次 GPT-4 花约 ¥0.05。你会怎么配置这三道闸（采样率、延迟）来平衡「成本」与「质量信号的及时性/代表性」？延迟设太短、采样设太低分别会带来什么问题？",
+                "en": "The eval system offers three gates: dedup, sampling, delay. Suppose your production handles a million traces/day, each eval calling GPT-4 at ~$0.007. How would you configure these gates (sample rate, delay) to balance 'cost' against 'timeliness/representativeness of the quality signal'? What problems arise from setting delay too short or sampling too low?",
+            },
+        ],
+    },
 }
 
 
