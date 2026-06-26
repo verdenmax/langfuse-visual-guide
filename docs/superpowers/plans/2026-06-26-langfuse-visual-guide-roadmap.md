@@ -16,7 +16,7 @@ source-fidelity + dual review) → fix → commit**. See spec §6 for the audit 
 | M2 | Part 2 · 前置基础 | L06–L11 | ☑ done |
 | M3 | Part 3 · 摄取链路 | L12–L19 | ☑ done |
 | M4 | Part 4 · 查询链路 | L20–L27 | ☑ done |
-| M5 | Part 5 · 评估与评分 | L28–L33 | ☐ todo |
+| M5 | Part 5 · 评估与评分 | L28–L33 | ☑ done |
 | M6 | Parts 6+7 · 数据集/实验 + Prompt/Playground | L34–L39 | ☐ todo |
 | M7 | Parts 8+9 · 仪表盘/成本 + 自动化/集成 | L40–L47 | ☐ todo |
 | M8 | Part 10 · 平台与运维 | L48–L53 | ☐ todo |

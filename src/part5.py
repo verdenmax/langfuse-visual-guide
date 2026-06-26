@@ -968,7 +968,7 @@ _ZH31.append(r"""
 
 <span class="cm">// 按环境变量选实现——策略模式的「选择点」</span>
 <span class="kw">export function</span> <span class="fn">resolveConfiguredCodeEvalDispatcher</span>(): CodeEvalDispatcher | null {
-  <span class="kw">if</span> (dispatcher === <span class="st">"local"</span>)   <span class="kw">return new</span> LocalCodeEvalDispatcher();      <span class="cm">// node vm，仅 TS/JS</span>
+  <span class="kw">if</span> (dispatcher === <span class="st">"insecure-local"</span>) <span class="kw">return new</span> LocalCodeEvalDispatcher();  <span class="cm">// node vm，仅 TS/JS</span>
   <span class="kw">if</span> (dispatcher === <span class="st">"aws-lambda"</span>) <span class="kw">return new</span> AwsLambdaCodeEvalDispatcher({
     functionNameByLanguage: { PYTHON: <span class="st">"…-python"</span>, TYPESCRIPT: <span class="st">"…-node"</span> } });
 }</pre>
@@ -1112,7 +1112,7 @@ _EN31.append(r"""
 
 <span class="cm">// pick the impl by env var — the strategy pattern's "selection point"</span>
 <span class="kw">export function</span> <span class="fn">resolveConfiguredCodeEvalDispatcher</span>(): CodeEvalDispatcher | null {
-  <span class="kw">if</span> (dispatcher === <span class="st">"local"</span>)   <span class="kw">return new</span> LocalCodeEvalDispatcher();      <span class="cm">// node vm, TS/JS only</span>
+  <span class="kw">if</span> (dispatcher === <span class="st">"insecure-local"</span>) <span class="kw">return new</span> LocalCodeEvalDispatcher();  <span class="cm">// node vm, TS/JS only</span>
   <span class="kw">if</span> (dispatcher === <span class="st">"aws-lambda"</span>) <span class="kw">return new</span> AwsLambdaCodeEvalDispatcher({
     functionNameByLanguage: { PYTHON: <span class="st">"…-python"</span>, TYPESCRIPT: <span class="st">"…-node"</span> } });
 }</pre>
