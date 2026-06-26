@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 43 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 44 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -380,6 +380,7 @@ details[open] > summary { list-style: none; }
   <li>The query engine</li>
   <li>Models & pricing</li>
   <li>Cloud usage metering & spend</li>
+  <li>Automations & webhooks</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8982,6 +8983,175 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Billing must be exactly once' is the notoriously hard exactly-once problem in distributed systems, yet Langfuse doesn't chase theoretical perfection but uses a DB row lock to plug three real threats: anti-duplicate + anti-crash + anti-misalignment. Recall systems you've built or imagined: which scenarios have a similar hard 'no-dup-no-miss' requirement (payments, inventory, coupon issuance)? How would you weigh 'theoretical exactly-once' against 'a few good-enough concrete engineering defenses'? What are the latter's risks?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Automations & webhooks</h1>
+
+<p class="lead">
+Lesson 33's monitor alerts need to reach a human, a changed prompt needs to notify an external system, a new trace needs to kick off a downstream flow — all these "<strong>when X happens, do Y</strong>" linkages are driven by Langfuse <strong>Automations</strong>: a <strong>Trigger (when)</strong> bound to an <strong>Action (what to do)</strong>. This lesson covers the data model, but the real headline act is an unavoidable <strong>security</strong> topic: when the Action is a <strong>webhook</strong> (Langfuse's server fetches a <strong>user-supplied arbitrary URL</strong>), how do you stop <strong>SSRF</strong> — keeping users from turning your server into a springboard to hit the internal network and steal cloud credentials.
+You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlist, a port allowlist, an internal-IP blocklist, a cloud-metadata-address blocklist, fail-closed on unparseable hosts, plus timeouts, retries, signing, and auto-disable. "A user gives us a URL and we fetch it" is one of the most dangerous features in any web system — this lesson spells out how to do it safely.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  An automation is like a <strong>"smart home linkage"</strong>: when the doorbell rings (Trigger), turn on the hallway light (Action). Simple, handy. But a webhook Action hides a danger: it makes Langfuse's server fetch <strong>any address the user types in</strong>.
+  It's like hiring an <strong>errand runner</strong> who faithfully delivers a letter to <strong>any address you write down</strong>. Usually fine — but if someone writes "<strong>go to the company server room and snap a photo of the safe key</strong>" (pointing at an <strong>internal service</strong> or the <strong>cloud provider's metadata endpoint</strong>), the runner complies and the secret leaks. That's <strong>SSRF (Server-Side Request Forgery)</strong>: the attacker borrows your server's hands to reach internal resources it could never reach on its own. The defense is to hand the runner a <strong>"do-not-go" list</strong>: localhost, internal addresses, that <code>169.254.169.254</code> that holds cloud credentials… all off-limits — and anything whose address can't be understood is off-limits too (<strong>better to wrongly block than to let through</strong>).
+</div>
+
+<h2>Automation = trigger → action</h2>
+<p>The data model is the classic "IFTTT" trio. A <strong>Trigger</strong> defines "<strong>when</strong>": <code>eventSource</code> (which object, e.g. trace, prompt) + <code>eventActions</code> (which change, e.g. created/updated/deleted) + <code>filter</code> (extra conditions). An <strong>Action</strong> defines "<strong>what to do</strong>": <code>type</code> (WEBHOOK / SLACK / GITHUB_DISPATCH) + <code>config</code> (e.g. a webhook's url/method/headers/secretId). An <strong>Automation</strong> binds one Trigger to one Action. Every firing leaves an <strong>AutomationExecution</strong> record (status, input, output, error).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="Automation model: an event happens, the Trigger decides whether it matches by eventSource/eventActions/filter, on match it fires the Action (WEBHOOK/SLACK/GITHUB_DISPATCH), and each run leaves an AutomationExecution record">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">When X happens (Trigger) → do Y (Action)</text>
+  <rect x="20" y="80" width="120" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">an event</text><text x="80" y="116" text-anchor="middle" font-size="6.4" fill="var(--muted)">alert / prompt change / new trace</text>
+  <rect x="170" y="68" width="160" height="74" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="250" y="88" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Trigger (when)</text><text x="250" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">eventSource: trace/prompt</text><text x="250" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">eventActions: created/updated</text><text x="250" y="131" text-anchor="middle" font-size="6.4" fill="var(--muted)">filter: extra cond · status ACTIVE</text>
+  <rect x="360" y="62" width="170" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="445" y="80" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Action (what)</text><text x="445" y="94" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">WEBHOOK / SLACK / GITHUB_DISPATCH</text>
+  <rect x="360" y="110" width="170" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="445" y="127" text-anchor="middle" font-size="6.8" fill="var(--muted)">config: { url, method, headers, secretId }</text><text x="445" y="138" text-anchor="middle" font-size="6.0" fill="var(--faint)">structured config per type</text>
+  <rect x="560" y="76" width="140" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="630" y="96" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">AutomationExecution</text><text x="630" y="113" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">status: PENDING→COMPLETED/ERROR</text><text x="630" y="126" text-anchor="middle" font-size="6.2" fill="var(--muted)">input/output/error kept</text>
+  <line x1="140" y1="105" x2="168" y2="105" stroke="var(--teal)" stroke-width="1.4"/><polygon points="168,105 159,101 159,109" fill="var(--teal)"/>
+  <line x1="330" y1="95" x2="358" y2="85" stroke="var(--blue)" stroke-width="1.4"/><polygon points="358,85 349,84 351,92" fill="var(--blue)"/><text x="345" y="78" text-anchor="middle" font-size="6" fill="var(--blue)">on match</text>
+  <line x1="530" y1="92" x2="558" y2="100" stroke="var(--accent)" stroke-width="1.4"/><polygon points="558,100 549,97 550,105" fill="var(--accent)"/>
+  <text x="360" y="172" text-anchor="middle" font-size="8" fill="var(--faint)">An Automation binds one Trigger to one Action; this is exactly where Lesson 33's alert goes "after publishing to WebhookQueue" — delivered by some webhook Action</text>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">AutomationExecution is like Lesson 30's JobExecution and Lesson 32's annotation item — yet another "persisted execution record" state machine</text>
+</svg>
+<div class="figcap"><b>The IFTTT Trigger → Action model</b>: <code>schema.prisma:1635</code> Trigger (eventSource/eventActions/filter/status), <code>:1613</code> Action (type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json), <code>:1659</code> Automation (binds the two), <code>:1690</code> AutomationExecution (PENDING/COMPLETED/ERROR/CANCELLED + input/output/error). Lesson 33's monitor alerts are delivered through exactly this path.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">when</span><span class="name">Trigger</span></div><div class="ld">Watches the event stream: <code>eventSource</code> (which object class) + <code>eventActions</code> (which change) + <code>filter</code> (finer conditions, same filtering as Lesson 23). Only fires when <code>status=ACTIVE</code> — you can pause it anytime without deleting.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">Action</span></div><div class="ld">Three action types: <strong>WEBHOOK</strong> (call the user's URL, this lesson's focus), <strong>SLACK</strong> (post to a channel, Lesson 45), <strong>GITHUB_DISPATCH</strong> (trigger a GitHub workflow). <code>config</code> stores each one's params as structured JSON; <code>secretId</code> points to an encrypted-at-rest secret (Lesson 39).</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">audit</span><span class="name">AutomationExecution</span></div><div class="ld">Every firing writes a row: a state machine PENDING→COMPLETED/ERROR/CANCELLED, storing <code>input</code>/<code>output</code>/<code>error</code> too — the same kind of "stateful, traceable execution record" as Lesson 30's JobExecution and Lesson 32's annotation item.</div></div>
+</div>
+
+
+<h2>The webhook's Achilles heel: defense in depth stops SSRF</h2>
+<p>The WEBHOOK Action is, in essence, "make Langfuse's server fetch a <strong>user-supplied URL</strong>." That's the classic breeding ground for <strong>SSRF (Server-Side Request Forgery)</strong>: an attacker sets the URL to <code>http://169.254.169.254/...</code> (the cloud metadata endpoint, which yields your temporary AK/SK) or <code>http://localhost:6379</code> (your internal Redis), reaching — through your server's hands — things it should never reach. Langfuse's defense isn't one wall but <strong>layer upon layer of gates</strong> — if any one leaks, the next still holds.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="webhook SSRF defense in depth: a user-supplied URL must pass in order a protocol allowlist (http/https only), a port allowlist (80/443 only), a hostname blocklist (localhost/metadata), an IP CIDR blocklist (private/loopback/link-local), and fail-closed on unparseable; only if all pass is the request sent, otherwise rejected">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The user URL must clear five gates; only all-pass is let through</text>
+  <rect x="20" y="44" width="120" height="150" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="80" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">user-supplied URL</text><text x="80" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">legit:</text><text x="80" y="96" text-anchor="middle" font-size="5.8" fill="var(--teal)">https://hooks.x.com/…</text><text x="80" y="120" text-anchor="middle" font-size="6.2" fill="var(--muted)">malicious:</text><text x="80" y="132" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">http://169.254.169.254</text><text x="80" y="144" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">http://localhost:6379</text><text x="80" y="156" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">file:///etc/passwd</text>
+  <rect x="165" y="44" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="62" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate1 protocol</text><text x="215" y="76" text-anchor="middle" font-size="6.0" fill="var(--muted)">http/https only</text>
+  <rect x="165" y="96" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="114" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate2 port</text><text x="215" y="128" text-anchor="middle" font-size="6.0" fill="var(--muted)">80 / 443 only</text>
+  <rect x="165" y="148" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="166" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate3 hostname</text><text x="215" y="180" text-anchor="middle" font-size="5.6" fill="var(--muted)">block localhost/metadata</text>
+  <rect x="290" y="70" width="110" height="44" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="88" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">gate4 IP range</text><text x="345" y="102" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">block private/loopback/link-local</text>
+  <rect x="290" y="124" width="110" height="44" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="142" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">gate5 fail-closed</text><text x="345" y="156" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">can't resolve? block it</text>
+  <rect x="430" y="80" width="120" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="490" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">all pass → send</text><text x="490" y="116" text-anchor="middle" font-size="6.0" fill="var(--muted)">with timeout/retry/signature</text>
+  <rect x="430" y="146" width="120" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="490" y="164" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">any fail → reject</text><text x="490" y="178" text-anchor="middle" font-size="6.0" fill="var(--muted)">malicious URLs all blocked</text>
+  <rect x="580" y="100" width="120" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="640" y="120" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">external receiver</text><text x="640" y="136" text-anchor="middle" font-size="6.0" fill="var(--muted)">verifies it's from Langfuse</text>
+  <line x1="140" y1="115" x2="163" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="265" y1="92" x2="288" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="400" y1="120" x2="428" y2="115" stroke="var(--accent)" stroke-width="1.3"/><polygon points="428,115 419,112 420,120" fill="var(--accent)"/><line x1="550" y1="110" x2="578" y2="120" stroke="var(--teal)" stroke-width="1.3"/><polygon points="578,120 569,117 570,125" fill="var(--teal)"/>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">Key: the IP check runs "at request time" on the actually-resolved IP, defeating DNS-rebinding (resolve to a legit IP first, switch to an internal IP at the last second)</text>
+</svg>
+<div class="figcap"><b>Defense in depth, gate after gate</b>: <code>validateWebhookURL</code> (<code>validation.ts:35</code>) allows only http/https and only ports 80/443; <code>ipBlocking.ts</code>'s <code>isHostnameBlocked</code> blocks localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>, and <code>isIPBlocked</code> blocks RFC1918 private ranges, loopback, link-local and other CIDRs, <b>and defaults to blocking when IP resolution fails</b> (fail-closed). The check runs at request time on the real IP, defeating DNS-rebinding.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/webhooks/ipBlocking.ts · validation.ts</span><span class="ln">SSRF defense</span></div>
+  <pre class="code"><span class="cm">// gate4: blocklisted CIDRs — private, loopback, and the link-local cloud metadata range</span>
+<span class="kw">const</span> BLOCKED_CIDRS = [<span class="st">"10.0.0.0/8"</span>, <span class="st">"127.0.0.0/8"</span>, <span class="st">"169.254.0.0/16"</span><span class="cm">/* AWS/GCP metadata */</span>,
+                       <span class="st">"172.16.0.0/12"</span>, <span class="st">"192.168.0.0/16"</span>, <span class="st">"::1/128"</span>, …];
+<span class="kw">export function</span> <span class="fn">isIPBlocked</span>(ip) { <span class="cm">/* in any range → true; resolution fails → also true (rather block) */</span> }
+
+<span class="cm">// gate3: hostname blocklist — even the domain name is forbidden</span>
+<span class="kw">const</span> blockedPatterns = [<span class="st">"localhost"</span>, <span class="st">"*.localhost"</span>,
+  <span class="st">"metadata.google.internal"</span>, <span class="st">"169.254.169.254"</span>, …];   <span class="cm">// cloud metadata endpoints</span>
+
+<span class="cm">// gate1+2: protocol and port allowlists (validation.ts)</span>
+<span class="kw">if</span> (!<span class="st">["http:", "https:"]</span>.includes(protocol)) <span class="kw">throw</span> <span class="st">"Only HTTP and HTTPS allowed"</span>;
+<span class="kw">if</span> (![<span class="st">80, 443</span>].includes(port))            <span class="kw">throw</span> <span class="st">"Only ports 80 and 443 allowed"</span>;</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>☁️ cloud metadata endpoint</h4><p><code>169.254.169.254</code> / <code>metadata.google.internal</code> — AWS/GCP instance metadata. The deadliest: yields the machine's <strong>temporary cloud credentials (AK/SK)</strong> and from there takeover of the whole cloud account. Blocked <strong>twice</strong>: hostname blocklist + link-local CIDR (<code>169.254.0.0/16</code>).</p></div>
+  <div class="col"><h4>🔌 internal services</h4><p><code>localhost:6379</code> Redis, internal admin panels, databases… often undefended on the assumption "it's internal anyway." Blocked by loopback (<code>127.0.0.0/8</code>) + RFC1918 (<code>10/8</code>, <code>172.16/12</code>, <code>192.168/16</code>) CIDR blocklist.</p></div>
+  <div class="col"><h4>📄 non-HTTP protocols</h4><p><code>file:///etc/passwd</code> to read local files, <code>gopher://</code> to hit other TCP services… killed at the source by the <strong>protocol allowlist</strong> (http/https only) — it never even reaches IP resolution.</p></div>
+</div>
+
+
+<h2>Beyond SSRF: delivery must be reliable and trustworthy</h2>
+<p>Blocking SSRF only gets you "no disaster." To make webhooks truly <strong>reliable and trustworthy</strong>, the delivery path needs several more operational hardenings — together they form the complete engineering posture for "calling the outside world":</p>
+
+<table class="t">
+  <thead><tr><th>Hardening</th><th>How</th><th>Guards against</th></tr></thead>
+  <tbody>
+    <tr><td><b>SSRF defense</b></td><td>protocol/port allowlist + IP/hostname blocklist + fail-closed (previous section)</td><td>using your server to hit the internal net, steal cloud creds</td></tr>
+    <tr><td><b>Signing</b></td><td>HMAC the payload with a secret, put it in <code>x-langfuse-signature</code></td><td>receiver can verify — confirm it really came from Langfuse, untampered</td></tr>
+    <tr><td><b>Timeout</b></td><td><code>AbortController</code> + <code>LANGFUSE_WEBHOOK_TIMEOUT_MS</code></td><td>a slow/hung peer dragging down the worker</td></tr>
+    <tr><td><b>Retry</b></td><td><code>backOff</code> exponential backoff</td><td>eventual delivery through a peer's transient blip</td></tr>
+    <tr><td><b>Status check</b></td><td>require a 2xx, else record ERROR</td><td>silent failures counted as success</td></tr>
+    <tr><td><b>Auto-disable</b></td><td>a repeatedly-failing trigger gets disabled</td><td>hammering a dead endpoint forever</td></tr>
+  </tbody>
+</table>
+
+<p>Read that table and a clear engineering creed emerges: <strong>anything that "issues a request to the outside world" must be treated as untrusted and unreliable</strong>. An external URL may be malicious (→ SSRF defense), may be slow (→ timeout), may blip (→ retry), may be permanently down (→ auto-disable); and what you send out, the peer in turn needs to confirm actually came from you (→ signing). Each guard corresponds to a concrete hypothesis about "how the outside world will hurt you" — <strong>security and robustness are never one switch, but a stack of specific defenses against specific threats</strong>.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does SSRF warrant so many layers of defense? How dangerous is it, really?</strong> Because it can turn a seemingly harmless feature ("we'll call a URL back for you") into a <strong>tunnel straight into your network's core</strong>. The deadliest target is <code>169.254.169.254</code> — AWS/GCP's <strong>instance metadata endpoint</strong>: anyone who can make your server fetch it may obtain the machine's <strong>temporary cloud credentials (AK/SK)</strong> and from there take over your entire cloud account. Next come internal services: your Redis, internal admin panels, databases — often <strong>undefended</strong> on the assumption "it's internal anyway." Once an attacker can use your webhook's hands to reach them, that "internal = safe" assumption collapses. SSRF is terrifying precisely because it <strong>bypasses every boundary</strong>: a firewall blocks what comes in from outside, but SSRF <strong>attacks outward from inside you</strong>, unimpeded. So it earns defense in depth — and every gate must be <strong>fail-closed</strong>: anything uncertain or unparseable is <strong>treated as dangerous</strong>. The default answer of secure code is "deny," not "allow."<br><br>
+  <strong>Why run the check "at request time" on the resolved real IP, instead of validating the URL once at webhook-creation time?</strong> Because of an insidious attack called <strong>DNS-rebinding</strong>: the attacker controls a domain, resolves it to a legitimate public IP <strong>at creation time</strong> (passing review smoothly), then <strong>at the last second when Langfuse actually sends the request</strong> flips that domain to resolve to <code>169.254.169.254</code> or an internal IP. If you only validate at creation, this sleight of hand fools you. Langfuse pushes the IP check down to <strong>the very moment the request is issued</strong>, judging the <strong>IP actually resolved then</strong> — no matter how the attacker swaps DNS, the real IP at that instant can't slip past this gate. <strong>Security checks must hug "the moment the truly dangerous action happens," not be done early on a possibly-stale snapshot.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Automation = Trigger → Action</strong>: the classic IFTTT model. A <code>Trigger</code> (eventSource/eventActions/filter defines "when") binds an <code>Action</code> (WEBHOOK/SLACK/GITHUB_DISPATCH defines "what"); <code>AutomationExecution</code> keeps a status record of each run. Lesson 33's monitor alerts are delivered through this.</li>
+    <li><strong>The webhook's Achilles heel is SSRF</strong>: making the server fetch a user-supplied URL lets an attacker hit the internal net and steal <code>169.254.169.254</code>'s cloud credentials — "user gives a URL, we fetch it" is one of the most dangerous web features.</li>
+    <li><strong>Defense in depth stops SSRF</strong>: protocol allowlist (http/https) + port allowlist (80/443) + hostname blocklist (localhost/metadata) + IP CIDR blocklist (private/loopback/link-local) + <strong>fail-closed</strong> (can't resolve → block). Any one gate may be the lifesaver.</li>
+    <li><strong>Check at request time</strong>: judge the actually-resolved real IP to defeat DNS-rebinding (resolve to a legit IP at creation, switch to internal at request). Security checks hug the moment the danger happens.</li>
+    <li><strong>Delivery must be reliable and trustworthy too</strong>: HMAC signing (<code>x-langfuse-signature</code>, lets the receiver verify) + timeout + exponential-backoff retry + 2xx check + auto-disable on repeated failure — treat every outbound request as untrusted and unreliable.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. The webhook Action makes Langfuse's server fetch 'any user-supplied URL'. Why is this a dangerous attack surface, and how would an attacker exploit it?</div>
+  <ol class="opts">
+    <li>SSRF (Server-Side Request Forgery): the attacker sets the URL to an internal address or 169.254.169.254 (the cloud metadata endpoint), reaching—through your server's hands—internal resources it should never reach, especially stealing this machine's temporary cloud credentials (AK/SK) and from there taking over the whole cloud account</li>
+    <li>webhooks consume too much bandwidth</li>
+    <li>the user's URL may be mistyped, causing 404</li>
+    <li>webhooks slow down page load</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'A user gives a URL and we fetch it' is one of the most dangerous features in any web system. The attacker doesn't care what page comes back; they use your server as a springboard: fetch 169.254.169.254 (the AWS/GCP instance metadata endpoint) for temporary cloud credentials, fetch localhost:6379 to hit your internal Redis, fetch internal admin panels… these are often undefended on the assumption 'it's internal anyway'. SSRF is terrifying because it bypasses every boundary: a firewall blocks what comes in, SSRF attacks outward from inside you.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse's IP-blocklist check has two notable designs: it defaults to 'block' when resolution fails, and it runs 'at the moment the request is actually sent' on the resolved real IP. What does each guard against?</div>
+  <ol class="opts">
+    <li>both are to save memory</li>
+    <li>both are for IPv6 compatibility</li>
+    <li>both are to make the check run faster</li>
+    <li>fail-closed (block when uncertain) guards against 'silently letting through when the check code errors or hits weird input'; checking the real IP at request time guards against DNS-rebinding—the attacker resolves the domain to a legit IP at creation to pass review, then flips it to an internal IP at request time</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. fail-closed is the default creed of secure code: anything uncertain or unparseable is treated as dangerous—the default answer is 'deny', not 'allow' (ipBlocking.ts:88 comment 'block it to be safe'). DNS-rebinding is insidious: validating only at creation is fooled because DNS resolution can flip at the last second. Langfuse pushes the IP check down to the moment the request is sent, judging the IP actually resolved then, so swapping DNS can't slip past. Security checks must hug 'the moment the dangerous action actually happens'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The automation data model is Trigger → Action, and each run writes an AutomationExecution record. AutomationExecution is 'the same kind of thing' as designs from which earlier lessons?</div>
+  <ol class="opts">
+    <li>the same 'persisted, stateful, traceable execution record' as Lesson 30's eval JobExecution and Lesson 32's annotation queue item—a state machine PENDING→COMPLETED/ERROR, storing input/output/error too, for debugging and retry</li>
+    <li>the same as the ClickHouse trace table</li>
+    <li>the same as the Redis cache</li>
+    <li>the same as a Prompt's version number</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Langfuse reuses the same pattern: any 'async, possibly-failing, must-be-debuggable' action gets a table, a state machine, and an input/output/error trail. eval's JobExecution (Lesson 30), the annotation item (Lesson 32), and AutomationExecution here are all 'stateful, traceable execution records'. Recognizing this recurring skeleton makes new features unsurprising: first ask 'what does its execution record look like, how does the state machine flow'.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson's webhook SSRF defense is a model of 'defense in depth': protocol allowlist, port allowlist, hostname blocklist, IP CIDR blocklist, fail-closed, request-time check… gate after gate, not one big wall. Drawing on your own experience: why does security design favor 'many independent gates' over 'one perfect wall'? Beyond SSRF, where else does this idea transfer (auth, input validation, rate limiting)? What maintenance cost do independent layered defenses carry?</li>
   </ul>
 </div>
 </div>

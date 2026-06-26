@@ -3055,6 +3055,76 @@ QUIZZES = {
             },
         ],
     },
+    "44-automations-webhooks.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "webhook 这个 Action 让 Langfuse 的服务器去请求「用户填写的任意 URL」。这为什么是个危险的安全面，攻击者会怎么利用？",
+                    "en": "The webhook Action makes Langfuse's server fetch 'any user-supplied URL'. Why is this a dangerous attack surface, and how would an attacker exploit it?",
+                },
+                "opts": [
+                    {
+                        "zh": "SSRF（服务端请求伪造）：攻击者把 URL 填成内网地址或 169.254.169.254（云元数据接口），借你服务器之手够到它本不该够到的内部资源——尤其能偷到这台机器的临时云凭证(AK/SK)，进而接管整个云账号",
+                        "en": "SSRF (Server-Side Request Forgery): the attacker sets the URL to an internal address or 169.254.169.254 (the cloud metadata endpoint), reaching—through your server's hands—internal resources it should never reach, especially stealing this machine's temporary cloud credentials (AK/SK) and from there taking over the whole cloud account",
+                    },
+                    {"zh": "webhook 会拖慢页面加载速度", "en": "webhooks slow down page load"},
+                    {"zh": "用户填的 URL 可能拼错，导致 404", "en": "the user's URL may be mistyped, causing 404"},
+                    {"zh": "webhook 消耗的带宽太大", "en": "webhooks consume too much bandwidth"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "「用户给一个 URL、我们去请求它」是所有 Web 系统里最危险的功能之一。攻击者不在乎对方返回什么页面，而是借你的服务器当跳板：请求 169.254.169.254（AWS/GCP 实例元数据接口）拿临时云凭证、请求 localhost:6379 打你的内部 Redis、请求内部管理后台……这些资源往往因为「反正在内网」而不设防。SSRF 的可怕在于它绕过了所有边界：防火墙挡外面进来的，SSRF 是从你内部往外打。",
+                    "en": "'A user gives a URL and we fetch it' is one of the most dangerous features in any web system. The attacker doesn't care what page comes back; they use your server as a springboard: fetch 169.254.169.254 (the AWS/GCP instance metadata endpoint) for temporary cloud credentials, fetch localhost:6379 to hit your internal Redis, fetch internal admin panels… these are often undefended on the assumption 'it's internal anyway'. SSRF is terrifying because it bypasses every boundary: a firewall blocks what comes in, SSRF attacks outward from inside you.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 IP 黑名单校验有两个值得注意的设计：解析失败时默认「拦截」，而且校验放在「真正发请求那一刻」对解析出的真实 IP 做。这两点各防住了什么？",
+                    "en": "Langfuse's IP-blocklist check has two notable designs: it defaults to 'block' when resolution fails, and it runs 'at the moment the request is actually sent' on the resolved real IP. What does each guard against?",
+                },
+                "opts": [
+                    {
+                        "zh": "fail-closed(拿不准就拦)防的是「校验代码本身出错或遇到怪输入时悄悄放行」；请求时校验真实 IP 防的是 DNS-rebinding——攻击者创建时把域名解析到合法 IP 过审、请求时再切换解析到内网 IP",
+                        "en": "fail-closed (block when uncertain) guards against 'silently letting through when the check code errors or hits weird input'; checking the real IP at request time guards against DNS-rebinding—the attacker resolves the domain to a legit IP at creation to pass review, then flips it to an internal IP at request time",
+                    },
+                    {"zh": "都是为了让校验跑得更快", "en": "both are to make the check run faster"},
+                    {"zh": "都是为了节省内存", "en": "both are to save memory"},
+                    {"zh": "都是为了兼容 IPv6", "en": "both are for IPv6 compatibility"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "fail-closed 是安全代码的默认信条：拿不准的、解析不了的，一律当危险处理——默认答案是「拒绝」不是「放行」（ipBlocking.ts:88 注释 'block it to be safe'）。DNS-rebinding 则是个阴险攻击：只在创建时校验就会被骗，因为域名解析结果可以临门一脚切换。Langfuse 把 IP 校验下沉到实际发请求那一刻、对当时真正解析出的 IP 判定，攻击者再切 DNS 也逃不过。安全检查必须贴着「危险动作真正发生的那一刻」做。",
+                    "en": "fail-closed is the default creed of secure code: anything uncertain or unparseable is treated as dangerous—the default answer is 'deny', not 'allow' (ipBlocking.ts:88 comment 'block it to be safe'). DNS-rebinding is insidious: validating only at creation is fooled because DNS resolution can flip at the last second. Langfuse pushes the IP check down to the moment the request is sent, judging the IP actually resolved then, so swapping DNS can't slip past. Security checks must hug 'the moment the dangerous action actually happens'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "自动化的数据模型是 Trigger → Action，每次执行还落一条 AutomationExecution 记录。这个 AutomationExecution 和前面哪些课的设计是「同一种东西」？",
+                    "en": "The automation data model is Trigger → Action, and each run writes an AutomationExecution record. AutomationExecution is 'the same kind of thing' as designs from which earlier lessons?",
+                },
+                "opts": [
+                    {
+                        "zh": "和第30课 eval 的 JobExecution、第32课人工标注的 queue item 是同一种「落库的、有状态的、可追溯的执行记录」——状态机 PENDING→COMPLETED/ERROR，连 input/output/error 一并存，便于排查与重试",
+                        "en": "the same 'persisted, stateful, traceable execution record' as Lesson 30's eval JobExecution and Lesson 32's annotation queue item—a state machine PENDING→COMPLETED/ERROR, storing input/output/error too, for debugging and retry",
+                    },
+                    {"zh": "和 ClickHouse 的 trace 表是同一种东西", "en": "the same as the ClickHouse trace table"},
+                    {"zh": "和 Redis 缓存是同一种东西", "en": "the same as the Redis cache"},
+                    {"zh": "和 Prompt 的版本号是同一种东西", "en": "the same as a Prompt's version number"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "Langfuse 反复用同一个模式：凡是「异步执行、可能失败、要能排查」的动作，就给它一张表、一个状态机、一份 input/output/error 留痕。eval 的 JobExecution（第30课）、标注 item（第32课）、这里的 AutomationExecution，本质都是「有状态、可追溯的执行记录」。认出这个反复出现的骨架，新功能就不再陌生：先问『它的执行记录长什么样、状态机怎么流转』。",
+                    "en": "Langfuse reuses the same pattern: any 'async, possibly-failing, must-be-debuggable' action gets a table, a state machine, and an input/output/error trail. eval's JobExecution (Lesson 30), the annotation item (Lesson 32), and AutomationExecution here are all 'stateful, traceable execution records'. Recognizing this recurring skeleton makes new features unsurprising: first ask 'what does its execution record look like, how does the state machine flow'.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课的 webhook SSRF 防御是「纵深防御」的范本：协议白名单、端口白名单、主机名黑名单、IP CIDR 黑名单、fail-closed、请求时校验……一道接一道，而不是一道大墙。请结合你自己的经验谈谈：为什么安全设计偏爱「多道独立的闸」而不是「一道完美的墙」？这种思路除了 SSRF，还能迁移到哪些场景（鉴权、输入校验、限流）？多道防护各自独立又有什么维护成本？",
+                "en": "This lesson's webhook SSRF defense is a model of 'defense in depth': protocol allowlist, port allowlist, hostname blocklist, IP CIDR blocklist, fail-closed, request-time check… gate after gate, not one big wall. Drawing on your own experience: why does security design favor 'many independent gates' over 'one perfect wall'? Beyond SSRF, where else does this idea transfer (auth, input validation, rate limiting)? What maintenance cost do independent layered defenses carry?",
+            },
+        ],
+    },
 }
 
 

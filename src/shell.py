@@ -135,6 +135,8 @@ PAGES = [
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
     ("43-cloud-usage-metering.html", "云用量计量与花费", "Cloud usage metering & spend",
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
+    ("44-automations-webhooks.html", "自动化与 webhook", "Automations & webhooks",
+     "第九部分 · 自动化与集成", "Part 9 · Automation & Integrations"),
 ]
 
 
@@ -704,6 +706,8 @@ SUBTITLES = {
                                    "the pricing data model feeds Lesson 16's cost computation; matchPattern unifies naming with one regex (provider/region prefixes, version suffix, @date); pricingTiers tier pricing with a default + conditional tiers (matchPricingTier evaluates AND conditions by priority, else default); prices bills line-by-line per token (input/output/cache-read); 158 seed prices in default-model-prices.json are upserted, projects can override; rules as data"),
     "43-cloud-usage-metering.html": ("Cloud 专属平台计费(与你的LLM成本反向两笔账，自托管不收费) · 按观测数计量：每小时 cron 从CH数各org观测、对有Stripe customerId的org调 meterEvents.create 上报由Stripe出账(backOff重试) · 命门「恰好一次」：cronJobs表分布式锁+台账，整点对齐+Processing互斥+20分钟兜底接管 · 计费要exactly-once · 观测是对齐价值的计费单位 · cloudSpendAlert 管你的LLM花费",
                                      "Cloud-exclusive platform billing (an opposite ledger from your LLM cost, self-host charges nothing); meter by observation count: an hourly cron counts each org's observations from CH and for orgs with a Stripe customerId calls meterEvents.create to report, Stripe invoicing (backOff retry); the crux is 'exactly once': a cronJobs table as distributed lock + ledger, hour-aligned + Processing mutex + 20-min fallback takeover; billing must be exactly-once; the observation is a value-aligned billing unit; cloudSpendAlert manages your LLM spend"),
+    "44-automations-webhooks.html": ("自动化=Trigger(eventSource/eventActions/filter 何时)→Action(WEBHOOK/SLACK/GITHUB_DISPATCH 做什么)，AutomationExecution 留执行记录(schema.prisma:1613/1635/1659/1690)，第33课告警经此投递 · 命门是 SSRF：让服务器请求用户填的URL，攻击者可借此打内网、偷169.254.169.254的云凭证 · 纵深防御：协议白名单(http/https)+端口白名单(80/443)+主机名黑名单(localhost/metadata)+IP CIDR黑名单(内网/loopback/link-local)+fail-closed(解析不了就拦) · 校验在请求时对真实IP做防DNS-rebinding · 投递硬化：HMAC签名(x-langfuse-signature)+超时+退避重试+2xx校验+反复失败自动停用",
+                                     "Automation = Trigger (eventSource/eventActions/filter = when) → Action (WEBHOOK/SLACK/GITHUB_DISPATCH = what), AutomationExecution keeps run records (schema.prisma:1613/1635/1659/1690); Lesson 33 alerts are delivered through it; the Achilles heel is SSRF: making the server fetch a user-supplied URL lets attackers hit the internal net and steal 169.254.169.254's cloud credentials; defense in depth: protocol allowlist (http/https) + port allowlist (80/443) + hostname blocklist (localhost/metadata) + IP CIDR blocklist (private/loopback/link-local) + fail-closed (can't resolve → block); the check runs at request time on the real IP to defeat DNS-rebinding; delivery hardening: HMAC signing (x-langfuse-signature) + timeout + backoff retry + 2xx check + auto-disable on repeated failure"),
 }
 
 
