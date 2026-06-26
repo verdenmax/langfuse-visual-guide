@@ -1699,3 +1699,286 @@ unbounded one</strong>:</p>
 </div>
 """)
 LESSON_25 = {"zh": "\n".join(_ZH25), "en": "\n".join(_EN25)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L26 · sessions / Sessions
+# ══════════════════════════════════════════════════════════════════════
+_ZH26 = []
+_EN26 = []
+
+_ZH26.append(r"""
+<p class="lead">
+第 24、25 课讲的是单条 trace 的列表与详情。可真实的对话往往是<strong>多轮</strong>的——用户问一句、AI 答一句，来回十几轮，每一轮是一条 trace。把它们<strong>串成一段完整对话</strong>的，就是
+<strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>session 不是一种新存储的实体，而是 traces 按 <code>session_id</code> 的一次「分组聚合」</strong>。
+更妙的是，会话表<strong>几乎原样复用了第 24 课那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">💬 生活类比</div>
+  把 session 想成聊天软件里的<strong>一个对话框</strong>，把 trace 想成里面的<strong>一条条消息</strong>。每条消息都<strong>单独存着</strong>，但你是把它们当成<strong>一整段对话</strong>来读的。
+  这个「对话框」<strong>并不是另外存在某处的一个东西</strong>——它只是「<strong>所有带同一个会话号的消息，凑到一起显示，再配一行摘要</strong>」：谁参与了、聊了几轮、持续多久、总共花了多少钱。
+  你不需要为「对话框」单独建一张表、单独维护——它<strong>从消息里自然长出来</strong>。Langfuse 的 session 正是这么来的。
+</div>
+""")
+
+# (L26 sections appended below)
+
+_ZH26.append(r"""
+<h2>session = traces 按 session_id 分组</h2>
+<p>回想第 8 课：<code>session_id</code> 只是 traces 宽表上的<strong>一个普通列</strong>。所以「会话」根本不需要新表——只要把同一个 <code>session_id</code> 的 traces <strong>GROUP BY 聚到一起</strong>，
+就得到一行「会话」，它的各项指标都是<strong>对组内 traces 的聚合</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="多条带相同 session_id 的 trace 经 GROUP BY session_id 聚成一行会话，聚合出 user_ids、trace_count、duration（最早到最晚）、session_total_cost">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">GROUP BY session_id：多条 trace → 一行会话</text>
+  <rect x="20" y="44" width="250" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="145" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">traces 表（第 8 课宽表）</text>
+  <rect x="36" y="74" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="91" font-size="7.5" fill="var(--ink)">trace#1 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=A · $0.01</text>
+  <rect x="36" y="104" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="121" font-size="7.5" fill="var(--ink)">trace#2 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=A · $0.02</text>
+  <rect x="36" y="134" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="151" font-size="7.5" fill="var(--ink)">trace#3 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=B · $0.03</text>
+  <rect x="36" y="164" width="218" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="46" y="179" font-size="7" fill="var(--faint)">trace#4 · session_id=S2 · …（另一会话）</text>
+  <rect x="306" y="84" width="120" height="60" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="366" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GROUP BY</text><text x="366" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">session_id</text>
+  <rect x="462" y="58" width="240" height="120" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="582" y="78" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">一行会话 S1</text>
+  <text x="478" y="98" font-size="8" fill="var(--ink)">user_ids = [A, B]（谁参与）</text>
+  <text x="478" y="116" font-size="8" fill="var(--ink)">trace_count = 3（聊了几轮）</text>
+  <text x="478" y="134" font-size="8" fill="var(--ink)">duration = 最晚 − 最早（持续多久）</text>
+  <text x="478" y="152" font-size="8" fill="var(--ink)">session_total_cost = $0.06（求和）</text>
+  <text x="478" y="170" font-size="7.5" fill="var(--muted)">trace_ids = [#1, #2, #3]</text>
+  <line x1="270" y1="114" x2="304" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="304,114 295,110 295,118" fill="var(--accent)"/>
+  <line x1="426" y1="114" x2="460" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="460,114 451,110 451,118" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>会话是分组出来的</b>：同一 <code>session_id</code> 的 traces 经 <code>GROUP BY session_id</code> 聚成一行会话；各指标是对组内 traces 的聚合——<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚 − 最早）、<code>session_total_cost</code>（求和）。源码：<code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
+  <pre class="code"><span class="cm">// 和第 24 课的 getTracesTableGeneric 同一个套路：一个函数，四种「形状」</span>
+<span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
+  <span class="kw">switch</span> (select) {
+    <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// 便宜</span>
+    <span class="kw">case</span> <span class="st">"metrics"</span>: sqlSelect = <span class="st">"… + duration, total_observations, session_total_cost …"</span>;      <span class="cm">// 要算</span>
+  }
+  <span class="cm">// 底层就是对 traces（及其 observations 求成本）GROUP BY session_id</span>
+}</pre>
+</div>
+
+<p>这里有个值得留意的细节：会话的「总成本」并不直接长在 trace 上，而是要<strong>下钻到每条 trace 的 observations</strong>去求和（成本是第 16 课在 observation 上算出来的）。
+所以一个会话的总成本，本质是「这个会话里所有 trace 的所有 observation 的成本」之和——一个<strong>两层的聚合</strong>。这也是为什么 <code>session_total_cost</code> 属于「贵」的 metrics 形状、要后补：
+它和第 24 课列表里的成本指标一样，得跨表算。而便宜的 rows 形状只取会话身份（谁、几轮、哪些 trace_id），<strong>不碰成本</strong>，于是会话列表能<strong>先秒开、再补指标</strong>。</p>
+""")
+
+# (reuse + spark + key section below)
+
+_ZH26.append(r"""
+<h2>原样复用：会话表就是「分了组的 trace 表」</h2>
+<p>看出来了吗——<code>getSessionsTableGeneric</code> 和第 24 课的 <code>getTracesTableGeneric</code> <strong>简直是一个模子</strong>：同样的<strong>四种形状</strong>（count / rows / metrics），
+同样的<strong>「紧凑行 vs 指标」拆分</strong>。会话列表也是：先把便宜的会话身份行画出来，昂贵的聚合指标（duration、总成本）<strong>后到补入</strong>。第 24 课的所有性能技巧，会话<strong>白白继承</strong>：
+分页、回看时间窗、按需聚合、URL 状态、列预设、行选择——这些在第 24 课里费心打磨的能力，会话表<strong>一行新代码都不用写</strong>就全有了，因为它走的是同一套通用机制。
+这就是把表格系统做成<strong>「实体无关的通用件」</strong>的回报：再来一个「按某个维度聚合的列表」（会话、用户、模型……），都能套同一个模子。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="会话表沿用第24课的紧凑行vs指标拆分：rows 取会话身份与 trace 列表（便宜先到），metrics 取 duration/总成本等聚合（贵后补）">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">沿用第 24 课：紧凑行先画，聚合指标后补</text>
+  <rect x="30" y="42" width="300" height="118" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="180" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">rows（紧凑会话行 · 便宜 · 先到）</text>
+  <text x="50" y="84" font-size="8" fill="var(--accent-ink)">session_id · min/max 时间</text>
+  <text x="50" y="102" font-size="8" fill="var(--accent-ink)">trace_ids · user_ids · trace_count</text>
+  <text x="50" y="120" font-size="8" fill="var(--accent-ink)">trace_tags · environment</text>
+  <text x="50" y="142" font-size="7.5" fill="var(--muted)">→ 会话列表立刻可见</text>
+  <rect x="390" y="42" width="300" height="118" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="540" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">metrics（聚合 · 贵 · 后补）</text>
+  <text x="410" y="84" font-size="8" fill="var(--ink)">duration（持续时长）</text>
+  <text x="410" y="102" font-size="8" fill="var(--ink)">total_observations（总观测数）</text>
+  <text x="410" y="120" font-size="8" fill="var(--ink)">session_total_cost / usage（总成本/用量）</text>
+  <text x="410" y="142" font-size="7.5" fill="var(--muted)">→ 算好再按 session_id 填进对应行</text>
+</svg>
+<div class="figcap"><b>同一套表格机制</b>：会话表沿用第 24 课的「四形状 + 紧凑行/指标拆分」。<code>rows</code> 取会话身份与它含的 <code>trace_ids</code>（便宜、先渲染），<code>metrics</code> 取 <code>duration</code>、<code>session_total_cost</code> 等聚合（贵、后补）。源码：<code>sessions-ui-table-service.ts:132-160</code>。</div>
+</div>
+
+<table class="t">
+  <tr><th>会话指标</th><th>怎么从组内 traces 算出来</th></tr>
+  <tr><td><code>user_ids</code></td><td>去重收集组内所有 trace 的 user_id（谁参与了对话）</td></tr>
+  <tr><td><code>trace_count</code></td><td>计数：这个会话里有几条 trace（聊了几轮）</td></tr>
+  <tr><td><code>duration</code></td><td>最晚时间戳 − 最早时间戳（整段对话持续多久）</td></tr>
+  <tr><td><code>session_total_cost</code></td><td>对组内所有 trace 的成本<strong>求和</strong>（这段对话总共花了多少）</td></tr>
+  <tr><td><code>trace_ids</code></td><td>收集组内所有 trace 的 id（点开会话即按序展开它们）</td></tr>
+</table>
+
+<div class="cols">
+  <div class="col"><h4>🟢 会话=派生视图（Langfuse 的选择）</h4><p>session 不另存，靠 GROUP BY 从 traces 现算。新来一条带 <code>session_id=S1</code> 的 trace，它<strong>自动</strong>就属于会话 S1——无需任何同步，永远一致。</p></div>
+  <div class="col"><h4>🔴 会话=独立实体（没这么做）</h4><p>若给 session 单建一张表，每条 trace 进来都得去<strong>更新对应会话</strong>的计数、成本、时间——多一套写入、多一处可能不一致的状态。能省则省。</p></div>
+</div>
+
+<h2>会话详情：把对话按时序铺开</h2>
+<p>点开一个会话，看到的是它含的那些 trace<strong>按时间排成一条对话时间线</strong>——第一轮、第二轮……每一轮点进去又是第 25 课那棵观测树。从列表到详情，会话只是在 trace 之上加了一层「对话」的视角，
+让你不再孤立地看单条调用，而是看清「一整段交互」的来龙去脉。这对调试多轮 agent 尤其重要：很多问题不在某一轮，而在<strong>轮与轮之间</strong>——上一轮的输出怎样影响了下一轮、对话从哪里开始跑偏。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>会话列表</h4><p>每行一个会话：谁参与、几轮、多久、花了多少（聚合指标后补，同第 24 课）。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>点开某会话</h4><p>用该会话的 <code>trace_ids</code> 把它含的 traces 取回，<strong>按时间排序</strong>成一条时间线。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>逐轮浏览</h4><p>时间线上每一项是一轮 trace（一问一答）；想细看哪轮，点进去就是第 25 课的观测树（IO 懒加载）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>看整段的全貌</h4><p>会话视角让你一眼看出「这段对话怎么演进、在哪轮变贵、哪轮出错」——这是单看一条 trace 给不了的。</p></div></div>
+</div>
+""")
+
+# (spark + key below)
+
+_ZH26.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把 session 做成 traces 的「分组视图」，而不是一个有自己存储的独立实体？</strong> 因为<strong>能从已有数据现算的，就别再单独存一份</strong>。
+  <code>session_id</code> 本就是第 8 课宽表上的一列，按它分组是<strong>免费</strong>的；而且这种「派生」天然<strong>永远一致</strong>——新来一条 trace 带着某 session_id，它<strong>自动</strong>就归入那个会话，
+  不需要任何「更新会话表」的同步步骤，也就不存在「trace 写进去了、会话计数却忘了加」这种不一致 bug。如果反过来给 session 单建一张表、单独维护，就凭空多出一条写入链路、一份要操心同步的状态——
+  得不偿失。更划算的是：因为会话表<strong>原样复用了第 24 课的表格机制</strong>，它<strong>白嫖</strong>了那套「紧凑行 vs 指标、按需聚合、URL 状态」的全部性能与体验。
+  <strong>一个看起来很实在的新功能，本质上只是一句 GROUP BY + 复用已有机制</strong>——这是「正交设计」最省力的红利。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>session = 多条 trace 按 <code>session_id</code> 分组</strong>（一段多轮对话 = 一个会话 = 多条 trace）；它是<strong>派生视图，不是新存储实体</strong>。</li>
+    <li><code>session_id</code> 只是第 8 课宽表的一列，<code>GROUP BY session_id</code> 即得会话；各指标是对组内 traces 的聚合。</li>
+    <li><strong>聚合口径</strong>：<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚−最早）、<code>session_total_cost</code>（求和）、<code>trace_ids</code>（收集）。</li>
+    <li><strong>原样复用第 24 课</strong>：<code>getSessionsTableGeneric</code> 同样四形状（count/rows/metrics）、同样紧凑行 vs 指标拆分——所有性能技巧白白继承。</li>
+    <li>取舍：派生视图<strong>永远一致</strong>（新 trace 自动归会话、无需同步）、<strong>零额外写入</strong>；能从已有数据现算的就别再单独存——正交设计的省力红利。</li>
+  </ul>
+</div>
+""")
+
+_EN26.append(r"""
+<p class="lead">
+Lessons 24 and 25 covered the list and detail of a single trace. But a real conversation is often <strong>multi-turn</strong> — the user asks, the AI answers,
+back and forth a dozen rounds, each round a trace. What threads them into <strong>one whole conversation</strong> is the <strong>session</strong>. This lesson's key
+insight is strikingly lean: <strong>a session isn't a newly-stored entity, but an aggregation of traces grouped by <code>session_id</code></strong>. Better still,
+the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</strong> — bluntly, <strong>it's the trace table, grouped</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">💬 Analogy</div>
+  Think of a session as a <strong>chat thread</strong> and a trace as a <strong>message</strong> in it. Each message is <strong>stored individually</strong>, but you
+  read them as <strong>one whole conversation</strong>. That "thread" <strong>isn't a separate thing stored somewhere</strong> — it's just "<strong>all messages with the
+  same thread-id, shown together, with a summary line</strong>": who took part, how many rounds, how long, total cost. You needn't build a separate table or maintain
+  a "thread" — it <strong>grows naturally out of the messages</strong>. That's exactly where Langfuse's sessions come from.
+</div>
+""")
+
+_EN26.append(r"""
+<h2>session = traces grouped by session_id</h2>
+<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a "session" needs no new table — just
+<strong>GROUP BY session_id</strong> over traces sharing the same id and you get one "session" row, whose metrics are all <strong>aggregates over the grouped
+traces</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="multiple traces with the same session_id grouped by session_id into one session row, aggregating user_ids, trace_count, duration (earliest to latest), session_total_cost">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">GROUP BY session_id: many traces → one session row</text>
+  <rect x="20" y="44" width="250" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="145" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">traces table (Lesson 8 wide table)</text>
+  <rect x="36" y="74" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="91" font-size="7.5" fill="var(--ink)">trace#1 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=A · $0.01</text>
+  <rect x="36" y="104" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="121" font-size="7.5" fill="var(--ink)">trace#2 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=A · $0.02</text>
+  <rect x="36" y="134" width="218" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="46" y="151" font-size="7.5" fill="var(--ink)">trace#3 · session_id=<tspan font-weight="700" fill="var(--accent-ink)">S1</tspan> · user=B · $0.03</text>
+  <rect x="36" y="164" width="218" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="46" y="179" font-size="7" fill="var(--faint)">trace#4 · session_id=S2 · …(another session)</text>
+  <rect x="306" y="84" width="120" height="60" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="366" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GROUP BY</text><text x="366" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">session_id</text>
+  <rect x="462" y="58" width="240" height="120" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="582" y="78" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">one session row S1</text>
+  <text x="478" y="98" font-size="8" fill="var(--ink)">user_ids = [A, B] (who took part)</text>
+  <text x="478" y="116" font-size="8" fill="var(--ink)">trace_count = 3 (how many rounds)</text>
+  <text x="478" y="134" font-size="8" fill="var(--ink)">duration = latest − earliest (how long)</text>
+  <text x="478" y="152" font-size="8" fill="var(--ink)">session_total_cost = $0.06 (sum)</text>
+  <text x="478" y="170" font-size="7.5" fill="var(--muted)">trace_ids = [#1, #2, #3]</text>
+  <line x1="270" y1="114" x2="304" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="304,114 295,110 295,118" fill="var(--accent)"/>
+  <line x1="426" y1="114" x2="460" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="460,114 451,110 451,118" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>A session is grouped out</b>: traces with the same <code>session_id</code> grouped by <code>GROUP BY session_id</code> into one session row; each metric is an aggregate over the grouped traces — <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum). Source: <code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
+  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, four "shapes"</span>
+<span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
+  <span class="kw">switch</span> (select) {
+    <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// cheap</span>
+    <span class="kw">case</span> <span class="st">"metrics"</span>: sqlSelect = <span class="st">"… + duration, total_observations, session_total_cost …"</span>;      <span class="cm">// computed</span>
+  }
+  <span class="cm">// under the hood: GROUP BY session_id over traces (and their observations for cost)</span>
+}</pre>
+</div>
+
+<p>A detail worth noting: a session's "total cost" doesn't sit directly on the trace; it must <strong>drill into each trace's observations</strong> to sum (cost is
+computed on the observation in Lesson 16). So a session's total cost is essentially "the sum of all observations' costs across all traces in the session" — a
+<strong>two-level aggregation</strong>. That's why <code>session_total_cost</code> belongs to the "expensive" metrics shape, filled in later: like the cost metric in
+Lesson 24's list, it must be computed across tables. The cheap rows shape takes only the session identity (who, how many rounds, which trace_ids), <strong>never
+touching cost</strong>, so the session list can <strong>open instantly, then fill metrics</strong>.</p>
+""")
+
+_EN26.append(r"""
+<h2>Reuse verbatim: the sessions table is "the trace table, grouped"</h2>
+<p>See it? <code>getSessionsTableGeneric</code> and Lesson 24's <code>getTracesTableGeneric</code> are <strong>cut from the same mold</strong>: the same <strong>four
+shapes</strong> (count / rows / metrics), the same <strong>"compact rows vs metrics" split</strong>. The session list too: paint the cheap session-identity rows first,
+the expensive aggregates (duration, total cost) <strong>filled in later</strong>. All of Lesson 24's performance tricks the session <strong>inherits free</strong>:
+pagination, look-back windows, on-demand aggregation, URL state, column presets, row selection — all the capabilities polished in Lesson 24, the sessions table gets
+<strong>without writing a line</strong>, because it rides the same generic machinery. This is the payoff of making the table system <strong>"an entity-agnostic generic
+part"</strong>: any new "list aggregated by some dimension" (sessions, users, models…) fits the same mold.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="the sessions table reuses Lesson 24's compact-rows-vs-metrics split: rows takes session identity and trace list (cheap, first), metrics takes duration/total-cost aggregates (expensive, later)">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Reusing Lesson 24: compact rows paint first, aggregate metrics fill later</text>
+  <rect x="30" y="42" width="300" height="118" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="180" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">rows (compact session rows · cheap · first)</text>
+  <text x="50" y="84" font-size="8" fill="var(--accent-ink)">session_id · min/max timestamp</text>
+  <text x="50" y="102" font-size="8" fill="var(--accent-ink)">trace_ids · user_ids · trace_count</text>
+  <text x="50" y="120" font-size="8" fill="var(--accent-ink)">trace_tags · environment</text>
+  <text x="50" y="142" font-size="7.5" fill="var(--muted)">→ session list visible immediately</text>
+  <rect x="390" y="42" width="300" height="118" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="540" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">metrics (aggregates · expensive · later)</text>
+  <text x="410" y="84" font-size="8" fill="var(--ink)">duration (how long)</text>
+  <text x="410" y="102" font-size="8" fill="var(--ink)">total_observations (total observations)</text>
+  <text x="410" y="120" font-size="8" fill="var(--ink)">session_total_cost / usage (total cost/usage)</text>
+  <text x="410" y="142" font-size="7.5" fill="var(--muted)">→ computed, filled by session_id into rows</text>
+</svg>
+<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "four shapes + compact-rows/metrics split". <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
+</div>
+
+<table class="t">
+  <tr><th>session metric</th><th>how it's computed from grouped traces</th></tr>
+  <tr><td><code>user_ids</code></td><td>distinctly collect every grouped trace's user_id (who took part in the conversation)</td></tr>
+  <tr><td><code>trace_count</code></td><td>count: how many traces in this session (how many rounds)</td></tr>
+  <tr><td><code>duration</code></td><td>latest timestamp − earliest timestamp (how long the whole conversation lasted)</td></tr>
+  <tr><td><code>session_total_cost</code></td><td><strong>sum</strong> of all grouped traces' costs (total spent in this conversation)</td></tr>
+  <tr><td><code>trace_ids</code></td><td>collect every grouped trace's id (open the session to expand them in order)</td></tr>
+</table>
+
+<div class="cols">
+  <div class="col"><h4>🟢 session = derived view (Langfuse's choice)</h4><p>A session isn't stored separately; it's computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> <strong>automatically</strong> belongs to session S1 — no sync needed, always consistent.</p></div>
+  <div class="col"><h4>🔴 session = its own entity (not done)</h4><p>Give sessions their own table and every incoming trace must <strong>update its session's</strong> count, cost, time — an extra write path, an extra piece of state that could drift. Save it if you can.</p></div>
+</div>
+
+<h2>Session detail: the conversation laid out over time</h2>
+<p>Open a session and you see its traces <strong>laid out as a conversation timeline by time</strong> — round one, round two… click into a round and it's Lesson 25's
+observation tree. From list to detail, a session just adds a "conversation" lens on top of traces, so you no longer see a call in isolation but the whole arc of an
+interaction. This matters especially for debugging multi-turn agents: many problems aren't in one round but <strong>between rounds</strong> — how the previous output
+shaped the next, where the conversation started to go off the rails.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>session list</h4><p>One session per row: who took part, how many rounds, how long, how much spent (aggregates filled later, same as Lesson 24).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>open a session</h4><p>Use the session's <code>trace_ids</code> to fetch its traces, <strong>ordered by time</strong> into a timeline.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>browse round by round</h4><p>Each timeline item is a trace (one Q&amp;A); to inspect a round, click in to Lesson 25's observation tree (IO lazy-loaded).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>see the whole arc</h4><p>The session lens shows at a glance "how this conversation evolved, which round got costly, which round errored" — something one trace alone can't give.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why make a session a "grouped view" of traces rather than an entity with its own storage?</strong> Because <strong>what you can compute from existing data,
+  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this "derived" form is
+  naturally <strong>always consistent</strong> — a new trace bearing some session_id <strong>automatically</strong> joins that session, no "update the sessions table" sync
+  step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Conversely, giving sessions their own table to maintain conjures up an
+  extra write path and a piece of state to worry about syncing — not worth it. Better still: because the sessions table <strong>reuses Lesson 24's machinery
+  verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL state". <strong>A seemingly substantial new feature is
+  essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless dividend of orthogonal design.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); it's a <strong>derived view, not a new stored entity</strong>.</li>
+    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces.</li>
+    <li><strong>Aggregation rules</strong>: <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum, a two-level aggregation into observations), <code>trace_ids</code> (collect).</li>
+    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same four shapes (count/rows/metrics) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
+    <li>Tradeoff: a derived view is <strong>always consistent</strong> (new traces auto-join, no sync) with <strong>zero extra writes</strong>; compute from existing data rather than store again — the effortless dividend of orthogonal design.</li>
+  </ul>
+</div>
+""")
+LESSON_26 = {"zh": "\n".join(_ZH26), "en": "\n".join(_EN26)}

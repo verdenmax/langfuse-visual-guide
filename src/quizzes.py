@@ -1795,6 +1795,76 @@ QUIZZES = {
             },
         ],
     },
+    "26-sessions.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 session（会话，比如一段多轮对话）在存储上是怎么回事？",
+                    "en": "How does a Langfuse session (e.g. a multi-turn conversation) exist in storage?",
+                },
+                "opts": [
+                    {
+                        "zh": "它不是一种新存储的实体，而是 traces 按 session_id 的 GROUP BY 聚合——session_id 只是第 8 课 traces 宽表上的一列，分组即得会话，各指标是对组内 traces 的聚合",
+                        "en": "it isn't a newly-stored entity but a GROUP BY of traces on session_id — session_id is just a column on Lesson 8's traces wide table, grouping yields the session, and each metric is an aggregate over the grouped traces",
+                    },
+                    {"zh": "session 有自己的表，每条 trace 进来时更新它", "en": "sessions have their own table, updated as each trace arrives"},
+                    {"zh": "session 存在 Redis 里", "en": "sessions live in Redis"},
+                    {"zh": "session 是前端临时拼出来的，不落库", "en": "sessions are assembled ad-hoc on the frontend, never persisted"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "因为 session_id 本就是 traces 宽表的一列，按它 GROUP BY 就能现算出会话，user_ids（去重）、trace_count（计数）、duration（最晚−最早）、session_total_cost（求和）都是对组内 traces 的聚合。会话是派生视图，不需要新表、新写入路径。",
+                    "en": "Since session_id is already a column on the traces wide table, GROUP BY on it computes the session on the fly; user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum) are aggregates over the grouped traces. A session is a derived view — no new table, no new write path.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "把 session 做成「traces 的派生视图」而不是独立维护的实体，最大的好处是？",
+                    "en": "Making a session a 'derived view of traces' rather than a separately-maintained entity — the biggest benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "永远一致 + 零额外写入：新来一条带某 session_id 的 trace 自动归入那个会话，不需要任何「更新会话表」的同步，也就不会出现「trace 写了、会话计数忘了加」的不一致",
+                        "en": "always consistent + zero extra writes: a new trace with some session_id automatically joins that session, no 'update the sessions table' sync, so no 'trace written but session count forgotten' inconsistency",
+                    },
+                    {"zh": "让 session 查询更快", "en": "makes session queries faster"},
+                    {"zh": "节省 trace 的存储空间", "en": "saves trace storage space"},
+                    {"zh": "让 session 能被单独删除", "en": "lets sessions be deleted independently"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "派生视图天然一致：会话从 traces 现算，新 trace 自动归入，无需同步步骤，杜绝了「双写不一致」这类 bug。若反过来给 session 单建表，每条 trace 都要更新对应会话的计数/成本/时间——多一条写入链路、多一份要操心同步的状态。能从已有数据现算的就别再单独存。",
+                    "en": "A derived view is inherently consistent: the session is computed from traces, a new trace auto-joins, no sync step, eliminating 'dual-write inconsistency' bugs. Conversely a separate sessions table makes every trace update its session's count/cost/time — an extra write path and state to sync. Compute from existing data rather than store again.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "sessions-ui-table-service 的 getSessionsTableGeneric 和第 24 课 traces 的 getTracesTableGeneric「几乎一个模子」（同样四形状、同样紧凑行 vs 指标拆分）。这说明了什么设计价值？",
+                    "en": "getSessionsTableGeneric mirrors Lesson 24's getTracesTableGeneric (same four shapes, same compact-rows-vs-metrics split). What design value does this show?",
+                },
+                "opts": [
+                    {
+                        "zh": "把表格系统做成「实体无关的通用件」：会话表白白继承第 24 课的分页、回看窗、按需聚合、URL 状态等全部能力，一行新代码不用写；再来一个「按某维度聚合的列表」也能套同一模子",
+                        "en": "making the table system an 'entity-agnostic generic part': the sessions table inherits all of Lesson 24's pagination, look-back windows, on-demand aggregation, URL state etc. without a line of new code; any new 'list aggregated by some dimension' fits the same mold",
+                    },
+                    {"zh": "说明代码重复、应该合并", "en": "it shows duplicated code that should be merged"},
+                    {"zh": "说明 session 和 trace 是同一种东西", "en": "it shows sessions and traces are the same thing"},
+                    {"zh": "纯属巧合", "en": "pure coincidence"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "把通用表格机制（四形状、紧凑行 vs 指标、按需聚合、URL 状态、列预设）抽象成实体无关的通用件后，会话表只需提供「按 session_id 分组」的查询，就免费获得全部性能与体验。这就是正交设计的红利：一个看似实在的新功能，本质是一句 GROUP BY + 复用已有机制。",
+                    "en": "Abstracting the generic table machinery (four shapes, compact-vs-metrics, on-demand aggregation, URL state, column presets) into an entity-agnostic part means the sessions table only supplies a 'GROUP BY session_id' query to get all the performance and UX free. The dividend of orthogonal design: a seemingly substantial feature is essentially one GROUP BY plus reusing existing machinery.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「能从已有数据现算的，就别再单独存一份」——session 用 GROUP BY 从 traces 派生，省掉了一套写入与同步。你做过的系统里，有没有「为了方便而冗余存了一份、结果要操心同步一致性」的地方？哪些适合改成派生视图？派生的代价（每次查都要现算）你怎么权衡？",
+                "en": "'What you can compute from existing data, don't store again' — sessions derive from traces by GROUP BY, sparing a write-and-sync path. In your systems, is there a place where 'you stored a redundant copy for convenience and then had to worry about sync consistency'? Which would suit a derived view? How do you weigh the cost of deriving (computing on every query)?",
+            },
+        ],
+    },
 }
 
 

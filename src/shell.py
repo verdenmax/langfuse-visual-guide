@@ -99,6 +99,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("25-trace-detail-tree.html", "trace 详情与观测树", "Trace detail & the observation tree",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("26-sessions.html", "sessions", "Sessions",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -632,6 +634,8 @@ SUBTITLES = {
                                  "getTracesTableGeneric four shapes; compact rows vs metrics parallel; joinTableCoreAndMetrics merge by id; conditional JOIN/FINAL; table state URL-as-truth three layers"),
     "25-trace-detail-tree.html": ("byIdWithObservationsAndScores 全量取树 · 并行树+评分 · includeIO:false 懒加载 · partition CORRECTION · verbosity 封顶 · 列表/详情同纪律两尺度",
                                   "byIdWithObservationsAndScores full tree fetch; parallel tree+scores; includeIO:false lazy-load; partition CORRECTION; verbosity cap; list/detail one discipline two scales"),
+    "26-sessions.html": ("session = traces 按 session_id 分组聚合 · 派生视图非新实体 · user_ids/duration/总成本 · 复用第24课表格机制 · 永远一致零额外写",
+                         "session = traces grouped by session_id; derived view not new entity; user_ids/duration/total cost; reuses L24 table machinery; always consistent zero extra writes"),
 }
 
 
