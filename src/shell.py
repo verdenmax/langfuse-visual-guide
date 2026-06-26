@@ -59,6 +59,8 @@ PAGES = [
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
     ("05-life-of-a-trace.html", "一条 trace 的一生·鸟瞰", "Life of a trace (bird's-eye)",
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
+    ("06-instrumenting-an-llm-app.html", "给 LLM 应用埋点", "Instrumenting an LLM app",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -552,6 +554,8 @@ SUBTITLES = {
                                      "monorepo; four workspaces; narrow-waist deps; Turbo; hot-dir cheat-sheet"),
     "05-life-of-a-trace.html": ("写：SDK→API→队列→worker→CH · 读：UI→tRPC→仓储→CH · 异步·最终一致",
                                 "write: SDK→API→queue→worker→CH; read: UI→tRPC→repo→CH; async; eventual consistency"),
+    "06-instrumenting-an-llm-app.html": ("两个入口：SDK 原生事件 / OTel · 事件信封 · create+update 增量",
+                                         "two entries: native SDK events / OTel; the event envelope; incremental create+update"),
 }
 
 

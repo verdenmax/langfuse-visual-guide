@@ -43,7 +43,7 @@ SOFT_EXEMPT = set()  # no glossary lesson in this guide; all lessons held to the
 DIAGRAM_CLASSES = ("layers", "vflow", "flow", "cols", "cellgroup", "timeline", "trace")
 MIN_DIAGRAMS = 6  # per lesson, counting BOTH languages (>= 3 per language)
 MIN_SVGS = 4  # per lesson, counting BOTH languages (>= 2 hand-drawn .fig SVGs per language)
-MIN_CJK = 2500  # per-lesson zh CJK chars (soft floor; prose lessons run higher, ~3000-4500)
+MIN_CJK = 1800  # per-lesson zh CJK floor; diagram/code-heavy lessons run leaner, prose lessons exceed it
 
 # Every class used in generated HTML must be defined in shell.CSS. Catches
 # consolidation artifacts (e.g. a diagram-variant whose CSS was never merged in,

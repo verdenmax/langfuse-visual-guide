@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 5 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 6 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -342,6 +342,7 @@ details[open] > summary { list-style: none; }
   <li>The three pillars in depth</li>
   <li>Project map (monorepo & narrow waist)</li>
   <li>Life of a trace (bird's-eye)</li>
+  <li>Instrumenting an LLM app</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -1730,6 +1731,200 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Recap Part 1: in your own words, tell a colleague who's never used Langfuse the 'life of a trace' from SDK to UI. Which leg do you think is most overlooked yet most crucial?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Instrumenting an LLM app</h1>
+
+<p class="lead">
+In Lesson 5's pipeline, the first leg was "SDK creates events". This lesson focuses on that first leg: how, before data ever leaves
+<strong>your app</strong>, it gets <strong>instrumented</strong> into existence. You'll see Langfuse's <strong>two entry points</strong> —
+sending "native events" via the Langfuse <strong>SDK</strong>, or sending standard <strong>OpenTelemetry (OTLP)</strong>. Understanding
+"what the app side emits" makes Part 3 ("how the server receives and processes it") land.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Instrumentation is like fitting a building with <strong>sensors</strong>: you <strong>don't change</strong> the building's function,
+  you just place recorders at key spots (door, elevator, server room) noting "who passed when, stayed how long". The Langfuse
+  <strong>SDK</strong> is its <strong>own custom sensor</strong> — the best fit, richest signal; <strong>OpenTelemetry</strong> is like a
+  <strong>standard sensor interface</strong> — if your building is already wired to that standard, Langfuse just <strong>plugs into the
+  existing wiring</strong>. Two paths, same end: ship the app's "traces" out. This lesson's goal is to make clear "what the sensor end
+  actually emits" — only by understanding the <strong>raw material</strong> the app sends can you grasp how the server later refines it
+  into trace trees and wide-event tables.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="An app sends data to the public API via either Langfuse SDK native events or OpenTelemetry OTLP">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two entries, same destination</text>
+  <rect x="40" y="98" width="150" height="56" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">your LLM app</text><text x="115" y="140" text-anchor="middle" font-size="9" fill="var(--muted)">instrumentation here</text>
+  <rect x="270" y="50" width="180" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Langfuse SDK</text><text x="360" y="90" text-anchor="middle" font-size="9" fill="var(--accent-ink)">native events trace/observation/score</text>
+  <rect x="270" y="150" width="180" height="52" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="360" y="172" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">OpenTelemetry</text><text x="360" y="190" text-anchor="middle" font-size="9" fill="var(--muted)">OTLP span → mapped to observation</text>
+  <rect x="540" y="98" width="150" height="56" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="122" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">public ingest API</text><text x="615" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · accept+enqueue</text>
+  <line x1="190" y1="112" x2="268" y2="80" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,80 257,80 261,88" fill="var(--faint)"/>
+  <line x1="190" y1="140" x2="268" y2="172" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,172 257,164 261,172" fill="var(--faint)"/>
+  <line x1="450" y1="76" x2="538" y2="112" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,112 527,108 527,118" fill="var(--faint)"/>
+  <line x1="450" y1="176" x2="538" y2="140" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,140 527,140 527,150" fill="var(--faint)"/>
+  <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK path: ingestion.ts　·　OTel path: otel/v1/traces (both join one ingestion path)</text>
+</svg>
+<div class="figcap"><b>Two entries</b>: send native events with the <b>Langfuse SDK</b> (<code>web/src/pages/api/public/ingestion.ts</code>), or standard spans via <b>OpenTelemetry OTLP</b> (<code>web/src/pages/api/public/otel/v1/traces</code>, spans mapped to observations). Both converge on the same server-side ingestion path (Part 3).</div>
+</div>
+
+<h2>The event envelope: what your app emits</h2>
+<p>Whichever entry, the app essentially emits a batch of <strong>events</strong>. Langfuse defines a set of event types
+(<code>eventTypes</code> in <code>packages/shared/src/server/ingestion/types.ts</code>), each describing "<strong>what was done to which
+object</strong>":</p>
+
+<table class="t">
+  <tr><th>Event type</th><th>Meaning</th></tr>
+  <tr><td class="mono">TRACE_CREATE</td><td>create/update a trace (the interaction's shell)</td></tr>
+  <tr><td class="mono">SPAN_CREATE / SPAN_UPDATE</td><td>start / end a span-type observation (a timed unit)</td></tr>
+  <tr><td class="mono">GENERATION_CREATE</td><td>record an LLM call (generation-type observation)</td></tr>
+  <tr><td class="mono">OBSERVATION_CREATE / OBSERVATION_UPDATE</td><td>generic observation create / update</td></tr>
+  <tr><td class="mono">EVENT_CREATE</td><td>record an instantaneous event</td></tr>
+  <tr><td class="mono">SCORE_CREATE</td><td>submit a score</td></tr>
+</table>
+
+<p>Note there's both <code>CREATE</code> and <code>UPDATE</code> — this is the source of Lesson 5's "merge": a span usually starts with
+<code>SPAN_CREATE</code> and ends with <code>SPAN_UPDATE</code> (adding duration, output). The app <strong>batches</strong> these events
+into one HTTP request to the ingestion API, and the server merges them. So your <code>langfuse.trace(...)</code> and
+<code>span.end()</code> calls are essentially <strong>generating these events</strong>.</p>
+
+<p>Conceptually, your instrumentation code looks roughly like this (SDK shapes differ by language; this just shows the "call →
+event" mapping):</p>
+
+<pre class="code"><span class="cm"># create a trace (emits TRACE_CREATE)</span>
+trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)
+
+<span class="cm"># record an LLM call under the trace (emits GENERATION_CREATE)</span>
+gen = trace.<span class="fn">generation</span>(name=<span class="st">"answer"</span>, model=<span class="st">"gpt-4o"</span>, input=prompt)
+result = call_llm(prompt)
+<span class="cm"># call ends; add output and usage (emits OBSERVATION_UPDATE)</span>
+gen.<span class="fn">end</span>(output=result, usage={<span class="st">"input"</span>: 800, <span class="st">"output"</span>: 440})
+
+<span class="cm"># score this answer (emits SCORE_CREATE)</span>
+trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, value=0.9)</pre>
+
+<p>Key observation: you merely "<strong>jot a note alongside</strong>" your existing business code — you didn't change
+<code>call_llm</code>'s logic. Good instrumentation is <strong>as non-intrusive as possible</strong> — it shouldn't dictate how your app
+runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse sits <strong>beside</strong> your app, not
+<strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
+main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
+
+
+<h2>Two entries: native SDK vs OpenTelemetry</h2>
+<p>Why support both? Because they serve two kinds of users:</p>
+
+<div class="cols">
+  <div class="col"><h4>🎯 Langfuse SDK (native)</h4><p>The official Python/JS SDKs emit the native events above. <strong>Richest, best-fit signal</strong> (prompt linkage, usage, cost reported precisely), the default for most. Entry: <code>ingestion.ts</code>.</p></div>
+  <div class="col"><h4>🔌 OpenTelemetry (OTLP)</h4><p>If your system <strong>already uses OTel</strong> for observability and you'd rather not add another SDK, send OTel spans to Langfuse's OTLP endpoint (<code>otel/v1/traces</code>). Langfuse <strong>maps standard spans to observations</strong>. The cost: some Langfuse-specific semantics ride on convention-based attribute names.</p></div>
+</div>
+
+<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> tradeoff. OTel is the de-facto standard for
+cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
+your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
+version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
+the native SDK gives the best experience. The server-side handling of the OTel path is its own Lesson 18.</p>
+
+<h2>create then update: events are "incremental"</h2>
+<p>Once more, a point crucial to understanding the whole path: <strong>an observation's info often isn't sent all at once</strong>. Look
+at a typical LLM call timeline:</p>
+
+<div class="timeline">
+  <div class="lane"><span class="lane-label">t0 start</span><span class="tslot now">GENERATION_CREATE</span><span class="tslot">model=gpt-4o, input=… (no output yet)</span></div>
+  <div class="lane"><span class="lane-label">t1 end</span><span class="tslot now">OBSERVATION_UPDATE</span><span class="tslot">output=…, usage=1240 tok, latency=1.8s</span></div>
+  <div class="lane"><span class="lane-label">server</span><span class="tslot span">worker merges create + update into one final observation (L15)</span></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="A create event and an update event are merged by the worker into one final observation">
+  <rect x="30" y="40" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">GENERATION_CREATE</text><text x="130" y="78" text-anchor="middle" font-size="9" fill="var(--muted)">model, input (sent at t0)</text>
+  <rect x="30" y="110" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="130" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">OBSERVATION_UPDATE</text><text x="130" y="148" text-anchor="middle" font-size="9" fill="var(--muted)">output, usage (sent at t1)</text>
+  <rect x="320" y="75" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="380" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">worker merge</text><text x="380" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">L15</text>
+  <rect x="520" y="70" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="605" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">one final observation</text><text x="605" y="110" text-anchor="middle" font-size="9" fill="var(--muted)">model+input+output+usage</text>
+  <line x1="230" y1="62" x2="318" y2="92" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,92 307,89 310,98" fill="var(--faint)"/>
+  <line x1="230" y1="138" x2="318" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,108 310,102 307,111" fill="var(--faint)"/>
+  <line x1="440" y1="100" x2="518" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="518,100 507,95 507,105" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>Two events, one record</b>: the <code>CREATE</code> and <code>UPDATE</code> arriving at different times are merged by the worker into one final observation. That's why the SDK can "send in pieces" while you see one complete row in the UI.</div>
+</div>
+
+<p>Why report "incrementally" instead of waiting and sending one complete event at the end? So the app can <strong>record "it
+started" earlier</strong> — even if the call later <strong>crashes or times out</strong>, you at least know "it did start and got stuck
+here". Wait until the end and a mid-flight crash makes that step <strong>vanish entirely</strong>, losing exactly the failure cases most
+worth observing. Incremental reporting + server merge is the protocol-level expression of "<strong>record as it happens</strong>"
+observability.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
+  SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
+  tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (L15). The payoff: the
+  SDK is light, low-impact, easy to implement in every language; and the most complex, careful merge logic lives in <strong>one
+  place</strong> (the server), not re-implemented (and re-bugged) in each language SDK. <strong>Converge complexity to one strictly
+  testable place.</strong> This "thin client, thick server" trade shows up in many large systems; Langfuse just applies it to a
+  telemetry protocol.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Instrumentation happens in <strong>your app</strong>: split the run-time trace into a batch of <strong>events</strong> sent to Langfuse, without changing business logic.</li>
+    <li><strong>Two entries</strong>: Langfuse <strong>native SDK</strong> (<code>ingestion.ts</code>, most expressive) or <strong>OpenTelemetry OTLP</strong> (<code>otel/v1/traces</code>, plugs into existing OTel).</li>
+    <li>Event types (<code>eventTypes</code>): <code>TRACE_CREATE / SPAN_CREATE / GENERATION_CREATE / OBSERVATION_UPDATE / SCORE_CREATE …</code>, describing "what was done to which object".</li>
+    <li>Events are <strong>incremental</strong> (create starts, update completes), so "record as it happens" and failures aren't lost — the server merges (L15).</li>
+    <li>The protocol puts complexity on the server: SDKs stay light and portable; merge logic lives in one place.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse support both its own SDK 'native events' and OpenTelemetry (OTLP)?</div>
+  <ol class="opts">
+    <li>Because OTel carries more LLM-specific semantics than native events</li>
+    <li>The native SDK is most expressive (precise prompt/usage/cost), while OTel lets systems already on OTel plug in without rewriting instrumentation; each serves a different user</li>
+    <li>Because the native SDK is deprecated and OTel is the only entry</li>
+    <li>To route data into two completely separate stores</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. This is 'embrace the standard vs play to strengths': OTel is the de-facto cloud-native standard, so supporting it lowers the barrier; but its generic model doesn't natively grok prompt version/token usage, where the native SDK is more precise. Langfuse does both — OTLP for reach, native SDK for the best experience.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. A span-type observation often sends SPAN_CREATE first, then SPAN_UPDATE at the end. What's the main benefit of this 'incremental reporting'?</div>
+  <ol class="opts">
+    <li>To reduce the number of events</li>
+    <li>It records 'it started' earlier, so even if it later crashes/times out you know which step stalled — failure cases don't vanish just because 'the end never came'</li>
+    <li>So the SDK assembles the final state itself</li>
+    <li>Because ClickHouse only accepts two writes</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Waiting to send one complete event means a mid-flight crash erases that step — yet failures are exactly what you most want to observe. Incremental reporting = 'record as it happens', and the server merges create+update into one row (L15).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. In this 'incremental events + merge' protocol, where does the most complex merge logic live, and why?</div>
+  <ol class="opts">
+    <li>In the frontend at render time</li>
+    <li>In database triggers</li>
+    <li>In the SDK: each language implements merging itself</li>
+    <li>On the server (worker): SDKs just emit small events; merging 'possibly out-of-order/duplicate events into one consistent row' lives in one place, avoiding each language SDK re-implementing (and re-bugging) it</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Converge complexity to one strictly testable place (the server): SDKs stay light, portable and low-impact; the error-prone merge logic is maintained once in the worker rather than scattered across every language SDK.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>If you were instrumenting your own app, would you pick the Langfuse native SDK or OpenTelemetry? How would your system's current state (already on OTel? need precise cost?) shape that choice?</li>
   </ul>
 </div>
 </div>

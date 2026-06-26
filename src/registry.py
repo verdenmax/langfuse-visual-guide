@@ -6,6 +6,7 @@ both import this so the lesson set stays in sync with shell.PAGES.
 Grows one Part module per milestone (part1 .. part11). M0 ships only L01.
 """
 import part1
+import part2
 
 # Filename -> {"zh": ..., "en": ...}. Keep keys in sync with shell.PAGES.
 CONTENT = {
@@ -14,4 +15,5 @@ CONTENT = {
     "03-three-pillars-deep.html": part1.LESSON_03,
     "04-project-map-monorepo.html": part1.LESSON_04,
     "05-life-of-a-trace.html": part1.LESSON_05,
+    "06-instrumenting-an-llm-app.html": part2.LESSON_06,
 }

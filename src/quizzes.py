@@ -395,6 +395,76 @@ QUIZZES = {
             },
         ],
     },
+    "06-instrumenting-an-llm-app.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 为什么既支持自家 SDK 的“原生事件”，又支持 OpenTelemetry（OTLP）？",
+                    "en": "Why does Langfuse support both its own SDK 'native events' and OpenTelemetry (OTLP)?",
+                },
+                "opts": [
+                    {
+                        "zh": "原生 SDK 表达力最强（精确报 prompt/用量/成本），OTel 则让已经用 OTel 的系统无缝接入、无需重写埋点；两者各服务一类用户",
+                        "en": "The native SDK is most expressive (precise prompt/usage/cost), while OTel lets systems already on OTel plug in without rewriting instrumentation; each serves a different user",
+                    },
+                    {"zh": "因为原生 SDK 已经废弃，OTel 是唯一入口", "en": "Because the native SDK is deprecated and OTel is the only entry"},
+                    {"zh": "因为 OTel 比原生事件携带更多 LLM 专有语义", "en": "Because OTel carries more LLM-specific semantics than native events"},
+                    {"zh": "为了让数据走两条完全独立的存储", "en": "To route data into two completely separate stores"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是“拥抱标准 vs 发挥专长”的权衡：OTel 是云原生可观测的事实标准，支持它降低接入门槛；但其通用模型不天然懂 prompt 版本/token 用量，原生 SDK 更精确。Langfuse 两者都要——OTLP 降门槛，原生 SDK 给最佳体验。",
+                    "en": "This is 'embrace the standard vs play to strengths': OTel is the de-facto cloud-native standard, so supporting it lowers the barrier; but its generic model doesn't natively grok prompt version/token usage, where the native SDK is more precise. Langfuse does both — OTLP for reach, native SDK for the best experience.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "一个 span 型 observation 常常先发 SPAN_CREATE、结束时再发 SPAN_UPDATE。这种“增量上报”的主要好处是什么？",
+                    "en": "A span-type observation often sends SPAN_CREATE first, then SPAN_UPDATE at the end. What's the main benefit of this 'incremental reporting'?",
+                },
+                "opts": [
+                    {
+                        "zh": "能更早记下“它开始了”，即使后面崩溃/超时也知道卡在哪步——失败 case 不会因为“没等到结束”而彻底消失",
+                        "en": "It records 'it started' earlier, so even if it later crashes/times out you know which step stalled — failure cases don't vanish just because 'the end never came'",
+                    },
+                    {"zh": "为了减少事件数量", "en": "To reduce the number of events"},
+                    {"zh": "因为 ClickHouse 只接受两次写入", "en": "Because ClickHouse only accepts two writes"},
+                    {"zh": "为了让 SDK 自己拼装最终状态", "en": "So the SDK assembles the final state itself"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若等结束才发一条完整事件，一旦中途挂掉这一步就彻底消失，而失败恰恰最该被观测。增量上报 = “边发生边记录”，服务端再把 create+update 合并成一条（第 15 课）。",
+                    "en": "Waiting to send one complete event means a mid-flight crash erases that step — yet failures are exactly what you most want to observe. Incremental reporting = 'record as it happens', and the server merges create+update into one row (L15).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "这套“事件增量上报 + 合并”的协议，把最复杂的合并逻辑放在哪一端？为什么？",
+                    "en": "In this 'incremental events + merge' protocol, where does the most complex merge logic live, and why?",
+                },
+                "opts": [
+                    {
+                        "zh": "放在服务端（worker）：SDK 只管把小事件发出去，合并“可能乱序/重复的事件成一致一行”只在一处维护，避免每种语言 SDK 各写各错",
+                        "en": "On the server (worker): SDKs just emit small events; merging 'possibly out-of-order/duplicate events into one consistent row' lives in one place, avoiding each language SDK re-implementing (and re-bugging) it",
+                    },
+                    {"zh": "放在 SDK：每个语言各自实现合并", "en": "In the SDK: each language implements merging itself"},
+                    {"zh": "放在数据库触发器里", "en": "In database triggers"},
+                    {"zh": "放在前端 UI 渲染时", "en": "In the frontend at render time"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "把复杂度收敛到一个能严格测试的地方（服务端）：SDK 因此轻、好移植、对应用影响小；合并这种最易错的逻辑只在 worker 维护一份，而不是散落在每个语言 SDK 里。",
+                    "en": "Converge complexity to one strictly testable place (the server): SDKs stay light, portable and low-impact; the error-prone merge logic is maintained once in the worker rather than scattered across every language SDK.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "如果你要给自己的应用加埋点，你会选 Langfuse 原生 SDK 还是 OpenTelemetry？你的系统现状（有没有已用 OTel、需不需要精确成本）会怎么影响这个选择？",
+                "en": "If you were instrumenting your own app, would you pick the Langfuse native SDK or OpenTelemetry? How would your system's current state (already on OTel? need precise cost?) shape that choice?",
+            },
+        ],
+    },
 }
 
 

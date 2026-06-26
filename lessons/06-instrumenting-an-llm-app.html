@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>06 · 给 LLM 应用埋点 / Instrumenting an LLM app - Langfuse 图解教程</title>
+<meta name="description" content="第二部分 · 前置基础｜给 LLM 应用埋点 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="06 · 给 LLM 应用埋点 / Instrumenting an LLM app - Langfuse 图解教程">
+<meta property="og:description" content="第二部分 · 前置基础｜给 LLM 应用埋点 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="06 · 给 LLM 应用埋点 / Instrumenting an LLM app - Langfuse 图解教程">
+<meta name="twitter:description" content="第二部分 · 前置基础｜给 LLM 应用埋点 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></span>
+    <span class="pill">06 / 06</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
+    <h1><span class="lang-zh">给 LLM 应用埋点</span><span class="lang-en">Instrumenting an LLM app</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+第 5 课的全链路里，第一段是「SDK 创建事件」。这一课就把镜头对准这第一段：在数据还没离开<strong>你的应用</strong>之前，它是怎么被「<strong>埋点</strong>」生成的。
+你会看到 Langfuse 接收数据的<strong>两个入口</strong>——一种是用 Langfuse 自家的 <strong>SDK</strong> 发「原生事件」，另一种是走业界标准的
+<strong>OpenTelemetry（OTLP）</strong>。理解了「应用这头发出的是什么」，后面第三部分「服务端怎么收、怎么处理」才有的放矢。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  埋点就像给一栋大楼<strong>装传感器</strong>：你<strong>不改变</strong>大楼本身的功能，只是在关键位置（大门、电梯、机房）装上记录器，把「谁什么时候经过、停留多久」记下来。
+  Langfuse 的 <strong>SDK</strong> 是它<strong>自家定制的传感器</strong>，装起来最贴合、信息最全；而 <strong>OpenTelemetry</strong> 像一套<strong>通用接口的传感器标准</strong>——
+  你楼里要是已经按这套标准装了线，Langfuse 直接<strong>接上现成的线</strong>就能收数据，不用重装。两条路，殊途同归：都是把应用运行的「踪迹」送出来。
+  这一课的目标，就是让你看清「传感器这头到底发出了什么」——只有先看懂应用发出的<strong>原料</strong>，才能理解后面服务端是怎么把它加工成 trace 树和宽事件表的。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="应用通过 Langfuse SDK 原生事件或 OpenTelemetry OTLP 两条入口把数据送进公共 API">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">两条入口，殊途同归</text>
+  <rect x="40" y="98" width="150" height="56" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">你的 LLM 应用</text><text x="115" y="140" text-anchor="middle" font-size="9" fill="var(--muted)">埋点发生在这里</text>
+  <rect x="270" y="50" width="180" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Langfuse SDK</text><text x="360" y="90" text-anchor="middle" font-size="9" fill="var(--accent-ink)">原生事件 trace/observation/score</text>
+  <rect x="270" y="150" width="180" height="52" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="360" y="172" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">OpenTelemetry</text><text x="360" y="190" text-anchor="middle" font-size="9" fill="var(--muted)">OTLP 标准 span → 映射成 observation</text>
+  <rect x="540" y="98" width="150" height="56" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="122" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">公共摄取 API</text><text x="615" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · 收下入队</text>
+  <line x1="190" y1="112" x2="268" y2="80" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,80 257,80 261,88" fill="var(--faint)"/>
+  <line x1="190" y1="140" x2="268" y2="172" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,172 257,164 261,172" fill="var(--faint)"/>
+  <line x1="450" y1="76" x2="538" y2="112" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,112 527,108 527,118" fill="var(--faint)"/>
+  <line x1="450" y1="176" x2="538" y2="140" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,140 527,140 527,150" fill="var(--faint)"/>
+  <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK 路：ingestion.ts　·　OTel 路：otel/v1/traces（最终都进同一条摄取链路）</text>
+</svg>
+<div class="figcap"><b>两个入口</b>：用 <b>Langfuse SDK</b> 发原生事件（<code>web/src/pages/api/public/ingestion.ts</code>），或用 <b>OpenTelemetry OTLP</b> 发标准 span（<code>web/src/pages/api/public/otel/v1/traces</code>，span 会被映射成 observation）。两条路最后汇入同一条服务端摄取链路（第三部分）。</div>
+</div>
+
+<h2>事件信封：你的应用发出的是什么</h2>
+<p>无论走哪条入口，应用发出的本质都是一批<strong>事件（event）</strong>。Langfuse 定义了一组事件类型（<code>packages/shared/src/server/ingestion/types.ts</code> 的 <code>eventTypes</code>），
+每个事件描述「<strong>对哪个对象做了什么</strong>」：</p>
+
+<table class="t">
+  <tr><th>事件类型</th><th>含义</th></tr>
+  <tr><td class="mono">TRACE_CREATE</td><td>创建/更新一个 trace（整次交互的外壳）</td></tr>
+  <tr><td class="mono">SPAN_CREATE / SPAN_UPDATE</td><td>开始 / 结束一个 span 型 observation（有耗时的一段）</td></tr>
+  <tr><td class="mono">GENERATION_CREATE</td><td>记录一次 LLM 调用（generation 型 observation）</td></tr>
+  <tr><td class="mono">OBSERVATION_CREATE / OBSERVATION_UPDATE</td><td>通用的 observation 创建 / 更新</td></tr>
+  <tr><td class="mono">EVENT_CREATE</td><td>记录一个瞬时事件</td></tr>
+  <tr><td class="mono">SCORE_CREATE</td><td>提交一个 score（评分）</td></tr>
+</table>
+
+<p>注意这里有 <code>CREATE</code> 也有 <code>UPDATE</code>——这正是第 5 课「合并」的来源：一个 span 通常先 <code>SPAN_CREATE</code>（开始时），结束时再 <code>SPAN_UPDATE</code>（补上耗时、输出）。
+应用把这些事件<strong>攒成一批</strong>，一次 HTTP 请求发给摄取 API，服务端再去合并。所以你在 SDK 里写的 <code>langfuse.trace(...)</code>、<code>span.end()</code>，
+本质上就是在<strong>生成这些事件</strong>。</p>
+
+<p>概念上，你在应用里写的埋点代码大致长这样（不同语言 SDK 形态略有差异，这里只示意「调用 → 事件」的对应关系）：</p>
+
+<pre class="code"><span class="cm"># 创建一个 trace（发出 TRACE_CREATE）</span>
+trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)
+
+<span class="cm"># 在 trace 下记录一次 LLM 调用（发出 GENERATION_CREATE）</span>
+gen = trace.<span class="fn">generation</span>(name=<span class="st">"answer"</span>, model=<span class="st">"gpt-4o"</span>, input=prompt)
+result = call_llm(prompt)
+<span class="cm"># 调用结束，补上输出与用量（发出 OBSERVATION_UPDATE）</span>
+gen.<span class="fn">end</span>(output=result, usage={<span class="st">"input"</span>: 800, <span class="st">"output"</span>: 440})
+
+<span class="cm"># 给这次回答打个分（发出 SCORE_CREATE）</span>
+trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, value=0.9)</pre>
+
+<p>关键观察：你只是<strong>在原有业务代码旁边「顺手记一笔」</strong>，并没有改变 <code>call_llm</code> 本身的逻辑。好的埋点应当<strong>尽量不侵入</strong>——
+它不该决定你的应用怎么跑，只是<strong>旁观并记录</strong>。这也呼应了第 1 课的定位：Langfuse 站在你应用<strong>旁边</strong>，而不是<strong>里面</strong>。
+正因为埋点是「旁路」的，它出问题（比如网络抖动发不出去）也<strong>不应拖垮你的主流程</strong>——SDK 通常会异步、批量、失败可丢地发送，把对应用的影响压到最低。把交互拆成「一串带类型的小事件」而不是「一个大对象」，正是为了让它们能分批、增量、乱序地发送。</p>
+
+
+<h2>两种入口：原生 SDK vs OpenTelemetry</h2>
+<p>为什么要同时支持两条入口？因为它们服务两类用户：</p>
+
+<div class="cols">
+  <div class="col"><h4>🎯 Langfuse SDK（原生）</h4><p>Langfuse 官方的 Python/JS SDK，直接发上面那套原生事件。<strong>信息最全、最贴合</strong>（prompt 关联、用量、成本字段都能精确上报），是大多数人的首选。入口：<code>ingestion.ts</code>。</p></div>
+  <div class="col"><h4>🔌 OpenTelemetry（OTLP）</h4><p>如果你的系统<strong>已经用 OTel</strong> 做可观测，不想再引一套 SDK，就可以把 OTel 的 span 直接发到 Langfuse 的 OTLP 端点（<code>otel/v1/traces</code>）。Langfuse 把标准 span <strong>映射成 observation</strong>。代价是有些 Langfuse 专有语义要靠约定俗成的属性名传递。</p></div>
+</div>
+
+<p>这是一个典型的<strong>「拥抱标准 vs 发挥专长」</strong>的权衡。OTel 是云原生可观测的事实标准，支持它意味着 Langfuse 能<strong>无缝接入</strong>已有的 OTel 生态——
+你不必为了用 Langfuse 就把埋点全部重写。但 OTel 的通用模型并不天然懂「prompt 版本」「token 用量」这些 LLM 专有概念，所以原生 SDK 在表达力上仍更强。
+Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛，用原生 SDK 提供最佳体验。OTel 这条路的服务端处理，单独放在第 18 课讲。</p>
+
+<h2>create 然后 update：事件是「增量」的</h2>
+<p>再强调一遍这个对理解整条链路至关重要的点：<strong>一个 observation 的信息往往不是一次发齐的</strong>。看一次 LLM 调用的典型时间线：</p>
+
+<div class="timeline">
+  <div class="lane"><span class="lane-label">t0 开始</span><span class="tslot now">GENERATION_CREATE</span><span class="tslot">model=gpt-4o, input=…（这时还没有输出）</span></div>
+  <div class="lane"><span class="lane-label">t1 结束</span><span class="tslot now">OBSERVATION_UPDATE</span><span class="tslot">output=…, usage=1240 tok, latency=1.8s</span></div>
+  <div class="lane"><span class="lane-label">服务端</span><span class="tslot span">worker 把 create + update 合并成一条最终 observation（第 15 课）</span></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="一个 create 事件和一个 update 事件被 worker 合并成一条最终 observation">
+  <rect x="30" y="40" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">GENERATION_CREATE</text><text x="130" y="78" text-anchor="middle" font-size="9" fill="var(--muted)">model, input（t0 开始时发）</text>
+  <rect x="30" y="110" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="130" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">OBSERVATION_UPDATE</text><text x="130" y="148" text-anchor="middle" font-size="9" fill="var(--muted)">output, usage（t1 结束时发）</text>
+  <rect x="320" y="75" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="380" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">worker 合并</text><text x="380" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">第 15 课</text>
+  <rect x="520" y="70" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="605" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">一条最终 observation</text><text x="605" y="110" text-anchor="middle" font-size="9" fill="var(--muted)">model+input+output+usage</text>
+  <line x1="230" y1="62" x2="318" y2="92" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,92 307,89 310,98" fill="var(--faint)"/>
+  <line x1="230" y1="138" x2="318" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,108 310,102 307,111" fill="var(--faint)"/>
+  <line x1="440" y1="100" x2="518" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="518,100 507,95 507,105" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>两个事件，一条记录</b>：先后到达的 <code>CREATE</code> 与 <code>UPDATE</code> 被 worker 合并成同一条最终 observation。这就是为什么 SDK 那头可以「拆开发」、而你在 UI 里看到的却是完整的一条。</div>
+</div>
+
+<p>为什么要这样「增量」上报，而不是等全部结束再发一条完整的？因为这样应用能<strong>更早地把「开始了」这件事记下来</strong>——即使后面调用<strong>崩了、超时了</strong>，
+你至少知道「它确实开始过、卡在了这一步」。如果非要等结束才发，那一旦中途挂掉，这一步就<strong>彻底消失</strong>，反而最该被观测的失败 case 被漏掉了。
+增量上报 + 服务端合并，是「<strong>边发生边记录</strong>」的可观测理念在协议层的体现。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>把「事件增量上报 + 服务端合并」这套协议，复杂度放在哪一端？</strong> 放在<strong>服务端</strong>。SDK 那头被刻意做得很「笨」——只管把发生的事拆成小事件发出去，
+  不负责拼装最终状态；真正麻烦的「把先后到达、可能乱序、可能重复的事件收敛成一致的一行」交给 worker（第 15 课）。这么分工的好处是：SDK 轻、对应用影响小、各语言都好实现；
+  而最复杂、最需要小心的合并逻辑<strong>只在一处</strong>（服务端）维护，不必每个语言的 SDK 各写一遍、各错一遍。<strong>把复杂度收敛到一个能严格测试的地方。</strong>这条「客户端薄、服务端厚」的取舍，在很多大型系统里都能见到，Langfuse 只是把它用在了遥测协议上。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>埋点发生在<strong>你的应用</strong>里：把运行踪迹拆成一批<strong>事件</strong>发给 Langfuse，不改变业务逻辑。</li>
+    <li><strong>两个入口</strong>：Langfuse <strong>原生 SDK</strong>（<code>ingestion.ts</code>，表达力最强）或 <strong>OpenTelemetry OTLP</strong>（<code>otel/v1/traces</code>，无缝接入已有 OTel）。</li>
+    <li>事件类型（<code>eventTypes</code>）：<code>TRACE_CREATE / SPAN_CREATE / GENERATION_CREATE / OBSERVATION_UPDATE / SCORE_CREATE …</code>，描述「对哪个对象做了什么」。</li>
+    <li>事件是<strong>增量</strong>的（create 开始、update 补全），所以「边发生边记录」，失败 case 也不丢——服务端负责合并（第 15 课）。</li>
+    <li>协议把复杂度放在服务端：SDK 轻、好移植；合并逻辑只在一处维护。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 为什么既支持自家 SDK 的“原生事件”，又支持 OpenTelemetry（OTLP）？</div>
+  <ol class="opts">
+    <li>因为 OTel 比原生事件携带更多 LLM 专有语义</li>
+    <li>原生 SDK 表达力最强（精确报 prompt/用量/成本），OTel 则让已经用 OTel 的系统无缝接入、无需重写埋点；两者各服务一类用户</li>
+    <li>因为原生 SDK 已经废弃，OTel 是唯一入口</li>
+    <li>为了让数据走两条完全独立的存储</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。这是“拥抱标准 vs 发挥专长”的权衡：OTel 是云原生可观测的事实标准，支持它降低接入门槛；但其通用模型不天然懂 prompt 版本/token 用量，原生 SDK 更精确。Langfuse 两者都要——OTLP 降门槛，原生 SDK 给最佳体验。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 一个 span 型 observation 常常先发 SPAN_CREATE、结束时再发 SPAN_UPDATE。这种“增量上报”的主要好处是什么？</div>
+  <ol class="opts">
+    <li>为了减少事件数量</li>
+    <li>能更早记下“它开始了”，即使后面崩溃/超时也知道卡在哪步——失败 case 不会因为“没等到结束”而彻底消失</li>
+    <li>为了让 SDK 自己拼装最终状态</li>
+    <li>因为 ClickHouse 只接受两次写入</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。若等结束才发一条完整事件，一旦中途挂掉这一步就彻底消失，而失败恰恰最该被观测。增量上报 = “边发生边记录”，服务端再把 create+update 合并成一条（第 15 课）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 这套“事件增量上报 + 合并”的协议，把最复杂的合并逻辑放在哪一端？为什么？</div>
+  <ol class="opts">
+    <li>放在前端 UI 渲染时</li>
+    <li>放在数据库触发器里</li>
+    <li>放在 SDK：每个语言各自实现合并</li>
+    <li>放在服务端（worker）：SDK 只管把小事件发出去，合并“可能乱序/重复的事件成一致一行”只在一处维护，避免每种语言 SDK 各写各错</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。把复杂度收敛到一个能严格测试的地方（服务端）：SDK 因此轻、好移植、对应用影响小；合并这种最易错的逻辑只在 worker 维护一份，而不是散落在每个语言 SDK 里。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>如果你要给自己的应用加埋点，你会选 Langfuse 原生 SDK 还是 OpenTelemetry？你的系统现状（有没有已用 OTel、需不需要精确成本）会怎么影响这个选择？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+In Lesson 5's pipeline, the first leg was "SDK creates events". This lesson focuses on that first leg: how, before data ever leaves
+<strong>your app</strong>, it gets <strong>instrumented</strong> into existence. You'll see Langfuse's <strong>two entry points</strong> —
+sending "native events" via the Langfuse <strong>SDK</strong>, or sending standard <strong>OpenTelemetry (OTLP)</strong>. Understanding
+"what the app side emits" makes Part 3 ("how the server receives and processes it") land.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Instrumentation is like fitting a building with <strong>sensors</strong>: you <strong>don't change</strong> the building's function,
+  you just place recorders at key spots (door, elevator, server room) noting "who passed when, stayed how long". The Langfuse
+  <strong>SDK</strong> is its <strong>own custom sensor</strong> — the best fit, richest signal; <strong>OpenTelemetry</strong> is like a
+  <strong>standard sensor interface</strong> — if your building is already wired to that standard, Langfuse just <strong>plugs into the
+  existing wiring</strong>. Two paths, same end: ship the app's "traces" out. This lesson's goal is to make clear "what the sensor end
+  actually emits" — only by understanding the <strong>raw material</strong> the app sends can you grasp how the server later refines it
+  into trace trees and wide-event tables.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="An app sends data to the public API via either Langfuse SDK native events or OpenTelemetry OTLP">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two entries, same destination</text>
+  <rect x="40" y="98" width="150" height="56" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">your LLM app</text><text x="115" y="140" text-anchor="middle" font-size="9" fill="var(--muted)">instrumentation here</text>
+  <rect x="270" y="50" width="180" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Langfuse SDK</text><text x="360" y="90" text-anchor="middle" font-size="9" fill="var(--accent-ink)">native events trace/observation/score</text>
+  <rect x="270" y="150" width="180" height="52" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="360" y="172" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">OpenTelemetry</text><text x="360" y="190" text-anchor="middle" font-size="9" fill="var(--muted)">OTLP span → mapped to observation</text>
+  <rect x="540" y="98" width="150" height="56" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="122" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">public ingest API</text><text x="615" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · accept+enqueue</text>
+  <line x1="190" y1="112" x2="268" y2="80" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,80 257,80 261,88" fill="var(--faint)"/>
+  <line x1="190" y1="140" x2="268" y2="172" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,172 257,164 261,172" fill="var(--faint)"/>
+  <line x1="450" y1="76" x2="538" y2="112" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,112 527,108 527,118" fill="var(--faint)"/>
+  <line x1="450" y1="176" x2="538" y2="140" stroke="var(--faint)" stroke-width="1.8"/><polygon points="538,140 527,140 527,150" fill="var(--faint)"/>
+  <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK path: ingestion.ts　·　OTel path: otel/v1/traces (both join one ingestion path)</text>
+</svg>
+<div class="figcap"><b>Two entries</b>: send native events with the <b>Langfuse SDK</b> (<code>web/src/pages/api/public/ingestion.ts</code>), or standard spans via <b>OpenTelemetry OTLP</b> (<code>web/src/pages/api/public/otel/v1/traces</code>, spans mapped to observations). Both converge on the same server-side ingestion path (Part 3).</div>
+</div>
+
+<h2>The event envelope: what your app emits</h2>
+<p>Whichever entry, the app essentially emits a batch of <strong>events</strong>. Langfuse defines a set of event types
+(<code>eventTypes</code> in <code>packages/shared/src/server/ingestion/types.ts</code>), each describing "<strong>what was done to which
+object</strong>":</p>
+
+<table class="t">
+  <tr><th>Event type</th><th>Meaning</th></tr>
+  <tr><td class="mono">TRACE_CREATE</td><td>create/update a trace (the interaction's shell)</td></tr>
+  <tr><td class="mono">SPAN_CREATE / SPAN_UPDATE</td><td>start / end a span-type observation (a timed unit)</td></tr>
+  <tr><td class="mono">GENERATION_CREATE</td><td>record an LLM call (generation-type observation)</td></tr>
+  <tr><td class="mono">OBSERVATION_CREATE / OBSERVATION_UPDATE</td><td>generic observation create / update</td></tr>
+  <tr><td class="mono">EVENT_CREATE</td><td>record an instantaneous event</td></tr>
+  <tr><td class="mono">SCORE_CREATE</td><td>submit a score</td></tr>
+</table>
+
+<p>Note there's both <code>CREATE</code> and <code>UPDATE</code> — this is the source of Lesson 5's "merge": a span usually starts with
+<code>SPAN_CREATE</code> and ends with <code>SPAN_UPDATE</code> (adding duration, output). The app <strong>batches</strong> these events
+into one HTTP request to the ingestion API, and the server merges them. So your <code>langfuse.trace(...)</code> and
+<code>span.end()</code> calls are essentially <strong>generating these events</strong>.</p>
+
+<p>Conceptually, your instrumentation code looks roughly like this (SDK shapes differ by language; this just shows the "call →
+event" mapping):</p>
+
+<pre class="code"><span class="cm"># create a trace (emits TRACE_CREATE)</span>
+trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)
+
+<span class="cm"># record an LLM call under the trace (emits GENERATION_CREATE)</span>
+gen = trace.<span class="fn">generation</span>(name=<span class="st">"answer"</span>, model=<span class="st">"gpt-4o"</span>, input=prompt)
+result = call_llm(prompt)
+<span class="cm"># call ends; add output and usage (emits OBSERVATION_UPDATE)</span>
+gen.<span class="fn">end</span>(output=result, usage={<span class="st">"input"</span>: 800, <span class="st">"output"</span>: 440})
+
+<span class="cm"># score this answer (emits SCORE_CREATE)</span>
+trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, value=0.9)</pre>
+
+<p>Key observation: you merely "<strong>jot a note alongside</strong>" your existing business code — you didn't change
+<code>call_llm</code>'s logic. Good instrumentation is <strong>as non-intrusive as possible</strong> — it shouldn't dictate how your app
+runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse sits <strong>beside</strong> your app, not
+<strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
+main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
+
+
+<h2>Two entries: native SDK vs OpenTelemetry</h2>
+<p>Why support both? Because they serve two kinds of users:</p>
+
+<div class="cols">
+  <div class="col"><h4>🎯 Langfuse SDK (native)</h4><p>The official Python/JS SDKs emit the native events above. <strong>Richest, best-fit signal</strong> (prompt linkage, usage, cost reported precisely), the default for most. Entry: <code>ingestion.ts</code>.</p></div>
+  <div class="col"><h4>🔌 OpenTelemetry (OTLP)</h4><p>If your system <strong>already uses OTel</strong> for observability and you'd rather not add another SDK, send OTel spans to Langfuse's OTLP endpoint (<code>otel/v1/traces</code>). Langfuse <strong>maps standard spans to observations</strong>. The cost: some Langfuse-specific semantics ride on convention-based attribute names.</p></div>
+</div>
+
+<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> tradeoff. OTel is the de-facto standard for
+cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
+your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
+version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
+the native SDK gives the best experience. The server-side handling of the OTel path is its own Lesson 18.</p>
+
+<h2>create then update: events are "incremental"</h2>
+<p>Once more, a point crucial to understanding the whole path: <strong>an observation's info often isn't sent all at once</strong>. Look
+at a typical LLM call timeline:</p>
+
+<div class="timeline">
+  <div class="lane"><span class="lane-label">t0 start</span><span class="tslot now">GENERATION_CREATE</span><span class="tslot">model=gpt-4o, input=… (no output yet)</span></div>
+  <div class="lane"><span class="lane-label">t1 end</span><span class="tslot now">OBSERVATION_UPDATE</span><span class="tslot">output=…, usage=1240 tok, latency=1.8s</span></div>
+  <div class="lane"><span class="lane-label">server</span><span class="tslot span">worker merges create + update into one final observation (L15)</span></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="A create event and an update event are merged by the worker into one final observation">
+  <rect x="30" y="40" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">GENERATION_CREATE</text><text x="130" y="78" text-anchor="middle" font-size="9" fill="var(--muted)">model, input (sent at t0)</text>
+  <rect x="30" y="110" width="200" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="130" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">OBSERVATION_UPDATE</text><text x="130" y="148" text-anchor="middle" font-size="9" fill="var(--muted)">output, usage (sent at t1)</text>
+  <rect x="320" y="75" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="380" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">worker merge</text><text x="380" y="114" text-anchor="middle" font-size="9" fill="var(--muted)">L15</text>
+  <rect x="520" y="70" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="605" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">one final observation</text><text x="605" y="110" text-anchor="middle" font-size="9" fill="var(--muted)">model+input+output+usage</text>
+  <line x1="230" y1="62" x2="318" y2="92" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,92 307,89 310,98" fill="var(--faint)"/>
+  <line x1="230" y1="138" x2="318" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="318,108 310,102 307,111" fill="var(--faint)"/>
+  <line x1="440" y1="100" x2="518" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="518,100 507,95 507,105" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>Two events, one record</b>: the <code>CREATE</code> and <code>UPDATE</code> arriving at different times are merged by the worker into one final observation. That's why the SDK can "send in pieces" while you see one complete row in the UI.</div>
+</div>
+
+<p>Why report "incrementally" instead of waiting and sending one complete event at the end? So the app can <strong>record "it
+started" earlier</strong> — even if the call later <strong>crashes or times out</strong>, you at least know "it did start and got stuck
+here". Wait until the end and a mid-flight crash makes that step <strong>vanish entirely</strong>, losing exactly the failure cases most
+worth observing. Incremental reporting + server merge is the protocol-level expression of "<strong>record as it happens</strong>"
+observability.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
+  SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
+  tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (L15). The payoff: the
+  SDK is light, low-impact, easy to implement in every language; and the most complex, careful merge logic lives in <strong>one
+  place</strong> (the server), not re-implemented (and re-bugged) in each language SDK. <strong>Converge complexity to one strictly
+  testable place.</strong> This "thin client, thick server" trade shows up in many large systems; Langfuse just applies it to a
+  telemetry protocol.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Instrumentation happens in <strong>your app</strong>: split the run-time trace into a batch of <strong>events</strong> sent to Langfuse, without changing business logic.</li>
+    <li><strong>Two entries</strong>: Langfuse <strong>native SDK</strong> (<code>ingestion.ts</code>, most expressive) or <strong>OpenTelemetry OTLP</strong> (<code>otel/v1/traces</code>, plugs into existing OTel).</li>
+    <li>Event types (<code>eventTypes</code>): <code>TRACE_CREATE / SPAN_CREATE / GENERATION_CREATE / OBSERVATION_UPDATE / SCORE_CREATE …</code>, describing "what was done to which object".</li>
+    <li>Events are <strong>incremental</strong> (create starts, update completes), so "record as it happens" and failures aren't lost — the server merges (L15).</li>
+    <li>The protocol puts complexity on the server: SDKs stay light and portable; merge logic lives in one place.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse support both its own SDK 'native events' and OpenTelemetry (OTLP)?</div>
+  <ol class="opts">
+    <li>Because OTel carries more LLM-specific semantics than native events</li>
+    <li>The native SDK is most expressive (precise prompt/usage/cost), while OTel lets systems already on OTel plug in without rewriting instrumentation; each serves a different user</li>
+    <li>Because the native SDK is deprecated and OTel is the only entry</li>
+    <li>To route data into two completely separate stores</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. This is 'embrace the standard vs play to strengths': OTel is the de-facto cloud-native standard, so supporting it lowers the barrier; but its generic model doesn't natively grok prompt version/token usage, where the native SDK is more precise. Langfuse does both — OTLP for reach, native SDK for the best experience.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. A span-type observation often sends SPAN_CREATE first, then SPAN_UPDATE at the end. What's the main benefit of this 'incremental reporting'?</div>
+  <ol class="opts">
+    <li>To reduce the number of events</li>
+    <li>It records 'it started' earlier, so even if it later crashes/times out you know which step stalled — failure cases don't vanish just because 'the end never came'</li>
+    <li>So the SDK assembles the final state itself</li>
+    <li>Because ClickHouse only accepts two writes</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Waiting to send one complete event means a mid-flight crash erases that step — yet failures are exactly what you most want to observe. Incremental reporting = 'record as it happens', and the server merges create+update into one row (L15).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. In this 'incremental events + merge' protocol, where does the most complex merge logic live, and why?</div>
+  <ol class="opts">
+    <li>In the frontend at render time</li>
+    <li>In database triggers</li>
+    <li>In the SDK: each language implements merging itself</li>
+    <li>On the server (worker): SDKs just emit small events; merging 'possibly out-of-order/duplicate events into one consistent row' lives in one place, avoiding each language SDK re-implementing (and re-bugging) it</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Converge complexity to one strictly testable place (the server): SDKs stay light, portable and low-impact; the error-prone merge logic is maintained once in the worker rather than scattered across every language SDK.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>If you were instrumenting your own app, would you pick the Langfuse native SDK or OpenTelemetry? How would your system's current state (already on OTel? need precise cost?) shape that choice?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="05-life-of-a-trace.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">一条 trace 的一生·鸟瞰</span><span class="lang-en">Life of a trace (bird's-eye)</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>
