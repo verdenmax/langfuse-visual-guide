@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Langfuse Visual Guide - Print Edition</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+
+
+body { max-width: 820px; margin: 0 auto; padding: 1.6rem; background: #fff; }
+.print-toc { margin: 1rem 0 2rem; }
+.print-toc li { margin: .2rem 0; }
+.lesson-print { padding-top: .5rem; }
+@media print {
+  .lesson-print { page-break-before: always; }
+  .lesson-print:first-of-type { page-break-before: avoid; }
+  .trace, table.t, svg, pre, .layers, .cols, .card, details { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+details[open] > summary { list-style: none; }
+</style>
+</head>
+<body>
+<h1>Langfuse Visual Guide - Print Edition</h1>
+<p style="color:var(--muted)">All 1 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<div class="print-toc"><h2>Contents</h2>
+<ol>
+  <li>What is Langfuse</li>
+</ol></div>
+<section class="lesson-print">
+<h1>What is Langfuse</h1>
+
+<p class="lead">
+The hardest thing about LLM apps is <strong>non-determinism</strong>: the same input can give different
+answers today and tomorrow; and inside one multi-step agent run, figuring out <strong>which step</strong>
+went wrong, how many <strong>tokens</strong> it burned, how much it <strong>cost</strong>, or where the
+<strong>latency</strong> went is nearly impossible from a few log lines.
+<a href="https://github.com/langfuse/langfuse">Langfuse</a> is an <strong>open-source LLM engineering
+platform</strong> (<code>langfuse/langfuse</code>, MIT-licensed). In one line: it turns every
+<strong>invisible step</strong> inside your LLM app into <strong>observable, evaluable, reproducible</strong>
+data — around one loop: <strong>develop → monitor → evaluate → debug</strong>.
+Put plainly, it answers the three questions engineers ask daily but struggle to answer: <strong>what actually happened this
+time? was it any good? how do I make it better?</strong>
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of an LLM app as an <strong>airplane</strong>: it flies fine until something goes wrong — and then
+  you're blind. Langfuse bolts on two things: a <strong>black box (flight recorder)</strong> and a
+  <strong>lab notebook</strong>. The black box records every model call, every retrieval step, the prompt
+  used, the tokens spent, the money burned and the latency of each leg; the lab notebook lets you line up
+  every “try another prompt / model / parameter” experiment side by side. <strong>When things break you can
+    replay; when you want to improve you have evidence</strong> — that's what Langfuse gives an LLM app. In short, the black box
+    is for "seeing" and the lab notebook is for "comparing"; together they turn "tuning by vibes" into "improving with data".
+  </div>
+  
+
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Your LLM app sends data via the SDK into Langfuse's four capabilities, and engineers improve the app from there">
+  <text x="360" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Langfuse sits BESIDE your app, not INSIDE it</text>
+  <rect x="24" y="104" width="150" height="92" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="99" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Your LLM app</text>
+  <text x="99" y="162" text-anchor="middle" font-size="11" fill="var(--muted)">+ SDK / OpenTelemetry</text>
+  <line x1="174" y1="150" x2="244" y2="150" stroke="var(--faint)" stroke-width="2"/>
+  <polygon points="244,150 235,145 235,155" fill="var(--faint)"/>
+  <text x="209" y="142" text-anchor="middle" font-size="10" fill="var(--faint)">events</text>
+  <rect x="250" y="44" width="300" height="216" rx="14" fill="var(--panel-2)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="400" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Langfuse platform</text>
+  <rect x="266" y="84" width="128" height="68" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="330" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">🔭 Observe</text>
+  <text x="330" y="132" text-anchor="middle" font-size="10.5" fill="var(--muted)">trace · observation</text>
+  <rect x="406" y="84" width="128" height="68" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="470" y="112" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">✅ Evaluate</text>
+  <text x="470" y="132" text-anchor="middle" font-size="10.5" fill="var(--muted)">score · LLM judge</text>
+  <rect x="266" y="164" width="128" height="68" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="330" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">📝 Prompts</text>
+  <text x="330" y="212" text-anchor="middle" font-size="10.5" fill="var(--muted)">version · fetch live</text>
+  <rect x="406" y="164" width="128" height="68" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="470" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">🧪 Datasets</text>
+  <text x="470" y="212" text-anchor="middle" font-size="10.5" fill="var(--muted)">dataset · compare</text>
+  <line x1="550" y1="150" x2="612" y2="150" stroke="var(--faint)" stroke-width="2"/>
+  <polygon points="612,150 603,145 603,155" fill="var(--faint)"/>
+  <rect x="616" y="104" width="80" height="92" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="656" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">Engineer</text>
+  <text x="656" y="160" text-anchor="middle" font-size="10.5" fill="var(--accent-ink)">see·query·fix</text>
+  <path d="M656 196 L656 282 L99 282 L99 196" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="5 4"/>
+  <polygon points="99,196 94,205 104,205" fill="var(--amber)"/>
+  <text x="377" y="276" text-anchor="middle" font-size="10.5" fill="var(--amber)">improve: swap prompt / model / fix the chain</text>
+</svg>
+<div class="figcap"><b>One loop</b>: your app ships run-time events through the SDK into Langfuse; the platform distills them into four capabilities — <b>observe / evaluate / prompts / datasets</b>; engineers find problems, improve the app, and push improvements back to production. Langfuse always observes from <b>beside</b> the app, never intruding on business logic.</div>
+</div>
+
+<h2>What it actually is</h2>
+<p>A one-line definition: <strong>a platform that turns an LLM app's run-time behavior into data</strong>.
+It does <strong>not</strong> train models for you, and it is <strong>not</strong> yet another framework for
+calling an LLM; its work happens <strong>outside</strong> your app — faithfully <strong>recording and
+measuring</strong> every run, and supporting you to <strong>evaluate and improve</strong> it. The official
+capabilities map to one folder each under <code>web/src/features/</code>:</p>
+
+<table class="t">
+  <tr><th>Capability</th><th>Problem it solves</th><th>Where it lives</th></tr>
+  <tr><td><b>🔭 Tracing</b></td><td>See every call: the call tree, I/O, tokens, cost, latency</td><td class="mono">web/src/features/traces · tracing-tables</td></tr>
+  <tr><td><b>✅ Evaluation</b></td><td>Score outputs: LLM-as-judge, human annotation, custom code</td><td class="mono">web/src/features/evals · scores · annotation-queues</td></tr>
+  <tr><td><b>📝 Prompt mgmt</b></td><td>Version prompts; fetch live, roll back, compare</td><td class="mono">web/src/features/prompts</td></tr>
+  <tr><td><b>🧪 Datasets & experiments</b></td><td>Build test sets, run experiments, compare versions</td><td class="mono">web/src/features/datasets · experiments</td></tr>
+</table>
+
+<p>It helps to say what it is <strong>not</strong>: it is <strong>not</strong> a framework like LangChain that helps you
+<strong>write</strong> an LLM app — use whatever framework you like; Langfuse only records what happens at
+<strong>run time</strong>. It is also <strong>not</strong> a model server or gateway that <strong>calls</strong> models for
+you (though the Playground lets you experiment). Its place is the <strong>side-channel observer</strong>: your app runs
+as usual and simply "reports" each step to Langfuse.</p>
+
+<div class="card macro">
+  <div class="tag">🗺️ Big picture</div>
+  Langfuse is both a <strong>SaaS cloud</strong> (cloud.langfuse.com) and <strong>fully self-hostable</strong> — because it's
+  open source and depends only on commodity infra: Postgres, ClickHouse, Redis, S3. This guide explains the
+  <strong>self-host codebase</strong>: what you see in <code>langfuse/langfuse</code> is the same stack that runs in the
+  cloud. Understand this code and you can both <strong>use it well</strong> and <strong>change it / send a PR</strong>.
+</div>
+
+
+<h2>The three pillars: trace / observation / score</h2>
+<p>Every piece of "observable" data in Langfuse boils down to three things. Their <strong>domain
+models</strong> live under <code>packages/shared/src/domain/</code> (<code>traces.ts</code> /
+<code>observations.ts</code> / <code>scores.ts</code>); their <strong>analytical storage</strong> is three
+same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclustered/0001_traces</code>,
+<code>0002_observations</code>, <code>0003_scores</code>):</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="A trace contains observations that can nest; a score attaches to a trace or an observation">
+  <text x="360" y="24" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">trace is the shell, observation is the star, score is the verdict</text>
+  <rect x="20" y="40" width="680" height="206" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="36" y="62" font-size="12" font-weight="700" fill="var(--accent-ink)">trace · one user interaction / session</text>
+  <rect x="40" y="74" width="640" height="118" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="56" y="94" font-size="11.5" font-weight="700" fill="var(--blue)">observation · span: handle-request</text>
+  <rect x="60" y="104" width="270" height="78" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="76" y="124" font-size="11" font-weight="700" fill="var(--purple)">span: retrieve-docs</text>
+  <text x="76" y="144" font-size="10" fill="var(--muted)">input: user question</text>
+  <text x="76" y="160" font-size="10" fill="var(--muted)">output: 3 matched chunks</text>
+  <rect x="346" y="104" width="318" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="362" y="124" font-size="11" font-weight="700" fill="var(--amber)">generation: llm-call · gpt-4o</text>
+  <text x="362" y="144" font-size="10" fill="var(--muted)">model · 1,240 tok · $0.012 · 1.8s</text>
+  <text x="362" y="160" font-size="10" fill="var(--muted)">input: prompt + docs　output: answer</text>
+  <rect x="470" y="206" width="210" height="30" rx="15" fill="var(--panel)" stroke="var(--accent)"/>
+  <text x="575" y="225" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">score: helpfulness 0.9 (LLM judge)</text>
+  <text x="36" y="226" font-size="10.5" fill="var(--muted)">↑ a score attaches to a trace or an observation</text>
+</svg>
+<div class="figcap"><b>Containment</b>: a <b>trace</b> wraps all steps of one interaction; each step is an <b>observation</b> (which can nest); a <b>score</b> rates the trace or one observation. Note the architectural stance — <b>the observation is the primary analytical unit</b>; the trace is more of a "correlation handle" stringing them together.</div>
+</div>
+
+<div class="cols">
+  <div class="col">
+    <h4>🧵 trace · correlation handle</h4>
+    <p>Represents <strong>one complete request/session</strong>. It carries little itself (name, user,
+    session, tags, time); its main job is to <strong>correlate</strong> all the observations of one
+    interaction so you can follow the thread. See <code>domain/traces.ts</code>.</p>
+  </div>
+  <div class="col">
+    <h4>⭐ observation · the star</h4>
+    <p>One concrete <strong>step</strong>, in three types: <code>GENERATION</code> (an LLM call, with
+    model/token/cost), <code>SPAN</code> (a timed unit of logic, e.g. retrieval), <code>EVENT</code> (an
+    instantaneous event). It carries <strong>rich attributes</strong> — input/output, timing, usage, cost —
+    and is the subject of querying and aggregation.</p>
+  </div>
+</div>
+
+<p><strong>And the third pillar, score?</strong> It is a <strong>rating</strong> attached to a trace or an observation, in three
+value types — <strong>numeric</strong> (e.g. 0.9), <strong>categorical</strong> (e.g. "correct / wrong"), <strong>boolean</strong>;
+from three sources — <strong>LLM auto-judge</strong>, <strong>human annotation</strong>, <strong>custom code</strong>. Score is what
+upgrades "observable" into "evaluable": with comparable numbers you can quantify "did this change actually make the app
+better" instead of guessing. A score's config (numeric range, categories) lives in Postgres as <code>ScoreConfig</code>, while
+the scores themselves go into ClickHouse like traces/observations.</p>
+
+<div class="card detail">
+  <div class="tag">🔬 Source detail</div>
+  The three observation types are an enum in the domain layer (historically <code>LegacyPrismaObservationType</code>:
+  <code>GENERATION / SPAN / EVENT</code>, see <code>packages/shared/prisma/schema.prisma</code>). The ClickHouse
+  <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
+  <code>cost_details</code>, <code>prompt_id</code> and more as columns and Maps on a single row — exactly what a
+  "wide event" looks like (next section).
+</div>
+
+<h2>You can only fix what you can see: a debugging scene</h2>
+<p>An abstract definition is weaker than a concrete scene. Say you built a <strong>customer-support bot</strong> and
+users report "<strong>it sometimes answers off-topic</strong>". Without Langfuse you only have a few app-log lines like
+<code>prompt=... response=...</code> — you can't tell <strong>which step</strong> failed, and you can't reproduce it.
+With Langfuse, triage looks like this:</p>
+<p>① In the <strong>trace list</strong>, filter by "user thumbs-down" or "low score" and surface the offending traces in
+seconds; ② open one, and the <strong>observation tree</strong> makes it obvious — it was the <code>retrieve-docs</code> step
+that <strong>fetched irrelevant documents</strong>, not the model itself; ③ inspect that generation's <strong>input</strong>
+and confirm the polluted context is exactly those wrong docs; ④ <strong>add this trace to a dataset</strong>, fix the
+retrieval logic, <strong>run an experiment</strong> comparing old vs new, and use a <strong>score</strong> to confirm it's
+truly fixed. The whole flow rests on "every step was recorded as-is".</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ The trap without observability</div>
+  Staring only at "the model output is bad" makes it easy to <strong>blame the model wrongly</strong>. In the real world a
+  huge share of "the LLM answered poorly" is actually <strong>bad retrieval</strong>, a <strong>mis-assembled prompt</strong>,
+  or an <strong>upstream step that timed out and returned empty</strong>. You only see these by laying out the
+  <strong>whole chain</strong> — which is why Langfuse centers on the <strong>observation (the "step")</strong>, not just the
+  final answer.
+</div>
+
+
+<h2>What it's made of</h2>
+<p>Zoom out to the system level: Langfuse is a <strong>pnpm + Turbo monorepo</strong>, running as two main
+containers plus four kinds of storage (see the root <code>docker-compose.yml</code> and the project structure in
+<code>AGENTS.md</code>):</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 320" role="img" aria-label="SDK enqueues via web into Redis; worker consumes and writes ClickHouse and S3; web reads Postgres and ClickHouse to render the UI">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Two containers (web · worker) + four stores</text>
+  <rect x="20" y="44" width="116" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="78" y="66" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">SDK / OTel</text>
+  <text x="78" y="83" text-anchor="middle" font-size="10" fill="var(--muted)">your app</text>
+  <rect x="170" y="44" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="245" y="66" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">web · Next.js</text>
+  <text x="245" y="83" text-anchor="middle" font-size="10" fill="var(--accent-ink)">UI · tRPC · REST</text>
+  <rect x="354" y="44" width="120" height="50" rx="10" fill="var(--red-soft)" stroke="var(--red)"/>
+  <text x="414" y="66" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">Redis queue</text>
+  <text x="414" y="83" text-anchor="middle" font-size="10" fill="var(--muted)">BullMQ</text>
+  <rect x="508" y="44" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="583" y="66" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">worker</text>
+  <text x="583" y="83" text-anchor="middle" font-size="10" fill="var(--accent-ink)">queue consumer · jobs</text>
+  <line x1="136" y1="69" x2="168" y2="69" stroke="var(--faint)" stroke-width="2"/><polygon points="168,69 159,64 159,74" fill="var(--faint)"/>
+  <line x1="320" y1="69" x2="352" y2="69" stroke="var(--faint)" stroke-width="2"/><polygon points="352,69 343,64 343,74" fill="var(--faint)"/>
+  <line x1="474" y1="69" x2="506" y2="69" stroke="var(--faint)" stroke-width="2"/><polygon points="506,69 497,64 497,74" fill="var(--faint)"/>
+  <rect x="56" y="214" width="138" height="64" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="125" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">Postgres</text>
+  <text x="125" y="258" text-anchor="middle" font-size="10" fill="var(--muted)">config / metadata</text>
+  <rect x="232" y="214" width="150" height="64" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="307" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">ClickHouse</text>
+  <text x="307" y="258" text-anchor="middle" font-size="10" fill="var(--muted)">wide events · columnar</text>
+  <rect x="420" y="214" width="130" height="64" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="485" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">S3 / blob</text>
+  <text x="485" y="258" text-anchor="middle" font-size="10" fill="var(--muted)">raw events · media</text>
+  <rect x="588" y="214" width="106" height="64" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="641" y="240" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">Redis</text>
+  <text x="641" y="258" text-anchor="middle" font-size="10" fill="var(--muted)">cache</text>
+  <line x1="560" y1="94" x2="320" y2="212" stroke="var(--accent)" stroke-width="1.8"/><polygon points="320,212 326,202 332,210" fill="var(--accent)"/>
+  <line x1="600" y1="94" x2="490" y2="212" stroke="var(--accent)" stroke-width="1.8"/><polygon points="490,212 492,201 500,207" fill="var(--accent)"/>
+  <text x="470" y="150" font-size="10" fill="var(--accent-ink)">worker writes</text>
+  <line x1="230" y1="94" x2="150" y2="212" stroke="var(--blue)" stroke-width="1.8"/><polygon points="150,212 150,201 159,206" fill="var(--blue)"/>
+  <line x1="262" y1="94" x2="300" y2="212" stroke="var(--blue)" stroke-width="1.8" stroke-dasharray="5 3"/><polygon points="300,212 292,205 299,200" fill="var(--blue)"/>
+  <text x="150" y="150" font-size="10" fill="var(--blue)">web reads/writes config / reads analytics</text>
+</svg>
+<div class="figcap"><b>How data flows</b>: the SDK posts events to <b>web</b>'s public API, which quickly enqueues into <b>Redis</b>; the <b>worker</b> consumes the queue, merges and computes cost, and writes <b>ClickHouse</b> (wide events) and <b>S3</b> (raw events/media); the UI is then rendered by web reading from <b>Postgres</b> (config) and <b>ClickHouse</b> (analytics). Ingestion is <b>async</b>, so the web tier stays light.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">packages/shared</span><span class="name">shared core</span></div>
+    <div class="ld">Domain models, Prisma/ClickHouse access, queue contracts, repositories. Used by both web and worker; it depends on <strong>neither</strong>.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">web</span><span class="name">Next.js app</span></div>
+    <div class="ld">UI (Pages Router) + <strong>tRPC</strong> for the UI + a <strong>public REST API</strong> for SDKs. Depends on <code>@langfuse/shared</code> and <code>@langfuse/ee</code>.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">worker</span><span class="name">background jobs</span></div>
+    <div class="ld">BullMQ queue consumers: ingestion, evaluation, experiments, exports, deletion, integrations… dozens of queues. Depends only on <code>@langfuse/shared</code>.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">ee</span><span class="name">enterprise</span></div>
+    <div class="ld">Enterprise features + license check, used by web; everything else is MIT. Dependency direction is strictly one-way: <code>web/worker/ee → shared</code>.</div></div>
+</div>
+
+<p>Why pull the core into <code>packages/shared</code> and have both web and worker depend on it <strong>one-way only</strong>?
+Because web and worker are <strong>two very different workloads</strong>: web faces users, wants low latency and must restart
+anytime; the worker chews through heavy jobs, must be retryable and scales by queue. Putting the <strong>shared domain models,
+storage access and queue contracts</strong> into a <strong>narrow waist</strong> that nothing depends on backwards lets the two
+sides evolve, deploy and scale independently while sharing one contract that can't drift. That <strong>one-way dependency</strong>
+discipline (<code>web/worker/ee → shared</code>, and <code>shared</code> depends on none) is key to keeping the whole monorepo
+maintainable.</p>
+
+
+<h2>Why this design: wide events / Observability 2.0</h2>
+<p>Langfuse's storage and query paths are all threaded by one design principle — <strong>treat the observation
+as the primary analytical unit and record everything as "wide events"</strong> (stated explicitly in
+<code>.agents/ARCHITECTURE_PRINCIPLES.md</code>). A wide event means you do <strong>not</strong> shatter
+information into separate metrics, logs and traces to be reassembled later; instead you cram <strong>all the
+high-cardinality context</strong> of one step (model, usage, cost, prompt, user, tags, environment…)
+<strong>onto a single row</strong>.</p>
+
+<p>Contrast the classic "three pillars of observability": <strong>metrics</strong> are pre-aggregated numbers (QPS, average
+latency) — cheap but they <strong>lose detail</strong>, so drilling into "this user + this model + this time window" later is
+hopeless; <strong>logs</strong> are scattered text lines — detail is there but they're <strong>hard to aggregate and
+correlate</strong>; <strong>traces</strong> show call structure but usually <strong>carry no business attributes</strong>. The
+wide-event idea <strong>fuses</strong> all three: each observation is at once a structured "trace node", a bag of aggregatable
+numbers (token/cost/latency), and a carrier of arbitrary business fields (user/tag/metadata). So "drill down" and "aggregate"
+stop being two systems and become <strong>different queries over one wide table</strong>. That's also the root reason Langfuse
+picked <strong>ClickHouse</strong> — columnar storage is built for "time-bounded scans + arbitrary-dimension aggregation over a
+wide table".</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why keep each row "wide" instead of splitting it into tidy normalized tables?</strong> Because the
+  essence of observability is <strong>answering questions you didn't think of at the time</strong> (unknown
+  unknowns). If you split fields into fixed metrics before shipping, you can <strong>only</strong> query the
+  dimensions you predefined; keep the high-cardinality context on the row and you can <strong>slice, group and
+  filter arbitrarily after the fact</strong>. The cost is bigger rows, more storage and smarter writes — Langfuse
+  balances it with <strong>columnar storage + ZSTD compression + reading big fields only on the detail
+  page</strong> (later lessons). <strong>Trade a little storage for unlimited freedom to ask questions.</strong>
+</div>
+
+<div class="flow">
+  <div class="node hl"><div class="nt">Develop</div><div class="nd">wire SDK · instrument</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">Monitor</div><div class="nd">traces · cost · latency</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">Evaluate</div><div class="nd">score · annotate · experiment</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">Debug</div><div class="nd">find bad cases · fix</div></div>
+  <div class="arrow">↺</div>
+  <div class="node hl"><div class="nt">Develop again</div><div class="nd">loop</div></div>
+</div>
+
+<h2>How to read this guide</h2>
+<p>This guide <strong>follows the data</strong>: lay the foundations first, then walk the two main paths
+"write → read", then take apart the feature subsystems one by one, and finally cover platform & operations.
+Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design-tradeoff
+box, and closes with a short self-test. This guide makes one <strong>hard promise</strong>: every technical claim corresponds to
+source that <strong>really exists</strong> in <code>langfuse/langfuse</code>, <strong>never invented</strong>; citations carry
+"file:line" so you can open the repo and check. Where something is unclear, following the citation into the source often beats
+ten paragraphs of explanation.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Big picture & foundations (L01–11)</h4><p>Data model, dual store, ClickHouse wide-event tables, multi-tenancy, deployment topology.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Ingestion · write (L12–19)</h4><p>SDK to ClickHouse: API, queue, merge, token/cost, OTel, media.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Query · read (L20–27)</h4><p>tRPC, repositories, filtering/search, lists, trace detail, public API.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Feature subsystems (L28–47)</h4><p>Eval/scoring, datasets/experiments, prompts/playground, dashboards/cost, automation/integrations.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>Platform · ops · design themes (L48–55)</h4><p>Auth/RBAC, EE, operations, deletion, build & test, then design themes and the capstone.</p></div></div>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Langfuse is an open-source LLM engineering platform</strong> (MIT): a <strong>develop → monitor → evaluate → debug</strong> loop that turns every step of an LLM app into data.</li>
+    <li><strong>Three pillars</strong>: <strong>trace</strong> (correlation handle) ⊃ <strong>observation</strong> (primary unit; GENERATION/SPAN/EVENT) + <strong>score</strong> (rating).</li>
+    <li><strong>Two containers, four stores</strong>: <strong>web</strong> + <strong>worker</strong>; <strong>Postgres</strong> (config) + <strong>ClickHouse</strong> (wide events) + <strong>Redis</strong> (queue/cache) + <strong>S3</strong> (raw/media).</li>
+    <li><strong>Ingestion is async</strong>: SDK → web enqueues → worker processes → writes storage, so web stays light and absorbs spikes.</li>
+    <li><strong>The soul of the design is "wide events / Observability 2.0"</strong>: trade high-cardinality rows for the freedom to ask any question later.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse treats the <code>observation</code> (not the trace) as the primary analytical unit. What is the main difference this brings?</div>
+  <ol class="opts">
+    <li>It removes the trace concept and keeps only flat logs</li>
+    <li>It compresses everything into one big trace object read whole at query time</li>
+    <li>It requires each trace to have exactly one observation</li>
+    <li>Each LLM call/retrieval step is itself a richly-attributed wide event you can slice & aggregate; the trace is just a handle that correlates them</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. This is the heart of 'Observability 2.0 / wide events': keep high-cardinality context on each observation so users can slice, group and filter without predefining questions. The trace still exists, but as a correlation handle, not the only entry point (see <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why does Langfuse use both Postgres and ClickHouse instead of just one database?</div>
+  <ol class="opts">
+    <li>Because Postgres cannot store strings</li>
+    <li>Purely to look more complex by using more tech</li>
+    <li>ClickHouse handles logins while Postgres runs ML</li>
+    <li>Transactional config/metadata (projects, users, prompts, settings) fits Postgres; high-volume append-oriented wide events (trace/observation/score) fit columnar ClickHouse for time-bounded scans & aggregation</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The two workloads have fundamentally different access patterns: metadata is small, strongly-consistent and frequently updated — Postgres; telemetry is huge, write-mostly and aggregated by time/project — ClickHouse (wide events, columnar, ReplacingMergeTree). Matching storage to pattern keeps the hot path fast.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why does ingestion go 'SDK → public API → queue → worker → ClickHouse' asynchronously instead of the API writing ClickHouse directly?</div>
+  <ol class="opts">
+    <li>The queue is there to encrypt the data</li>
+    <li>To make writes slower and save cost</li>
+    <li>Because ClickHouse only accepts connections from the worker</li>
+    <li>Decoupling & smoothing: the API just accepts and enqueues fast, while the heavy work (merge, token/cost compute, batched writes) runs async in the worker — absorbing spikes and writing in efficient batches</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the tradeoff to weigh.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>If you were adding 'observability' to your own LLM app, which three kinds of data would you record on each observation first, and why would those three help you debug later?</li>
+  </ul>
+</div>
+</div>
+</section>
+</body>
+</html>
