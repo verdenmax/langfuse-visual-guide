@@ -535,6 +535,76 @@ QUIZZES = {
             },
         ],
     },
+    "08-clickhouse-wide-events.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "ReplacingMergeTree(event_ts, is_deleted) 的核心语义是什么？它怎么承接“一个 observation 先 create 后 update”？",
+                    "en": "What's the core semantic of ReplacingMergeTree(event_ts, is_deleted)? How does it absorb 'an observation created then updated'?",
+                },
+                "opts": [
+                    {
+                        "zh": "排序键相同的多行会被替换成 event_ts 最大的那条（is_deleted 软删除）；create 与 update 是两次同 id 写入，后台合并时自动用 update 覆盖 create——只管追加，覆盖交给引擎",
+                        "en": "Rows with the same ordering key collapse to the largest event_ts (is_deleted soft-deletes); create and update are two writes of the same id, and background merge auto-overwrites create with update — just append, the engine overwrites",
+                    },
+                    {"zh": "它会拒绝重复 id 的写入", "en": "It rejects writes with duplicate ids"},
+                    {"zh": "它把两次写入都永久保留且都返回", "en": "It keeps both writes forever and returns both"},
+                    {"zh": "它要求先删除旧行再写新行", "en": "It requires deleting the old row before writing the new one"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "ReplacingMergeTree 让“改一条”退化成“追加一条更大 event_ts 的记录”，无需读-改-写。这正好承接 create+update 的合并模型，也是第 2 课“不可变/追加式事件”能落地的存储基础。",
+                    "en": "ReplacingMergeTree turns 'edit one' into 'append one with a larger event_ts', no read-modify-write. It absorbs the create+update merge model and is the storage basis for L02's 'immutable/append-oriented events'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么 observations 的 ORDER BY 以 project_id 打头、PARTITION BY 按月？这对“某项目最近 7 天”这类查询有什么用？",
+                    "en": "Why does observations' ORDER BY start with project_id and PARTITION BY by month? What does that do for a 'project, last 7 days' query?",
+                },
+                "opts": [
+                    {
+                        "zh": "月分区让查询直接裁掉无关月份，project_id 打头让目标项目数据物理相邻成一段；于是只扫一小片、再列存只读所需列——“少扫”是海量下高效的关键",
+                        "en": "Monthly partitions prune irrelevant months; project_id-first clusters the target project into a contiguous range; so only a small slice is scanned and columnar reads only needed columns — 'scan less' is the key at scale",
+                    },
+                    {"zh": "为了让写入更慢", "en": "To make writes slower"},
+                    {"zh": "为了让所有项目的数据混在一起", "en": "To mix all projects' data together"},
+                    {"zh": "因为 ClickHouse 不支持索引", "en": "Because ClickHouse has no indexes"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "分区裁剪 + 排序键定位 + 列存选列三者合力，让最高频的“按项目按时间”查询在上亿行里只碰一小片。这正是第 2 课“围绕列式访问设计：时间窗口+排序键+剪枝”。",
+                    "en": "Partition pruning + ordering-key locating + columnar column-selection make the hottest 'by project, by time' query touch only a small slice across hundreds of millions of rows. This is L02's 'columnar access: time windows + ordering keys + pruning'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "ReplacingMergeTree 的覆盖是“最终”的（后台合并需要时间）。这带来什么取舍，Langfuse 怎么应对？",
+                    "en": "ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What tradeoff does this bring, and how does Langfuse handle it?",
+                },
+                "opts": [
+                    {
+                        "zh": "未合并瞬间可能读到旧行；用 FINAL 或按 id 取最大 event_ts 的聚合保证最终态——把去重成本从“每次写入”挪到“查询时且可控”，换来写入飞快",
+                        "en": "Before merge you might read an old row; use FINAL or aggregate (max event_ts per id) for the final state — moving dedup cost from 'every write' to 'query time, controllable', buying fast writes",
+                    },
+                    {"zh": "没有任何取舍，永远强一致", "en": "No tradeoff at all, always strongly consistent"},
+                    {"zh": "必须停机合并", "en": "You must take downtime to merge"},
+                    {"zh": "只能每天查询一次", "en": "You may only query once a day"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "追加换吞吐的代价是“最终一致”。查询侧用 FINAL/聚合读到最终态，把去重从每次写入挪到查询时并显式优化——正是第 2 课“避免读时去重的隐藏开销”的实际做法。",
+                    "en": "Append-for-throughput costs 'eventual consistency'. The read side uses FINAL/aggregation for the final state, moving dedup from every write to query time and optimizing it explicitly — exactly L02's 'avoid read-time dedup's hidden cost'.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "ReplacingMergeTree 把“改”变成“追加 + 后台覆盖”。如果你自己的系统也常常“同一条记录被多次更新”，这种“只追加、读时取最新”的思路能怎么帮你？它的代价你能接受吗？",
+                "en": "ReplacingMergeTree turns 'edit' into 'append + background overwrite'. If your own system also 'updates the same record many times', how could this 'append-only, read-the-latest' idea help you? Can you accept its cost?",
+            },
+        ],
+    },
 }
 
 

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 7 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 8 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -344,6 +344,7 @@ details[open] > summary { list-style: none; }
   <li>一条 trace 的一生·鸟瞰</li>
   <li>给 LLM 应用埋点</li>
   <li>双存储架构</li>
+  <li>ClickHouse 与宽事件表</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -1945,6 +1946,180 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>想象你在设计一个新的日志/监控系统，预算有限。你会从一个 Postgres 起步，还是一开始就上 ClickHouse？在什么规模/查询模式下，引入列存才真正“挣到存在”？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>ClickHouse 与宽事件表</h1>
+
+<p class="lead">
+上一课说遥测数据都进 ClickHouse。这一课打开引擎盖，看这三张宽事件表（traces / observations / scores）<strong>到底是怎么建的、为什么这么建</strong>。
+这是整个存储层<strong>最该看懂</strong>的一课——一旦理解了表引擎、排序键、分区这几样，后面「为什么列表快、为什么按项目按时间查特别高效、为什么数据能边写边查」
+这些问题都会迎刃而解。我们以 <code>observations</code> 表为例（建表 SQL 在 <code>packages/shared/clickhouse/migrations/unclustered/0002_observations.up.sql</code>）。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把 ClickHouse 的表想成一座<strong>超大图书馆</strong>。<strong>分区（PARTITION）</strong>像按<strong>出版年月分大书架</strong>——找「2024 年 6 月的书」直接去那个架，别的架碰都不用碰；
+  <strong>排序键（ORDER BY）</strong>像每个架内的<strong>摆放顺序</strong>（先按学科、再按日期），于是「某学科某段时间的书」只要在架上扫<strong>连续一小段</strong>；
+  <strong>ReplacingMergeTree 引擎</strong>则像一条<strong>上架规则</strong>：同一个书号来了新版本，<strong>用新版盖掉旧版</strong>（按版本号判断谁新）。  三者配合，海量藏书也能秒级定位与盘点。这一课就把这三条「上架与摆放规则」逐一拆开，让你看清 Langfuse 是怎么在上亿行里做到「边写边查、查得还快」的。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="observations 表一行的结构：标识列、富属性列、Map 列、大字段压缩列、版本控制列">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">observations 一行的解剖（宽事件）</text>
+  <rect x="20" y="36" width="680" height="40" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="30" y="52" font-size="10" font-weight="700" fill="var(--blue)">标识 / 关联</text><text x="30" y="68" font-size="9" fill="var(--muted)">id · trace_id · project_id · parent_observation_id · type · name</text>
+  <rect x="20" y="84" width="680" height="40" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="30" y="100" font-size="10" font-weight="700" fill="var(--purple)">富属性（内联的宽列）</text><text x="30" y="116" font-size="9" fill="var(--muted)">provided_model_name · internal_model_id · total_cost · start_time · end_time · prompt_id/name/version</text>
+  <rect x="20" y="132" width="680" height="40" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="30" y="148" font-size="10" font-weight="700" fill="var(--amber)">Map 列（半结构化）</text><text x="30" y="164" font-size="9" fill="var(--muted)">metadata · usage_details · cost_details · provided_usage_details · provided_cost_details</text>
+  <rect x="20" y="180" width="430" height="40" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="30" y="196" font-size="10" font-weight="700" fill="var(--ink)">大字段（ZSTD 压缩）</text><text x="30" y="212" font-size="9" fill="var(--muted)">input  CODEC(ZSTD(3)) · output  CODEC(ZSTD(3))</text>
+  <rect x="462" y="180" width="238" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="472" y="196" font-size="10" font-weight="700" fill="var(--accent-ink)">版本控制</text><text x="472" y="212" font-size="9" fill="var(--accent-ink)">event_ts · is_deleted</text>
+</svg>
+<div class="figcap"><b>一行宽事件的五类列</b>：标识/关联列（拼树、定位）、内联的富属性宽列（model、cost、prompt…）、半结构化的 <b>Map</b> 列（metadata、usage/cost 明细）、用 <b>ZSTD</b> 压缩的大字段（input/output）、以及版本控制列（<code>event_ts</code>、<code>is_deleted</code>）。一行就装下了第 3 课说的全部富属性。</div>
+</div>
+
+<h2>ReplacingMergeTree：同 id 后写覆盖先写</h2>
+<p>三张表用的引擎都是 <code>ReplacingMergeTree</code>。它的建表声明长这样：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0002_observations.up.sql</span><span class="ln">ENGINE</span></div>
+  <pre class="code">ENGINE = <span class="fn">ReplacingMergeTree</span>(event_ts, is_deleted)
+PARTITION BY <span class="fn">toYYYYMM</span>(start_time)
+ORDER BY (project_id, <span class="kw">type</span>, <span class="fn">toDate</span>(start_time), id)</pre>
+</div>
+
+<p>关键就在 <code>ReplacingMergeTree(event_ts, is_deleted)</code> 这一句。它的语义是：<strong>排序键完全相同的多行，会被「替换」成最新的一行</strong>——
+谁的 <code>event_ts</code>（版本时间戳）更大，就保留谁；<code>is_deleted=1</code> 则表示这行被软删除。这正好<strong>完美契合第 5、6 课的合并模型</strong>：
+一个 observation 先 create、后 update，会产生<strong>两次写入</strong>（相同 id、不同 event_ts），ClickHouse 在后台合并时<strong>自动用 update 那条盖掉 create 那条</strong>。
+你不需要先查出旧行、改完再写回——<strong>只管追加，覆盖交给引擎</strong>。这就是第 2 课「不可变 / 追加式事件」能成立的存储基础。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="同一个 id 的两次写入，ReplacingMergeTree 后台合并时保留 event_ts 更大的那条">
+  <rect x="30" y="50" width="240" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="150" y="68" text-anchor="middle" font-size="10" fill="var(--muted)">id=o1 · event_ts=t0</text><text x="150" y="84" text-anchor="middle" font-size="9" fill="var(--faint)">create：model, input（旧版）</text>
+  <rect x="30" y="106" width="240" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="150" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">id=o1 · event_ts=t1（更大）</text><text x="150" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">update：+output, +usage（新版）</text>
+  <rect x="350" y="78" width="120" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="410" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">后台合并</text><text x="410" y="115" text-anchor="middle" font-size="8.5" fill="var(--muted)">Replacing</text>
+  <rect x="520" y="78" width="180" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="610" y="96" text-anchor="middle" font-size="10" font-weight="700" fill="var(--purple)">保留 t1 这一条</text><text x="610" y="112" text-anchor="middle" font-size="8.5" fill="var(--muted)">model+input+output+usage</text>
+  <line x1="270" y1="72" x2="348" y2="96" stroke="var(--faint)" stroke-width="1.6"/><line x1="270" y1="128" x2="348" y2="104" stroke="var(--faint)" stroke-width="1.6"/>
+  <line x1="470" y1="100" x2="518" y2="100" stroke="var(--faint)" stroke-width="1.6"/><polygon points="518,100 507,95 507,105" fill="var(--faint)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="9" fill="var(--faint)">查询时如果还没合并，可用 FINAL 或聚合保证读到最终态（细节见查询链路）</text>
+</svg>
+<div class="figcap"><b>后写覆盖先写</b>：相同排序键的两次写入，引擎按 <code>event_ts</code> 保留更新的那条，<code>is_deleted</code> 实现软删除。于是「改一条 observation」= 追加一条更大 event_ts 的记录，无需读-改-写。</div>
+</div>
+
+
+<h2>排序键 + 分区：为什么按 project_id 和时间</h2>
+<p>再看那两行：<code>PARTITION BY toYYYYMM(start_time)</code> 和 <code>ORDER BY (project_id, type, toDate(start_time), id)</code>。
+这两句决定了数据在磁盘上<strong>怎么分块、怎么排列</strong>，也就决定了查询能不能<strong>少扫数据</strong>。在上亿行的规模下，能不能「少扫」往往比单点「扫得多快」更决定性能。</p>
+
+<div class="cols">
+  <div class="col"><h4>📅 分区 PARTITION BY 月</h4><p>按 <code>toYYYYMM(start_time)</code> 把数据切成<strong>一月一块</strong>。查「最近 7 天」时，引擎直接<strong>跳过</strong>不相关月份的整块数据（partition pruning），连读都不读。</p></div>
+  <div class="col"><h4>🔑 排序键 project_id 打头</h4><p><code>ORDER BY</code> 第一列是 <code>project_id</code>，于是同一项目的数据在磁盘上<strong>物理相邻</strong>。多租户查询天生只看自己项目，扫一段连续区间即可，无需全表过滤。</p></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="查询某项目最近时间段时，分区裁掉无关月份，排序键让数据集中在连续区间，只扫一小片">
+  <text x="360" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">查询「项目 P · 最近 7 天」→ 只扫绿色一小片</text>
+  <text x="60" y="44" font-size="9.5" fill="var(--faint)">2024-04</text><rect x="120" y="34" width="560" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)" opacity="0.5"/><text x="690" y="49" font-size="8" fill="var(--faint)">裁掉</text>
+  <text x="60" y="74" font-size="9.5" fill="var(--faint)">2024-05</text><rect x="120" y="64" width="560" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)" opacity="0.5"/><text x="690" y="79" font-size="8" fill="var(--faint)">裁掉</text>
+  <text x="60" y="104" font-size="9.5" fill="var(--purple)">2024-06</text><rect x="120" y="94" width="560" height="26" rx="4" fill="var(--panel)" stroke="var(--purple)"/>
+  <rect x="300" y="97" width="120" height="20" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="111" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">项目 P 的连续区间</text>
+  <text x="200" y="111" text-anchor="middle" font-size="8" fill="var(--muted)">项目 A…</text><text x="540" y="111" text-anchor="middle" font-size="8" fill="var(--muted)">项目 Z…</text>
+  <text x="360" y="150" text-anchor="middle" font-size="9.5" fill="var(--purple)">① 分区裁掉 4、5 月 → ② 排序键定位到 6 月里项目 P 那一段 → ③ 只读这一小片的几列</text>
+  <text x="360" y="178" text-anchor="middle" font-size="9.5" fill="var(--faint)">海量数据下，「少扫」比「扫得快」重要得多——这是列存 + 排序键 + 分区的合力</text>
+  <text x="360" y="200" text-anchor="middle" font-size="9" fill="var(--faint)">这也是第 2 课「围绕列式访问设计：时间窗口 + 排序键 + 数据剪枝」的实现</text>
+</svg>
+<div class="figcap"><b>少扫才是关键</b>：分区先按月裁掉无关数据，排序键（project_id 打头）再把目标项目的数据收拢成连续一段，最后列存只读你要的那几列。三者合力，让「按项目按时间」这类最高频查询在上亿行里也只碰一小片。</div>
+</div>
+
+<h2>列存 + 压缩 + 索引：让「宽」也能快</h2>
+<p>宽事件行很宽，怎么保证不慢？靠三招，都写在建表 SQL 里：</p>
+
+<table class="t">
+  <tr><th>手段</th><th>建表里怎么写</th><th>解决什么</th></tr>
+  <tr><td><b>列式存储</b></td><td>MergeTree 家族天生列存</td><td>查询只读用到的列，不为不相关的大字段买单</td></tr>
+  <tr><td><b>ZSTD 压缩</b></td><td><code>input/output … CODEC(ZSTD(3))</code></td><td>把又大又重复的 prompt/输出文本压到很小，省空间也省 IO</td></tr>
+  <tr><td><b>Map 列</b></td><td><code>metadata/usage_details … Map(...)</code></td><td>半结构化字段不必预先建列，灵活又可查</td></tr>
+  <tr><td><b>布隆过滤索引</b></td><td><code>INDEX idx_id id TYPE bloom_filter()</code></td><td>按 id / trace_id 精确查时，快速跳过不含目标的数据块</td></tr>
+</table>
+
+<p>三张表的排序键略有不同，但<strong>都以 project_id 打头</strong>，体现「多租户隔离 = 排序键前缀」这一贯思路：</p>
+
+<table class="t">
+  <tr><th>表</th><th>ORDER BY</th></tr>
+  <tr><td class="mono">traces</td><td class="mono">(project_id, toDate(timestamp), id)</td></tr>
+  <tr><td class="mono">observations</td><td class="mono">(project_id, type, toDate(start_time), id)</td></tr>
+  <tr><td class="mono">scores</td><td class="mono">(project_id, ...)</td></tr>
+</table>
+
+<p>这种「三张表排序键高度一致」并非巧合，而是<strong>刻意为之</strong>：因为最常见的查询模式就是「某项目、某时间段」，把 <code>project_id</code> 和时间放在排序键最前，
+等于把这类查询的成本压到最低。这也呼应第 3 课「三支柱 1:1 映射三张表」——三张表不仅结构对应，连<strong>物理排布的逻辑都一致</strong>，于是无论查 trace、查 observation 还是查 score，
+引擎都能用同一套「裁分区 + 定区间」的本事。理解了 <code>observations</code> 这张，另外两张你就触类旁通了。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>ReplacingMergeTree 的覆盖是「最终」的，不是「立刻」的</strong>——后台合并需要时间，所以理论上你可能在两次写入<strong>都还在、还没合并</strong>的瞬间读到旧行。
+  这是它换来「只管追加、写入飞快」的代价。怎么补？查询侧用 <code>FINAL</code> 关键字强制合并后再读，或用<strong>聚合</strong>（按 id 取 event_ts 最大的那条）来保证读到最终态——
+  这就把「去重」的成本从<strong>每次写入</strong>挪到了<strong>查询时（且可控）</strong>。第 2 课说「避免读时去重的隐藏开销」，Langfuse 的做法是：尽量让常规查询走聚合/最终态视图，
+  把代价显式化、可优化，而不是让每次写入都付出读-改-写的代价。<strong>追加换吞吐，去重挪到读侧并优化</strong>——这是高写入遥测系统的经典取舍。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>引擎 = ReplacingMergeTree(event_ts, is_deleted)</strong>：相同排序键，后写（event_ts 更大）覆盖先写，<code>is_deleted</code> 软删除——完美承接第 5、6 课 create+update 的合并模型。</li>
+    <li><strong>分区 = 按月</strong>（<code>toYYYYMM</code>），查时间窗口可整块裁剪；<strong>排序键 = project_id 打头</strong>，多租户查询只扫连续一段。</li>
+    <li>「<strong>少扫</strong>」靠分区裁剪 + 排序键定位 + 列存只读所需列这三者合力，是海量数据下保持高效的关键。</li>
+    <li><strong>列存 + ZSTD 压缩 + Map 列 + bloom_filter 索引</strong>，让又宽又大的行也能查得快、存得省，不为不相关的大字段买单。</li>
+    <li>取舍：覆盖是「最终」的，去重成本从写入挪到查询（FINAL/聚合），换来写入飞快——避免读时去重的隐藏开销。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. ReplacingMergeTree(event_ts, is_deleted) 的核心语义是什么？它怎么承接“一个 observation 先 create 后 update”？</div>
+  <ol class="opts">
+    <li>排序键相同的多行会被替换成 event_ts 最大的那条（is_deleted 软删除）；create 与 update 是两次同 id 写入，后台合并时自动用 update 覆盖 create——只管追加，覆盖交给引擎</li>
+    <li>它会拒绝重复 id 的写入</li>
+    <li>它要求先删除旧行再写新行</li>
+    <li>它把两次写入都永久保留且都返回</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。ReplacingMergeTree 让“改一条”退化成“追加一条更大 event_ts 的记录”，无需读-改-写。这正好承接 create+update 的合并模型，也是第 2 课“不可变/追加式事件”能落地的存储基础。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 为什么 observations 的 ORDER BY 以 project_id 打头、PARTITION BY 按月？这对“某项目最近 7 天”这类查询有什么用？</div>
+  <ol class="opts">
+    <li>为了让写入更慢</li>
+    <li>因为 ClickHouse 不支持索引</li>
+    <li>月分区让查询直接裁掉无关月份，project_id 打头让目标项目数据物理相邻成一段；于是只扫一小片、再列存只读所需列——“少扫”是海量下高效的关键</li>
+    <li>为了让所有项目的数据混在一起</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。分区裁剪 + 排序键定位 + 列存选列三者合力，让最高频的“按项目按时间”查询在上亿行里只碰一小片。这正是第 2 课“围绕列式访问设计：时间窗口+排序键+剪枝”。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. ReplacingMergeTree 的覆盖是“最终”的（后台合并需要时间）。这带来什么取舍，Langfuse 怎么应对？</div>
+  <ol class="opts">
+    <li>只能每天查询一次</li>
+    <li>未合并瞬间可能读到旧行；用 FINAL 或按 id 取最大 event_ts 的聚合保证最终态——把去重成本从“每次写入”挪到“查询时且可控”，换来写入飞快</li>
+    <li>没有任何取舍，永远强一致</li>
+    <li>必须停机合并</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。追加换吞吐的代价是“最终一致”。查询侧用 FINAL/聚合读到最终态，把去重从每次写入挪到查询时并显式优化——正是第 2 课“避免读时去重的隐藏开销”的实际做法。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>ReplacingMergeTree 把“改”变成“追加 + 后台覆盖”。如果你自己的系统也常常“同一条记录被多次更新”，这种“只追加、读时取最新”的思路能怎么帮你？它的代价你能接受吗？</li>
   </ul>
 </div>
 </div>

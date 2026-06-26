@@ -63,6 +63,8 @@ PAGES = [
      "第二部分 · 前置基础", "Part 2 · Foundations"),
     ("07-dual-store-architecture.html", "双存储架构", "The dual-store architecture",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("08-clickhouse-wide-events.html", "ClickHouse 与宽事件表", "ClickHouse & the wide-event tables",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -560,6 +562,8 @@ SUBTITLES = {
                                          "two entries: native SDK events / OTel; the event envelope; incremental create+update"),
     "07-dual-store-architecture.html": ("四存储分工：PG 配置 · CH 宽事件 · Redis 队列/缓存 · S3 真相之源 · OLTP vs OLAP",
                                         "four stores: PG config; CH wide events; Redis queue/cache; S3 source-of-truth; OLTP vs OLAP"),
+    "08-clickhouse-wide-events.html": ("ReplacingMergeTree · 排序键 project_id 打头 · 月分区 · ZSTD/Map/bloom · 少扫才是关键",
+                                       "ReplacingMergeTree; ordering key project_id-first; monthly partitions; ZSTD/Map/bloom; scan-less"),
 }
 
 

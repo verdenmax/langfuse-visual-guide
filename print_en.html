@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 7 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 8 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -344,6 +344,7 @@ details[open] > summary { list-style: none; }
   <li>Life of a trace (bird's-eye)</li>
   <li>Instrumenting an LLM app</li>
   <li>The dual-store architecture</li>
+  <li>ClickHouse & the wide-event tables</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -2104,6 +2105,188 @@ of every later path lesson.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Imagine designing a new logging/monitoring system on a tight budget. Would you start with one Postgres, or bring in ClickHouse from day one? At what scale/query pattern does a columnar store truly 'earn its existence'?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>ClickHouse & the wide-event tables</h1>
+
+<p class="lead">
+Last lesson said telemetry goes to ClickHouse. This lesson opens the hood on how the three wide-event tables (traces / observations /
+scores) <strong>are actually built and why</strong>. It's the <strong>must-understand</strong> storage lesson — once you grasp the table
+engine, ordering key and partitioning, later questions ("why are lists fast", "why is by-project + by-time so efficient", "why can data
+be queried while being written") all fall into place. We use the <code>observations</code> table as the example (CREATE TABLE in
+<code>packages/shared/clickhouse/migrations/unclustered/0002_observations.up.sql</code>).
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture a ClickHouse table as a <strong>giant library</strong>. <strong>Partitioning</strong> is like <strong>big shelves by publish
+  month</strong> — for "books from June 2024" you go straight to that shelf and never touch the others; the <strong>ordering key</strong>
+  is the <strong>arrangement within a shelf</strong> (by subject, then date), so "a subject over a time range" is just a <strong>short
+  contiguous scan</strong>; the <strong>ReplacingMergeTree engine</strong> is a <strong>shelving rule</strong>: a new edition of the same
+  call number <strong>replaces the old</strong> (decided by version number). Together, even a vast collection is located and counted in
+  milliseconds.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="anatomy of one observations row: identity columns, rich columns, Map columns, compressed big fields, version columns">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">anatomy of one observations row (wide event)</text>
+  <rect x="20" y="36" width="680" height="40" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="30" y="52" font-size="10" font-weight="700" fill="var(--blue)">identity / linkage</text><text x="30" y="68" font-size="9" fill="var(--muted)">id · trace_id · project_id · parent_observation_id · type · name</text>
+  <rect x="20" y="84" width="680" height="40" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="30" y="100" font-size="10" font-weight="700" fill="var(--purple)">rich attributes (inlined wide columns)</text><text x="30" y="116" font-size="9" fill="var(--muted)">provided_model_name · internal_model_id · total_cost · start_time · end_time · prompt_id/name/version</text>
+  <rect x="20" y="132" width="680" height="40" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="30" y="148" font-size="10" font-weight="700" fill="var(--amber)">Map columns (semi-structured)</text><text x="30" y="164" font-size="9" fill="var(--muted)">metadata · usage_details · cost_details · provided_usage_details · provided_cost_details</text>
+  <rect x="20" y="180" width="430" height="40" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="30" y="196" font-size="10" font-weight="700" fill="var(--ink)">big fields (ZSTD compressed)</text><text x="30" y="212" font-size="9" fill="var(--muted)">input  CODEC(ZSTD(3)) · output  CODEC(ZSTD(3))</text>
+  <rect x="462" y="180" width="238" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="472" y="196" font-size="10" font-weight="700" fill="var(--accent-ink)">versioning</text><text x="472" y="212" font-size="9" fill="var(--accent-ink)">event_ts · is_deleted</text>
+</svg>
+<div class="figcap"><b>Five kinds of columns in one wide-event row</b>: identity/linkage (tree, lookup), inlined rich wide columns (model, cost, prompt…), semi-structured <b>Map</b> columns (metadata, usage/cost details), <b>ZSTD</b>-compressed big fields (input/output), and version columns (<code>event_ts</code>, <code>is_deleted</code>). One row holds all of Lesson 3's rich attributes.</div>
+</div>
+
+<h2>ReplacingMergeTree: later write of the same id wins</h2>
+<p>All three tables use the <code>ReplacingMergeTree</code> engine. The declaration looks like:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">clickhouse/migrations/unclustered/0002_observations.up.sql</span><span class="ln">ENGINE</span></div>
+  <pre class="code">ENGINE = <span class="fn">ReplacingMergeTree</span>(event_ts, is_deleted)
+PARTITION BY <span class="fn">toYYYYMM</span>(start_time)
+ORDER BY (project_id, <span class="kw">type</span>, <span class="fn">toDate</span>(start_time), id)</pre>
+</div>
+
+<p>The key is <code>ReplacingMergeTree(event_ts, is_deleted)</code>. Its semantics: <strong>multiple rows with the identical ordering key
+are "replaced" down to the latest one</strong> — whoever has the larger <code>event_ts</code> (version timestamp) wins;
+<code>is_deleted=1</code> marks a soft delete. This <strong>perfectly fits Lessons 5 and 6's merge model</strong>: an observation that's
+created then updated produces <strong>two writes</strong> (same id, different event_ts), and ClickHouse <strong>automatically lets the
+update overwrite the create</strong> during background merge. You needn't read the old row, edit, and write back — <strong>just append;
+overwrite is the engine's job</strong>. This is the storage basis that makes Lesson 2's "immutable / append-oriented events" viable.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="two writes of the same id; ReplacingMergeTree keeps the one with the larger event_ts at background merge">
+  <rect x="30" y="50" width="240" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="150" y="68" text-anchor="middle" font-size="10" fill="var(--muted)">id=o1 · event_ts=t0</text><text x="150" y="84" text-anchor="middle" font-size="9" fill="var(--faint)">create: model, input (old)</text>
+  <rect x="30" y="106" width="240" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="150" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">id=o1 · event_ts=t1 (larger)</text><text x="150" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">update: +output, +usage (new)</text>
+  <rect x="350" y="78" width="120" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="410" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">bg merge</text><text x="410" y="115" text-anchor="middle" font-size="8.5" fill="var(--muted)">Replacing</text>
+  <rect x="520" y="78" width="180" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="610" y="96" text-anchor="middle" font-size="10" font-weight="700" fill="var(--purple)">keep the t1 row</text><text x="610" y="112" text-anchor="middle" font-size="8.5" fill="var(--muted)">model+input+output+usage</text>
+  <line x1="270" y1="72" x2="348" y2="96" stroke="var(--faint)" stroke-width="1.6"/><line x1="270" y1="128" x2="348" y2="104" stroke="var(--faint)" stroke-width="1.6"/>
+  <line x1="470" y1="100" x2="518" y2="100" stroke="var(--faint)" stroke-width="1.6"/><polygon points="518,100 507,95 507,105" fill="var(--faint)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="9" fill="var(--faint)">if not yet merged at query time, FINAL or aggregation guarantees the final state (see the read path)</text>
+</svg>
+<div class="figcap"><b>Later write wins</b>: for two writes with the same ordering key, the engine keeps the newer <code>event_ts</code>; <code>is_deleted</code> implements soft delete. So "edit an observation" = append a record with a larger event_ts, no read-modify-write.</div>
+</div>
+
+
+<h2>Ordering key + partition: why by project_id and time</h2>
+<p>Now the other two lines: <code>PARTITION BY toYYYYMM(start_time)</code> and <code>ORDER BY (project_id, type, toDate(start_time),
+id)</code>. They decide <strong>how data is chunked and arranged</strong> on disk — and therefore whether a query can <strong>scan
+less</strong>.</p>
+
+<div class="cols">
+  <div class="col"><h4>📅 PARTITION BY month</h4><p><code>toYYYYMM(start_time)</code> cuts data into <strong>one chunk per month</strong>. For "last 7 days", the engine simply <strong>skips</strong> whole irrelevant months (partition pruning) — never even reads them.</p></div>
+  <div class="col"><h4>🔑 ORDER BY project_id first</h4><p>The first <code>ORDER BY</code> column is <code>project_id</code>, so one project's data is <strong>physically adjacent</strong> on disk. Multi-tenant queries naturally see only their project — a contiguous range, no full-table filtering.</p></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="querying a project over a recent window: partition prunes irrelevant months; ordering key clusters the project into a contiguous range; only a small slice is scanned">
+  <text x="360" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">query "project P · last 7 days" → scan only the green slice</text>
+  <text x="60" y="44" font-size="9.5" fill="var(--faint)">2024-04</text><rect x="120" y="34" width="560" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)" opacity="0.5"/><text x="690" y="49" font-size="8" fill="var(--faint)">pruned</text>
+  <text x="60" y="74" font-size="9.5" fill="var(--faint)">2024-05</text><rect x="120" y="64" width="560" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)" opacity="0.5"/><text x="690" y="79" font-size="8" fill="var(--faint)">pruned</text>
+  <text x="60" y="104" font-size="9.5" fill="var(--purple)">2024-06</text><rect x="120" y="94" width="560" height="26" rx="4" fill="var(--panel)" stroke="var(--purple)"/>
+  <rect x="300" y="97" width="120" height="20" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="111" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">project P contiguous range</text>
+  <text x="200" y="111" text-anchor="middle" font-size="8" fill="var(--muted)">project A…</text><text x="540" y="111" text-anchor="middle" font-size="8" fill="var(--muted)">project Z…</text>
+  <text x="360" y="150" text-anchor="middle" font-size="9.5" fill="var(--purple)">(1) prune Apr/May → (2) ordering key locates project P in June → (3) read only a few columns of that slice</text>
+  <text x="360" y="178" text-anchor="middle" font-size="9.5" fill="var(--faint)">at scale, "scan less" beats "scan fast" — the combined effect of columnar + ordering key + partition</text>
+  <text x="360" y="200" text-anchor="middle" font-size="9" fill="var(--faint)">this realizes Lesson 2's "columnar access: time windows + ordering keys + data pruning"</text>
+</svg>
+<div class="figcap"><b>Scanning less is the point</b>: partitions prune irrelevant data by month, the ordering key (project_id first) clusters the target project into a contiguous range, and columnar storage reads only the columns you want. Together, "by project, by time" — the hottest query — touches only a small slice even across hundreds of millions of rows.</div>
+</div>
+
+<h2>Columnar + compression + indexes: making "wide" fast too</h2>
+<p>Wide rows are wide — how stay fast? Three moves, all in the CREATE TABLE:</p>
+
+<table class="t">
+  <tr><th>Move</th><th>In the schema</th><th>Solves</th></tr>
+  <tr><td><b>Columnar storage</b></td><td>the MergeTree family is columnar</td><td>queries read only the columns used, not paying for irrelevant big fields</td></tr>
+  <tr><td><b>ZSTD compression</b></td><td><code>input/output … CODEC(ZSTD(3))</code></td><td>shrinks big, repetitive prompt/output text — saves space and IO</td></tr>
+  <tr><td><b>Map columns</b></td><td><code>metadata/usage_details … Map(...)</code></td><td>semi-structured fields need no predefined columns — flexible yet queryable</td></tr>
+  <tr><td><b>Bloom-filter index</b></td><td><code>INDEX idx_id id TYPE bloom_filter()</code></td><td>for exact id/trace_id lookups, quickly skip blocks not containing the target</td></tr>
+</table>
+
+<p>The three tables' ordering keys differ slightly but <strong>all start with project_id</strong>, expressing the consistent "multi-tenant
+isolation = ordering-key prefix" idea:</p>
+
+<table class="t">
+  <tr><th>Table</th><th>ORDER BY</th></tr>
+  <tr><td class="mono">traces</td><td class="mono">(project_id, toDate(timestamp), id)</td></tr>
+  <tr><td class="mono">observations</td><td class="mono">(project_id, type, toDate(start_time), id)</td></tr>
+  <tr><td class="mono">scores</td><td class="mono">(project_id, ...)</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>ReplacingMergeTree's overwrite is "eventual", not "immediate"</strong> — background merge takes time, so in principle you could
+  read the old row in the instant both writes exist but aren't merged yet. That's the price of "just append, write fast". The fix: on the
+  query side use the <code>FINAL</code> keyword to force-merge before reading, or use <strong>aggregation</strong> (take the max-event_ts
+  row per id) to guarantee the final state — moving the "dedup" cost from <strong>every write</strong> to <strong>query time (and
+  controllable)</strong>. Lesson 2 says "avoid read-time dedup's hidden cost"; Langfuse's approach is to route regular queries through
+  aggregation/final-state views, making the cost explicit and optimizable rather than paying read-modify-write on every write.
+  <strong>Append for throughput, move dedup to the read side and optimize it</strong> — a classic write-heavy-telemetry trade.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Engine = ReplacingMergeTree(event_ts, is_deleted)</strong>: same ordering key, later write (larger event_ts) overwrites earlier, <code>is_deleted</code> soft-deletes — perfectly absorbing the create+update merge model.</li>
+    <li><strong>Partition = by month</strong> (<code>toYYYYMM</code>), so time-window queries prune whole chunks; <strong>ordering key = project_id first</strong>, so multi-tenant queries scan one contiguous range.</li>
+    <li>"<strong>Scan less</strong>" via partition pruning + ordering-key locating + columnar column-selection is the key to scale efficiency.</li>
+    <li><strong>Columnar + ZSTD + Map columns + bloom_filter indexes</strong> keep wide, big rows fast to query and cheap to store.</li>
+    <li>Tradeoff: overwrite is "eventual"; dedup cost moves from writes to queries (FINAL/aggregation), buying fast writes — avoiding read-time dedup's hidden cost.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What's the core semantic of ReplacingMergeTree(event_ts, is_deleted)? How does it absorb 'an observation created then updated'?</div>
+  <ol class="opts">
+    <li>Rows with the same ordering key collapse to the largest event_ts (is_deleted soft-deletes); create and update are two writes of the same id, and background merge auto-overwrites create with update — just append, the engine overwrites</li>
+    <li>It rejects writes with duplicate ids</li>
+    <li>It requires deleting the old row before writing the new one</li>
+    <li>It keeps both writes forever and returns both</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. ReplacingMergeTree turns 'edit one' into 'append one with a larger event_ts', no read-modify-write. It absorbs the create+update merge model and is the storage basis for L02's 'immutable/append-oriented events'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why does observations' ORDER BY start with project_id and PARTITION BY by month? What does that do for a 'project, last 7 days' query?</div>
+  <ol class="opts">
+    <li>To make writes slower</li>
+    <li>Because ClickHouse has no indexes</li>
+    <li>Monthly partitions prune irrelevant months; project_id-first clusters the target project into a contiguous range; so only a small slice is scanned and columnar reads only needed columns — 'scan less' is the key at scale</li>
+    <li>To mix all projects' data together</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Partition pruning + ordering-key locating + columnar column-selection make the hottest 'by project, by time' query touch only a small slice across hundreds of millions of rows. This is L02's 'columnar access: time windows + ordering keys + pruning'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What tradeoff does this bring, and how does Langfuse handle it?</div>
+  <ol class="opts">
+    <li>You may only query once a day</li>
+    <li>Before merge you might read an old row; use FINAL or aggregate (max event_ts per id) for the final state — moving dedup cost from 'every write' to 'query time, controllable', buying fast writes</li>
+    <li>No tradeoff at all, always strongly consistent</li>
+    <li>You must take downtime to merge</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Append-for-throughput costs 'eventual consistency'. The read side uses FINAL/aggregation for the final state, moving dedup from every write to query time and optimizing it explicitly — exactly L02's 'avoid read-time dedup's hidden cost'.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>ReplacingMergeTree turns 'edit' into 'append + background overwrite'. If your own system also 'updates the same record many times', how could this 'append-only, read-the-latest' idea help you? Can you accept its cost?</li>
   </ul>
 </div>
 </div>

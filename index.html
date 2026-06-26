@@ -332,7 +332,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="topbar">
   <div class="topbar-inner">
     <span class="home">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></span>
-    <span class="pill"><span class="lang-zh">共 7 课 · 2 个部分</span><span class="lang-en">7 lessons · 2 parts</span></span>
+    <span class="pill"><span class="lang-zh">共 8 课 · 2 个部分</span><span class="lang-en">8 lessons · 2 parts</span></span>
     <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
   </div>
   <div class="progress"><span style="width:100%"></span></div>
@@ -365,7 +365,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <a href="lessons/05-life-of-a-trace.html"><span class="n">05</span><span class="tt"><span class="lang-zh">一条 trace 的一生·鸟瞰</span><span class="lang-en">Life of a trace (bird's-eye)</span></span><span class="ts"><span class="lang-zh">写：SDK→API→队列→worker→CH · 读：UI→tRPC→仓储→CH · 异步·最终一致</span><span class="lang-en">write: SDK→API→queue→worker→CH; read: UI→tRPC→repo→CH; async; eventual consistency</span></span></a>
 <div class="toc-part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
 <a href="lessons/06-instrumenting-an-llm-app.html"><span class="n">06</span><span class="tt"><span class="lang-zh">给 LLM 应用埋点</span><span class="lang-en">Instrumenting an LLM app</span></span><span class="ts"><span class="lang-zh">两个入口：SDK 原生事件 / OTel · 事件信封 · create+update 增量</span><span class="lang-en">two entries: native SDK events / OTel; the event envelope; incremental create+update</span></span></a>
-<a href="lessons/07-dual-store-architecture.html"><span class="n">07</span><span class="tt"><span class="lang-zh">双存储架构</span><span class="lang-en">The dual-store architecture</span></span><span class="ts"><span class="lang-zh">四存储分工：PG 配置 · CH 宽事件 · Redis 队列/缓存 · S3 真相之源 · OLTP vs OLAP</span><span class="lang-en">four stores: PG config; CH wide events; Redis queue/cache; S3 source-of-truth; OLTP vs OLAP</span></span></a></div>
+<a href="lessons/07-dual-store-architecture.html"><span class="n">07</span><span class="tt"><span class="lang-zh">双存储架构</span><span class="lang-en">The dual-store architecture</span></span><span class="ts"><span class="lang-zh">四存储分工：PG 配置 · CH 宽事件 · Redis 队列/缓存 · S3 真相之源 · OLTP vs OLAP</span><span class="lang-en">four stores: PG config; CH wide events; Redis queue/cache; S3 source-of-truth; OLTP vs OLAP</span></span></a>
+<a href="lessons/08-clickhouse-wide-events.html"><span class="n">08</span><span class="tt"><span class="lang-zh">ClickHouse 与宽事件表</span><span class="lang-en">ClickHouse &amp; the wide-event tables</span></span><span class="ts"><span class="lang-zh">ReplacingMergeTree · 排序键 project_id 打头 · 月分区 · ZSTD/Map/bloom · 少扫才是关键</span><span class="lang-en">ReplacingMergeTree; ordering key project_id-first; monthly partitions; ZSTD/Map/bloom; scan-less</span></span></a></div>
   <div class="toc-empty" id="tocempty"><span class="lang-zh">没有匹配的课程，换个关键词试试。</span><span class="lang-en">No matching lessons, try another keyword.</span></div>
   <p style="margin:2.4rem 0 0;color:var(--faint);font-size:.78rem;text-align:center"><span class="lang-zh">本项目是第三方、非官方的学习材料，不含 Langfuse 源码（仅引用少量标注来源的片段）；Langfuse 由其作者以 MIT 许可发布（部分企业版功能除外）。</span><span class="lang-en">Third-party, unofficial learning material; contains no Langfuse source code beyond small, cited snippets. Langfuse is MIT-licensed by its authors (except some enterprise features).</span></p>
 </div>

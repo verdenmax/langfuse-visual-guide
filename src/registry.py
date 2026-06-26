@@ -17,4 +17,5 @@ CONTENT = {
     "05-life-of-a-trace.html": part1.LESSON_05,
     "06-instrumenting-an-llm-app.html": part2.LESSON_06,
     "07-dual-store-architecture.html": part2.LESSON_07,
+    "08-clickhouse-wide-events.html": part2.LESSON_08,
 }
