@@ -375,11 +375,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">trace 还链接了被考的 prompt（第37课）、metadata 钉住 item 的 validFrom（第34/35课的版本回放）</text>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">环境标成 PromptExperiments —— 这正是第30课「langfuse- 前缀防无限循环」要识别的内部环境之一</text>
 </svg>
-<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processItem</code> 调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>。</div>
+<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processLLMCall</code>（由 <code>processItem</code> 委派）调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>。</div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem 核心</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall 核心（processItem 委派）</span></div>
   <pre class="code"><span class="cm">// 1) 把这道题的 input 填进 prompt 的变量空格 → 完整 messages</span>
 messages = replaceVariablesInPrompt(
   config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
@@ -391,7 +391,8 @@ traceSinkParams = {
   experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
 
 <span class="cm">// 3) 用被考的 provider/model 调 LLM（结果写成这条 trace + run item）</span>
-modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+modelParams = { provider: config.provider, model: config.model,
+  adapter: config.validatedApiKey.adapter, ...config.model_params };</pre>
 </div>
 
 <table class="t">
@@ -469,7 +470,7 @@ modelParams = { provider: config.provider, model: config.model, ...config.model_
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。processItem 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。processLLMCall 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -537,11 +538,11 @@ Three focuses: how an experiment <strong>runs server-side automatically</strong>
   <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">the trace also links the prompt under test (L37); metadata pins the item's validFrom (L34/35 version replay)</text>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
-<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processItem</code> calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>.</div>
+<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem core</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall core (processItem delegates)</span></div>
   <pre class="code"><span class="cm">// 1) fill this question's input into the prompt's variable blanks → full messages</span>
 messages = replaceVariablesInPrompt(
   config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
@@ -553,7 +554,8 @@ traceSinkParams = {
   experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
 
 <span class="cm">// 3) call the LLM with the provider/model under test (result becomes this trace + run item)</span>
-modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+modelParams = { provider: config.provider, model: config.model,
+  adapter: config.validatedApiKey.adapter, ...config.model_params };</pre>
 </div>
 
 <table class="t">
@@ -631,7 +633,7 @@ modelParams = { provider: config.provider, model: config.model, ...config.model_
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processItem's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processLLMCall's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
   </details>
 </div>
 <div class="quiz">

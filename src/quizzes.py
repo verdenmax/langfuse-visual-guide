@@ -2474,8 +2474,8 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "创建 run item 会发出 dataset-run-item-upsert 事件，触发第30课的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-runs.ts JOIN scores 按名求平均(agg_scores_avg)",
-                        "en": "creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-runs.ts JOINs scores and averages by name (agg_scores_avg)",
+                        "zh": "创建 run item 会发出 dataset-run-item-upsert 事件，触发第30课的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-run-items.ts JOIN scores 按名求平均(agg_scores_avg)",
+                        "en": "creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-run-items.ts JOINs scores and averages by name (agg_scores_avg)",
                     },
                     {"zh": "前端每秒轮询打分", "en": "the frontend polls and scores every second"},
                     {"zh": "run 结束时手动点击评分", "en": "manually clicking score when the run finishes"},
@@ -2483,8 +2483,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "回想第30课：createEvalJobs 有三个触发源，其一就是 dataset-run-item-upsert。建 run item 发此事件 → 评估器按 filter 匹配这条 run 的 trace → 排 JobExecution → 裁判/代码/人工评出 score 经摄取链路挂回 trace。最后 dataset-runs.ts JOIN scores 按 score 名求平均得 agg_scores_avg（这场总评），交第36课对比。整条链全自动。",
-                    "en": "Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-runs.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.",
+                    "zh": "回想第30课：createEvalJobs 有三个触发源，其一就是 dataset-run-item-upsert。建 run item 发此事件 → 评估器按 filter 匹配这条 run 的 trace → 排 JobExecution → 裁判/代码/人工评出 score 经摄取链路挂回 trace。最后 dataset-run-items.ts JOIN scores 按 score 名求平均得 agg_scores_avg（这场总评），交第36课对比。整条链全自动。",
+                    "en": "Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-run-items.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.",
                 },
             },
         ],
@@ -2513,8 +2513,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "processItem 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。",
-                    "en": "processItem's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.",
+                    "zh": "processLLMCall 三步：① replaceVariablesInPrompt 用 item.input 填 prompt 变量得完整 messages；② 组 trace，环境标 PromptExperiments、链接 config.prompt、metadata 钉 itemVersion=validFrom（第34/35课版本回放）；③ 用 config.provider/model 调 LLM。这是「服务端零代码跑实验」——产品经理也能在 UI 点跑，平台统一变量替换/版本钉定/评分调度。",
+                    "en": "processLLMCall's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.",
                 },
             },
             {

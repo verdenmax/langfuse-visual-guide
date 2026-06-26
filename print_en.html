@@ -7442,18 +7442,18 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
 
 
 <h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
-<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-runs.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>create run item (pin the version)</h4><p>Record run×item→traceId, pinning the item's <code>validFrom</code> (L34). Mirror into CH, snapshot the question.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>auto-trigger evaluation</h4><p>Persisting the run item emits a <code>dataset-run-item-upsert</code> event → Lesson 30's createEvalJobs queues eval for this trace.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>scores flow back</h4><p>Judge / code / human (Lessons 29–32) produce scores, attached back to this trace via the ingestion path.</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-runs.ts</span><span class="ln">aggregate scores by run</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-run-items.ts</span><span class="ln">aggregate scores by run</span></div>
   <pre class="code"><span class="cm">// each run's average: JOIN scores, average by score name → agg_scores_avg</span>
 <span class="kw">type</span> DatasetRunRecord = {
   agg_scores_avg: Array&lt;[string, number]&gt;;   <span class="cm">// e.g. [["helpfulness", 0.82], ["toxicity", 0.03]]</span>
@@ -7480,7 +7480,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
     <li><strong>A run item = carrier of the three-way link</strong>: <code>DatasetRunItems</code> pins <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code>, storing no input/output—the answer is in the trace it points to. This keeps run/item/trace decoupled yet aggregatable.</li>
     <li><strong>A run's trace is an ordinary trace</strong>: same observation tree, same scores, same ingestion path—experiments reuse all of the first five parts, not a separate system.</li>
     <li><strong>Mirror to CH with a denormalized snapshot</strong>: <code>dataset_run_items_rmt</code> (ReplacingMergeTree) inlines run fields + <strong>snapshots question input/expectedOutput</strong>—both speeding "aggregate by run" and making an experiment forever remember what it tested (reproducibility, insured).</li>
-    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
+    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
   </ul>
 </div>
 
@@ -7515,14 +7515,14 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
 <div class="quiz">
   <div class="qn">3. In Langfuse, 'running a dataset run computes scores automatically'. How is this auto-scoring triggered?</div>
   <ol class="opts">
-    <li>creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-runs.ts JOINs scores and averages by name (agg_scores_avg)</li>
+    <li>creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-run-items.ts JOINs scores and averages by name (agg_scores_avg)</li>
     <li>ClickHouse computes it automatically</li>
     <li>the frontend polls and scores every second</li>
     <li>manually clicking score when the run finishes</li>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-runs.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-run-items.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -7567,11 +7567,11 @@ Three focuses: how an experiment <strong>runs server-side automatically</strong>
   <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">the trace also links the prompt under test (L37); metadata pins the item's validFrom (L34/35 version replay)</text>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
-<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processItem</code> calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>.</div>
+<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem core</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall core (processItem delegates)</span></div>
   <pre class="code"><span class="cm">// 1) fill this question's input into the prompt's variable blanks → full messages</span>
 messages = replaceVariablesInPrompt(
   config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
@@ -7583,7 +7583,8 @@ traceSinkParams = {
   experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
 
 <span class="cm">// 3) call the LLM with the provider/model under test (result becomes this trace + run item)</span>
-modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+modelParams = { provider: config.provider, model: config.model,
+  adapter: config.validatedApiKey.adapter, ...config.model_params };</pre>
 </div>
 
 <table class="t">
@@ -7662,7 +7663,7 @@ modelParams = { provider: config.provider, model: config.model, ...config.model_
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processItem's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processLLMCall's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
   </details>
 </div>
 <div class="quiz">

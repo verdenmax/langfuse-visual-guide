@@ -347,18 +347,18 @@ _ZH35.append(r"""
 
 _ZH35.append(r"""
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
-<p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-runs.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
+<p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>建 run + 逐题执行</h4><p>新建一场 run（<code>createOrFetchDatasetRun</code>），对每道 item 用目标配置跑一次应用，产出一条 trace。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>建 run item（钉住版本）</h4><p>记下 run×item→traceId，并钉住该 item 的 <code>validFrom</code>（第34课）。镜像进 CH，快照题面。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>自动触发评估</h4><p>run item 落库发出 <code>dataset-run-item-upsert</code> 事件 → 第30课 createEvalJobs 给这条 trace 排评估工单。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>评分回流</h4><p>裁判 / 代码 / 人工（第29–32课）评出 score，经摄取链路挂回这条 trace。</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>按 run 聚合</h4><p><code>dataset-runs.ts</code> JOIN scores、按名求平均（<code>agg_scores_avg</code>），得「这场 run 平均分」——交给第36课对比。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>按 run 聚合</h4><p><code>dataset-run-items.ts</code> JOIN scores、按名求平均（<code>agg_scores_avg</code>），得「这场 run 平均分」——交给第36课对比。</p></div></div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-runs.ts</span><span class="ln">按 run 聚合分数</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-run-items.ts</span><span class="ln">按 run 聚合分数</span></div>
   <pre class="code"><span class="cm">// 每场 run 的平均分：JOIN scores、按 score 名求平均 → agg_scores_avg</span>
 <span class="kw">type</span> DatasetRunRecord = {
   agg_scores_avg: Array&lt;[string, number]&gt;;   <span class="cm">// 如 [["helpfulness", 0.82], ["toxicity", 0.03]]</span>
@@ -388,7 +388,7 @@ _ZH35.append(r"""
     <li><strong>run item = 三元链接的载体</strong>：<code>DatasetRunItems</code> 把 <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code> 钉在一起，自己不存输入输出——答案在它指向的 trace 里。这让 run/item/trace 三者解耦又可聚合。</li>
     <li><strong>run 的 trace 就是普通 trace</strong>：同样的观测树、同样能挂 score、同样走摄取链路——实验复用前 5 部分的全部能力，不是另起一套系统。</li>
     <li><strong>镜像到 CH 并反范式快照</strong>：<code>dataset_run_items_rmt</code>（ReplacingMergeTree）内联 run 字段 + <strong>快照题面 input/expectedOutput</strong>——既加速「按 run 聚合」，又让实验永远记得当时考的是什么（可复现加保险）。</li>
-    <li><strong>跑一场实验分数自动评出</strong>：建 run item 发 <code>dataset-run-item-upsert</code> 事件 → 第30课自动排评估 → 评分回流 → <code>dataset-runs.ts</code> JOIN scores 按名求平均（<code>agg_scores_avg</code>）得「这场总评」，交给第36课对比。</li>
+    <li><strong>跑一场实验分数自动评出</strong>：建 run item 发 <code>dataset-run-item-upsert</code> 事件 → 第30课自动排评估 → 评分回流 → <code>dataset-run-items.ts</code> JOIN scores 按名求平均（<code>agg_scores_avg</code>）得「这场总评」，交给第36课对比。</li>
   </ul>
 </div>
 """)
@@ -480,18 +480,18 @@ _EN35.append(r"""
 
 _EN35.append(r"""
 <h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
-<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-runs.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>create run item (pin the version)</h4><p>Record run×item→traceId, pinning the item's <code>validFrom</code> (L34). Mirror into CH, snapshot the question.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>auto-trigger evaluation</h4><p>Persisting the run item emits a <code>dataset-run-item-upsert</code> event → Lesson 30's createEvalJobs queues eval for this trace.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>scores flow back</h4><p>Judge / code / human (Lessons 29–32) produce scores, attached back to this trace via the ingestion path.</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-runs.ts</span><span class="ln">aggregate scores by run</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-run-items.ts</span><span class="ln">aggregate scores by run</span></div>
   <pre class="code"><span class="cm">// each run's average: JOIN scores, average by score name → agg_scores_avg</span>
 <span class="kw">type</span> DatasetRunRecord = {
   agg_scores_avg: Array&lt;[string, number]&gt;;   <span class="cm">// e.g. [["helpfulness", 0.82], ["toxicity", 0.03]]</span>
@@ -519,7 +519,7 @@ _EN35.append(r"""
     <li><strong>A run item = carrier of the three-way link</strong>: <code>DatasetRunItems</code> pins <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code>, storing no input/output—the answer is in the trace it points to. This keeps run/item/trace decoupled yet aggregatable.</li>
     <li><strong>A run's trace is an ordinary trace</strong>: same observation tree, same scores, same ingestion path—experiments reuse all of the first five parts, not a separate system.</li>
     <li><strong>Mirror to CH with a denormalized snapshot</strong>: <code>dataset_run_items_rmt</code> (ReplacingMergeTree) inlines run fields + <strong>snapshots question input/expectedOutput</strong>—both speeding "aggregate by run" and making an experiment forever remember what it tested (reproducibility, insured).</li>
-    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
+    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
   </ul>
 </div>
 """)
@@ -568,11 +568,11 @@ _ZH36.append(r"""
   <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">trace 还链接了被考的 prompt（第37课）、metadata 钉住 item 的 validFrom（第34/35课的版本回放）</text>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">环境标成 PromptExperiments —— 这正是第30课「langfuse- 前缀防无限循环」要识别的内部环境之一</text>
 </svg>
-<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processItem</code> 调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>。</div>
+<div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processLLMCall</code>（由 <code>processItem</code> 委派）调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>。</div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem 核心</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall 核心（processItem 委派）</span></div>
   <pre class="code"><span class="cm">// 1) 把这道题的 input 填进 prompt 的变量空格 → 完整 messages</span>
 messages = replaceVariablesInPrompt(
   config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
@@ -584,7 +584,8 @@ traceSinkParams = {
   experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
 
 <span class="cm">// 3) 用被考的 provider/model 调 LLM（结果写成这条 trace + run item）</span>
-modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+modelParams = { provider: config.provider, model: config.model,
+  adapter: config.validatedApiKey.adapter, ...config.model_params };</pre>
 </div>
 
 <table class="t">
@@ -690,11 +691,11 @@ _EN36.append(r"""
   <text x="360" y="192" text-anchor="middle" font-size="8" fill="var(--faint)">the trace also links the prompt under test (L37); metadata pins the item's validFrom (L34/35 version replay)</text>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
-<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processItem</code> calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:155-218,287</code>.</div>
+<div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processItem core</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall core (processItem delegates)</span></div>
   <pre class="code"><span class="cm">// 1) fill this question's input into the prompt's variable blanks → full messages</span>
 messages = replaceVariablesInPrompt(
   config.validatedPrompt, datasetItem.input, config.allVariables, config.placeholderNames);
@@ -706,7 +707,8 @@ traceSinkParams = {
   experimentContext: { …, itemVersion: convert...(datasetItem.validFrom), itemExpectedOutput } };
 
 <span class="cm">// 3) call the LLM with the provider/model under test (result becomes this trace + run item)</span>
-modelParams = { provider: config.provider, model: config.model, ...config.model_params };</pre>
+modelParams = { provider: config.provider, model: config.model,
+  adapter: config.validatedApiKey.adapter, ...config.model_params };</pre>
 </div>
 
 <table class="t">
