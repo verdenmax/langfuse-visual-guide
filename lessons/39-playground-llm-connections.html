@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>39 · Playground 与 LLM 连接 / Playground &amp; LLM connections - Langfuse 图解教程</title>
+<meta name="description" content="第七部分 · Prompt 与 Playground｜Playground 与 LLM 连接 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="39 · Playground 与 LLM 连接 / Playground &amp; LLM connections - Langfuse 图解教程">
+<meta property="og:description" content="第七部分 · Prompt 与 Playground｜Playground 与 LLM 连接 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="39 · Playground 与 LLM 连接 / Playground &amp; LLM connections - Langfuse 图解教程">
+<meta name="twitter:description" content="第七部分 · Prompt 与 Playground｜Playground 与 LLM 连接 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第七部分 · Prompt 与 Playground</span><span class="lang-en">Part 7 · Prompts &amp; Playground</span></span>
+    <span class="pill">39 / 39</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第七部分 · Prompt 与 Playground</span><span class="lang-en">Part 7 · Prompts &amp; Playground</span></div>
+    <h1><span class="lang-zh">Playground 与 LLM 连接</span><span class="lang-en">Playground &amp; LLM connections</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+这一课收尾 Part 7，也收尾整条「开发者工作流」弧线。<strong>Playground（游乐场）</strong>是你<strong>交互式试 prompt</strong> 的地方——敲几句消息、选个模型、点运行、看回复，满意了再去版本化（第 37 课）、跑实验（第 36 课）。但要让任何<strong>服务端 LLM 调用</strong>成真，背后得先有两样东西：一个<strong>安全存好的 LLM 连接</strong>（你的 provider 凭证），以及一批定义好的<strong>结构化输出 schema 与工具</strong>。
+这一课讲它们，重点落在一个绕不开的安全话题：provider 的 API key 是<strong>能花你真金白银</strong>的「皇冠明珠」，Langfuse 怎么把它<strong>加密</strong>着存、又在该用的那一刻安全地取出来用。你还会看到一个贯穿全书的收束：Playground、评估（第 29 课）、实验（第 36 课）<strong>共用同一套 LLM 调用引擎</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  Playground 像一台「<strong>驾驶模拟器 + 钥匙保险柜</strong>」。<strong>模拟器</strong>（playground）让你在正式上路（版本化、上线）之前反复<strong>试驾</strong>（试 prompt）——而且用的就是真车的<strong>同一台引擎</strong>（和评估、实验同一套 <code>fetchLLMCompletion</code>），所以模拟里跑顺了，上路也跑得顺。
+  可发动引擎得用<strong>钥匙</strong>（provider 的 API key）。这把钥匙太值钱了——谁拿到都能开你的车、花你的油钱，所以它被<strong>锁进保险柜</strong>（AES 加密存储）。平时柜子只在表面露出钥匙串<strong>末尾几位</strong>（<code>displaySecretKey</code>）供你辨认是哪把，<strong>真要发动的那一刻</strong>才把真钥匙取出来（解密）插进引擎。<strong>钥匙从不在外面裸放，只在点火的瞬间现身。</strong>
+</div>
+
+
+<h2>一台引擎，三个消费者</h2>
+<p>Playground 看着像个独立的小工具，底下却<strong>复用了和评估、实验完全相同的 LLM 调用核心</strong>——<code>fetchLLMCompletion</code>。它的 <code>chatCompletionHandler</code> 把你在界面上敲的消息、选的模型、配的 <code>tools</code> 和 <code>structuredOutputSchema</code> 一并交给这个核心。于是第 29 课的裁判、第 36 课的实验、和这里的 Playground，本质上是<strong>同一台引擎的三个消费者</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="一台 LLM 引擎三个消费者：Playground 的交互试验、第29课的 LLM 裁判、第36课的 prompt 实验，都调用同一个 fetchLLMCompletion 核心，再由它带着解密后的凭证去调各家 provider">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">同一套 fetchLLMCompletion，被三处共用</text>
+  <rect x="30" y="44" width="180" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="120" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Playground（本课）</text><text x="120" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">交互试 prompt</text>
+  <rect x="30" y="92" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">LLM 裁判（第29课）</text><text x="120" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">结构化输出评分</text>
+  <rect x="30" y="140" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="158" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">prompt 实验（第36课）</text><text x="120" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">逐题跑 prompt</text>
+  <rect x="290" y="84" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="106" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion</text><text x="375" y="124" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">统一的 LLM 调用核心</text>
+  <rect x="540" y="60" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="81" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">OpenAI</text>
+  <rect x="540" y="100" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="121" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">Anthropic</text>
+  <rect x="540" y="140" width="150" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="161" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--muted)">…（按 adapter）</text>
+  <line x1="210" y1="64" x2="288" y2="100" stroke="var(--accent)" stroke-width="1.4"/><polygon points="288,100 279,96 280,104" fill="var(--accent)"/>
+  <line x1="210" y1="112" x2="288" y2="112" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,112 279,108 279,116" fill="var(--blue)"/>
+  <line x1="210" y1="160" x2="288" y2="124" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,124 280,128 279,120" fill="var(--blue)"/>
+  <line x1="460" y1="104" x2="538" y2="80" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="112" x2="538" y2="116" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="120" x2="538" y2="152" stroke="var(--faint)" stroke-width="1.2"/>
+  <text x="360" y="198" text-anchor="middle" font-size="8" fill="var(--faint)">一台引擎统一封装：凭证解密、provider 适配、结构化输出、工具调用、流式——三处复用，不重复造轮子</text>
+</svg>
+<div class="figcap"><b>一个核心，三处复用</b>：<code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> 直接调 <code>fetchLLMCompletion</code>，传入 <code>tools</code> 与 <code>structuredOutputSchema</code>。这与第 29 课裁判的 <code>callLLM</code>、第 36 课实验的模型调用，<b>底层是同一台引擎</b>——凭证解密、provider 适配都只写一遍。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/playground/server/chatCompletionHandler.ts</span><span class="ln">Playground 调同一核心</span></div>
+  <pre class="code"><span class="kw">import</span> { fetchLLMCompletion } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;   <span class="cm">// 和评估/实验同一个</span>
+
+<span class="kw">const</span> fetchLLMCompletionParams = { messages, modelParams, <span class="cm">/* 你在界面配的 */</span>
+  tools,                  <span class="cm">// 来自 LlmTool（函数调用定义）</span>
+  structuredOutputSchema  <span class="cm">// 来自 LlmSchema（结构化输出，呼应第29课）</span>
+};
+<span class="kw">if</span> (structuredOutputSchema) {
+  <span class="kw">const</span> result = <span class="kw">await</span> fetchLLMCompletion({ ...fetchLLMCompletionParams, structuredOutputSchema });
+}
+<span class="cm">// Playground 不过是这台引擎的「交互式前台」——同一引擎，换个用法</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>消费者</th><th>它把什么交给引擎</th><th>典型用途</th></tr></thead>
+  <tbody>
+    <tr><td><b>Playground</b>（本课）</td><td>你界面上敲的 messages + 选的模型 + tools/schema</td><td>交互试 prompt，发布前手动验证</td></tr>
+    <tr><td><b>LLM 裁判</b>（第29课）</td><td>编译后的评分 prompt + 结构化输出 schema</td><td>自动给 trace 打分（source=EVAL）</td></tr>
+    <tr><td><b>prompt 实验</b>（第36课）</td><td>填好变量的 prompt + 被考的 provider/model</td><td>逐题跑出一场 run 供对比</td></tr>
+  </tbody>
+</table>
+<p>三者要解决的业务问题各不相同，但「怎么调一个 LLM」这件苦活——选 adapter、解密凭证、拼请求、收流式、要结构化——<strong>都压进同一个 <code>fetchLLMCompletion</code></strong>。这就是好抽象的标志：上层千变万化，底座岿然不动。</p>
+
+
+<h2>皇冠明珠：API key 的加密存储</h2>
+<p>要调任何 provider，都得带上它的 API key。这把 key 是<strong>能直接花你钱、动你账号</strong>的最高敏感数据，绝不能明文躺在数据库里。Langfuse 的 <code>LlmApiKeys</code> 表把它<strong>加密</strong>存进 <code>secretKey</code> 字段，加密用的是 <strong>AES-256-GCM</strong>——一种<strong>认证加密</strong>：既保密、又能用一个 <strong>authTag</strong> 检测密文有没有被篡改。同时另存一个<strong>脱敏</strong>的 <code>displaySecretKey</code>（只露末尾几位）专供 UI 展示，让你认得出是哪把钥匙，却看不到全貌。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="API key 加密存储：明文 key 经 AES-256-GCM 加密（随机 IV + 256 位密钥），产出 iv:密文:authTag 存进 secretKey 字段；另存脱敏 displaySecretKey 供 UI 展示；真正调用 provider 前的那一刻才 decrypt 还原明文">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">明文只在「存」和「用」的瞬间存在，库里永远是密文</text>
+  <rect x="30" y="48" width="140" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="100" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">明文 API key</text><text x="100" y="83" text-anchor="middle" font-size="6.6" fill="var(--muted)">sk-abc...xyz</text>
+  <rect x="230" y="40" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">AES-256-GCM 加密</text><text x="315" y="77" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">随机 IV（每次不同）</text><text x="315" y="90" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ authTag 防篡改</text>
+  <rect x="460" y="40" width="230" height="60" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="575" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">secretKey（库里只存这个）</text><text x="575" y="75" text-anchor="middle" font-size="6.4" fill="var(--muted)">iv : 密文 : authTag（全 hex）</text><text x="575" y="90" text-anchor="middle" font-size="6.4" fill="var(--muted)">看不懂、改不了、对不上就拒绝</text>
+  <rect x="230" y="120" width="170" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">displaySecretKey</text><text x="315" y="152" text-anchor="middle" font-size="6.4" fill="var(--muted)">脱敏：sk-…xyz（供 UI 认）</text>
+  <rect x="460" y="120" width="230" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="575" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">用时才 decrypt</text><text x="575" y="152" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">调 provider 前一刻还原明文，用完即弃</text>
+  <line x1="170" y1="70" x2="228" y2="70" stroke="var(--accent)" stroke-width="1.5"/><polygon points="228,70 219,66 219,74" fill="var(--accent)"/>
+  <line x1="400" y1="70" x2="458" y2="70" stroke="var(--teal)" stroke-width="1.5"/><polygon points="458,70 449,66 449,74" fill="var(--teal)"/>
+  <line x1="100" y1="92" x2="100" y2="140" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/><line x1="100" y1="140" x2="228" y2="140" stroke="var(--blue)" stroke-width="1.2"/><polygon points="228,140 219,136 219,144" fill="var(--blue)"/>
+  <line x1="575" y1="100" x2="575" y2="118" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"/><polygon points="575,120 571,111 579,111" fill="var(--accent)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">数据库被脱库也只拿到密文；没有 ENCRYPTION_KEY（独立保管），密文就是一堆乱码</text>
+</svg>
+<div class="figcap"><b>认证加密 + 脱敏展示 + 即用即解</b>：<code>encrypt()</code>（<code>encryption.ts:18-35</code>）用 AES-256-GCM，每次生成随机 12 字节 IV，输出 <code>iv:encrypted:authTag</code>。<code>secretKey</code> 存密文、<code>displaySecretKey</code> 存脱敏串（<code>schema.prisma:299</code> LlmApiKeys）。<code>ENCRYPTION_KEY</code> 是 256 位、独立于库保管。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/encryption/encryption.ts:18-35</span><span class="ln">AES-256-GCM 加密</span></div>
+  <pre class="code"><span class="kw">export function</span> <span class="fn">encrypt</span>(plainText: string): string {
+  <span class="kw">const</span> iv = crypto.randomBytes(<span class="st">12</span>);                       <span class="cm">// 每次随机 IV → 同明文每次密文都不同</span>
+  <span class="kw">const</span> cipher = crypto.createCipheriv(<span class="st">"aes-256-gcm"</span>,
+    Buffer.from(ENCRYPTION_KEY, <span class="st">"hex"</span>), iv);              <span class="cm">// 256 位密钥，独立于数据库保管</span>
+  <span class="kw">let</span> encrypted = cipher.update(plainText, <span class="st">"utf8"</span>, <span class="st">"hex"</span>) + cipher.final(<span class="st">"hex"</span>);
+  <span class="kw">const</span> authTag = cipher.getAuthTag();                     <span class="cm">// GCM 认证标签 → 解密时校验，篡改即报错</span>
+  <span class="kw">return</span> iv.toString(<span class="st">"hex"</span>) + <span class="st">":"</span> + encrypted + <span class="st">":"</span> + authTag.toString(<span class="st">"hex"</span>);
+}
+<span class="cm">// 存进 LlmApiKeys.secretKey；调 provider 前一刻才 decrypt（fetchLLMCompletion 内）</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>在哪</th><th>key 以什么形态出现</th><th>谁能看到</th></tr></thead>
+  <tbody>
+    <tr><td>数据库（<code>secretKey</code>）</td><td><b>密文</b> iv:密文:authTag</td><td>脱库者只拿到乱码（无 ENCRYPTION_KEY 解不开）</td></tr>
+    <tr><td>UI（<code>displaySecretKey</code>）</td><td><b>脱敏串</b> sk-…xyz</td><td>你能认出是哪把，但看不到全貌</td></tr>
+    <tr><td>调 provider 前一刻</td><td><b>明文</b>（瞬时）</td><td>仅内存里短暂存在，用完即弃</td></tr>
+  </tbody>
+</table>
+<p>一把 key、三种形态，各就各位：<strong>静态存储只见密文、人看只见脱敏、明文只在点火的一瞬现身</strong>。把「明文的暴露面」压到几乎为零，正是凭证管理的核心纪律。</p>
+
+
+<h2>可复用的积木：结构化 schema 与工具</h2>
+<p>除了凭证，现代 LLM 调用还常带两样东西：<strong>结构化输出 schema</strong>（要求模型按固定 JSON 形状返回，第 29 课裁判正靠它）和<strong>工具/函数定义</strong>（让模型能「调用」外部能力）。Langfuse 把它们也建成可复用的实体——<code>LlmSchema</code> 和 <code>LlmTool</code>，于是你在 Playground 里定义一次，评估、实验里都能直接拿来用。</p>
+
+<div class="cols">
+  <div class="col"><h4>LlmSchema · 结构化输出</h4><p>定义模型必须遵守的 JSON 形状（如 <code>{score, reasoning}</code>）。这正是第 29 课裁判能稳定返回「分数+理由」的底层依赖——同一套 schema 机制，被裁判与 Playground 共用。</p></div>
+  <div class="col"><h4>LlmTool · 函数/工具</h4><p>定义模型可调用的工具签名（名字、参数 schema）。让模型在 Playground 里就能演示「函数调用」式的 agent 行为，定义沉淀下来供别处复用。</p></div>
+  <div class="col"><h4>LlmApiKeys · 连接</h4><p>加密保管的 provider 凭证 + <code>adapter</code>（抽象 openai/anthropic 等接口）+ 可选 <code>baseURL</code>（接自建/代理端点）。三处 LLM 调用的共同底座。</p></div>
+</div>
+
+<p>这三块积木——连接、schema、工具——加上统一的 <code>fetchLLMCompletion</code> 引擎，构成了 Langfuse 里<strong>一切服务端 LLM 调用的公共底座</strong>。到这里，Part 7（乃至前七部分的「开发者工作流」主线）合拢成一个闭环：在 <strong>Playground</strong> 里交互地试 prompt → 满意了<strong>版本化</strong>（第 37 课）→ 拉进数据集<strong>跑实验</strong>对比（第 36 课）→ 用 <strong>label</strong> 安全发布（第 37 课）→ 上线后被<strong>观测</strong>（第一~四部分）、<strong>评估</strong>（第五部分）、必要时<strong>告警</strong>（第 33 课）。一个完整的、有数据支撑、可安全迭代的 LLM 工程生命周期，至此严丝合缝。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么用 AES-256-GCM 这种「认证加密」，而不是普通的对称加密？</strong> 因为对 API key 这种数据，<strong>光保密还不够，还要防篡改</strong>。普通加密（如 AES-CBC）能保证「别人看不懂密文」，但<strong>挡不住有人偷偷改几个字节</strong>——改完你解密出来可能是另一串看似合法的乱码，悄无声息地出错。GCM 模式在加密的同时算一个 <strong>authTag（认证标签）</strong>，解密时一并校验：密文哪怕被动一个比特，校验就失败、直接拒绝。于是你得到的不只是「保密」，还有「<strong>完整性保证</strong>」——拿到的明文要么和当初存的<strong>一模一样</strong>、要么干脆报错，绝不会是被悄悄篡改过的版本。对凭证这种「错一点就酿大祸」的数据，认证加密是底线。<br><br>
+  <strong>为什么每次加密都用一个随机 IV，还要单存一个脱敏的 displaySecretKey？</strong> 随机 <strong>IV（初始向量）</strong>解决的是「<strong>同样的明文，每次加密出来的密文都不同</strong>」——否则两个一样的 key 会有一样的密文，攻击者一眼就能看出「这俩用了同一把钥匙」，泄露信息。每次换随机 IV，让密文彻底无规律可循。而 <code>displaySecretKey</code> 则解决一个很实际的体验问题：你在 UI 上得能<strong>认出</strong>「这是哪把 key」，但又<strong>不该</strong>为了显示就把整把 key 解密暴露。于是单存一个脱敏串（只露末尾几位），<strong>展示用脱敏版、调用才解密真版</strong>——安全与可用，两头都顾上了。这套「明文只在存入和点火的瞬间存在、其余时间只见密文与脱敏」的纪律，正是处理一切敏感凭证的范式。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>Playground = 同一引擎的交互式前台</strong>：<code>chatCompletionHandler</code> 复用和评估（第29课）、实验（第36课）完全相同的 <code>fetchLLMCompletion</code> 核心——一台引擎，三个消费者，凭证解密/provider 适配只写一遍。</li>
+    <li><strong>API key 加密存储</strong>：<code>LlmApiKeys.secretKey</code> 用 <strong>AES-256-GCM</strong>（认证加密）存密文，<code>displaySecretKey</code> 存脱敏串供 UI，<code>adapter</code> 抽象 provider 接口、<code>baseURL</code> 接自建端点。</li>
+    <li><strong>认证加密防篡改</strong>：GCM 的 <code>authTag</code> 让解密时能检出密文是否被动过——保密之外再加「完整性保证」，对凭证这种数据是底线。</li>
+    <li><strong>随机 IV + 即用即解</strong>：每次随机 IV 让同明文密文各异、不泄露信息；明文只在「存入」与「调用前一刻」短暂存在，库里和 UI 上永远只见密文 / 脱敏串。</li>
+    <li><strong>可复用积木 + 闭环</strong>：<code>LlmSchema</code>（结构化输出，呼应第29课）、<code>LlmTool</code>（函数调用）一次定义处处复用。Playground→版本化→实验→label 发布→观测/评估/告警，开发者工作流至此合拢成完整闭环。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 Playground、LLM 裁判（第29课）、prompt 实验（第36课）三者在底层有什么关系？</div>
+  <ol class="opts">
+    <li>三者各有独立的 LLM 调用实现</li>
+    <li>三者共用同一个 fetchLLMCompletion 核心——一台引擎、三个消费者；凭证解密、provider 适配、结构化输出、工具调用都只写一遍</li>
+    <li>Playground 只能调 OpenAI</li>
+    <li>实验不调真实 LLM</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。playground 的 chatCompletionHandler 直接 import 并调用 fetchLLMCompletion，传 tools 和 structuredOutputSchema——和第29课裁判的 callLLM、第36课实验的模型调用是同一台引擎。Playground 不过是这台引擎的「交互式前台」。一处封装、三处复用，避免重复造轮子，也保证三处行为一致。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse 用 AES-256-GCM（而非普通对称加密）来加密 provider 的 API key。GCM 模式的 authTag 在这里起什么独特作用？</div>
+  <ol class="opts">
+    <li>防篡改/完整性保证：解密时校验 authTag，密文哪怕被改一个比特都会校验失败、直接拒绝——保证拿到的明文要么和当初存的一模一样、要么报错，绝不是被悄悄改过的版本</li>
+    <li>允许多人共享密钥</li>
+    <li>压缩密文体积</li>
+    <li>让加密更快</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。对 API key 这种数据，光保密不够、还要防篡改。普通加密（如 AES-CBC）挡不住有人偷改几字节、解出另一串看似合法的乱码而悄悄出错。GCM 在加密时算 authTag，解密一并校验：密文动一个比特就失败。于是你得到「完整性保证」——明文要么和存入时一模一样、要么直接报错。对凭证这种错一点就酿大祸的数据，认证加密是底线。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. LlmApiKeys 表既存加密的 secretKey，又单独存一个脱敏的 displaySecretKey（如 sk-…xyz）。为什么要多存这个脱敏串？</div>
+  <ol class="opts">
+    <li>脱敏串是加密的备份</li>
+    <li>为了在 UI 上能认出「这是哪把 key」，又不必为了显示就解密暴露整把 key——展示用脱敏版、调用才解密真版，安全与可用两头兼顾</li>
+    <li>脱敏串才是真正调用用的</li>
+    <li>用来加速解密</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。这是「明文只在存入和点火瞬间存在」纪律下的实用设计：你在 UI 上得能认出是哪把 key，但不该为了显示就把整把 key 解密暴露。于是单存一个只露末尾几位的脱敏串供展示，真正调 provider 前一刻才 decrypt 出 secretKey 的明文、用完即弃。展示脱敏、调用解密——安全与体验都照顾到。这套纪律是处理一切敏感凭证的范式。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>Part 7 到此，整条「开发者工作流」闭环合拢：Playground 试 → 版本化 → 实验对比 → label 发布 → 观测/评估/告警。回顾这条闭环，它和你熟悉的「软件开发生命周期」（写代码→测试→CI→发布→监控）有哪些惊人相似、又有哪些因为 LLM 的「不确定性」而独有的环节？如果让你给团队推广这套 prompt 工程流程，最难落地的是哪一步，为什么？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+This lesson caps Part 7 and the whole "developer workflow" arc. The <strong>Playground</strong> is where you <strong>interactively test a prompt</strong>—type a few messages, pick a model, hit run, see the response, and once satisfied, go version it (Lesson 37) and run an experiment (Lesson 36). But for any <strong>server-side LLM call</strong> to happen, two things must exist behind the scenes: a <strong>safely stored LLM connection</strong> (your provider credentials), and a set of defined <strong>structured-output schemas and tools</strong>.
+This lesson covers them, focusing on an unavoidable security topic: a provider's API key is a "crown jewel" that can <strong>spend your real money</strong>, so how does Langfuse store it <strong>encrypted</strong> and safely retrieve it at the moment of use. You'll also see a guide-wide convergence: the Playground, evaluation (Lesson 29), and experiments (Lesson 36) <strong>share one LLM-call engine</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  The Playground is like a "<strong>driving simulator + key safe</strong>". The <strong>simulator</strong> (playground) lets you <strong>test-drive</strong> (test a prompt) repeatedly before going on the road (versioning, shipping)—and it uses the real car's <strong>same engine</strong> (the same <code>fetchLLMCompletion</code> as evals and experiments), so what runs smoothly in the sim runs smoothly on the road.
+  But starting the engine needs a <strong>key</strong> (the provider's API key). This key is too valuable—anyone holding it can drive your car and burn your fuel—so it's <strong>locked in a safe</strong> (AES-encrypted storage). The safe normally exposes only the key ring's <strong>last few digits</strong> (<code>displaySecretKey</code>) so you can tell which key it is, and only at the <strong>moment of ignition</strong> is the real key taken out (decrypted) and put into the engine. <strong>The key is never left bare outside—it appears only in the instant of ignition.</strong>
+</div>
+
+
+<h2>One engine, three consumers</h2>
+<p>The Playground looks like a standalone little tool, but underneath it <strong>reuses the exact same LLM-call core as evals and experiments</strong>—<code>fetchLLMCompletion</code>. Its <code>chatCompletionHandler</code> hands the messages you typed, the model you picked, and the <code>tools</code> and <code>structuredOutputSchema</code> you configured to this core. So Lesson 29's judge, Lesson 36's experiment, and the Playground here are essentially <strong>three consumers of one engine</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="One LLM engine, three consumers: the Playground's interactive testing, Lesson 29's LLM judge, and Lesson 36's prompt experiment all call the same fetchLLMCompletion core, which then carries the decrypted credentials to call each provider">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one fetchLLMCompletion, shared by three</text>
+  <rect x="30" y="44" width="180" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="120" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Playground (this lesson)</text><text x="120" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">interactive prompt testing</text>
+  <rect x="30" y="92" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">LLM judge (Lesson 29)</text><text x="120" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">structured-output scoring</text>
+  <rect x="30" y="140" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="158" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">prompt experiment (L36)</text><text x="120" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">run a prompt per question</text>
+  <rect x="290" y="84" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="106" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion</text><text x="375" y="124" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">the unified LLM-call core</text>
+  <rect x="540" y="60" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="81" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">OpenAI</text>
+  <rect x="540" y="100" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="121" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">Anthropic</text>
+  <rect x="540" y="140" width="150" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="161" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--muted)">… (by adapter)</text>
+  <line x1="210" y1="64" x2="288" y2="100" stroke="var(--accent)" stroke-width="1.4"/><polygon points="288,100 279,96 280,104" fill="var(--accent)"/>
+  <line x1="210" y1="112" x2="288" y2="112" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,112 279,108 279,116" fill="var(--blue)"/>
+  <line x1="210" y1="160" x2="288" y2="124" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,124 280,128 279,120" fill="var(--blue)"/>
+  <line x1="460" y1="104" x2="538" y2="80" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="112" x2="538" y2="116" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="120" x2="538" y2="152" stroke="var(--faint)" stroke-width="1.2"/>
+  <text x="360" y="198" text-anchor="middle" font-size="8" fill="var(--faint)">one engine wraps it all: credential decryption, provider adaptation, structured output, tool calls, streaming—reused by three, no reinventing</text>
+</svg>
+<div class="figcap"><b>one core, three reuses</b>: <code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> directly calls <code>fetchLLMCompletion</code>, passing <code>tools</code> and <code>structuredOutputSchema</code>. This shares the <b>same engine</b> with Lesson 29's judge <code>callLLM</code> and Lesson 36's experiment model call—credential decryption and provider adaptation written once.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/playground/server/chatCompletionHandler.ts</span><span class="ln">Playground calls the same core</span></div>
+  <pre class="code"><span class="kw">import</span> { fetchLLMCompletion } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;   <span class="cm">// same as evals/experiments</span>
+
+<span class="kw">const</span> fetchLLMCompletionParams = { messages, modelParams, <span class="cm">/* configured in the UI */</span>
+  tools,                  <span class="cm">// from LlmTool (function-call definitions)</span>
+  structuredOutputSchema  <span class="cm">// from LlmSchema (structured output, echoing Lesson 29)</span>
+};
+<span class="kw">if</span> (structuredOutputSchema) {
+  <span class="kw">const</span> result = <span class="kw">await</span> fetchLLMCompletion({ ...fetchLLMCompletionParams, structuredOutputSchema });
+}
+<span class="cm">// the Playground is just this engine's "interactive front desk"—same engine, different use</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>consumer</th><th>what it hands the engine</th><th>typical use</th></tr></thead>
+  <tbody>
+    <tr><td><b>Playground</b> (this lesson)</td><td>messages you typed + model picked + tools/schema</td><td>interactive prompt testing, manual pre-release validation</td></tr>
+    <tr><td><b>LLM judge</b> (Lesson 29)</td><td>the compiled scoring prompt + structured-output schema</td><td>auto-scoring traces (source=EVAL)</td></tr>
+    <tr><td><b>prompt experiment</b> (Lesson 36)</td><td>the variable-filled prompt + the provider/model under test</td><td>run a run per question for comparison</td></tr>
+  </tbody>
+</table>
+<p>The three solve different business problems, but the grind of "how to call an LLM"—picking the adapter, decrypting credentials, assembling the request, receiving streams, demanding structure—is <strong>all pressed into one <code>fetchLLMCompletion</code></strong>. That's the mark of a good abstraction: the upper layers vary endlessly, the foundation stands firm.</p>
+
+
+<h2>The crown jewel: encrypted storage of the API key</h2>
+<p>To call any provider you must carry its API key. This key is the most sensitive data—it can <strong>directly spend your money and act on your account</strong>—and must never sit in plaintext in the database. Langfuse's <code>LlmApiKeys</code> table stores it <strong>encrypted</strong> in the <code>secretKey</code> field, using <strong>AES-256-GCM</strong>—an <strong>authenticated encryption</strong>: both confidential, and able to detect tampering via an <strong>authTag</strong>. It separately stores a <strong>masked</strong> <code>displaySecretKey</code> (only the last few digits) for the UI, so you can tell which key it is without seeing the whole thing.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="API key encrypted storage: a plaintext key is encrypted with AES-256-GCM (random IV + 256-bit key), producing iv:ciphertext:authTag stored in the secretKey field; a masked displaySecretKey is stored for the UI; only at the moment before calling the provider is it decrypted back to plaintext">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">plaintext exists only at "store" and "use"; the DB always holds ciphertext</text>
+  <rect x="30" y="48" width="140" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="100" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">plaintext API key</text><text x="100" y="83" text-anchor="middle" font-size="6.6" fill="var(--muted)">sk-abc...xyz</text>
+  <rect x="230" y="40" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">AES-256-GCM encrypt</text><text x="315" y="77" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">random IV (different each time)</text><text x="315" y="90" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ authTag anti-tamper</text>
+  <rect x="460" y="40" width="230" height="60" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="575" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">secretKey (only this in the DB)</text><text x="575" y="75" text-anchor="middle" font-size="6.2" fill="var(--muted)">iv : ciphertext : authTag (all hex)</text><text x="575" y="90" text-anchor="middle" font-size="6.2" fill="var(--muted)">unreadable, unchangeable, rejected if mismatched</text>
+  <rect x="230" y="120" width="170" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">displaySecretKey</text><text x="315" y="152" text-anchor="middle" font-size="6.2" fill="var(--muted)">masked: sk-…xyz (for the UI)</text>
+  <rect x="460" y="120" width="230" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="575" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">decrypt only when used</text><text x="575" y="152" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">restore plaintext just before calling the provider, discard after</text>
+  <line x1="170" y1="70" x2="228" y2="70" stroke="var(--accent)" stroke-width="1.5"/><polygon points="228,70 219,66 219,74" fill="var(--accent)"/>
+  <line x1="400" y1="70" x2="458" y2="70" stroke="var(--teal)" stroke-width="1.5"/><polygon points="458,70 449,66 449,74" fill="var(--teal)"/>
+  <line x1="100" y1="92" x2="100" y2="140" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/><line x1="100" y1="140" x2="228" y2="140" stroke="var(--blue)" stroke-width="1.2"/><polygon points="228,140 219,136 219,144" fill="var(--blue)"/>
+  <line x1="575" y1="100" x2="575" y2="118" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"/><polygon points="575,120 571,111 579,111" fill="var(--accent)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">a DB breach yields only ciphertext; without ENCRYPTION_KEY (kept separately), the ciphertext is gibberish</text>
+</svg>
+<div class="figcap"><b>authenticated encryption + masked display + decrypt-on-use</b>: <code>encrypt()</code> (<code>encryption.ts:18-35</code>) uses AES-256-GCM, generating a random 12-byte IV each time, outputting <code>iv:encrypted:authTag</code>. <code>secretKey</code> stores ciphertext, <code>displaySecretKey</code> a masked string (<code>schema.prisma:299</code> LlmApiKeys). <code>ENCRYPTION_KEY</code> is 256-bit, kept separately from the DB.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/encryption/encryption.ts:18-35</span><span class="ln">AES-256-GCM encrypt</span></div>
+  <pre class="code"><span class="kw">export function</span> <span class="fn">encrypt</span>(plainText: string): string {
+  <span class="kw">const</span> iv = crypto.randomBytes(<span class="st">12</span>);                       <span class="cm">// random IV each time → same plaintext, different ciphertext</span>
+  <span class="kw">const</span> cipher = crypto.createCipheriv(<span class="st">"aes-256-gcm"</span>,
+    Buffer.from(ENCRYPTION_KEY, <span class="st">"hex"</span>), iv);              <span class="cm">// 256-bit key, kept separately from the DB</span>
+  <span class="kw">let</span> encrypted = cipher.update(plainText, <span class="st">"utf8"</span>, <span class="st">"hex"</span>) + cipher.final(<span class="st">"hex"</span>);
+  <span class="kw">const</span> authTag = cipher.getAuthTag();                     <span class="cm">// GCM auth tag → verified on decrypt, errors on tampering</span>
+  <span class="kw">return</span> iv.toString(<span class="st">"hex"</span>) + <span class="st">":"</span> + encrypted + <span class="st">":"</span> + authTag.toString(<span class="st">"hex"</span>);
+}
+<span class="cm">// stored in LlmApiKeys.secretKey; decrypted only just before calling the provider (inside fetchLLMCompletion)</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>where</th><th>what form the key takes</th><th>who can see it</th></tr></thead>
+  <tbody>
+    <tr><td>database (<code>secretKey</code>)</td><td><b>ciphertext</b> iv:ciphertext:authTag</td><td>a breach yields gibberish (can't decrypt without ENCRYPTION_KEY)</td></tr>
+    <tr><td>UI (<code>displaySecretKey</code>)</td><td><b>masked string</b> sk-…xyz</td><td>you can recognize which key, but not see the whole</td></tr>
+    <tr><td>just before calling the provider</td><td><b>plaintext</b> (momentary)</td><td>exists briefly in memory only, discarded after</td></tr>
+  </tbody>
+</table>
+<p>One key, three forms, each in its place: <strong>at rest only ciphertext, to a human only a mask, plaintext appearing only in the instant of ignition</strong>. Squeezing "the exposure surface of plaintext" to nearly zero is the core discipline of credential management.</p>
+
+
+<h2>Reusable building blocks: structured schemas and tools</h2>
+<p>Besides credentials, modern LLM calls often carry two things: a <strong>structured-output schema</strong> (requiring the model to return a fixed JSON shape, which Lesson 29's judge relies on) and <strong>tool/function definitions</strong> (letting the model "call" external capabilities). Langfuse models these as reusable entities too—<code>LlmSchema</code> and <code>LlmTool</code>—so you define them once in the Playground and reuse them in evals and experiments.</p>
+
+<div class="cols">
+  <div class="col"><h4>LlmSchema · structured output</h4><p>Defines the JSON shape the model must obey (e.g. <code>{score, reasoning}</code>). This is the underlying dependency that lets Lesson 29's judge reliably return "score + reasoning"—the same schema mechanism shared by the judge and the Playground.</p></div>
+  <div class="col"><h4>LlmTool · function/tool</h4><p>Defines tool signatures the model can call (name, parameter schema). It lets the model demonstrate "function-calling" agent behavior right in the Playground, with the definition saved for reuse elsewhere.</p></div>
+  <div class="col"><h4>LlmApiKeys · connection</h4><p>Encrypted provider credentials + <code>adapter</code> (abstracting the openai/anthropic/etc. interface) + optional <code>baseURL</code> (for self-hosted/proxy endpoints). The common base for all three LLM-call sites.</p></div>
+</div>
+
+<p>These three blocks—connection, schema, tool—plus the unified <code>fetchLLMCompletion</code> engine, form the <strong>common foundation for every server-side LLM call</strong> in Langfuse. Here Part 7 (and indeed the first seven parts' "developer workflow" through-line) closes into a loop: interactively test a prompt in the <strong>Playground</strong> → version it (Lesson 37) once satisfied → pull it into a dataset to <strong>run experiments</strong> and compare (Lesson 36) → release safely via a <strong>label</strong> (Lesson 37) → after shipping, get <strong>observed</strong> (Parts 1–4), <strong>evaluated</strong> (Part 5), and <strong>alerted</strong> when needed (Lesson 33). A complete, data-backed, safely-iterable LLM engineering lifecycle, sealed tight.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why use "authenticated encryption" like AES-256-GCM rather than plain symmetric encryption?</strong> Because for data like an API key, <strong>confidentiality alone isn't enough—you also need anti-tampering</strong>. Plain encryption (e.g. AES-CBC) guarantees "others can't read the ciphertext", but <strong>can't stop someone quietly altering a few bytes</strong>—after which you might decrypt to another seemingly-valid garbage string, failing silently. GCM mode computes an <strong>authTag (authentication tag)</strong> alongside encryption, verified on decrypt: flip even one bit of the ciphertext and verification fails, rejecting it outright. So you get not just "confidentiality" but "<strong>integrity guarantee</strong>"—the plaintext you get is either <strong>exactly</strong> what was stored, or an outright error, never a silently-tampered version. For credentials, where "a small error brews a big disaster", authenticated encryption is the floor.<br><br>
+  <strong>Why a random IV per encryption, and why also store a masked displaySecretKey?</strong> The random <strong>IV (initialization vector)</strong> solves "<strong>the same plaintext encrypts to different ciphertext each time</strong>"—otherwise two identical keys would have identical ciphertext, and an attacker could instantly see "these two use the same key", leaking information. A fresh random IV makes ciphertext patternless. The <code>displaySecretKey</code> solves a very practical UX problem: in the UI you must <strong>recognize</strong> "which key this is", yet you <strong>shouldn't</strong> decrypt and expose the whole key just to display it. So a masked string (last few digits only) is stored separately—<strong>display the masked version, decrypt only to call</strong>—covering both security and usability. This discipline—"plaintext exists only in the instants of storing and igniting, the rest of the time only ciphertext and masks are seen"—is the paradigm for handling any sensitive credential.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Playground = the same engine's interactive front desk</strong>: <code>chatCompletionHandler</code> reuses the exact <code>fetchLLMCompletion</code> core as evals (L29) and experiments (L36)—one engine, three consumers, credential decryption/provider adaptation written once.</li>
+    <li><strong>API key encrypted storage</strong>: <code>LlmApiKeys.secretKey</code> stores ciphertext via <strong>AES-256-GCM</strong> (authenticated encryption), <code>displaySecretKey</code> a masked string for the UI, <code>adapter</code> abstracts the provider interface, <code>baseURL</code> hits self-hosted endpoints.</li>
+    <li><strong>Authenticated encryption is anti-tamper</strong>: GCM's <code>authTag</code> lets decryption detect whether the ciphertext was altered—integrity on top of confidentiality, the floor for credential data.</li>
+    <li><strong>Random IV + decrypt-on-use</strong>: a random IV per encryption makes identical plaintext differ in ciphertext, leaking nothing; plaintext exists only briefly at "store" and "just before call", with the DB and UI only ever seeing ciphertext / masks.</li>
+    <li><strong>Reusable blocks + the loop</strong>: <code>LlmSchema</code> (structured output, echoing L29), <code>LlmTool</code> (function calls) are defined once and reused everywhere. Playground→versioning→experiments→label release→observe/evaluate/alert—the developer workflow closes into a complete loop.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What's the underlying relationship among Langfuse's Playground, LLM judge (Lesson 29), and prompt experiment (Lesson 36)?</div>
+  <ol class="opts">
+    <li>each has its own independent LLM-call implementation</li>
+    <li>all three share the same fetchLLMCompletion core—one engine, three consumers; credential decryption, provider adaptation, structured output, tool calls all written once</li>
+    <li>the Playground can only call OpenAI</li>
+    <li>experiments don't call a real LLM</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The playground's chatCompletionHandler directly imports and calls fetchLLMCompletion, passing tools and structuredOutputSchema—the same engine as Lesson 29's judge callLLM and Lesson 36's experiment model call. The Playground is just this engine's 'interactive front desk'. One encapsulation, three reuses, avoiding reinvention and ensuring consistent behavior across all three.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse uses AES-256-GCM (not plain symmetric encryption) to encrypt a provider's API key. What unique role does GCM mode's authTag play here?</div>
+  <ol class="opts">
+    <li>anti-tamper / integrity guarantee: decryption verifies the authTag, so flipping even one bit of the ciphertext fails verification and is rejected—ensuring the plaintext is either exactly what was stored or an error, never a silently-altered version</li>
+    <li>lets multiple people share the key</li>
+    <li>compresses the ciphertext</li>
+    <li>makes encryption faster</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. For data like an API key, confidentiality alone isn't enough—you need anti-tampering. Plain encryption (e.g. AES-CBC) can't stop someone altering a few bytes and decrypting to another seemingly-valid garbage, failing silently. GCM computes an authTag during encryption, verified on decrypt: flip one bit and it fails. So you get an 'integrity guarantee'—plaintext is either exactly as stored or an outright error. For credentials where a small error brews disaster, authenticated encryption is the floor.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The LlmApiKeys table stores both the encrypted secretKey and a separate masked displaySecretKey (like sk-…xyz). Why store this masked string too?</div>
+  <ol class="opts">
+    <li>the masked string is a backup of the encryption</li>
+    <li>so the UI can recognize 'which key this is' without decrypting and exposing the whole key just to display it—show the masked version, decrypt only to call, covering both security and usability</li>
+    <li>the masked string is what's actually used to call</li>
+    <li>to speed up decryption</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. It's a practical design under the discipline 'plaintext exists only at storing and ignition': in the UI you must recognize which key it is, but shouldn't decrypt and expose the whole key just to display. So a masked string showing only the last few digits is stored for display, with secretKey's plaintext decrypted only just before calling the provider and discarded after. Show masked, decrypt to call—security and UX both covered. This discipline is the paradigm for any sensitive credential.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>By the end of Part 7, the whole 'developer workflow' loop closes: try in the Playground → version → experiment-compare → label release → observe/evaluate/alert. Reviewing this loop, how does it strikingly resemble the familiar 'software development lifecycle' (write code→test→CI→release→monitor), and which links are unique due to LLMs' 'non-determinism'? If you rolled out this prompt-engineering process to a team, which step would be hardest to adopt, and why?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="38-prompt-serving-caching.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">Prompt 服务与缓存</span><span class="lang-en">Prompt serving &amp; caching</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

@@ -2705,6 +2705,76 @@ QUIZZES = {
             },
         ],
     },
+    "39-playground-llm-connections.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 Playground、LLM 裁判（第29课）、prompt 实验（第36课）三者在底层有什么关系？",
+                    "en": "What's the underlying relationship among Langfuse's Playground, LLM judge (Lesson 29), and prompt experiment (Lesson 36)?",
+                },
+                "opts": [
+                    {
+                        "zh": "三者共用同一个 fetchLLMCompletion 核心——一台引擎、三个消费者；凭证解密、provider 适配、结构化输出、工具调用都只写一遍",
+                        "en": "all three share the same fetchLLMCompletion core—one engine, three consumers; credential decryption, provider adaptation, structured output, tool calls all written once",
+                    },
+                    {"zh": "三者各有独立的 LLM 调用实现", "en": "each has its own independent LLM-call implementation"},
+                    {"zh": "Playground 只能调 OpenAI", "en": "the Playground can only call OpenAI"},
+                    {"zh": "实验不调真实 LLM", "en": "experiments don't call a real LLM"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "playground 的 chatCompletionHandler 直接 import 并调用 fetchLLMCompletion，传 tools 和 structuredOutputSchema——和第29课裁判的 callLLM、第36课实验的模型调用是同一台引擎。Playground 不过是这台引擎的「交互式前台」。一处封装、三处复用，避免重复造轮子，也保证三处行为一致。",
+                    "en": "The playground's chatCompletionHandler directly imports and calls fetchLLMCompletion, passing tools and structuredOutputSchema—the same engine as Lesson 29's judge callLLM and Lesson 36's experiment model call. The Playground is just this engine's 'interactive front desk'. One encapsulation, three reuses, avoiding reinvention and ensuring consistent behavior across all three.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 用 AES-256-GCM（而非普通对称加密）来加密 provider 的 API key。GCM 模式的 authTag 在这里起什么独特作用？",
+                    "en": "Langfuse uses AES-256-GCM (not plain symmetric encryption) to encrypt a provider's API key. What unique role does GCM mode's authTag play here?",
+                },
+                "opts": [
+                    {
+                        "zh": "防篡改/完整性保证：解密时校验 authTag，密文哪怕被改一个比特都会校验失败、直接拒绝——保证拿到的明文要么和当初存的一模一样、要么报错，绝不是被悄悄改过的版本",
+                        "en": "anti-tamper / integrity guarantee: decryption verifies the authTag, so flipping even one bit of the ciphertext fails verification and is rejected—ensuring the plaintext is either exactly what was stored or an error, never a silently-altered version",
+                    },
+                    {"zh": "让加密更快", "en": "makes encryption faster"},
+                    {"zh": "压缩密文体积", "en": "compresses the ciphertext"},
+                    {"zh": "允许多人共享密钥", "en": "lets multiple people share the key"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "对 API key 这种数据，光保密不够、还要防篡改。普通加密（如 AES-CBC）挡不住有人偷改几字节、解出另一串看似合法的乱码而悄悄出错。GCM 在加密时算 authTag，解密一并校验：密文动一个比特就失败。于是你得到「完整性保证」——明文要么和存入时一模一样、要么直接报错。对凭证这种错一点就酿大祸的数据，认证加密是底线。",
+                    "en": "For data like an API key, confidentiality alone isn't enough—you need anti-tampering. Plain encryption (e.g. AES-CBC) can't stop someone altering a few bytes and decrypting to another seemingly-valid garbage, failing silently. GCM computes an authTag during encryption, verified on decrypt: flip one bit and it fails. So you get an 'integrity guarantee'—plaintext is either exactly as stored or an outright error. For credentials where a small error brews disaster, authenticated encryption is the floor.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "LlmApiKeys 表既存加密的 secretKey，又单独存一个脱敏的 displaySecretKey（如 sk-…xyz）。为什么要多存这个脱敏串？",
+                    "en": "The LlmApiKeys table stores both the encrypted secretKey and a separate masked displaySecretKey (like sk-…xyz). Why store this masked string too?",
+                },
+                "opts": [
+                    {
+                        "zh": "为了在 UI 上能认出「这是哪把 key」，又不必为了显示就解密暴露整把 key——展示用脱敏版、调用才解密真版，安全与可用两头兼顾",
+                        "en": "so the UI can recognize 'which key this is' without decrypting and exposing the whole key just to display it—show the masked version, decrypt only to call, covering both security and usability",
+                    },
+                    {"zh": "脱敏串是加密的备份", "en": "the masked string is a backup of the encryption"},
+                    {"zh": "用来加速解密", "en": "to speed up decryption"},
+                    {"zh": "脱敏串才是真正调用用的", "en": "the masked string is what's actually used to call"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是「明文只在存入和点火瞬间存在」纪律下的实用设计：你在 UI 上得能认出是哪把 key，但不该为了显示就把整把 key 解密暴露。于是单存一个只露末尾几位的脱敏串供展示，真正调 provider 前一刻才 decrypt 出 secretKey 的明文、用完即弃。展示脱敏、调用解密——安全与体验都照顾到。这套纪律是处理一切敏感凭证的范式。",
+                    "en": "It's a practical design under the discipline 'plaintext exists only at storing and ignition': in the UI you must recognize which key it is, but shouldn't decrypt and expose the whole key just to display. So a masked string showing only the last few digits is stored for display, with secretKey's plaintext decrypted only just before calling the provider and discarded after. Show masked, decrypt to call—security and UX both covered. This discipline is the paradigm for any sensitive credential.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Part 7 到此，整条「开发者工作流」闭环合拢：Playground 试 → 版本化 → 实验对比 → label 发布 → 观测/评估/告警。回顾这条闭环，它和你熟悉的「软件开发生命周期」（写代码→测试→CI→发布→监控）有哪些惊人相似、又有哪些因为 LLM 的「不确定性」而独有的环节？如果让你给团队推广这套 prompt 工程流程，最难落地的是哪一步，为什么？",
+                "en": "By the end of Part 7, the whole 'developer workflow' loop closes: try in the Playground → version → experiment-compare → label release → observe/evaluate/alert. Reviewing this loop, how does it strikingly resemble the familiar 'software development lifecycle' (write code→test→CI→release→monitor), and which links are unique due to LLMs' 'non-determinism'? If you rolled out this prompt-engineering process to a team, which step would be hardest to adopt, and why?",
+            },
+        ],
+    },
 }
 
 

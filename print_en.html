@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 38 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 39 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -375,6 +375,7 @@ details[open] > summary { list-style: none; }
   <li>Experiments & comparison</li>
   <li>Prompt management</li>
   <li>Prompt serving & caching</li>
+  <li>Playground & LLM connections</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8084,6 +8085,190 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>The epoch-invalidation move—'change the namespace, not delete keys'—is essentially 'trade space for correctness and simplicity'. Recall caching systems you've built or imagined: which invalidation scenarios gave you headaches (cascading invalidation, dependency tracking, thundering herd)? Could this epoch/version-namespace idea apply? How would you weigh its costs (memory, TTL choice, cold-start thundering herd)?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Playground & LLM connections</h1>
+
+<p class="lead">
+This lesson caps Part 7 and the whole "developer workflow" arc. The <strong>Playground</strong> is where you <strong>interactively test a prompt</strong>—type a few messages, pick a model, hit run, see the response, and once satisfied, go version it (Lesson 37) and run an experiment (Lesson 36). But for any <strong>server-side LLM call</strong> to happen, two things must exist behind the scenes: a <strong>safely stored LLM connection</strong> (your provider credentials), and a set of defined <strong>structured-output schemas and tools</strong>.
+This lesson covers them, focusing on an unavoidable security topic: a provider's API key is a "crown jewel" that can <strong>spend your real money</strong>, so how does Langfuse store it <strong>encrypted</strong> and safely retrieve it at the moment of use. You'll also see a guide-wide convergence: the Playground, evaluation (Lesson 29), and experiments (Lesson 36) <strong>share one LLM-call engine</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  The Playground is like a "<strong>driving simulator + key safe</strong>". The <strong>simulator</strong> (playground) lets you <strong>test-drive</strong> (test a prompt) repeatedly before going on the road (versioning, shipping)—and it uses the real car's <strong>same engine</strong> (the same <code>fetchLLMCompletion</code> as evals and experiments), so what runs smoothly in the sim runs smoothly on the road.
+  But starting the engine needs a <strong>key</strong> (the provider's API key). This key is too valuable—anyone holding it can drive your car and burn your fuel—so it's <strong>locked in a safe</strong> (AES-encrypted storage). The safe normally exposes only the key ring's <strong>last few digits</strong> (<code>displaySecretKey</code>) so you can tell which key it is, and only at the <strong>moment of ignition</strong> is the real key taken out (decrypted) and put into the engine. <strong>The key is never left bare outside—it appears only in the instant of ignition.</strong>
+</div>
+
+
+<h2>One engine, three consumers</h2>
+<p>The Playground looks like a standalone little tool, but underneath it <strong>reuses the exact same LLM-call core as evals and experiments</strong>—<code>fetchLLMCompletion</code>. Its <code>chatCompletionHandler</code> hands the messages you typed, the model you picked, and the <code>tools</code> and <code>structuredOutputSchema</code> you configured to this core. So Lesson 29's judge, Lesson 36's experiment, and the Playground here are essentially <strong>three consumers of one engine</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="One LLM engine, three consumers: the Playground's interactive testing, Lesson 29's LLM judge, and Lesson 36's prompt experiment all call the same fetchLLMCompletion core, which then carries the decrypted credentials to call each provider">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one fetchLLMCompletion, shared by three</text>
+  <rect x="30" y="44" width="180" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="120" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Playground (this lesson)</text><text x="120" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">interactive prompt testing</text>
+  <rect x="30" y="92" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">LLM judge (Lesson 29)</text><text x="120" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">structured-output scoring</text>
+  <rect x="30" y="140" width="180" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="120" y="158" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">prompt experiment (L36)</text><text x="120" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">run a prompt per question</text>
+  <rect x="290" y="84" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="106" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion</text><text x="375" y="124" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">the unified LLM-call core</text>
+  <rect x="540" y="60" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="81" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">OpenAI</text>
+  <rect x="540" y="100" width="150" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="121" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">Anthropic</text>
+  <rect x="540" y="140" width="150" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="161" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--muted)">… (by adapter)</text>
+  <line x1="210" y1="64" x2="288" y2="100" stroke="var(--accent)" stroke-width="1.4"/><polygon points="288,100 279,96 280,104" fill="var(--accent)"/>
+  <line x1="210" y1="112" x2="288" y2="112" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,112 279,108 279,116" fill="var(--blue)"/>
+  <line x1="210" y1="160" x2="288" y2="124" stroke="var(--blue)" stroke-width="1.4"/><polygon points="288,124 280,128 279,120" fill="var(--blue)"/>
+  <line x1="460" y1="104" x2="538" y2="80" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="112" x2="538" y2="116" stroke="var(--teal)" stroke-width="1.3"/><line x1="460" y1="120" x2="538" y2="152" stroke="var(--faint)" stroke-width="1.2"/>
+  <text x="360" y="198" text-anchor="middle" font-size="8" fill="var(--faint)">one engine wraps it all: credential decryption, provider adaptation, structured output, tool calls, streaming—reused by three, no reinventing</text>
+</svg>
+<div class="figcap"><b>one core, three reuses</b>: <code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> directly calls <code>fetchLLMCompletion</code>, passing <code>tools</code> and <code>structuredOutputSchema</code>. This shares the <b>same engine</b> with Lesson 29's judge <code>callLLM</code> and Lesson 36's experiment model call—credential decryption and provider adaptation written once.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/playground/server/chatCompletionHandler.ts</span><span class="ln">Playground calls the same core</span></div>
+  <pre class="code"><span class="kw">import</span> { fetchLLMCompletion } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;   <span class="cm">// same as evals/experiments</span>
+
+<span class="kw">const</span> fetchLLMCompletionParams = { messages, modelParams, <span class="cm">/* configured in the UI */</span>
+  tools,                  <span class="cm">// from LlmTool (function-call definitions)</span>
+  structuredOutputSchema  <span class="cm">// from LlmSchema (structured output, echoing Lesson 29)</span>
+};
+<span class="kw">if</span> (structuredOutputSchema) {
+  <span class="kw">const</span> result = <span class="kw">await</span> fetchLLMCompletion({ ...fetchLLMCompletionParams, structuredOutputSchema });
+}
+<span class="cm">// the Playground is just this engine's "interactive front desk"—same engine, different use</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>consumer</th><th>what it hands the engine</th><th>typical use</th></tr></thead>
+  <tbody>
+    <tr><td><b>Playground</b> (this lesson)</td><td>messages you typed + model picked + tools/schema</td><td>interactive prompt testing, manual pre-release validation</td></tr>
+    <tr><td><b>LLM judge</b> (Lesson 29)</td><td>the compiled scoring prompt + structured-output schema</td><td>auto-scoring traces (source=EVAL)</td></tr>
+    <tr><td><b>prompt experiment</b> (Lesson 36)</td><td>the variable-filled prompt + the provider/model under test</td><td>run a run per question for comparison</td></tr>
+  </tbody>
+</table>
+<p>The three solve different business problems, but the grind of "how to call an LLM"—picking the adapter, decrypting credentials, assembling the request, receiving streams, demanding structure—is <strong>all pressed into one <code>fetchLLMCompletion</code></strong>. That's the mark of a good abstraction: the upper layers vary endlessly, the foundation stands firm.</p>
+
+
+<h2>The crown jewel: encrypted storage of the API key</h2>
+<p>To call any provider you must carry its API key. This key is the most sensitive data—it can <strong>directly spend your money and act on your account</strong>—and must never sit in plaintext in the database. Langfuse's <code>LlmApiKeys</code> table stores it <strong>encrypted</strong> in the <code>secretKey</code> field, using <strong>AES-256-GCM</strong>—an <strong>authenticated encryption</strong>: both confidential, and able to detect tampering via an <strong>authTag</strong>. It separately stores a <strong>masked</strong> <code>displaySecretKey</code> (only the last few digits) for the UI, so you can tell which key it is without seeing the whole thing.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="API key encrypted storage: a plaintext key is encrypted with AES-256-GCM (random IV + 256-bit key), producing iv:ciphertext:authTag stored in the secretKey field; a masked displaySecretKey is stored for the UI; only at the moment before calling the provider is it decrypted back to plaintext">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">plaintext exists only at "store" and "use"; the DB always holds ciphertext</text>
+  <rect x="30" y="48" width="140" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="100" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">plaintext API key</text><text x="100" y="83" text-anchor="middle" font-size="6.6" fill="var(--muted)">sk-abc...xyz</text>
+  <rect x="230" y="40" width="170" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="315" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">AES-256-GCM encrypt</text><text x="315" y="77" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">random IV (different each time)</text><text x="315" y="90" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ authTag anti-tamper</text>
+  <rect x="460" y="40" width="230" height="60" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="575" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">secretKey (only this in the DB)</text><text x="575" y="75" text-anchor="middle" font-size="6.2" fill="var(--muted)">iv : ciphertext : authTag (all hex)</text><text x="575" y="90" text-anchor="middle" font-size="6.2" fill="var(--muted)">unreadable, unchangeable, rejected if mismatched</text>
+  <rect x="230" y="120" width="170" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="315" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">displaySecretKey</text><text x="315" y="152" text-anchor="middle" font-size="6.2" fill="var(--muted)">masked: sk-…xyz (for the UI)</text>
+  <rect x="460" y="120" width="230" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="575" y="138" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">decrypt only when used</text><text x="575" y="152" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">restore plaintext just before calling the provider, discard after</text>
+  <line x1="170" y1="70" x2="228" y2="70" stroke="var(--accent)" stroke-width="1.5"/><polygon points="228,70 219,66 219,74" fill="var(--accent)"/>
+  <line x1="400" y1="70" x2="458" y2="70" stroke="var(--teal)" stroke-width="1.5"/><polygon points="458,70 449,66 449,74" fill="var(--teal)"/>
+  <line x1="100" y1="92" x2="100" y2="140" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/><line x1="100" y1="140" x2="228" y2="140" stroke="var(--blue)" stroke-width="1.2"/><polygon points="228,140 219,136 219,144" fill="var(--blue)"/>
+  <line x1="575" y1="100" x2="575" y2="118" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"/><polygon points="575,120 571,111 579,111" fill="var(--accent)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">a DB breach yields only ciphertext; without ENCRYPTION_KEY (kept separately), the ciphertext is gibberish</text>
+</svg>
+<div class="figcap"><b>authenticated encryption + masked display + decrypt-on-use</b>: <code>encrypt()</code> (<code>encryption.ts:18-35</code>) uses AES-256-GCM, generating a random 12-byte IV each time, outputting <code>iv:encrypted:authTag</code>. <code>secretKey</code> stores ciphertext, <code>displaySecretKey</code> a masked string (<code>schema.prisma:299</code> LlmApiKeys). <code>ENCRYPTION_KEY</code> is 256-bit, kept separately from the DB.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/encryption/encryption.ts:18-35</span><span class="ln">AES-256-GCM encrypt</span></div>
+  <pre class="code"><span class="kw">export function</span> <span class="fn">encrypt</span>(plainText: string): string {
+  <span class="kw">const</span> iv = crypto.randomBytes(<span class="st">12</span>);                       <span class="cm">// random IV each time → same plaintext, different ciphertext</span>
+  <span class="kw">const</span> cipher = crypto.createCipheriv(<span class="st">"aes-256-gcm"</span>,
+    Buffer.from(ENCRYPTION_KEY, <span class="st">"hex"</span>), iv);              <span class="cm">// 256-bit key, kept separately from the DB</span>
+  <span class="kw">let</span> encrypted = cipher.update(plainText, <span class="st">"utf8"</span>, <span class="st">"hex"</span>) + cipher.final(<span class="st">"hex"</span>);
+  <span class="kw">const</span> authTag = cipher.getAuthTag();                     <span class="cm">// GCM auth tag → verified on decrypt, errors on tampering</span>
+  <span class="kw">return</span> iv.toString(<span class="st">"hex"</span>) + <span class="st">":"</span> + encrypted + <span class="st">":"</span> + authTag.toString(<span class="st">"hex"</span>);
+}
+<span class="cm">// stored in LlmApiKeys.secretKey; decrypted only just before calling the provider (inside fetchLLMCompletion)</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>where</th><th>what form the key takes</th><th>who can see it</th></tr></thead>
+  <tbody>
+    <tr><td>database (<code>secretKey</code>)</td><td><b>ciphertext</b> iv:ciphertext:authTag</td><td>a breach yields gibberish (can't decrypt without ENCRYPTION_KEY)</td></tr>
+    <tr><td>UI (<code>displaySecretKey</code>)</td><td><b>masked string</b> sk-…xyz</td><td>you can recognize which key, but not see the whole</td></tr>
+    <tr><td>just before calling the provider</td><td><b>plaintext</b> (momentary)</td><td>exists briefly in memory only, discarded after</td></tr>
+  </tbody>
+</table>
+<p>One key, three forms, each in its place: <strong>at rest only ciphertext, to a human only a mask, plaintext appearing only in the instant of ignition</strong>. Squeezing "the exposure surface of plaintext" to nearly zero is the core discipline of credential management.</p>
+
+
+<h2>Reusable building blocks: structured schemas and tools</h2>
+<p>Besides credentials, modern LLM calls often carry two things: a <strong>structured-output schema</strong> (requiring the model to return a fixed JSON shape, which Lesson 29's judge relies on) and <strong>tool/function definitions</strong> (letting the model "call" external capabilities). Langfuse models these as reusable entities too—<code>LlmSchema</code> and <code>LlmTool</code>—so you define them once in the Playground and reuse them in evals and experiments.</p>
+
+<div class="cols">
+  <div class="col"><h4>LlmSchema · structured output</h4><p>Defines the JSON shape the model must obey (e.g. <code>{score, reasoning}</code>). This is the underlying dependency that lets Lesson 29's judge reliably return "score + reasoning"—the same schema mechanism shared by the judge and the Playground.</p></div>
+  <div class="col"><h4>LlmTool · function/tool</h4><p>Defines tool signatures the model can call (name, parameter schema). It lets the model demonstrate "function-calling" agent behavior right in the Playground, with the definition saved for reuse elsewhere.</p></div>
+  <div class="col"><h4>LlmApiKeys · connection</h4><p>Encrypted provider credentials + <code>adapter</code> (abstracting the openai/anthropic/etc. interface) + optional <code>baseURL</code> (for self-hosted/proxy endpoints). The common base for all three LLM-call sites.</p></div>
+</div>
+
+<p>These three blocks—connection, schema, tool—plus the unified <code>fetchLLMCompletion</code> engine, form the <strong>common foundation for every server-side LLM call</strong> in Langfuse. Here Part 7 (and indeed the first seven parts' "developer workflow" through-line) closes into a loop: interactively test a prompt in the <strong>Playground</strong> → version it (Lesson 37) once satisfied → pull it into a dataset to <strong>run experiments</strong> and compare (Lesson 36) → release safely via a <strong>label</strong> (Lesson 37) → after shipping, get <strong>observed</strong> (Parts 1–4), <strong>evaluated</strong> (Part 5), and <strong>alerted</strong> when needed (Lesson 33). A complete, data-backed, safely-iterable LLM engineering lifecycle, sealed tight.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why use "authenticated encryption" like AES-256-GCM rather than plain symmetric encryption?</strong> Because for data like an API key, <strong>confidentiality alone isn't enough—you also need anti-tampering</strong>. Plain encryption (e.g. AES-CBC) guarantees "others can't read the ciphertext", but <strong>can't stop someone quietly altering a few bytes</strong>—after which you might decrypt to another seemingly-valid garbage string, failing silently. GCM mode computes an <strong>authTag (authentication tag)</strong> alongside encryption, verified on decrypt: flip even one bit of the ciphertext and verification fails, rejecting it outright. So you get not just "confidentiality" but "<strong>integrity guarantee</strong>"—the plaintext you get is either <strong>exactly</strong> what was stored, or an outright error, never a silently-tampered version. For credentials, where "a small error brews a big disaster", authenticated encryption is the floor.<br><br>
+  <strong>Why a random IV per encryption, and why also store a masked displaySecretKey?</strong> The random <strong>IV (initialization vector)</strong> solves "<strong>the same plaintext encrypts to different ciphertext each time</strong>"—otherwise two identical keys would have identical ciphertext, and an attacker could instantly see "these two use the same key", leaking information. A fresh random IV makes ciphertext patternless. The <code>displaySecretKey</code> solves a very practical UX problem: in the UI you must <strong>recognize</strong> "which key this is", yet you <strong>shouldn't</strong> decrypt and expose the whole key just to display it. So a masked string (last few digits only) is stored separately—<strong>display the masked version, decrypt only to call</strong>—covering both security and usability. This discipline—"plaintext exists only in the instants of storing and igniting, the rest of the time only ciphertext and masks are seen"—is the paradigm for handling any sensitive credential.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Playground = the same engine's interactive front desk</strong>: <code>chatCompletionHandler</code> reuses the exact <code>fetchLLMCompletion</code> core as evals (L29) and experiments (L36)—one engine, three consumers, credential decryption/provider adaptation written once.</li>
+    <li><strong>API key encrypted storage</strong>: <code>LlmApiKeys.secretKey</code> stores ciphertext via <strong>AES-256-GCM</strong> (authenticated encryption), <code>displaySecretKey</code> a masked string for the UI, <code>adapter</code> abstracts the provider interface, <code>baseURL</code> hits self-hosted endpoints.</li>
+    <li><strong>Authenticated encryption is anti-tamper</strong>: GCM's <code>authTag</code> lets decryption detect whether the ciphertext was altered—integrity on top of confidentiality, the floor for credential data.</li>
+    <li><strong>Random IV + decrypt-on-use</strong>: a random IV per encryption makes identical plaintext differ in ciphertext, leaking nothing; plaintext exists only briefly at "store" and "just before call", with the DB and UI only ever seeing ciphertext / masks.</li>
+    <li><strong>Reusable blocks + the loop</strong>: <code>LlmSchema</code> (structured output, echoing L29), <code>LlmTool</code> (function calls) are defined once and reused everywhere. Playground→versioning→experiments→label release→observe/evaluate/alert—the developer workflow closes into a complete loop.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What's the underlying relationship among Langfuse's Playground, LLM judge (Lesson 29), and prompt experiment (Lesson 36)?</div>
+  <ol class="opts">
+    <li>each has its own independent LLM-call implementation</li>
+    <li>all three share the same fetchLLMCompletion core—one engine, three consumers; credential decryption, provider adaptation, structured output, tool calls all written once</li>
+    <li>the Playground can only call OpenAI</li>
+    <li>experiments don't call a real LLM</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The playground's chatCompletionHandler directly imports and calls fetchLLMCompletion, passing tools and structuredOutputSchema—the same engine as Lesson 29's judge callLLM and Lesson 36's experiment model call. The Playground is just this engine's 'interactive front desk'. One encapsulation, three reuses, avoiding reinvention and ensuring consistent behavior across all three.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse uses AES-256-GCM (not plain symmetric encryption) to encrypt a provider's API key. What unique role does GCM mode's authTag play here?</div>
+  <ol class="opts">
+    <li>anti-tamper / integrity guarantee: decryption verifies the authTag, so flipping even one bit of the ciphertext fails verification and is rejected—ensuring the plaintext is either exactly what was stored or an error, never a silently-altered version</li>
+    <li>lets multiple people share the key</li>
+    <li>compresses the ciphertext</li>
+    <li>makes encryption faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. For data like an API key, confidentiality alone isn't enough—you need anti-tampering. Plain encryption (e.g. AES-CBC) can't stop someone altering a few bytes and decrypting to another seemingly-valid garbage, failing silently. GCM computes an authTag during encryption, verified on decrypt: flip one bit and it fails. So you get an 'integrity guarantee'—plaintext is either exactly as stored or an outright error. For credentials where a small error brews disaster, authenticated encryption is the floor.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The LlmApiKeys table stores both the encrypted secretKey and a separate masked displaySecretKey (like sk-…xyz). Why store this masked string too?</div>
+  <ol class="opts">
+    <li>the masked string is a backup of the encryption</li>
+    <li>so the UI can recognize 'which key this is' without decrypting and exposing the whole key just to display it—show the masked version, decrypt only to call, covering both security and usability</li>
+    <li>the masked string is what's actually used to call</li>
+    <li>to speed up decryption</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. It's a practical design under the discipline 'plaintext exists only at storing and ignition': in the UI you must recognize which key it is, but shouldn't decrypt and expose the whole key just to display. So a masked string showing only the last few digits is stored for display, with secretKey's plaintext decrypted only just before calling the provider and discarded after. Show masked, decrypt to call—security and UX both covered. This discipline is the paradigm for any sensitive credential.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>By the end of Part 7, the whole 'developer workflow' loop closes: try in the Playground → version → experiment-compare → label release → observe/evaluate/alert. Reviewing this loop, how does it strikingly resemble the familiar 'software development lifecycle' (write code→test→CI→release→monitor), and which links are unique due to LLMs' 'non-determinism'? If you rolled out this prompt-engineering process to a team, which step would be hardest to adopt, and why?</li>
   </ul>
 </div>
 </div>

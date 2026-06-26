@@ -125,6 +125,8 @@ PAGES = [
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
     ("38-prompt-serving-caching.html", "Prompt 服务与缓存", "Prompt serving & caching",
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
+    ("39-playground-llm-connections.html", "Playground 与 LLM 连接", "Playground & LLM connections",
+     "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
 ]
 
 
@@ -684,6 +686,8 @@ SUBTITLES = {
                                   "a prompt = git tailored for prompts: (name,version) unique, version auto-increments immutably + commitMessage; a label (production/latest) is a unique movable pointer, tagging a new version auto-strips it from the old; fetch by label = config-code separation (second-scale release/rollback, zero-deploy), fetch by version = absolute reproducibility; protected labels guard against fat-fingering; PromptDependency composition reuse (childLabel floating / childVersion pinned)"),
     "38-prompt-serving-caching.html": ("生产每次 LLM 调用都取 prompt 故须快 · PromptService 用 Redis read-through(命中返回/未命中回库回填 SET EX ttl) · 服务时解析依赖内联成自包含成品(深度上限+seen 环检测) · epoch 失效：缓存 key 嵌项目级 epoch 令牌，改动只转令牌不删 key，旧 key 失联按 TTL 过期(O(1) 不漏)",
                                        "production fetches a prompt on every LLM call so it must be fast; PromptService uses a Redis read-through (hit returns / miss falls back and backfills SET EX ttl); resolves dependencies into a self-contained product at serving time (depth cap + seen cycle check); epoch invalidation: the cache key embeds a project-scoped epoch token, a change just rotates the token without deleting keys, old keys orphaned and expire by TTL (O(1), never misses)"),
+    "39-playground-llm-connections.html": ("Playground=同一引擎的交互式前台，复用 fetchLLMCompletion(评估第29课/实验第36课同一核心) · LlmApiKeys.secretKey 用 AES-256-GCM 认证加密存密文+displaySecretKey 脱敏展示+adapter 抽象 provider · authTag 防篡改、随机 IV、即用即解 · LlmSchema/LlmTool 可复用积木 · Part7 收束开发者工作流闭环",
+                                           "the Playground = the same engine's interactive front desk, reusing fetchLLMCompletion (same core as eval L29/experiment L36); LlmApiKeys.secretKey stores ciphertext via AES-256-GCM authenticated encryption + displaySecretKey masked display + adapter abstracts the provider; authTag anti-tamper, random IV, decrypt-on-use; LlmSchema/LlmTool reusable blocks; Part 7 seals the developer-workflow loop"),
 }
 
 
