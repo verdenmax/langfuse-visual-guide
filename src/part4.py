@@ -1171,3 +1171,267 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 </div>
 """)
 LESSON_23 = {"zh": "\n".join(_ZH23), "en": "\n".join(_EN23)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L24 · 列表与表格 / Lists & tables
+# ══════════════════════════════════════════════════════════════════════
+_ZH24 = []
+_EN24 = []
+
+_ZH24.append(r"""
+<p class="lead">
+前两课讲了查询怎么拼、怎么跑。这一课看 Langfuse 的<strong>旗舰列表</strong>——trace 表，它凭什么能<strong>秒开</strong>。秘诀有二：一是<strong>一个通用函数服务四种「形状」</strong>
+（计数 / 行 / 指标 / 标识），二是把<strong>「便宜的行」和「昂贵的指标」拆开</strong>——表格先把行画出来，成本/延迟/评分这些要 JOIN 的指标<strong>稍后流入、客户端再拼</strong>。
+再加上一招<strong>按需 FINAL</strong>的查询纪律，让默认视图只读最新分区。看懂这一课，你就懂了大数据表「既要全、又要快」的全部门道。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🍽️ 生活类比</div>
+  把列表加载想成餐厅<strong>分批上菜</strong>。如果非要等整桌大餐（行 + 所有指标）一次端上，你得干坐很久。聪明的厨房先上<strong>面包</strong>（紧凑行——便宜、人人都要），让你<strong>立刻开吃</strong>；
+  那些<strong>费工夫的硬菜</strong>（指标：成本、延迟、评分，每样都要现做现拼）<strong>做好一道端一道</strong>，悄悄添到你桌上。你的体验是「<strong>一坐下就有得吃</strong>」，而不是「盯着空桌等二十分钟」。
+  Langfuse 的表格正是这么干的：<strong>能立刻给的先给，要算的边算边补</strong>——这就是「紧凑列表模型」。
+</div>
+""")
+
+# (L24 sections appended below)
+
+_ZH24.append(r"""
+<h2>紧凑行 vs 指标：两路并发、客户端再拼</h2>
+<p>打开 trace 列表时，UI <strong>同时</strong>发两路 tRPC 调用：<code>traces.all</code> 取<strong>紧凑行</strong>（约 12 个永远要看的列），<code>traces.metrics</code> 取<strong>指标</strong>（成本、延迟、评分聚合——要 JOIN 两张表）。
+谁先回谁先用：行一回来表格立刻渲染，指标回来后<strong>按 id 拼进去</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="UI 并行发 traces.all 取紧凑行与 traces.metrics 取指标；行先到先渲染，指标后到按 id 合并，joinTableCoreAndMetrics 即使指标缺席也返回成功">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">紧凑行先画，指标后补——表格秒开</text>
+  <rect x="20" y="42" width="130" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="85" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">traces.all（行）</text><text x="85" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">~12 列 · 便宜 · 快</text>
+  <rect x="20" y="104" width="130" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">traces.metrics（指标）</text><text x="85" y="140" text-anchor="middle" font-size="7" fill="var(--muted)">成本/延迟/评分 · 要 2 JOIN · 慢</text>
+  <text x="85" y="170" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">↑ 两路并发发出 ↑</text>
+  <rect x="280" y="60" width="170" height="74" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="82" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">joinTableCoreAndMetrics</text><text x="365" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">按 id 把行与指标拼起来</text><text x="365" y="116" text-anchor="middle" font-size="7.5" fill="var(--ink)">指标缺席也返回 success</text><text x="365" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">→ 行先渲染，不空等</text>
+  <rect x="500" y="48" width="200" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="600" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">① 表格立刻画出行</text><text x="600" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">指标列先留空/转圈</text>
+  <rect x="500" y="100" width="200" height="40" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="600" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② 指标到，按 id 填进对应行</text><text x="600" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">无闪烁、无整表重渲</text>
+  <line x1="150" y1="66" x2="278" y2="84" stroke="var(--faint)" stroke-width="1.3"/><line x1="150" y1="128" x2="278" y2="108" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="450" y1="80" x2="498" y2="68" stroke="var(--accent)" stroke-width="1.4"/><line x1="450" y1="112" x2="498" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="206" text-anchor="middle" font-size="8.5" fill="var(--faint)">关键：紧凑行不依赖指标，所以表格在指标算完之前就能用——感知延迟从「最慢一路」变成「最快一路」</text>
+</svg>
+<div class="figcap"><b>拆开「行」与「指标」</b>：UI 并行发 <code>traces.all</code>（行）+ <code>traces.metrics</code>（指标）；<code>joinTableCoreAndMetrics</code> 按 id 合并、即使指标缺席也返回 <code>success</code>，所以表格先用行渲染、指标后到再填。源码：<code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>、<code>services/traces-ui-table-service.ts:206</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/traces-ui-table-service.ts</span><span class="ln">getTracesTableGeneric :206</span></div>
+  <pre class="code"><span class="cm">// 一个函数，四种「形状」——靠 select 区分（类型安全重载）</span>
+<span class="kw">function</span> <span class="fn">getTracesTableGeneric</span>(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> | <span class="st">"identifiers"</span> })
+
+<span class="cm">// 只在「真的需要」时才 LEFT JOIN——默认浏览行时省掉两次 JOIN</span>
+<span class="kw">const</span> requiresScoresJoin = <span class="cm">/* 有评分过滤/排序，或 select==="metrics" */</span>;
+<span class="kw">const</span> requiresObservationsJoin = <span class="cm">/* 同理 */</span>;
+...
+FROM traces t ${defaultOrder ? <span class="st">""</span> : <span class="st">"FINAL"</span>}        <span class="cm">// 默认排序不用 FINAL（见下）</span>
+${requiresObservationsJoin ? <span class="st">"LEFT JOIN observations_stats o ..."</span> : <span class="st">""</span>}
+${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <span class="st">""</span>}</pre>
+</div>
+""")
+
+# (conditional FINAL section below)
+
+_ZH24.append(r"""
+<h2>按需 FINAL：默认视图只读最新分区</h2>
+<p>这里藏着一个 ClickHouse 老手才懂的优化。回想第 8 课：traces 是 <code>ReplacingMergeTree</code>，同一 id 可能有多行（create/update 各一行），靠后台合并去重。
+查询时若加 <code>FINAL</code>，ClickHouse 会<strong>当场把所有分区读出来、去重</strong>，结果正确但<strong>慢</strong>。Langfuse 的取舍是——<strong>能不用 FINAL 就不用</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="默认排序按 toDate(timestamp)+event_ts desc 加 LIMIT 1 BY id 不用 FINAL 只读最新分区内存去重；非默认排序才 FROM traces FINAL 全量去重">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">按需 FINAL：默认路径快，非默认路径才付全量代价</text>
+  <rect x="20" y="40" width="330" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">默认排序（按时间）· 不用 FINAL</text>
+  <rect x="38" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="93" text-anchor="middle" font-size="8" fill="var(--ink)">ORDER BY toDate(timestamp), event_ts DESC</text>
+  <rect x="38" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="125" text-anchor="middle" font-size="8" fill="var(--ink)">LIMIT 1 BY id（内存里取每个 id 最新一行）</text>
+  <text x="185" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ CH 只从磁盘读「最新那天」的分区</text>
+  <text x="185" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">不必为去重把一个月的数据全捞出来——又对又快</text>
+  <rect x="370" y="40" width="330" height="140" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">非默认排序 · 用 FINAL</text>
+  <rect x="388" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="93" text-anchor="middle" font-size="8" fill="var(--muted)">如按成本/延迟排序时</text>
+  <rect x="388" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="125" text-anchor="middle" font-size="8" fill="var(--muted)">FROM traces t FINAL（全量去重）</text>
+  <text x="535" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⚠️ 必须读全、去重才能保证正确</text>
+  <text x="535" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">慢一些，但只在你主动换排序时才付这代价</text>
+</svg>
+<div class="figcap"><b>对与快兼得</b>：默认按时间排序时用 <code>toDate(timestamp), event_ts DESC</code> + <code>LIMIT 1 BY id</code> 代替 <code>FINAL</code>，CH 只读最新分区、在内存里取每个 id 的最新行；只有当你<strong>按非时间列排序</strong>时才退回 <code>FROM traces FINAL</code> 全量去重。源码注释见 <code>traces-ui-table-service.ts:443-455</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🟢 默认路径（最常走）</h4><p>按时间排序 + 不需指标 → 不 FINAL、不 JOIN，只读最新分区。这是 80% 的「打开列表扫一眼」场景，做到了又对又飞快。</p></div>
+  <div class="col"><h4>🟡 重路径（按需付费）</h4><p>按成本排序、或要看指标 → 才加 FINAL、才 LEFT JOIN observations/scores。复杂度只在你<strong>主动要</strong>时才被引入，不拖累常见路径。</p></div>
+</div>
+
+<table class="t">
+  <tr><th>select 形状</th><th>取什么</th><th>给谁用</th></tr>
+  <tr><td><code>rows</code></td><td>~12 个紧凑列</td><td>表格主体，立刻渲染</td></tr>
+  <tr><td><code>metrics</code></td><td>成本/延迟/评分聚合（要 2 JOIN）</td><td>指标列，后到补入</td></tr>
+  <tr><td><code>count</code></td><td><code>uniqExact(id)</code></td><td>分页总数（去重计数）</td></tr>
+  <tr><td><code>identifiers</code></td><td>只要 id 列表</td><td>批量操作、跨页选择</td></tr>
+</table>
+
+<h2>表格状态：URL 是真源，三层持久化</h2>
+<p>列表不只是「画一堆行」。你调了列顺序、设了过滤、排了序、存成一个「视图预设」——这些<strong>表格状态</strong>该存哪？Langfuse 的答案是<strong>分三层、以 URL 为真源</strong>：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">分享与真源</span></div><div class="ld">过滤、排序、搜索、当前视图 id 都编码进 <strong>URL</strong>。于是你把链接发给同事，他打开看到的<strong>和你一模一样</strong>——URL 是「此刻这张表长什么样」的单一真源（呼应第 23 课 FilterState）。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">session 存储</span><span class="name">导航记忆</span></div><div class="ld">在表之间来回跳时，用<strong>会话存储</strong>记住你刚才的列宽、可见列、滚动位置等，免得每次回来都被重置——只在本次浏览会话内有效，关掉标签页即清。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">数据库</span><span class="name">永久预设</span></div><div class="ld">「视图预设」（saved view）存进 <strong>DB</strong>，永久保留、可跨设备、可团队共享。删了某个预设、或它引用的列已不存在？<strong>优雅降级</strong>：丢掉失效部分 + 提示，绝不白屏。</div></div>
+</div>
+
+<p>这三层各管一段时效——URL 管「此刻可分享」、session 管「这次导航」、DB 管「永久保存」——共同让大表格<strong>既可深度链接、又在跳转间不丢状态、还能长期沉淀团队的常用视图</strong>。
+配合一个全局时间范围（Zustand 默认 ⊕ URL 显式），它会变成那条强制的 <code>timestamp</code> 过滤，正好喂给第 22 课的回看窗、把扫描范围钉死。<strong>状态分层，是大型列表「快」之外的另一半功夫——「稳」（跳转间不丢）与「可分享」（一个链接复现全貌）。</strong></p>
+""")
+
+# (spark + key below)
+
+_ZH24.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么不一次查全（行 + 所有指标），非要拆成两路、还搞一堆「按需」开关？</strong> 因为<strong>列表的体验目标是「秒开」，而指标天生昂贵</strong>。
+  成本、延迟、评分这些要 JOIN 两张大表才能算，若和行绑在一起，整张表就得<strong>等最慢的那路</strong>才能显示——用户盯着空白干等。把它们拆开后，
+  紧凑行（便宜、人人要）<strong>立刻就到</strong>，指标作为「附加信息」边算边补；感知延迟从「最慢一路」降到「最快一路」。同理，<strong>按需 FINAL、按需 JOIN</strong> 都是同一种智慧：
+  <strong>为最常见、最简单的路径极致优化，把复杂度与代价推迟到「你真的要了」才引入</strong>。这是高频列表界面性能的黄金法则——别让 1% 的高级需求（按成本排序、看全指标）拖慢 99% 的日常浏览。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>一个 <code>getTracesTableGeneric</code> 服务<strong>四种形状</strong>（<code>rows / metrics / count / identifiers</code>），靠 <code>select</code> 区分、类型安全重载。</li>
+    <li><strong>紧凑行 vs 指标拆开</strong>：UI 并行发 <code>traces.all</code>（行）+ <code>traces.metrics</code>（指标）；<code>joinTableCoreAndMetrics</code> 按 id 合并、指标缺席也返回 success，表格<strong>先用行渲染</strong>。</li>
+    <li><strong>按需 JOIN</strong>：只在过滤/排序需要或 <code>select==="metrics"</code> 时才 LEFT JOIN observations/scores，默认浏览省掉两次 JOIN。</li>
+    <li><strong>按需 FINAL</strong>：默认按时间排序用 <code>toDate(timestamp),event_ts DESC</code> + <code>LIMIT 1 BY id</code> 只读最新分区；非默认排序才退回 <code>FROM traces FINAL</code> 全量去重。</li>
+    <li>黄金法则：为最常见路径极致优化，把复杂度/代价推迟到「真的要了」才引入——别让 1% 的高级需求拖慢 99% 的日常浏览。</li>
+    <li><strong>表格状态分三层、以 URL 为真源</strong>：URL（可分享/真源）⊕ session（导航记忆）⊕ DB（永久视图预设，失效部分优雅降级）；全局时间范围变成喂给第 22 课回看窗的强制 timestamp 过滤。</li>
+  </ul>
+</div>
+""")
+
+_EN24.append(r"""
+<p class="lead">
+The last two lessons covered how queries are built and run. This one looks at Langfuse's <strong>flagship list</strong> — the trace table — and how it
+<strong>opens instantly</strong>. Two secrets: one, <strong>a single generic function serves four "shapes"</strong> (count / rows / metrics / identifiers); two, it
+<strong>splits the cheap rows from the expensive metrics</strong> — the table paints rows first, while cost/latency/score metrics needing JOINs <strong>stream in
+later and merge client-side</strong>. Plus a <strong>conditional-FINAL</strong> query discipline that keeps the default view reading only the latest partition. Get this
+lesson and you've got the whole art of a big-data table being "complete yet fast".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🍽️ Analogy</div>
+  Think of list loading as a restaurant <strong>serving in courses</strong>. Insisting the whole elaborate meal (rows + all metrics) arrive at once means you sit
+  waiting a long time. A smart kitchen brings the <strong>bread</strong> first (compact rows — cheap, everyone wants them) so you <strong>start eating
+  immediately</strong>; the <strong>labor-intensive mains</strong> (metrics: cost, latency, scores, each made and assembled to order) <strong>arrive dish by dish</strong>,
+  quietly added to your table. Your experience is "<strong>something to eat the moment you sit down</strong>", not "staring at an empty table for twenty minutes".
+  Langfuse's table does exactly this: <strong>give what you can instantly, fill in what you must compute as it comes</strong> — that's the "compact list model".
+</div>
+""")
+
+_EN24.append(r"""
+<h2>Compact rows vs metrics: two parallel calls, merged client-side</h2>
+<p>Opening the trace list, the UI fires <strong>two</strong> tRPC calls <strong>at once</strong>: <code>traces.all</code> for the <strong>compact rows</strong> (~12
+always-wanted columns), and <code>traces.metrics</code> for the <strong>metrics</strong> (cost, latency, score aggregates — needing 2 JOINs). Whoever returns first is
+used: rows back, the table renders immediately; metrics back, they're <strong>merged in by id</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="UI fires traces.all for compact rows and traces.metrics for metrics in parallel; rows render first, metrics merge by id when ready, joinTableCoreAndMetrics returns success even without metrics">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Compact rows paint first, metrics fill in — instant table</text>
+  <rect x="20" y="42" width="130" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="85" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">traces.all (rows)</text><text x="85" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">~12 cols · cheap · fast</text>
+  <rect x="20" y="104" width="130" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">traces.metrics</text><text x="85" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">cost/latency/scores · 2 JOINs · slow</text>
+  <text x="85" y="170" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">↑ fired in parallel ↑</text>
+  <rect x="280" y="60" width="170" height="74" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="82" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">joinTableCoreAndMetrics</text><text x="365" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">merge rows + metrics by id</text><text x="365" y="116" text-anchor="middle" font-size="7.5" fill="var(--ink)">returns success even without metrics</text><text x="365" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">→ rows render, no idle wait</text>
+  <rect x="500" y="48" width="200" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="600" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">① table paints rows now</text><text x="600" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">metric cols blank/spinner first</text>
+  <rect x="500" y="100" width="200" height="40" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="600" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② metrics arrive, fill rows by id</text><text x="600" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">no flicker, no full re-render</text>
+  <line x1="150" y1="66" x2="278" y2="84" stroke="var(--faint)" stroke-width="1.3"/><line x1="150" y1="128" x2="278" y2="108" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="450" y1="80" x2="498" y2="68" stroke="var(--accent)" stroke-width="1.4"/><line x1="450" y1="112" x2="498" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="206" text-anchor="middle" font-size="8.5" fill="var(--faint)">key: compact rows don't depend on metrics, so the table is usable before metrics finish — perceived latency goes from "slowest call" to "fastest call"</text>
+</svg>
+<div class="figcap"><b>Splitting "rows" from "metrics"</b>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns <code>success</code> even when metrics are absent, so the table renders from rows and fills metrics later. Source: <code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>, <code>services/traces-ui-table-service.ts:206</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/traces-ui-table-service.ts</span><span class="ln">getTracesTableGeneric :206</span></div>
+  <pre class="code"><span class="cm">// one function, four "shapes" — distinguished by select (type-safe overloads)</span>
+<span class="kw">function</span> <span class="fn">getTracesTableGeneric</span>(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> | <span class="st">"identifiers"</span> })
+
+<span class="cm">// LEFT JOIN only when really needed — default row browsing skips two JOINs</span>
+<span class="kw">const</span> requiresScoresJoin = <span class="cm">/* score filter/sort, or select==="metrics" */</span>;
+<span class="kw">const</span> requiresObservationsJoin = <span class="cm">/* likewise */</span>;
+...
+FROM traces t ${defaultOrder ? <span class="st">""</span> : <span class="st">"FINAL"</span>}        <span class="cm">// default ordering skips FINAL (below)</span>
+${requiresObservationsJoin ? <span class="st">"LEFT JOIN observations_stats o ..."</span> : <span class="st">""</span>}
+${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <span class="st">""</span>}</pre>
+</div>
+""")
+
+_EN24.append(r"""
+<h2>Conditional FINAL: the default view reads only the latest partition</h2>
+<p>Here hides an optimization only ClickHouse veterans appreciate. Recall Lesson 8: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
+(create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
+correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="default ordering by toDate(timestamp)+event_ts desc with LIMIT 1 BY id skips FINAL and reads only the latest partition deduping in memory; non-default ordering falls back to FROM traces FINAL full dedup">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Conditional FINAL: fast default path, full cost only on the non-default path</text>
+  <rect x="20" y="40" width="330" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">default ordering (by time) · no FINAL</text>
+  <rect x="38" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="93" text-anchor="middle" font-size="8" fill="var(--ink)">ORDER BY toDate(timestamp), event_ts DESC</text>
+  <rect x="38" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="125" text-anchor="middle" font-size="7.5" fill="var(--ink)">LIMIT 1 BY id (latest row per id, in memory)</text>
+  <text x="185" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ CH reads only the "latest day" partition from disk</text>
+  <text x="185" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">no need to pull a month of data just to dedup — correct AND fast</text>
+  <rect x="370" y="40" width="330" height="140" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">non-default ordering · use FINAL</text>
+  <rect x="388" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="93" text-anchor="middle" font-size="8" fill="var(--muted)">e.g. ordering by cost/latency</text>
+  <rect x="388" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="125" text-anchor="middle" font-size="8" fill="var(--muted)">FROM traces t FINAL (full dedup)</text>
+  <text x="535" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⚠️ must read all &amp; dedup to be correct</text>
+  <text x="535" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">slower, but paid only when you actively change the sort</text>
+</svg>
+<div class="figcap"><b>Correct AND fast</b>: default time-ordering uses <code>toDate(timestamp), event_ts DESC</code> + <code>LIMIT 1 BY id</code> instead of <code>FINAL</code>, so CH reads only the latest partition and takes each id's latest row in memory; only when you <strong>sort by a non-time column</strong> does it fall back to <code>FROM traces FINAL</code> full dedup. Source comment: <code>traces-ui-table-service.ts:443-455</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🟢 default path (most common)</h4><p>time-ordered + no metrics needed → no FINAL, no JOINs, read only the latest partition. This is the 80% "open the list and glance" case — correct and blazing fast.</p></div>
+  <div class="col"><h4>🟡 heavy path (pay on demand)</h4><p>sort by cost, or want metrics → only then add FINAL and LEFT JOIN observations/scores. Complexity is introduced only when you <strong>actively ask</strong>, never burdening the common path.</p></div>
+</div>
+
+<table class="t">
+  <tr><th>select shape</th><th>what it fetches</th><th>used for</th></tr>
+  <tr><td><code>rows</code></td><td>~12 compact columns</td><td>the table body, rendered immediately</td></tr>
+  <tr><td><code>metrics</code></td><td>cost/latency/score aggregates (2 JOINs)</td><td>metric columns, filled in later</td></tr>
+  <tr><td><code>count</code></td><td><code>uniqExact(id)</code></td><td>pagination total (deduped count)</td></tr>
+  <tr><td><code>identifiers</code></td><td>just the id list</td><td>batch actions, cross-page selection</td></tr>
+</table>
+
+<h2>Table state: URL is the source of truth, three layers of persistence</h2>
+<p>A list isn't just "draw some rows". You tweaked column order, set filters, sorted, saved a "view preset" — where should this <strong>table state</strong> live?
+Langfuse's answer is <strong>three layers, with the URL as the source of truth</strong>:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">sharing &amp; source of truth</span></div><div class="ld">Filters, sort, search, current view id are all encoded into the <strong>URL</strong>. So you send a colleague the link and they see <strong>exactly the same thing</strong> — the URL is the single source of truth for "what this table looks like right now" (echoing Lesson 23's FilterState).</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">session storage</span><span class="name">navigation memory</span></div><div class="ld">Hopping between tables, <strong>session storage</strong> remembers your recent column widths, visible columns, scroll position so you aren't reset each time you return — valid only within this browsing session.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">database</span><span class="name">permanent presets</span></div><div class="ld">"View presets" (saved views) go into the <strong>DB</strong>, permanent, cross-device, team-shareable. Deleted a preset, or a column it referenced no longer exists? <strong>Graceful degradation</strong>: drop the invalid part + warn, never a blank screen.</div></div>
+</div>
+
+<p>The three layers each own a timescale — URL "shareable right now", session "this navigation", DB "permanent" — together letting a big table be
+<strong>deep-linkable, state-preserving across navigation, and a long-term home for the team's go-to views</strong>. Paired with a global time range (Zustand default
+⊕ URL explicit), it becomes the mandatory <code>timestamp</code> filter feeding Lesson 22's look-back windows, nailing down the scan range. <strong>State layering is
+the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not fetch it all at once (rows + all metrics), instead of two calls and a pile of "on-demand" switches?</strong> Because <strong>the list's experience
+  goal is "instant", while metrics are inherently expensive</strong>. Cost, latency, scores need 2 big-table JOINs to compute; bound to the rows, the whole table must
+  <strong>wait for the slowest call</strong> to show — the user stares at blank space. Split them and the compact rows (cheap, everyone wants) <strong>arrive
+  instantly</strong>, metrics fill in as "extra info" as computed; perceived latency drops from "slowest call" to "fastest call". Likewise, <strong>conditional FINAL
+  and conditional JOIN</strong> are the same wisdom: <strong>optimize ruthlessly for the most common, simplest path, deferring complexity and cost until "you actually
+  ask"</strong>. This is the golden rule of high-frequency list performance — don't let the 1% advanced need (sort by cost, see all metrics) slow the 99% daily browse.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>One <code>getTracesTableGeneric</code> serves <strong>four shapes</strong> (<code>rows / metrics / count / identifiers</code>), distinguished by <code>select</code> with type-safe overloads.</li>
+    <li><strong>Compact rows vs metrics, split</strong>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns success even without metrics, so the table <strong>renders from rows first</strong>.</li>
+    <li><strong>Conditional JOIN</strong>: LEFT JOIN observations/scores only when filter/sort needs it or <code>select==="metrics"</code>, saving two JOINs on default browsing.</li>
+    <li><strong>Conditional FINAL</strong>: default time-ordering uses <code>toDate(timestamp),event_ts DESC</code> + <code>LIMIT 1 BY id</code> to read only the latest partition; non-default ordering falls back to <code>FROM traces FINAL</code> full dedup.</li>
+    <li>Golden rule: optimize for the most common path, defer complexity/cost until "actually asked". Table state lives in <strong>three layers, URL as source of truth</strong> (URL ⊕ session ⊕ DB presets with graceful degradation); the global time range becomes the mandatory timestamp filter feeding Lesson 22's look-back windows.</li>
+  </ul>
+</div>
+""")
+LESSON_24 = {"zh": "\n".join(_ZH24), "en": "\n".join(_EN24)}

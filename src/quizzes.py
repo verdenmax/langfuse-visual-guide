@@ -1655,6 +1655,76 @@ QUIZZES = {
             },
         ],
     },
+    "24-lists-and-tables.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "打开 trace 列表时，Langfuse 并行发 traces.all（行）和 traces.metrics（指标）两路，而不是一次查全。这样设计为了什么？",
+                    "en": "Opening the trace list, Langfuse fires traces.all (rows) and traces.metrics (metrics) in parallel rather than one combined query. Why?",
+                },
+                "opts": [
+                    {
+                        "zh": "紧凑行便宜、立刻就到，先把表画出来；成本/延迟/评分等指标要 JOIN 两张表、较慢，作为附加信息后到再按 id 合并。感知延迟从「最慢一路」降到「最快一路」",
+                        "en": "compact rows are cheap and arrive instantly so the table paints first; cost/latency/score metrics need 2 JOINs and are slower, merged in by id later as extra info. Perceived latency drops from 'slowest call' to 'fastest call'",
+                    },
+                    {"zh": "为了多发请求把服务器压垮", "en": "to flood the server with more requests"},
+                    {"zh": "因为 ClickHouse 不能一次查两类数据", "en": "because ClickHouse can't query two kinds at once"},
+                    {"zh": "为了让指标更准确", "en": "to make metrics more accurate"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "列表的体验目标是秒开，而指标天生昂贵（2 JOIN）。把便宜的行和昂贵的指标拆开，joinTableCoreAndMetrics 按 id 合并、指标缺席也返回 success，于是表格先用行渲染、指标后到补入。这是「紧凑列表模型」——能立刻给的先给，要算的边算边补。",
+                    "en": "The list's goal is instant open, but metrics are inherently expensive (2 JOINs). Splitting cheap rows from costly metrics, joinTableCoreAndMetrics merges by id and returns success even without metrics, so the table renders from rows first and fills metrics later. The 'compact list model' — give what you can instantly, fill in what you compute as it comes.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "traces 是 ReplacingMergeTree（同 id 可能多行）。默认按时间排序时，Langfuse 不用 FINAL，而是 ORDER BY toDate(timestamp),event_ts DESC + LIMIT 1 BY id。为什么这样更好？",
+                    "en": "traces is a ReplacingMergeTree (one id may have multiple rows). For default time ordering, Langfuse skips FINAL and uses ORDER BY toDate(timestamp),event_ts DESC + LIMIT 1 BY id. Why is this better?",
+                },
+                "opts": [
+                    {
+                        "zh": "FINAL 会当场读全部分区去重、很慢；而按时间排序 + LIMIT 1 BY id 让 CH 只从磁盘读最新那天的分区、在内存里取每个 id 的最新行——既对又快，不必为去重捞一个月的数据",
+                        "en": "FINAL reads all partitions and dedups on the spot, slow; time ordering + LIMIT 1 BY id lets CH read only the latest day's partition from disk and take each id's latest row in memory — correct and fast, no pulling a month of data just to dedup",
+                    },
+                    {"zh": "因为 FINAL 会返回错误结果", "en": "because FINAL returns wrong results"},
+                    {"zh": "因为 LIMIT 1 BY id 更省内存", "en": "because LIMIT 1 BY id saves memory"},
+                    {"zh": "因为默认排序不需要去重", "en": "because default ordering needs no dedup"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "FINAL 正确但慢（读全量去重）。默认按时间排序时，用 event_ts DESC + LIMIT 1 BY id 在内存里取每个 id 最新行，CH 只读最新分区。只有按非时间列（如成本）排序时才退回 FROM traces FINAL 全量去重——按需付费，常见路径不被拖累。",
+                    "en": "FINAL is correct but slow (reads all to dedup). For default time ordering, event_ts DESC + LIMIT 1 BY id takes each id's latest row in memory, CH reading only the latest partition. Only sorting by a non-time column (e.g. cost) falls back to FROM traces FINAL full dedup — pay on demand, the common path unburdened.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的表格状态（过滤、排序、列设置、视图预设）分三层存储，以 URL 为真源。这样分层最直接的好处是？",
+                    "en": "Langfuse stores table state (filters, sort, column settings, view presets) in three layers, with the URL as the source of truth. The most direct benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "URL 编码当前视图 → 把链接发给同事，他看到的和你一模一样（可分享/可深链）；session 记导航间状态不丢；DB 存永久预设、可跨设备共享，失效列优雅降级",
+                        "en": "the URL encodes the current view → send a colleague the link and they see exactly what you do (shareable/deep-linkable); session preserves state across navigation; DB stores permanent presets, cross-device shareable, with graceful degradation for invalid columns",
+                    },
+                    {"zh": "让表格渲染更快", "en": "to render the table faster"},
+                    {"zh": "为了减少数据库查询", "en": "to reduce database queries"},
+                    {"zh": "为了隐藏过滤条件", "en": "to hide filter conditions"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "三层各管一段时效：URL「此刻可分享」（深链、一个链接复现全貌，呼应第 23 课 FilterState）、session「这次导航」（跳转间不丢列宽/可见列）、DB「永久」（saved view 跨设备团队共享，失效部分丢弃+提示不白屏）。这让大表格既快又稳又可分享。",
+                    "en": "Three layers each own a timescale: URL 'shareable now' (deep links, one link reproduces the whole view, echoing L23's FilterState), session 'this navigation' (column widths/visible columns survive hops), DB 'permanent' (saved views shared cross-device/team, invalid parts dropped+warned, no blank screen). This makes big tables fast, stable, and shareable.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「为最常见路径极致优化，把复杂度/代价推迟到真的要了才引入」——紧凑行 vs 指标、按需 JOIN、按需 FINAL 都是这条原则。你做过的列表/详情界面里，有没有「为了 1% 的高级需求，拖慢了 99% 的日常浏览」的地方？你会怎么拆？",
+                "en": "'Optimize for the most common path, defer complexity/cost until actually asked' — compact rows vs metrics, conditional JOIN, conditional FINAL all follow it. In your own list/detail UIs, is there a place where 'the 1% advanced need slows the 99% daily browse'? How would you split it?",
+            },
+        ],
+    },
 }
 
 

@@ -35,4 +35,5 @@ CONTENT = {
     "21-trpc-backbone.html": part4.LESSON_21,
     "22-repository-layer.html": part4.LESSON_22,
     "23-filtering-search-bar.html": part4.LESSON_23,
+    "24-lists-and-tables.html": part4.LESSON_24,
 }

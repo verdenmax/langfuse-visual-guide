@@ -95,6 +95,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("23-filtering-search-bar.html", "过滤·搜索栏·查询构建", "Filtering & the search bar",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("24-lists-and-tables.html", "列表与表格", "Lists & tables",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -624,6 +626,8 @@ SUBTITLES = {
                                 "queryClickhouse unified executor; OTel/log_comment tags/backoff retry/resource-error wrap; look-back windows 2d/1h; streaming variants"),
     "23-filtering-search-bar.html": ("FilterState 中间契约 · 编译到 CH/PG 两套 SQL · 随机占位符防注入 · 强制 project_id · 搜索栏受控编辑器 · AI filter 往返丢幻觉",
                                      "FilterState intermediate contract; compiles to CH/PG SQL; random placeholders block injection; mandatory project_id; search bar controlled editor; AI filter round-trip drops hallucinations"),
+    "24-lists-and-tables.html": ("getTracesTableGeneric 四形状 · 紧凑行 vs 指标并发 · joinTableCoreAndMetrics 按 id 合并 · 按需 JOIN/FINAL · 表态 URL 真源三层",
+                                 "getTracesTableGeneric four shapes; compact rows vs metrics parallel; joinTableCoreAndMetrics merge by id; conditional JOIN/FINAL; table state URL-as-truth three layers"),
 }
 
 

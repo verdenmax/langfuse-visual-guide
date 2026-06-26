@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 23 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 24 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -360,6 +360,7 @@ details[open] > summary { list-style: none; }
   <li>The tRPC backbone</li>
   <li>The repository layer</li>
   <li>Filtering & the search bar</li>
+  <li>Lists & tables</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -5290,6 +5291,183 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Make the AI output have to restore to a constrained intermediate representation, and the inexpressible can't enter' — how is this 'valid by construction' guardrail stronger than 'generate then check with rules'? Can you think of a 'let an LLM generate structured commands' scenario in your own systems where you'd apply it?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Lists & tables</h1>
+
+<p class="lead">
+The last two lessons covered how queries are built and run. This one looks at Langfuse's <strong>flagship list</strong> — the trace table — and how it
+<strong>opens instantly</strong>. Two secrets: one, <strong>a single generic function serves four "shapes"</strong> (count / rows / metrics / identifiers); two, it
+<strong>splits the cheap rows from the expensive metrics</strong> — the table paints rows first, while cost/latency/score metrics needing JOINs <strong>stream in
+later and merge client-side</strong>. Plus a <strong>conditional-FINAL</strong> query discipline that keeps the default view reading only the latest partition. Get this
+lesson and you've got the whole art of a big-data table being "complete yet fast".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🍽️ Analogy</div>
+  Think of list loading as a restaurant <strong>serving in courses</strong>. Insisting the whole elaborate meal (rows + all metrics) arrive at once means you sit
+  waiting a long time. A smart kitchen brings the <strong>bread</strong> first (compact rows — cheap, everyone wants them) so you <strong>start eating
+  immediately</strong>; the <strong>labor-intensive mains</strong> (metrics: cost, latency, scores, each made and assembled to order) <strong>arrive dish by dish</strong>,
+  quietly added to your table. Your experience is "<strong>something to eat the moment you sit down</strong>", not "staring at an empty table for twenty minutes".
+  Langfuse's table does exactly this: <strong>give what you can instantly, fill in what you must compute as it comes</strong> — that's the "compact list model".
+</div>
+
+
+<h2>Compact rows vs metrics: two parallel calls, merged client-side</h2>
+<p>Opening the trace list, the UI fires <strong>two</strong> tRPC calls <strong>at once</strong>: <code>traces.all</code> for the <strong>compact rows</strong> (~12
+always-wanted columns), and <code>traces.metrics</code> for the <strong>metrics</strong> (cost, latency, score aggregates — needing 2 JOINs). Whoever returns first is
+used: rows back, the table renders immediately; metrics back, they're <strong>merged in by id</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="UI fires traces.all for compact rows and traces.metrics for metrics in parallel; rows render first, metrics merge by id when ready, joinTableCoreAndMetrics returns success even without metrics">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Compact rows paint first, metrics fill in — instant table</text>
+  <rect x="20" y="42" width="130" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="85" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">traces.all (rows)</text><text x="85" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">~12 cols · cheap · fast</text>
+  <rect x="20" y="104" width="130" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">traces.metrics</text><text x="85" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">cost/latency/scores · 2 JOINs · slow</text>
+  <text x="85" y="170" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">↑ fired in parallel ↑</text>
+  <rect x="280" y="60" width="170" height="74" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="82" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">joinTableCoreAndMetrics</text><text x="365" y="100" text-anchor="middle" font-size="7.5" fill="var(--ink)">merge rows + metrics by id</text><text x="365" y="116" text-anchor="middle" font-size="7.5" fill="var(--ink)">returns success even without metrics</text><text x="365" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">→ rows render, no idle wait</text>
+  <rect x="500" y="48" width="200" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="600" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">① table paints rows now</text><text x="600" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">metric cols blank/spinner first</text>
+  <rect x="500" y="100" width="200" height="40" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="600" y="118" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② metrics arrive, fill rows by id</text><text x="600" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">no flicker, no full re-render</text>
+  <line x1="150" y1="66" x2="278" y2="84" stroke="var(--faint)" stroke-width="1.3"/><line x1="150" y1="128" x2="278" y2="108" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="450" y1="80" x2="498" y2="68" stroke="var(--accent)" stroke-width="1.4"/><line x1="450" y1="112" x2="498" y2="120" stroke="var(--faint)" stroke-width="1.3"/>
+  <text x="360" y="206" text-anchor="middle" font-size="8.5" fill="var(--faint)">key: compact rows don't depend on metrics, so the table is usable before metrics finish — perceived latency goes from "slowest call" to "fastest call"</text>
+</svg>
+<div class="figcap"><b>Splitting "rows" from "metrics"</b>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns <code>success</code> even when metrics are absent, so the table renders from rows and fills metrics later. Source: <code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>, <code>services/traces-ui-table-service.ts:206</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/traces-ui-table-service.ts</span><span class="ln">getTracesTableGeneric :206</span></div>
+  <pre class="code"><span class="cm">// one function, four "shapes" — distinguished by select (type-safe overloads)</span>
+<span class="kw">function</span> <span class="fn">getTracesTableGeneric</span>(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> | <span class="st">"identifiers"</span> })
+
+<span class="cm">// LEFT JOIN only when really needed — default row browsing skips two JOINs</span>
+<span class="kw">const</span> requiresScoresJoin = <span class="cm">/* score filter/sort, or select==="metrics" */</span>;
+<span class="kw">const</span> requiresObservationsJoin = <span class="cm">/* likewise */</span>;
+...
+FROM traces t ${defaultOrder ? <span class="st">""</span> : <span class="st">"FINAL"</span>}        <span class="cm">// default ordering skips FINAL (below)</span>
+${requiresObservationsJoin ? <span class="st">"LEFT JOIN observations_stats o ..."</span> : <span class="st">""</span>}
+${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <span class="st">""</span>}</pre>
+</div>
+
+
+<h2>Conditional FINAL: the default view reads only the latest partition</h2>
+<p>Here hides an optimization only ClickHouse veterans appreciate. Recall Lesson 8: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
+(create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
+correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="default ordering by toDate(timestamp)+event_ts desc with LIMIT 1 BY id skips FINAL and reads only the latest partition deduping in memory; non-default ordering falls back to FROM traces FINAL full dedup">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Conditional FINAL: fast default path, full cost only on the non-default path</text>
+  <rect x="20" y="40" width="330" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">default ordering (by time) · no FINAL</text>
+  <rect x="38" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="93" text-anchor="middle" font-size="8" fill="var(--ink)">ORDER BY toDate(timestamp), event_ts DESC</text>
+  <rect x="38" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="185" y="125" text-anchor="middle" font-size="7.5" fill="var(--ink)">LIMIT 1 BY id (latest row per id, in memory)</text>
+  <text x="185" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ CH reads only the "latest day" partition from disk</text>
+  <text x="185" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">no need to pull a month of data just to dedup — correct AND fast</text>
+  <rect x="370" y="40" width="330" height="140" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">non-default ordering · use FINAL</text>
+  <rect x="388" y="76" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="93" text-anchor="middle" font-size="8" fill="var(--muted)">e.g. ordering by cost/latency</text>
+  <rect x="388" y="108" width="294" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="535" y="125" text-anchor="middle" font-size="8" fill="var(--muted)">FROM traces t FINAL (full dedup)</text>
+  <text x="535" y="152" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⚠️ must read all &amp; dedup to be correct</text>
+  <text x="535" y="168" text-anchor="middle" font-size="7.5" fill="var(--muted)">slower, but paid only when you actively change the sort</text>
+</svg>
+<div class="figcap"><b>Correct AND fast</b>: default time-ordering uses <code>toDate(timestamp), event_ts DESC</code> + <code>LIMIT 1 BY id</code> instead of <code>FINAL</code>, so CH reads only the latest partition and takes each id's latest row in memory; only when you <strong>sort by a non-time column</strong> does it fall back to <code>FROM traces FINAL</code> full dedup. Source comment: <code>traces-ui-table-service.ts:443-455</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🟢 default path (most common)</h4><p>time-ordered + no metrics needed → no FINAL, no JOINs, read only the latest partition. This is the 80% "open the list and glance" case — correct and blazing fast.</p></div>
+  <div class="col"><h4>🟡 heavy path (pay on demand)</h4><p>sort by cost, or want metrics → only then add FINAL and LEFT JOIN observations/scores. Complexity is introduced only when you <strong>actively ask</strong>, never burdening the common path.</p></div>
+</div>
+
+<table class="t">
+  <tr><th>select shape</th><th>what it fetches</th><th>used for</th></tr>
+  <tr><td><code>rows</code></td><td>~12 compact columns</td><td>the table body, rendered immediately</td></tr>
+  <tr><td><code>metrics</code></td><td>cost/latency/score aggregates (2 JOINs)</td><td>metric columns, filled in later</td></tr>
+  <tr><td><code>count</code></td><td><code>uniqExact(id)</code></td><td>pagination total (deduped count)</td></tr>
+  <tr><td><code>identifiers</code></td><td>just the id list</td><td>batch actions, cross-page selection</td></tr>
+</table>
+
+<h2>Table state: URL is the source of truth, three layers of persistence</h2>
+<p>A list isn't just "draw some rows". You tweaked column order, set filters, sorted, saved a "view preset" — where should this <strong>table state</strong> live?
+Langfuse's answer is <strong>three layers, with the URL as the source of truth</strong>:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">sharing &amp; source of truth</span></div><div class="ld">Filters, sort, search, current view id are all encoded into the <strong>URL</strong>. So you send a colleague the link and they see <strong>exactly the same thing</strong> — the URL is the single source of truth for "what this table looks like right now" (echoing Lesson 23's FilterState).</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">session storage</span><span class="name">navigation memory</span></div><div class="ld">Hopping between tables, <strong>session storage</strong> remembers your recent column widths, visible columns, scroll position so you aren't reset each time you return — valid only within this browsing session.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">database</span><span class="name">permanent presets</span></div><div class="ld">"View presets" (saved views) go into the <strong>DB</strong>, permanent, cross-device, team-shareable. Deleted a preset, or a column it referenced no longer exists? <strong>Graceful degradation</strong>: drop the invalid part + warn, never a blank screen.</div></div>
+</div>
+
+<p>The three layers each own a timescale — URL "shareable right now", session "this navigation", DB "permanent" — together letting a big table be
+<strong>deep-linkable, state-preserving across navigation, and a long-term home for the team's go-to views</strong>. Paired with a global time range (Zustand default
+⊕ URL explicit), it becomes the mandatory <code>timestamp</code> filter feeding Lesson 22's look-back windows, nailing down the scan range. <strong>State layering is
+the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not fetch it all at once (rows + all metrics), instead of two calls and a pile of "on-demand" switches?</strong> Because <strong>the list's experience
+  goal is "instant", while metrics are inherently expensive</strong>. Cost, latency, scores need 2 big-table JOINs to compute; bound to the rows, the whole table must
+  <strong>wait for the slowest call</strong> to show — the user stares at blank space. Split them and the compact rows (cheap, everyone wants) <strong>arrive
+  instantly</strong>, metrics fill in as "extra info" as computed; perceived latency drops from "slowest call" to "fastest call". Likewise, <strong>conditional FINAL
+  and conditional JOIN</strong> are the same wisdom: <strong>optimize ruthlessly for the most common, simplest path, deferring complexity and cost until "you actually
+  ask"</strong>. This is the golden rule of high-frequency list performance — don't let the 1% advanced need (sort by cost, see all metrics) slow the 99% daily browse.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>One <code>getTracesTableGeneric</code> serves <strong>four shapes</strong> (<code>rows / metrics / count / identifiers</code>), distinguished by <code>select</code> with type-safe overloads.</li>
+    <li><strong>Compact rows vs metrics, split</strong>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns success even without metrics, so the table <strong>renders from rows first</strong>.</li>
+    <li><strong>Conditional JOIN</strong>: LEFT JOIN observations/scores only when filter/sort needs it or <code>select==="metrics"</code>, saving two JOINs on default browsing.</li>
+    <li><strong>Conditional FINAL</strong>: default time-ordering uses <code>toDate(timestamp),event_ts DESC</code> + <code>LIMIT 1 BY id</code> to read only the latest partition; non-default ordering falls back to <code>FROM traces FINAL</code> full dedup.</li>
+    <li>Golden rule: optimize for the most common path, defer complexity/cost until "actually asked". Table state lives in <strong>three layers, URL as source of truth</strong> (URL ⊕ session ⊕ DB presets with graceful degradation); the global time range becomes the mandatory timestamp filter feeding Lesson 22's look-back windows.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Opening the trace list, Langfuse fires traces.all (rows) and traces.metrics (metrics) in parallel rather than one combined query. Why?</div>
+  <ol class="opts">
+    <li>because ClickHouse can't query two kinds at once</li>
+    <li>to make metrics more accurate</li>
+    <li>to flood the server with more requests</li>
+    <li>compact rows are cheap and arrive instantly so the table paints first; cost/latency/score metrics need 2 JOINs and are slower, merged in by id later as extra info. Perceived latency drops from 'slowest call' to 'fastest call'</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The list's goal is instant open, but metrics are inherently expensive (2 JOINs). Splitting cheap rows from costly metrics, joinTableCoreAndMetrics merges by id and returns success even without metrics, so the table renders from rows first and fills metrics later. The 'compact list model' — give what you can instantly, fill in what you compute as it comes.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. traces is a ReplacingMergeTree (one id may have multiple rows). For default time ordering, Langfuse skips FINAL and uses ORDER BY toDate(timestamp),event_ts DESC + LIMIT 1 BY id. Why is this better?</div>
+  <ol class="opts">
+    <li>because LIMIT 1 BY id saves memory</li>
+    <li>because FINAL returns wrong results</li>
+    <li>because default ordering needs no dedup</li>
+    <li>FINAL reads all partitions and dedups on the spot, slow; time ordering + LIMIT 1 BY id lets CH read only the latest day's partition from disk and take each id's latest row in memory — correct and fast, no pulling a month of data just to dedup</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. FINAL is correct but slow (reads all to dedup). For default time ordering, event_ts DESC + LIMIT 1 BY id takes each id's latest row in memory, CH reading only the latest partition. Only sorting by a non-time column (e.g. cost) falls back to FROM traces FINAL full dedup — pay on demand, the common path unburdened.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse stores table state (filters, sort, column settings, view presets) in three layers, with the URL as the source of truth. The most direct benefit?</div>
+  <ol class="opts">
+    <li>to hide filter conditions</li>
+    <li>to reduce database queries</li>
+    <li>to render the table faster</li>
+    <li>the URL encodes the current view → send a colleague the link and they see exactly what you do (shareable/deep-linkable); session preserves state across navigation; DB stores permanent presets, cross-device shareable, with graceful degradation for invalid columns</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Three layers each own a timescale: URL 'shareable now' (deep links, one link reproduces the whole view, echoing L23's FilterState), session 'this navigation' (column widths/visible columns survive hops), DB 'permanent' (saved views shared cross-device/team, invalid parts dropped+warned, no blank screen). This makes big tables fast, stable, and shareable.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Optimize for the most common path, defer complexity/cost until actually asked' — compact rows vs metrics, conditional JOIN, conditional FINAL all follow it. In your own list/detail UIs, is there a place where 'the 1% advanced need slows the 99% daily browse'? How would you split it?</li>
   </ul>
 </div>
 </div>
