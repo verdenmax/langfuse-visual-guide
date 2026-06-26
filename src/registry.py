@@ -52,4 +52,5 @@ CONTENT = {
     "35-dataset-runs.html": part6.LESSON_35,
     "36-experiments-and-comparison.html": part6.LESSON_36,
     "37-prompt-management.html": part7.LESSON_37,
+    "38-prompt-serving-caching.html": part7.LESSON_38,
 }

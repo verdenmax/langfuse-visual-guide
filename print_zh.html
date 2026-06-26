@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 37 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 38 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -374,6 +374,7 @@ details[open] > summary { list-style: none; }
   <li>数据集运行与运行项</li>
   <li>实验与对比</li>
   <li>Prompt 管理</li>
+  <li>Prompt 服务与缓存</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -7451,6 +7452,208 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>prompt 管理把「软件版本控制」的思想（不可变版本、可移动 label、依赖、commit message）整套搬到了 prompt 上。回想你用 git 的经验：哪些 git 工作流（如分支策略、code review、回滚演练）你觉得也值得搬到 prompt 管理上？反过来，prompt 和代码有什么本质不同，使得某些 git 实践未必适用？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Prompt 服务与缓存</h1>
+
+<p class="lead">
+上一课让你能<strong>安全地管</strong> prompt。但生产里有个现实问题：应用可能<strong>每一次 LLM 调用都要先取一次 prompt</strong>（「给我 production 那版」）。如果每次都去 Postgres 查一遍，既慢、又把数据库压垮。这一课讲 <strong>PromptService</strong> 怎么用 Redis 把 prompt 服务做得又快又稳，重点是两个机制：经典的 <strong>read-through 缓存</strong>，和一个极其优雅的<strong>「换命名空间，而非逐个删 key」</strong>的 epoch 失效策略。
+中间还会看到第 37 课依赖的「下半场」：被引用的子 prompt 在服务时会被<strong>解析内联</strong>成一个完整 prompt，而正是这个「一份 prompt 可能横跨多个名字」的事实，逼出了那个聪明的失效设计。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  prompt 服务像图书馆的<strong>热门书快取架</strong>。读者（应用）来借书（prompt），管理员先看<strong>快取架</strong>（Redis）上有没有：有就<strong>秒递</strong>，没有才跑去<strong>大书库</strong>（Postgres）取一本、顺手在快取架放一份，下个人就快了。
+  难题来了：一本书<strong>出了新版</strong>，怎么让大家别再借到旧版？满架去翻、把旧版一本本抽走<strong>太难了</strong>——何况一本书里还可能<strong>夹着别本书的章节</strong>（第 37 课的依赖），牵一发动全身。图书馆的妙招是：给整个快取架挂一块<strong>新的「版本号牌」</strong>。旧号牌下的书<strong>没人再认</strong>（按规则只认当前号牌），它们不必清理、放着自然过期就行；而所有新借的，都从<strong>挂着新号牌的货架</strong>走。<strong>换块牌子，比逐本抽书，快太多也稳太多。</strong>
+</div>
+
+
+<h2>read-through 缓存：先问 Redis，没有再回库</h2>
+<p>核心方法是 <code>PromptService.getPrompt</code>，它实现教科书式的 <strong>read-through（读穿透）</strong>缓存：先查 Redis，命中就直接返回；<strong>未命中</strong>才回 Postgres 查（<code>findPrompt</code>），查到后<strong>顺手写进 Redis</strong>（带 TTL），下一次同样的请求就走缓存了。缓存开不开由 <code>LANGFUSE_CACHE_PROMPT_ENABLED</code> 控制，每条缓存活多久由 <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code> 控制。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="read-through 缓存流程：应用请求 production 的 prompt，PromptService 先查 Redis，命中则秒返回；未命中则查 Postgres、把结果写进 Redis（带 TTL）再返回，下次同请求即命中">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">read-through：缓存命中走捷径，未命中回库并回填</text>
+  <rect x="30" y="86" width="130" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="106" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">应用</text><text x="95" y="122" text-anchor="middle" font-size="6.6" fill="var(--muted)">getPrompt(production)</text>
+  <rect x="220" y="80" width="150" height="60" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="295" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">PromptService</text><text x="295" y="117" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① 先查 Redis</text><text x="295" y="129" text-anchor="middle" font-size="6.4" fill="var(--muted)">命中→返回</text>
+  <rect x="430" y="40" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="505" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Redis 缓存</text><text x="505" y="76" text-anchor="middle" font-size="6.4" fill="var(--muted)">毫秒级 · 带 TTL</text>
+  <rect x="430" y="130" width="150" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="505" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">Postgres（权威）</text><text x="505" y="166" text-anchor="middle" font-size="6.4" fill="var(--muted)">未命中才查</text>
+  <line x1="160" y1="110" x2="218" y2="110" stroke="var(--blue)" stroke-width="1.5"/><polygon points="218,110 209,106 209,114" fill="var(--blue)"/>
+  <line x1="370" y1="95" x2="428" y2="70" stroke="var(--accent)" stroke-width="1.5"/><polygon points="428,70 419,69 421,77" fill="var(--accent)"/><text x="399" y="78" text-anchor="middle" font-size="6" fill="var(--accent-ink)">① 命中</text>
+  <line x1="370" y1="120" x2="428" y2="150" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="428,150 419,148 421,156" fill="var(--teal)"/><text x="396" y="142" text-anchor="middle" font-size="6" fill="var(--teal)">② 未命中→查库</text>
+  <path d="M 505 130 Q 560 110 580 90" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="4 3"/><polygon points="580,90 572,95 578,98" fill="var(--accent)"/><text x="600" y="112" text-anchor="middle" font-size="6" fill="var(--accent-ink)">③ 回填 Redis</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">绝大多数请求走 ①（毫秒、不碰库）；只有缓存冷/失效后第一笔走 ②③——数据库压力被缓存挡在前面</text>
+</svg>
+<div class="figcap"><b>读穿透 + 回填</b>：<code>getPrompt</code> 先 <code>getCachedPrompt</code>，命中即返回；未命中走 <code>findPrompt</code>（DB）再 <code>cachePrompt</code>（<code>redis.set(key, value, "EX", ttlSeconds)</code>）。开关 <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>、时长 <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>。源码：<code>PromptService/index.ts:49-86,166-173</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">getPrompt 读穿透</span></div>
+  <pre class="code"><span class="kw">public async</span> <span class="fn">getPrompt</span>(params): Promise&lt;PromptResult | null&gt; {
+  <span class="kw">if</span> (this.cacheEnabled) {
+    <span class="kw">const</span> cachedPrompt = <span class="kw">await</span> this.getCachedPrompt(params);   <span class="cm">// ① 先问 Redis</span>
+    <span class="kw">if</span> (cachedPrompt) <span class="kw">return</span> cachedPrompt;                     <span class="cm">// 命中 → 秒返回，不碰库</span>
+  }
+  <span class="kw">const</span> dbPrompt = <span class="kw">await</span> this.findPrompt(params);              <span class="cm">// ② 未命中 → 查 Postgres</span>
+  <span class="kw">if</span> (this.cacheEnabled &amp;&amp; dbPrompt)
+    <span class="kw">await</span> this.cachePrompt({ ...params, prompt: dbPrompt });    <span class="cm">// ③ 回填 Redis（带 TTL）</span>
+  <span class="kw">return</span> dbPrompt;
+}
+<span class="cm">// cachePrompt: redis.set(key, value, "EX", this.ttlSeconds)  —— 每条缓存自带过期</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>情形</th><th>走哪条路</th><th>延迟</th><th>碰 Postgres 吗</th></tr></thead>
+  <tbody>
+    <tr><td><b>缓存命中</b>（绝大多数）</td><td>Redis 直接返回</td><td>毫秒级</td><td>否</td></tr>
+    <tr><td><b>缓存未命中</b>（冷启/刚失效）</td><td>查 DB → 回填 Redis → 返回</td><td>一次 DB 往返</td><td>是（仅这一笔）</td></tr>
+    <tr><td><b>TTL 到期</b></td><td>下次读变未命中，自动回填</td><td>同上，单笔</td><td>是（单笔）</td></tr>
+  </tbody>
+</table>
+<p>一句话：<strong>数据库只在「第一笔」承压，之后全被 Redis 接住</strong>。这正是 read-through 的价值——把一个「每次调用都要读」的高频访问，摊薄成「每个 TTL 周期一次 DB 读」。</p>
+
+
+<h2>解析：把依赖内联成一个完整 prompt</h2>
+<p>第 37 课说 prompt 能引用别的 prompt。但应用最终拿到的，得是一个<strong>完整、自包含</strong>的 prompt——不能让运行时还去现凑那些被引用的片段。所以服务时有一步<strong>解析（resolve）</strong>：<code>buildAndResolvePromptGraph</code> 沿着依赖图把每个被引用的子 prompt 找出来、<strong>内联</strong>进父 prompt，得到一个「展开后」的成品。两道安全闸不可少：<strong>嵌套深度上限</strong>（<code>MAX_PROMPT_NESTING_DEPTH</code>）和<strong>环检测</strong>（<code>seen</code> 集合），防止 A 依赖 B、B 又依赖 A 把服务拖死。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 195" role="img" aria-label="prompt 依赖解析：父 prompt 引用两个子 prompt，buildAndResolvePromptGraph 沿依赖图把子 prompt 内联进父，得到展开后的完整 prompt；过程有嵌套深度上限和 seen 环检测两道闸；缓存与返回的都是这个 resolved 成品">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">解析：沿依赖图内联，产出一个自包含的成品</text>
+  <rect x="30" y="48" width="150" height="100" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">父 prompt</text><rect x="44" y="78" width="122" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">引用 子A（label）</text><rect x="44" y="108" width="122" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="124" text-anchor="middle" font-size="6.4" fill="var(--muted)">引用 子B（version）</text>
+  <rect x="270" y="60" width="160" height="76" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="350" y="80" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">buildAndResolvePromptGraph</text><text x="350" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">沿图找子 prompt 内联</text><text x="350" y="113" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">闸1 深度上限</text><text x="350" y="126" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">闸2 seen 环检测</text>
+  <rect x="520" y="60" width="170" height="76" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="605" y="84" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">resolved prompt</text><text x="605" y="102" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">子片段已全部内联</text><text x="605" y="116" text-anchor="middle" font-size="6.4" fill="var(--muted)">完整、自包含</text><text x="605" y="129" text-anchor="middle" font-size="6.2" fill="var(--faint)">← 缓存/返回的就是它</text>
+  <line x1="180" y1="98" x2="268" y2="98" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,98 259,94 259,102" fill="var(--accent)"/>
+  <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">关键事实：一个 resolved prompt 可能横跨好几个 prompt 名字——这正是下一节失效设计要项目级的根因</text>
+</svg>
+<div class="figcap"><b>解析 = 把组合展开成成品</b>：<code>buildAndResolvePromptGraph</code> 沿第 37 课的依赖图把子 prompt 内联进父，得到 <code>resolvedPrompt</code>；<code>MAX_PROMPT_NESTING_DEPTH</code> 限深、<code>seen</code> 集合防环。<strong>缓存与返回的都是这个展开后的成品</strong>。源码：<code>PromptService/index.ts:132-144,218+</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">解析 + 两道闸</span></div>
+  <pre class="code"><span class="cm">// 解析：返回把依赖内联后的成品</span>
+<span class="kw">public async</span> <span class="fn">resolvePrompt</span>(prompt) {
+  <span class="kw">const</span> promptGraph = <span class="kw">await</span> this.buildAndResolvePromptGraph(...);
+  <span class="kw">return</span> { ...prompt, prompt: promptGraph.resolvedPrompt };   <span class="cm">// 子片段已内联</span>
+}
+<span class="cm">// 沿依赖图递归内联，两道安全闸：</span>
+<span class="kw">if</span> (level &gt;= <span class="st">MAX_PROMPT_NESTING_DEPTH</span>) <span class="kw">throw</span> …;   <span class="cm">// 闸1：嵌套太深就停</span>
+<span class="kw">const</span> seen = <span class="kw">new</span> Set&lt;string&gt;();                    <span class="cm">// 闸2：记录已访问，A→B→A 立刻识破</span></pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>为什么服务时才解析</h4><p>依赖在数据库里存的是「引用关系」（按 label/version 指向 child）。但 child 的 label 会移动、内容会变——所以只能在<strong>取用的那一刻</strong>才把当前的 child 拉出来内联，得到此刻正确的成品。</p></div>
+  <div class="col"><h4>闸 1：深度上限</h4><p><code>MAX_PROMPT_NESTING_DEPTH</code> 限制依赖嵌套层数。防止有人把依赖链拉得过深，导致一次解析要拉几十个 prompt、拖垮服务。</p></div>
+  <div class="col"><h4>闸 2：环检测</h4><p><code>seen</code> 集合记录已访问的 prompt。一旦出现 A 依赖 B、B 又依赖 A 的环，立刻识破并报错——否则递归会无限打转。</p></div>
+</div>
+
+
+<h2>epoch 失效：换命名空间，而非逐个删 key</h2>
+<p>缓存最难的永远是<strong>失效</strong>：prompt 一改（新版、移 label），旧缓存就得作废。难点在于——一个 resolved prompt 可能<strong>横跨好几个名字</strong>（因为依赖），你根本说不清「该删哪些 key」。Langfuse 的解法漂亮得近乎狡黠：缓存 key 里嵌一个<strong>项目级的 epoch（纪元）令牌</strong>；失效时<strong>不删任何 key</strong>，只是把这个 epoch 令牌<strong>换成一个新随机值</strong>——于是所有旧 key 瞬间「失联」（新读写都用新 epoch、落在新命名空间），旧的放着自然按 TTL 过期。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="epoch 失效：缓存 key 形如 prompt:项目:epoch:名字:版本；prompt 变更时 invalidateCache 把项目级 epoch 令牌从 e1 转成 e2，所有带 e1 的旧 key 不再被读到、按 TTL 自然过期，新读写都落在 e2 命名空间">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">失效 = 转 epoch 令牌（换命名空间），不删 key</text>
+  <rect x="40" y="40" width="640" height="30" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">缓存 key 形如：prompt : {projectId} : {epoch} : {promptName} : {version|label}</text>
+  <rect x="60" y="92" width="270" height="80" rx="10" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="195" y="112" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">旧 epoch = e1（失联）</text><text x="195" y="132" text-anchor="middle" font-size="6.6" fill="var(--muted)">prompt:proj:e1:greeting:production</text><text x="195" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">prompt:proj:e1:refund:production</text><text x="195" y="164" text-anchor="middle" font-size="6.4" fill="var(--faint)">没人再读 → 按 TTL 自然过期</text>
+  <rect x="390" y="92" width="270" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="525" y="112" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">新 epoch = e2（现役）</text><text x="525" y="132" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">prompt:proj:e2:greeting:production</text><text x="525" y="148" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">…新读写都落这里（先 miss 再回填）</text><text x="525" y="164" text-anchor="middle" font-size="6.4" fill="var(--muted)">相当于一整片干净缓存</text>
+  <line x1="330" y1="132" x2="388" y2="132" stroke="var(--accent)" stroke-width="2"/><polygon points="388,132 379,128 379,136" fill="var(--accent)"/><text x="359" y="124" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">转 epoch</text>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">epoch 是项目级的（不是 prompt 级）——因为 resolved prompt 跨多名字，任一变更都得让整片缓存翻篇；O(1)，无需扫描/删除</text>
+</svg>
+<div class="figcap"><b>O(1) 失效，无需扫库删 key</b>：<code>invalidateCache</code> 只对项目级 epoch 键 <code>SET</code> 一个新随机令牌（48 位熵）。旧 epoch 的 key 不再被任何读命中，靠各自 TTL 自然消亡；epoch 键本身 TTL 7 天。<code>getOrCreateEpoch</code> 用 <code>SET NX</code> 处理并发初始化。源码：<code>PromptService/index.ts:179-260</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">epoch 失效 + key</span></div>
+  <pre class="code"><span class="cm">// 失效：不删 key，只把项目级 epoch 令牌转成新随机值 → 全部旧 key 失联</span>
+<span class="kw">public async</span> <span class="fn">invalidateCache</span>({ projectId }) {
+  <span class="kw">await</span> this.redis.set(this.getEpochKey({ projectId }), this.newEpochToken(),
+                       <span class="st">"EX"</span>, this.epochTtlSeconds);   <span class="cm">// epoch 键活 7 天</span>
+}
+<span class="cm">// key 里嵌 epoch：epoch 一变，整片命名空间就翻篇</span>
+getCacheKey = `prompt:${projectId}:${epoch}:${promptName}:${version ?? label}`;
+<span class="cm">// epoch 项目级（非 prompt 级）：因为 resolved prompt 跨多名字，任一变更都要整体失效</span>
+getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
+</div>
+
+<p>这套设计把「失效一片关联复杂的缓存」从一个<strong>难解的精确删除问题</strong>，变成了一次<strong>O(1) 的令牌替换</strong>。代价仅仅是旧 key 在过期前还短暂占着点内存——用一点点内存的浪费，换来失效逻辑的<strong>极致简单与正确</strong>。这是分布式缓存里一个非常值得收进工具箱的招式。</p>
+
+<table class="t">
+  <thead><tr><th>对比</th><th>逐个删 key（朴素做法）</th><th>转 epoch（Langfuse）</th></tr></thead>
+  <tbody>
+    <tr><td>失效复杂度</td><td>需找出所有受影响 key，O(N) 且要扫描</td><td>SET 一个新令牌，O(1)</td></tr>
+    <tr><td>依赖追踪</td><td>必须反查「哪些 resolved 成品含此 child」</td><td>完全不必——整片命名空间翻篇</td></tr>
+    <tr><td>漏删风险</td><td>漏一个就有人读到陈旧 prompt</td><td>不可能漏，旧 key 一律失联</td></tr>
+    <tr><td>代价</td><td>逻辑复杂、易错</td><td>旧 key 过期前占点内存（自动消亡）</td></tr>
+  </tbody>
+</table>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么用「转 epoch」失效，而不是老老实实把旧 key 删掉？</strong> 因为<strong>精确删除在这里几乎不可行</strong>。一个被服务的 prompt 是<strong>解析后的成品</strong>，可能内联了好几个别的 prompt（第 37 课依赖）。当你改动其中任意一个 child，所有<strong>间接依赖它的 resolved 成品</strong>都该失效——但你很难反查「到底哪些 key 受了牵连」，更别说它们还散落在不同名字下。「逐个找出来删」既慢又容易漏，漏一个就意味着<strong>有人读到了陈旧的 prompt</strong>。转 epoch 把这个难题一刀斩断：<strong>不去找、不去删，直接换一片新命名空间</strong>，旧的全部作废、自然过期。失效从此是 O(1) 的、绝不漏的。代价是旧 key 过期前的一点内存浪费——这是教科书级的「<strong>用空间换正确性与简单性</strong>」。<br><br>
+  <strong>为什么 epoch 是「项目级」而不是「prompt 级」？</strong> 正是上面那个原因的直接推论。如果 epoch 按单个 prompt 名字隔离，那改 child prompt 时，你又得去想「哪些 parent 依赖了它、要不要也转它们的 epoch」——依赖追踪的难题原地复活。把 epoch 放在<strong>项目这个粒度</strong>，意味着「这个项目里任何一个 prompt 有变动，整个项目的 prompt 缓存就翻篇」。粒度粗了点、偶尔会多失效一些本可保留的缓存，但换来的是<strong>彻底不必追踪依赖关系</strong>的确定性。在「失效少一点」和「永不读到陈旧数据」之间，它果断选了后者——对 prompt 这种<strong>正确性远比缓存命中率重要</strong>的数据，这个取舍无比正确。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>prompt 服务必须快</strong>：生产可能每次 LLM 调用都取 prompt，直接打 Postgres 太慢太重，故 <code>PromptService</code> 用 Redis 缓存挡在前面。</li>
+    <li><strong>read-through 缓存</strong>：<code>getPrompt</code> 先查 Redis、命中即返回；未命中回 Postgres 再回填 Redis（<code>SET EX ttl</code>）。开关 <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>、时长 <code>..._TTL_SECONDS</code>。</li>
+    <li><strong>服务时解析依赖</strong>：<code>buildAndResolvePromptGraph</code> 把被引用的子 prompt 内联成自包含成品，带<strong>深度上限 + seen 环检测</strong>两道闸；缓存/返回的都是这个 resolved 成品。</li>
+    <li><strong>epoch 失效（招式精髓）</strong>：缓存 key 嵌项目级 epoch 令牌；失效时<strong>不删 key</strong>，只把令牌转成新随机值——旧 key 全部失联、按 TTL 自然过期。O(1)、绝不漏、无需扫描。</li>
+    <li><strong>epoch 项目级的根因</strong>：resolved prompt 跨多名字，精确删除/prompt 级隔离都要追踪依赖；项目级 epoch 用「多失效一点」换「彻底不必追踪 + 永不读到陈旧」——对 prompt 这种正确性优先的数据是正确取舍。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 PromptService 用 Redis 做 read-through 缓存。「read-through」具体指什么流程？</div>
+  <ol class="opts">
+    <li>每次都查 Postgres，再顺便更新 Redis</li>
+    <li>getPrompt 先查 Redis，命中即返回（不碰库）；未命中才查 Postgres，并把结果回填进 Redis（SET EX ttl），于是下次同请求走缓存——绝大多数请求毫秒级、不压数据库</li>
+    <li>先写 Redis 再异步落库</li>
+    <li>只读 Redis，从不回库</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。read-through：缓存命中走捷径，未命中才穿透到权威库并回填。getPrompt 先 getCachedPrompt，命中返回；未命中 findPrompt(DB)→cachePrompt(redis.set EX ttlSeconds)。生产可能每次 LLM 调用都取 prompt，这层缓存把数据库压力挡在前面，只有缓存冷/失效后第一笔才回库。开关 LANGFUSE_CACHE_PROMPT_ENABLED、时长 _TTL_SECONDS。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. prompt 改动后要让缓存失效。Langfuse 不去逐个删旧 key，而是在缓存 key 里嵌一个项目级 epoch 令牌、失效时只把它转成新随机值。为什么这样做？</div>
+  <ol class="opts">
+    <li>因为 resolved prompt 可能内联多个别的 prompt（依赖），精确反查「哪些 key 受牵连」几乎不可行、漏一个就读到陈旧；转 epoch 等于直接换一片干净命名空间，旧 key 失联按 TTL 过期——O(1)、绝不漏</li>
+    <li>为了节省 Redis 内存</li>
+    <li>因为 Redis 不支持 DEL</li>
+    <li>为了让缓存永不过期</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。服务的 prompt 是解析后的成品，可能内联多个 child（第37课）。改一个 child，所有间接依赖它的 resolved 成品都该失效，但你很难反查受影响的 key、它们还散落在不同名字下，逐个删既慢又漏。invalidateCache 只对项目级 epoch 键 SET 新令牌，缓存 key 含该 epoch，于是旧 key 全部失联、按 TTL 自然过期。用一点内存浪费换失效的简单与正确。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 为什么 Langfuse 的缓存 epoch 是「项目级」（prompt_cache_epoch:{projectId}），而不是按单个 prompt 名字隔离？</div>
+  <ol class="opts">
+    <li>prompt 级 epoch 不被 Redis 支持</li>
+    <li>因为 resolved prompt 跨多个名字（依赖），若按 prompt 名隔离 epoch，改 child 时又得追踪「哪些 parent 依赖它」；项目级 epoch 用「偶尔多失效一点」换「彻底不必追踪依赖 + 永不读到陈旧」</li>
+    <li>为了跨项目共享缓存</li>
+    <li>项目级 key 更短更省内存</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。源码注释明说：epoch 项目级是因为 resolved prompt 可含跨多个 prompt 名字的传递依赖。若按 prompt 名隔离，改 child 又要回到「哪些 parent 受影响」的依赖追踪难题。项目级粒度意味着「项目内任一 prompt 变动，整片 prompt 缓存翻篇」——粗一点、偶尔多失效，但换来彻底不必追踪依赖的确定性。对 prompt 这种正确性远比命中率重要的数据，这个取舍正确。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>epoch 失效这一招——「改命名空间而非删 key」——本质上是「用空间换正确性与简单性」。回想你做过或设想的缓存系统，哪些场景的失效逻辑曾让你头疼（关联失效、依赖追踪、惊群）？这种 epoch/版本号命名空间的思路能不能套上去？它的代价（内存、TTL 选择、冷启动惊群）你会怎么权衡？</li>
   </ul>
 </div>
 </div>

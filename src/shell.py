@@ -123,6 +123,8 @@ PAGES = [
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
     ("37-prompt-management.html", "Prompt 管理", "Prompt management",
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
+    ("38-prompt-serving-caching.html", "Prompt 服务与缓存", "Prompt serving & caching",
+     "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
 ]
 
 
@@ -680,6 +682,8 @@ SUBTITLES = {
                                             "experiment = prompt × dataset × model run server-side (createExperimentJobClickhouse per question replaceVariablesInPrompt→call LLM→produce trace); trace tagged PromptExperiments + links prompt + pins item version; scoring auto-connects via L30/35; comparison via baseline + deltas (absolute scores hard to judge); Part 6 closes the loop upgrading scoring into deciding"),
     "37-prompt-management.html": ("prompt = 专为 prompt 定制的 git：(name,version) 唯一、版本自增不可变+commitMessage · label(production/latest) 是唯一可移动指针，打新版自动从旧版摘除 · 按 label 取=配置与代码分离(发布/回滚秒级零部署)、按 version 取=绝对复现 · protected labels 防误操作 · PromptDependency 组合复用(childLabel浮动/childVersion钉死)",
                                   "a prompt = git tailored for prompts: (name,version) unique, version auto-increments immutably + commitMessage; a label (production/latest) is a unique movable pointer, tagging a new version auto-strips it from the old; fetch by label = config-code separation (second-scale release/rollback, zero-deploy), fetch by version = absolute reproducibility; protected labels guard against fat-fingering; PromptDependency composition reuse (childLabel floating / childVersion pinned)"),
+    "38-prompt-serving-caching.html": ("生产每次 LLM 调用都取 prompt 故须快 · PromptService 用 Redis read-through(命中返回/未命中回库回填 SET EX ttl) · 服务时解析依赖内联成自包含成品(深度上限+seen 环检测) · epoch 失效：缓存 key 嵌项目级 epoch 令牌，改动只转令牌不删 key，旧 key 失联按 TTL 过期(O(1) 不漏)",
+                                       "production fetches a prompt on every LLM call so it must be fast; PromptService uses a Redis read-through (hit returns / miss falls back and backfills SET EX ttl); resolves dependencies into a self-contained product at serving time (depth cap + seen cycle check); epoch invalidation: the cache key embeds a project-scoped epoch token, a change just rotates the token without deleting keys, old keys orphaned and expire by TTL (O(1), never misses)"),
 }
 
 

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 37 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 38 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -374,6 +374,7 @@ details[open] > summary { list-style: none; }
   <li>Dataset runs & run items</li>
   <li>Experiments & comparison</li>
   <li>Prompt management</li>
+  <li>Prompt serving & caching</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -7881,6 +7882,208 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Prompt management ports the whole idea of 'software version control' (immutable versions, movable labels, dependencies, commit messages) onto prompts. Recall your git experience: which git workflows (branch strategy, code review, rollback drills) do you think are worth porting to prompt management? Conversely, how do prompts differ fundamentally from code, making some git practices not necessarily applicable?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Prompt serving & caching</h1>
+
+<p class="lead">
+The last lesson let you <strong>manage</strong> prompts safely. But production has a real problem: an app may <strong>fetch a prompt before every single LLM call</strong> ("give me the production one"). Hitting Postgres each time is slow and crushes the database. This lesson is about how <strong>PromptService</strong> uses Redis to make prompt serving fast and steady, focusing on two mechanisms: the classic <strong>read-through cache</strong>, and an exceptionally elegant <strong>"swap the namespace, don't delete keys one by one"</strong> epoch invalidation strategy.
+Along the way we'll see Lesson 37's dependencies' "second half": referenced child prompts are <strong>resolved and inlined</strong> into one complete prompt at serving time—and it's precisely this fact, "one prompt may span multiple names", that forces the clever invalidation design.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Prompt serving is like a library's <strong>popular-books fast-access shelf</strong>. A reader (the app) comes to borrow a book (prompt); the librarian first checks the <strong>fast shelf</strong> (Redis): if it's there, <strong>hand it over instantly</strong>; if not, run to the <strong>main stacks</strong> (Postgres) to fetch one and drop a copy on the fast shelf, so the next person is quick.
+  Then the hard part: a book gets a <strong>new edition</strong>—how do you stop everyone from still borrowing the old one? Combing the whole shelf to pull old editions one by one is <strong>too hard</strong>—besides, one book may have <strong>chapters of other books tucked inside</strong> (Lesson 37's dependencies), so one change ripples everywhere. The library's trick: hang a <strong>new "edition tag"</strong> on the entire fast shelf. Books under the old tag are <strong>no longer recognized</strong> (the rule only honors the current tag); they needn't be cleaned, just left to expire; and every new borrow goes through the <strong>shelf with the new tag</strong>. <strong>Swapping a tag is far faster and steadier than pulling books one by one.</strong>
+</div>
+
+
+<h2>The read-through cache: ask Redis first, fall back to the DB</h2>
+<p>The core method is <code>PromptService.getPrompt</code>, a textbook <strong>read-through</strong> cache: check Redis first, return on a hit; only on a <strong>miss</strong> go back to Postgres (<code>findPrompt</code>), and after fetching, <strong>write it into Redis</strong> (with a TTL), so the next identical request hits the cache. Whether the cache is on is controlled by <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, and how long each entry lives by <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Read-through cache flow: the app requests the production prompt, PromptService checks Redis first, returning instantly on a hit; on a miss it queries Postgres, writes the result into Redis (with TTL) and returns, so the next identical request hits">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">read-through: hit takes the shortcut, miss falls back and backfills</text>
+  <rect x="30" y="86" width="130" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="106" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">app</text><text x="95" y="122" text-anchor="middle" font-size="6.6" fill="var(--muted)">getPrompt(production)</text>
+  <rect x="220" y="80" width="150" height="60" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="295" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">PromptService</text><text x="295" y="117" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① check Redis first</text><text x="295" y="129" text-anchor="middle" font-size="6.4" fill="var(--muted)">hit→return</text>
+  <rect x="430" y="40" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="505" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Redis cache</text><text x="505" y="76" text-anchor="middle" font-size="6.4" fill="var(--muted)">millisecond · with TTL</text>
+  <rect x="430" y="130" width="150" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="505" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">Postgres (authority)</text><text x="505" y="166" text-anchor="middle" font-size="6.4" fill="var(--muted)">queried only on a miss</text>
+  <line x1="160" y1="110" x2="218" y2="110" stroke="var(--blue)" stroke-width="1.5"/><polygon points="218,110 209,106 209,114" fill="var(--blue)"/>
+  <line x1="370" y1="95" x2="428" y2="70" stroke="var(--accent)" stroke-width="1.5"/><polygon points="428,70 419,69 421,77" fill="var(--accent)"/><text x="399" y="78" text-anchor="middle" font-size="6" fill="var(--accent-ink)">① hit</text>
+  <line x1="370" y1="120" x2="428" y2="150" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="428,150 419,148 421,156" fill="var(--teal)"/><text x="396" y="142" text-anchor="middle" font-size="6" fill="var(--teal)">② miss→DB</text>
+  <path d="M 505 130 Q 560 110 580 90" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="4 3"/><polygon points="580,90 572,95 578,98" fill="var(--accent)"/><text x="600" y="112" text-anchor="middle" font-size="6" fill="var(--accent-ink)">③ backfill Redis</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the vast majority of requests take ① (millisecond, no DB); only the first after a cold/invalidated cache takes ②③—DB load is shielded behind the cache</text>
+</svg>
+<div class="figcap"><b>read-through + backfill</b>: <code>getPrompt</code> first <code>getCachedPrompt</code>, returns on a hit; on a miss runs <code>findPrompt</code> (DB) then <code>cachePrompt</code> (<code>redis.set(key, value, "EX", ttlSeconds)</code>). Toggle <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, duration <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>. Source: <code>PromptService/index.ts:49-86,166-173</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">getPrompt read-through</span></div>
+  <pre class="code"><span class="kw">public async</span> <span class="fn">getPrompt</span>(params): Promise&lt;PromptResult | null&gt; {
+  <span class="kw">if</span> (this.cacheEnabled) {
+    <span class="kw">const</span> cachedPrompt = <span class="kw">await</span> this.getCachedPrompt(params);   <span class="cm">// ① ask Redis first</span>
+    <span class="kw">if</span> (cachedPrompt) <span class="kw">return</span> cachedPrompt;                     <span class="cm">// hit → return instantly, no DB</span>
+  }
+  <span class="kw">const</span> dbPrompt = <span class="kw">await</span> this.findPrompt(params);              <span class="cm">// ② miss → query Postgres</span>
+  <span class="kw">if</span> (this.cacheEnabled &amp;&amp; dbPrompt)
+    <span class="kw">await</span> this.cachePrompt({ ...params, prompt: dbPrompt });    <span class="cm">// ③ backfill Redis (with TTL)</span>
+  <span class="kw">return</span> dbPrompt;
+}
+<span class="cm">// cachePrompt: redis.set(key, value, "EX", this.ttlSeconds)  — every entry self-expires</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>case</th><th>which path</th><th>latency</th><th>touches Postgres?</th></tr></thead>
+  <tbody>
+    <tr><td><b>cache hit</b> (vast majority)</td><td>Redis returns directly</td><td>milliseconds</td><td>no</td></tr>
+    <tr><td><b>cache miss</b> (cold/just invalidated)</td><td>query DB → backfill Redis → return</td><td>one DB round-trip</td><td>yes (only this one)</td></tr>
+    <tr><td><b>TTL expiry</b></td><td>next read becomes a miss, auto-backfills</td><td>same, single request</td><td>yes (single)</td></tr>
+  </tbody>
+</table>
+<p>In a phrase: <strong>the database only bears "the first request", then Redis catches them all</strong>. That's the value of read-through—amortizing a "read on every call" high-frequency access into "one DB read per TTL period".</p>
+
+
+<h2>Resolution: inline dependencies into one complete prompt</h2>
+<p>Lesson 37 said prompts can reference other prompts. But what the app ultimately gets must be a <strong>complete, self-contained</strong> prompt—the runtime can't be left to assemble the referenced snippets on the fly. So serving includes a <strong>resolve</strong> step: <code>buildAndResolvePromptGraph</code> walks the dependency graph, finds each referenced child, and <strong>inlines</strong> it into the parent, producing an "expanded" finished product. Two safety gates are essential: a <strong>nesting depth cap</strong> (<code>MAX_PROMPT_NESTING_DEPTH</code>) and <strong>cycle detection</strong> (a <code>seen</code> set), preventing A-depends-on-B-depends-on-A from hanging the service.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 195" role="img" aria-label="Prompt dependency resolution: a parent prompt references two children, buildAndResolvePromptGraph walks the graph and inlines the children into the parent, producing an expanded complete prompt; the process has a nesting depth cap and a seen cycle check; what is cached and returned is this resolved product">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">resolve: inline along the graph, produce a self-contained product</text>
+  <rect x="30" y="48" width="150" height="100" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="105" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">parent prompt</text><rect x="44" y="78" width="122" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="94" text-anchor="middle" font-size="6.2" fill="var(--muted)">refs child A (label)</text><rect x="44" y="108" width="122" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="124" text-anchor="middle" font-size="6.2" fill="var(--muted)">refs child B (version)</text>
+  <rect x="270" y="60" width="160" height="76" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="350" y="80" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">buildAndResolvePromptGraph</text><text x="350" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">walk graph, inline children</text><text x="350" y="113" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">gate1 depth cap</text><text x="350" y="126" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">gate2 seen cycle check</text>
+  <rect x="520" y="60" width="170" height="76" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="605" y="84" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">resolved prompt</text><text x="605" y="102" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">all child snippets inlined</text><text x="605" y="116" text-anchor="middle" font-size="6.4" fill="var(--muted)">complete, self-contained</text><text x="605" y="129" text-anchor="middle" font-size="6.2" fill="var(--faint)">← this is what's cached/returned</text>
+  <line x1="180" y1="98" x2="268" y2="98" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,98 259,94 259,102" fill="var(--accent)"/>
+  <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">key fact: a resolved prompt may span several prompt names—the very reason the next section's invalidation is project-scoped</text>
+</svg>
+<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,218+</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">resolve + two gates</span></div>
+  <pre class="code"><span class="cm">// resolve: return the product with dependencies inlined</span>
+<span class="kw">public async</span> <span class="fn">resolvePrompt</span>(prompt) {
+  <span class="kw">const</span> promptGraph = <span class="kw">await</span> this.buildAndResolvePromptGraph(...);
+  <span class="kw">return</span> { ...prompt, prompt: promptGraph.resolvedPrompt };   <span class="cm">// children inlined</span>
+}
+<span class="cm">// recursively inline along the graph, two safety gates:</span>
+<span class="kw">if</span> (level &gt;= <span class="st">MAX_PROMPT_NESTING_DEPTH</span>) <span class="kw">throw</span> …;   <span class="cm">// gate1: stop if nesting too deep</span>
+<span class="kw">const</span> seen = <span class="kw">new</span> Set&lt;string&gt;();                    <span class="cm">// gate2: track visited, catch A→B→A instantly</span></pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>why resolve at serving time</h4><p>Dependencies are stored in the DB as "reference relations" (pointing to a child by label/version). But a child's label moves and its content changes—so only at <strong>the moment of fetching</strong> can you pull the current child and inline it, getting the product correct as of now.</p></div>
+  <div class="col"><h4>gate 1: depth cap</h4><p><code>MAX_PROMPT_NESTING_DEPTH</code> limits dependency nesting levels. It prevents someone from making the chain so deep that one resolution pulls dozens of prompts and drags down the service.</p></div>
+  <div class="col"><h4>gate 2: cycle detection</h4><p>The <code>seen</code> set records visited prompts. The instant a cycle appears—A depends on B, B depends on A—it's caught and errors out; otherwise the recursion spins forever.</p></div>
+</div>
+
+
+<h2>Epoch invalidation: swap the namespace, don't delete keys one by one</h2>
+<p>The hardest part of caching is always <strong>invalidation</strong>: when a prompt changes (new version, label move), the old cache must be voided. The difficulty—a resolved prompt may <strong>span several names</strong> (via dependencies), so you can't even say "which keys to delete". Langfuse's solution is elegant to the point of slyness: embed a <strong>project-scoped epoch token</strong> in the cache key; to invalidate, <strong>delete no keys</strong>, just rotate that epoch token to <strong>a new random value</strong>—so all old keys are instantly "orphaned" (new reads/writes use the new epoch in a new namespace), and the old ones simply expire by TTL.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="Epoch invalidation: a cache key looks like prompt:project:epoch:name:version; on a prompt change invalidateCache rotates the project-scoped epoch token from e1 to e2, so all old e1 keys are no longer read and expire by TTL, while new reads/writes land in the e2 namespace">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">invalidate = rotate the epoch token (swap namespace), delete no keys</text>
+  <rect x="40" y="40" width="640" height="30" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">cache key looks like: prompt : {projectId} : {epoch} : {promptName} : {version|label}</text>
+  <rect x="60" y="92" width="270" height="80" rx="10" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="195" y="112" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">old epoch = e1 (orphaned)</text><text x="195" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">prompt:proj:e1:greeting:production</text><text x="195" y="148" text-anchor="middle" font-size="6.4" fill="var(--muted)">prompt:proj:e1:refund:production</text><text x="195" y="164" text-anchor="middle" font-size="6.4" fill="var(--faint)">no one reads them → expire by TTL</text>
+  <rect x="390" y="92" width="270" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="525" y="112" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">new epoch = e2 (active)</text><text x="525" y="132" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">prompt:proj:e2:greeting:production</text><text x="525" y="148" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">…new reads/writes land here (miss then backfill)</text><text x="525" y="164" text-anchor="middle" font-size="6.4" fill="var(--muted)">effectively a clean cache</text>
+  <line x1="330" y1="132" x2="388" y2="132" stroke="var(--accent)" stroke-width="2"/><polygon points="388,132 379,128 379,136" fill="var(--accent)"/><text x="359" y="124" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">rotate epoch</text>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">the epoch is project-scoped (not prompt-scoped)—because a resolved prompt spans names, any change must turn the whole page; O(1), no scan/delete</text>
+</svg>
+<div class="figcap"><b>O(1) invalidation, no scan-and-delete</b>: <code>invalidateCache</code> just <code>SET</code>s a new random token (48 bits of entropy) on the project-scoped epoch key. Keys under the old epoch are no longer hit by any read and die off by their own TTL; the epoch key itself has a 7-day TTL. <code>getOrCreateEpoch</code> uses <code>SET NX</code> for concurrent initialization. Source: <code>PromptService/index.ts:179-260</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">epoch invalidation + key</span></div>
+  <pre class="code"><span class="cm">// invalidate: delete no keys, just rotate the project-scoped epoch token → all old keys orphaned</span>
+<span class="kw">public async</span> <span class="fn">invalidateCache</span>({ projectId }) {
+  <span class="kw">await</span> this.redis.set(this.getEpochKey({ projectId }), this.newEpochToken(),
+                       <span class="st">"EX"</span>, this.epochTtlSeconds);   <span class="cm">// epoch key lives 7 days</span>
+}
+<span class="cm">// embed epoch in the key: change the epoch and the whole namespace turns the page</span>
+getCacheKey = `prompt:${projectId}:${epoch}:${promptName}:${version ?? label}`;
+<span class="cm">// epoch project-scoped (not prompt-scoped): a resolved prompt spans names, so any change invalidates all</span>
+getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
+</div>
+
+<p>This design turns "invalidating a tangle of related caches" from an <strong>intractable precise-deletion problem</strong> into an <strong>O(1) token swap</strong>. The only cost is old keys briefly occupying a little memory until they expire—trading a touch of wasted memory for invalidation logic that is <strong>maximally simple and correct</strong>. It's a distributed-caching move well worth adding to your toolbox.</p>
+
+<table class="t">
+  <thead><tr><th>comparison</th><th>delete keys one by one (naive)</th><th>rotate epoch (Langfuse)</th></tr></thead>
+  <tbody>
+    <tr><td>invalidation complexity</td><td>find all affected keys, O(N) with a scan</td><td>SET one new token, O(1)</td></tr>
+    <tr><td>dependency tracking</td><td>must reverse-lookup "which resolved products contain this child"</td><td>none needed—the whole namespace turns the page</td></tr>
+    <tr><td>miss risk</td><td>one miss serves a stale prompt</td><td>impossible to miss, all old keys orphaned</td></tr>
+    <tr><td>cost</td><td>complex, error-prone logic</td><td>old keys hold a little memory until expiry (auto-die)</td></tr>
+  </tbody>
+</table>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why invalidate by "rotating the epoch" rather than dutifully deleting the old keys?</strong> Because <strong>precise deletion is nearly infeasible here</strong>. A served prompt is a <strong>resolved product</strong> that may inline several other prompts (Lesson 37 dependencies). When you change any one child, all <strong>resolved products that indirectly depend on it</strong> should be invalidated—but you can barely reverse-lookup "which keys are affected", let alone the fact that they're scattered across different names. "Find them one by one and delete" is slow and miss-prone, and one miss means <strong>someone reads a stale prompt</strong>. Rotating the epoch cuts the knot: <strong>don't search, don't delete, just swap to a fresh namespace</strong>; the old ones are all voided and expire naturally. Invalidation is now O(1) and never misses. The cost is a little wasted memory before old keys expire—a textbook "<strong>trade space for correctness and simplicity</strong>".<br><br>
+  <strong>Why is the epoch "project-scoped" rather than "prompt-scoped"?</strong> A direct corollary of the above. If the epoch were isolated per prompt name, then on changing a child prompt you'd again have to figure out "which parents depend on it, and should I rotate their epochs too"—the dependency-tracking problem reborn. Putting the epoch at <strong>project granularity</strong> means "any prompt change in this project turns the page on the whole project's prompt cache". A bit coarse—occasionally invalidating caches that could have been kept—but it buys the certainty of <strong>never needing to track dependencies at all</strong>. Between "invalidate a little less" and "never read stale data", it firmly chooses the latter—exactly right for prompts, where <strong>correctness matters far more than cache hit rate</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Prompt serving must be fast</strong>: production may fetch a prompt on every LLM call; hitting Postgres directly is too slow and heavy, so <code>PromptService</code> puts a Redis cache in front.</li>
+    <li><strong>Read-through cache</strong>: <code>getPrompt</code> checks Redis first, returns on a hit; on a miss falls back to Postgres then backfills Redis (<code>SET EX ttl</code>). Toggle <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, duration <code>..._TTL_SECONDS</code>.</li>
+    <li><strong>Resolve dependencies at serving time</strong>: <code>buildAndResolvePromptGraph</code> inlines referenced children into a self-contained product, with a <strong>depth cap + seen cycle check</strong>; what's cached/returned is this resolved product.</li>
+    <li><strong>Epoch invalidation (the gem)</strong>: the cache key embeds a project-scoped epoch token; to invalidate, <strong>delete no keys</strong>, just rotate the token to a new random value—all old keys orphaned, expiring by TTL. O(1), never misses, no scan.</li>
+    <li><strong>Why epoch is project-scoped</strong>: a resolved prompt spans names, so precise deletion / prompt-scoped isolation would require dependency tracking; project-scoped epoch trades "a little over-invalidation" for "no tracking + never stale"—the right call for correctness-first data like prompts.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's PromptService uses Redis as a read-through cache. What flow does 'read-through' specifically mean?</div>
+  <ol class="opts">
+    <li>queries Postgres every time, then updates Redis on the side</li>
+    <li>getPrompt checks Redis first, returns on a hit (no DB); only on a miss queries Postgres and backfills the result into Redis (SET EX ttl), so the next identical request hits the cache—the vast majority are millisecond and don't load the DB</li>
+    <li>writes Redis first, then async to the DB</li>
+    <li>reads only Redis, never the DB</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Read-through: a hit takes the shortcut, only a miss penetrates to the authoritative DB and backfills. getPrompt first getCachedPrompt, returns on hit; on miss findPrompt(DB)→cachePrompt(redis.set EX ttlSeconds). Production may fetch a prompt every LLM call; this cache shields the DB, with only the first request after a cold/invalidated cache hitting the DB. Toggle LANGFUSE_CACHE_PROMPT_ENABLED, duration _TTL_SECONDS.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. After a prompt change the cache must be invalidated. Langfuse doesn't delete old keys one by one but embeds a project-scoped epoch token in the cache key, rotating it to a new random value on invalidation. Why?</div>
+  <ol class="opts">
+    <li>because a resolved prompt may inline several other prompts (dependencies), precisely reverse-looking-up 'which keys are affected' is nearly infeasible and one miss serves stale data; rotating the epoch swaps to a fresh namespace, old keys orphaned and expiring by TTL—O(1), never misses</li>
+    <li>to save Redis memory</li>
+    <li>because Redis doesn't support DEL</li>
+    <li>to make the cache never expire</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A served prompt is a resolved product that may inline several children (L37). Changing one child should invalidate all resolved products indirectly depending on it, but you can barely reverse-lookup the affected keys, scattered across names—deleting one by one is slow and miss-prone. invalidateCache just SETs a new token on the project-scoped epoch key; cache keys embed that epoch, so old keys are all orphaned and expire by TTL. Trade a little wasted memory for simple, correct invalidation.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why is Langfuse's cache epoch 'project-scoped' (prompt_cache_epoch:{projectId}) rather than isolated per prompt name?</div>
+  <ol class="opts">
+    <li>prompt-scoped epochs aren't supported by Redis</li>
+    <li>because a resolved prompt spans multiple names (dependencies); if the epoch were per prompt name, changing a child would again require tracking 'which parents depend on it'; a project-scoped epoch trades 'occasionally over-invalidating' for 'no dependency tracking at all + never stale'</li>
+    <li>to share cache across projects</li>
+    <li>project-scoped keys are shorter, saving memory</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The source comment states: the epoch is project-scoped because a resolved prompt can include transitive dependencies across multiple prompt names. Per-name isolation would revive the 'which parents are affected' dependency-tracking problem on a child change. Project granularity means 'any prompt change in the project turns the whole prompt cache's page'—coarser, occasionally over-invalidating, but buying certainty of no dependency tracking. Right for prompts, where correctness beats hit rate.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>The epoch-invalidation move—'change the namespace, not delete keys'—is essentially 'trade space for correctness and simplicity'. Recall caching systems you've built or imagined: which invalidation scenarios gave you headaches (cascading invalidation, dependency tracking, thundering herd)? Could this epoch/version-namespace idea apply? How would you weigh its costs (memory, TTL choice, cold-start thundering herd)?</li>
   </ul>
 </div>
 </div>

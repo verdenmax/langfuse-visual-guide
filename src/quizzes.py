@@ -2635,6 +2635,76 @@ QUIZZES = {
             },
         ],
     },
+    "38-prompt-serving-caching.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 PromptService 用 Redis 做 read-through 缓存。「read-through」具体指什么流程？",
+                    "en": "Langfuse's PromptService uses Redis as a read-through cache. What flow does 'read-through' specifically mean?",
+                },
+                "opts": [
+                    {
+                        "zh": "getPrompt 先查 Redis，命中即返回（不碰库）；未命中才查 Postgres，并把结果回填进 Redis（SET EX ttl），于是下次同请求走缓存——绝大多数请求毫秒级、不压数据库",
+                        "en": "getPrompt checks Redis first, returns on a hit (no DB); only on a miss queries Postgres and backfills the result into Redis (SET EX ttl), so the next identical request hits the cache—the vast majority are millisecond and don't load the DB",
+                    },
+                    {"zh": "每次都查 Postgres，再顺便更新 Redis", "en": "queries Postgres every time, then updates Redis on the side"},
+                    {"zh": "只读 Redis，从不回库", "en": "reads only Redis, never the DB"},
+                    {"zh": "先写 Redis 再异步落库", "en": "writes Redis first, then async to the DB"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "read-through：缓存命中走捷径，未命中才穿透到权威库并回填。getPrompt 先 getCachedPrompt，命中返回；未命中 findPrompt(DB)→cachePrompt(redis.set EX ttlSeconds)。生产可能每次 LLM 调用都取 prompt，这层缓存把数据库压力挡在前面，只有缓存冷/失效后第一笔才回库。开关 LANGFUSE_CACHE_PROMPT_ENABLED、时长 _TTL_SECONDS。",
+                    "en": "Read-through: a hit takes the shortcut, only a miss penetrates to the authoritative DB and backfills. getPrompt first getCachedPrompt, returns on hit; on miss findPrompt(DB)→cachePrompt(redis.set EX ttlSeconds). Production may fetch a prompt every LLM call; this cache shields the DB, with only the first request after a cold/invalidated cache hitting the DB. Toggle LANGFUSE_CACHE_PROMPT_ENABLED, duration _TTL_SECONDS.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "prompt 改动后要让缓存失效。Langfuse 不去逐个删旧 key，而是在缓存 key 里嵌一个项目级 epoch 令牌、失效时只把它转成新随机值。为什么这样做？",
+                    "en": "After a prompt change the cache must be invalidated. Langfuse doesn't delete old keys one by one but embeds a project-scoped epoch token in the cache key, rotating it to a new random value on invalidation. Why?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为 resolved prompt 可能内联多个别的 prompt（依赖），精确反查「哪些 key 受牵连」几乎不可行、漏一个就读到陈旧；转 epoch 等于直接换一片干净命名空间，旧 key 失联按 TTL 过期——O(1)、绝不漏",
+                        "en": "because a resolved prompt may inline several other prompts (dependencies), precisely reverse-looking-up 'which keys are affected' is nearly infeasible and one miss serves stale data; rotating the epoch swaps to a fresh namespace, old keys orphaned and expiring by TTL—O(1), never misses",
+                    },
+                    {"zh": "因为 Redis 不支持 DEL", "en": "because Redis doesn't support DEL"},
+                    {"zh": "为了节省 Redis 内存", "en": "to save Redis memory"},
+                    {"zh": "为了让缓存永不过期", "en": "to make the cache never expire"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "服务的 prompt 是解析后的成品，可能内联多个 child（第37课）。改一个 child，所有间接依赖它的 resolved 成品都该失效，但你很难反查受影响的 key、它们还散落在不同名字下，逐个删既慢又漏。invalidateCache 只对项目级 epoch 键 SET 新令牌，缓存 key 含该 epoch，于是旧 key 全部失联、按 TTL 自然过期。用一点内存浪费换失效的简单与正确。",
+                    "en": "A served prompt is a resolved product that may inline several children (L37). Changing one child should invalidate all resolved products indirectly depending on it, but you can barely reverse-lookup the affected keys, scattered across names—deleting one by one is slow and miss-prone. invalidateCache just SETs a new token on the project-scoped epoch key; cache keys embed that epoch, so old keys are all orphaned and expire by TTL. Trade a little wasted memory for simple, correct invalidation.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么 Langfuse 的缓存 epoch 是「项目级」（prompt_cache_epoch:{projectId}），而不是按单个 prompt 名字隔离？",
+                    "en": "Why is Langfuse's cache epoch 'project-scoped' (prompt_cache_epoch:{projectId}) rather than isolated per prompt name?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为 resolved prompt 跨多个名字（依赖），若按 prompt 名隔离 epoch，改 child 时又得追踪「哪些 parent 依赖它」；项目级 epoch 用「偶尔多失效一点」换「彻底不必追踪依赖 + 永不读到陈旧」",
+                        "en": "because a resolved prompt spans multiple names (dependencies); if the epoch were per prompt name, changing a child would again require tracking 'which parents depend on it'; a project-scoped epoch trades 'occasionally over-invalidating' for 'no dependency tracking at all + never stale'",
+                    },
+                    {"zh": "项目级 key 更短更省内存", "en": "project-scoped keys are shorter, saving memory"},
+                    {"zh": "为了跨项目共享缓存", "en": "to share cache across projects"},
+                    {"zh": "prompt 级 epoch 不被 Redis 支持", "en": "prompt-scoped epochs aren't supported by Redis"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "源码注释明说：epoch 项目级是因为 resolved prompt 可含跨多个 prompt 名字的传递依赖。若按 prompt 名隔离，改 child 又要回到「哪些 parent 受影响」的依赖追踪难题。项目级粒度意味着「项目内任一 prompt 变动，整片 prompt 缓存翻篇」——粗一点、偶尔多失效，但换来彻底不必追踪依赖的确定性。对 prompt 这种正确性远比命中率重要的数据，这个取舍正确。",
+                    "en": "The source comment states: the epoch is project-scoped because a resolved prompt can include transitive dependencies across multiple prompt names. Per-name isolation would revive the 'which parents are affected' dependency-tracking problem on a child change. Project granularity means 'any prompt change in the project turns the whole prompt cache's page'—coarser, occasionally over-invalidating, but buying certainty of no dependency tracking. Right for prompts, where correctness beats hit rate.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "epoch 失效这一招——「改命名空间而非删 key」——本质上是「用空间换正确性与简单性」。回想你做过或设想的缓存系统，哪些场景的失效逻辑曾让你头疼（关联失效、依赖追踪、惊群）？这种 epoch/版本号命名空间的思路能不能套上去？它的代价（内存、TTL 选择、冷启动惊群）你会怎么权衡？",
+                "en": "The epoch-invalidation move—'change the namespace, not delete keys'—is essentially 'trade space for correctness and simplicity'. Recall caching systems you've built or imagined: which invalidation scenarios gave you headaches (cascading invalidation, dependency tracking, thundering herd)? Could this epoch/version-namespace idea apply? How would you weigh its costs (memory, TTL choice, cold-start thundering herd)?",
+            },
+        ],
+    },
 }
 
 
