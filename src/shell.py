@@ -85,6 +85,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("18-opentelemetry-ingestion.html", "OpenTelemetry 摄取", "OpenTelemetry ingestion",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("19-media-blob-storage.html", "媒体与 blob 存储", "Media & blob storage",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -604,6 +606,8 @@ SUBTITLES = {
                                   "singleton writer; per-table memory queues; batchSize/writeInterval triggers; bulk INSERT; graceful drain; memory-for-throughput (S3 backstop)"),
     "18-opentelemetry-ingestion.html": ("OTLP 端点 · protobuf/JSON · 万能适配器 · 优先级属性键 gen_ai/ai/llm · 映射成原生事件 · 边缘适配核心归一",
                                         "OTLP endpoint; protobuf/JSON; universal adapter; priority keys gen_ai/ai/llm; maps to native events; adapt-at-edge unify-at-core"),
+    "19-media-blob-storage.html": ("大二进制不进 ClickHouse · @@@langfuseMedia@@@ 引用 · presigned 直传 S3 · sha256 内容寻址去重 · blob_storage_file_log 台账",
+                                   "big binaries stay out of ClickHouse; @@@langfuseMedia@@@ reference; presigned direct S3 upload; sha256 content-addressed dedup; blob_storage_file_log ledger"),
 }
 
 

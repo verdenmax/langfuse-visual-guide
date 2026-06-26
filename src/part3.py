@@ -2216,3 +2216,284 @@ time.</p>
 </div>
 """)
 LESSON_18 = {"zh": "\n".join(_ZH18), "en": "\n".join(_EN18)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L19 · 媒体与 blob 存储 / Media & blob storage
+# ══════════════════════════════════════════════════════════════════════
+_ZH19 = []
+_EN19 = []
+
+_ZH19.append(r"""
+<p class="lead">
+多模态时代，一次 LLM 调用的 input/output 里可能塞着<strong>一张图、一段音频、一个 PDF</strong>——动辄几 MB 的二进制。如果把这些原样写进第 8 课的 ClickHouse 宽表，
+input/output 列会<strong>瞬间膨胀</strong>，查询变慢、存储浪费。Langfuse 的解法干净利落：<strong>大块二进制根本不进 ClickHouse</strong>，
+而是单独存进 S3 媒体桶，事件里只留一个<strong>小小的引用串</strong>。这一课，就讲这套「把笨重的 blob 挡在热路径之外」的媒体存储设计。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📚 生活类比</div>
+  把它想成<strong>图书馆</strong>。目录卡片（ClickHouse 里的事件）上<strong>不会抄整本书</strong>，只写一个<strong>索书号</strong>（引用串 <code>@@@langfuseMedia:…@@@</code>）；
+  真正厚重的书（媒体二进制）摆在<strong>书库的架子上</strong>（S3 媒体桶）。两个人上传同一本书，图书馆<strong>不会摆两本</strong>——靠书的「指纹」（sha256 哈希）认出是同一本，只存一份。
+  你需要看书时，凭索书号去<strong>把书取出来</strong>。卡片轻、检索快；书库便宜、容量大——<strong>各得其所</strong>。
+</div>
+""")
+
+# (L19 sections appended below)
+
+_ZH19.append(r"""
+<h2>blob 与引用分离：事件里只留索书号</h2>
+<p>核心思想一句话：<strong>把 blob 从事件里拆出去</strong>。媒体二进制存进 S3 媒体桶；事件的 input/output 里，原本那张图的位置被替换成一个引用串
+<code>@@@langfuseMedia:…@@@</code>。于是 ClickHouse 存的是几十字节的索书号，而不是几 MB 的图片。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="原始多模态消息里的图片被替换成 langfuseMedia 引用串，图片本体存入 S3 媒体桶，ClickHouse 只存引用">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">blob 与引用分离：重的进 S3，轻的进 ClickHouse</text>
+  <rect x="20" y="46" width="220" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">原始消息（多模态）</text>
+  <rect x="36" y="78" width="188" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="130" y="97" text-anchor="middle" font-size="8" fill="var(--ink)">"text": "这张图里是什么？"</text>
+  <rect x="36" y="114" width="188" height="66" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="130" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">"image": &lt;3.4 MB base64&gt;</text><text x="130" y="152" text-anchor="middle" font-size="7.5" fill="var(--muted)">🖼️ 笨重的二进制</text><text x="130" y="167" text-anchor="middle" font-size="7.5" fill="var(--muted)">绝不能进 ClickHouse</text>
+  <text x="260" y="120" font-size="14" fill="var(--faint)">▶</text><text x="278" y="112" font-size="7.5" fill="var(--faint)">拆分</text>
+  <rect x="300" y="40" width="190" height="70" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="395" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 媒体桶</text><text x="395" y="78" text-anchor="middle" font-size="7.5" fill="var(--muted)">存图片本体（一份）</text><text x="395" y="93" text-anchor="middle" font-size="7.5" fill="var(--muted)">按 sha256 命名/去重</text>
+  <rect x="300" y="126" width="190" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="395" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ClickHouse 事件</text><text x="395" y="164" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"text": "这张图里是什么？"</text><text x="395" y="180" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"image": @@@langfuseMedia:…@@@</text>
+  <rect x="540" y="84" width="166" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="623" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">blob_storage_file_log</text><text x="623" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">台账：哪个 blob</text><text x="623" y="138" text-anchor="middle" font-size="7.5" fill="var(--muted)">属于哪个 entity</text>
+  <line x1="490" y1="75" x2="538" y2="105" stroke="var(--faint)" stroke-width="1.3"/><line x1="490" y1="160" x2="538" y2="130" stroke="var(--faint)" stroke-width="1.3"/>
+</svg>
+<div class="figcap"><b>重的进 S3、轻的进 ClickHouse</b>：多模态消息里的图片被替换成 <code>@@@langfuseMedia:…@@@</code> 引用串，本体存入 S3 媒体桶（按 sha256 去重），<code>blob_storage_file_log</code> 记录每个 blob 归属哪个 entity。源码：<code>packages/shared/src/utils/mediaReferences.ts:6</code>（<code>MEDIA_REFERENCE_PATTERN</code>）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/utils/mediaReferences.ts &amp; clickhouse/migrations/.../0011_*.sql</span><span class="ln">引用 + 台账</span></div>
+  <pre class="code"><span class="cm">// 事件里媒体被替换成这种小引用串，ClickHouse 只存它（几十字节）</span>
+<span class="kw">export const</span> MEDIA_REFERENCE_PATTERN = /@@@langfuseMedia:.+?@@@/g;
+<span class="cm">// 例：@@@langfuseMedia:type=image/png|id=abc123|source=base64@@@</span>
+
+<span class="cm">// blob_storage_file_log：所有 blob 的台账（又是第 8 课的 ReplacingMergeTree 宽表）</span>
+CREATE TABLE blob_storage_file_log (
+  project_id String, entity_type String, entity_id String, event_id String,
+  bucket_name String, bucket_path String,        <span class="cm">-- 这个 blob 在哪</span>
+  event_ts DateTime64(3), is_deleted UInt8,
+) ENGINE = ReplacingMergeTree(event_ts, is_deleted)
+  ORDER BY (project_id, entity_type, entity_id, event_id);</pre>
+</div>
+
+<p>为什么非得这么分？因为遥测数据和媒体 blob 的「体质」根本不同，硬放在一起会两头受罪——一个被撑大、一个被低效访问。对比一下就一目了然：</p>
+
+<table class="t">
+  <tr><th>维度</th><th>遥测数据（trace/observation）</th><th>媒体 blob（图/音/文件）</th></tr>
+  <tr><td><b>大小</b></td><td>小，几 KB 的结构化 JSON/文本</td><td>大，动辄几 MB 的二进制</td></tr>
+  <tr><td><b>访问方式</b></td><td>高频<strong>查询、过滤、聚合</strong></td><td>几乎只按 id <strong>整取</strong>，不查内部</td></tr>
+  <tr><td><b>该放哪</b></td><td>ClickHouse 宽表（第 8 课）——为分析而生</td><td>S3 对象存储——为大文件而生、便宜</td></tr>
+  <tr><td><b>事件里留什么</b></td><td>—</td><td>只留 <code>@@@langfuseMedia:…@@@</code> 引用串</td></tr>
+</table>
+""")
+
+# (upload flow section below)
+
+_ZH19.append(r"""
+<h2>上传：直传 S3、按指纹去重</h2>
+<p>媒体怎么进到 S3？关键是<strong>SDK 直接传给 S3</strong>，本体<strong>不经过 Langfuse 的应用服务器</strong>。流程是：SDK 先把媒体的<strong>指纹</strong>（sha256 哈希）、
+类型、大小报给 <code>POST /api/public/media</code>；服务端据此决定——这媒体<strong>之前传过吗</strong>？</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="SDK 报 sha256 给 media 端点，已存在则返回 uploadUrl=null 跳过上传，否则返回 presigned URL 让 SDK 直传 S3">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">presigned 直传 + 内容寻址去重</text>
+  <rect x="20" y="44" width="120" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">SDK</text><text x="80" y="80" text-anchor="middle" font-size="7.5" fill="var(--muted)">报 sha256+类型+大小</text>
+  <rect x="180" y="44" width="140" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="250" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">media 端点</text><text x="250" y="78" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">查 prisma.media 去重</text>
+  <line x1="140" y1="68" x2="178" y2="68" stroke="var(--faint)" stroke-width="1.5"/><polygon points="178,68 170,64 170,72" fill="var(--faint)"/>
+  <rect x="360" y="20" width="180" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="450" y="38" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">命中：已传过同指纹</text><text x="450" y="52" text-anchor="middle" font-size="7.5" fill="var(--muted)">→ uploadUrl=null，跳过上传</text>
+  <rect x="360" y="74" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="450" y="92" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">未命中：返回 presigned URL</text><text x="450" y="107" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">一个有时效的 S3 直传地址</text>
+  <line x1="320" y1="60" x2="358" y2="42" stroke="var(--faint)" stroke-width="1.3"/><line x1="320" y1="76" x2="358" y2="94" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="566" y="74" width="140" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="636" y="92" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 媒体桶</text><text x="636" y="107" text-anchor="middle" font-size="7.5" fill="var(--muted)">SDK 凭 URL 直传本体</text>
+  <line x1="540" y1="96" x2="564" y2="96" stroke="var(--amber)" stroke-width="1.6"/><polygon points="564,96 555,92 555,100" fill="var(--amber)"/>
+  <text x="360" y="150" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">关键：媒体本体走 SDK→S3 直连，绝不经过 Langfuse 应用服务器</text>
+  <rect x="120" y="166" width="480" height="36" rx="8" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--muted)">内容寻址：媒体按 (project, sha256) 唯一；同一文件传一百次也只占一份存储</text><text x="360" y="196" text-anchor="middle" font-size="7.5" fill="var(--faint)">大小受 LANGFUSE_S3_MEDIA_MAX_CONTENT_LENGTH 限制</text>
+</svg>
+<div class="figcap"><b>presigned 直传 + 去重</b>：SDK 报指纹 → 服务端查 <code>prisma.media</code>（按 projectId+sha256 唯一）；已传过则回 <code>uploadUrl: null</code> 跳过，否则回 presigned URL 让 SDK <strong>直传 S3</strong>。本体不过应用层。源码：<code>web/src/features/media/server/mediaService.ts:66-122</code>。</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK 报指纹</h4><p>计算媒体的 sha256、contentType、contentLength，<code>POST /api/public/media</code>（先不传本体）。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>服务端去重判断</h4><p>按 <code>(projectId, sha256Hash)</code> 查 <code>prisma.media</code>；已成功上传过同类型 → 返回 <code>uploadUrl: null</code>，<strong>秒过</strong>。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>否则发 presigned URL</h4><p>新媒体则算出 <code>mediaId</code>、bucketPath，返回一个<strong>有时效的 S3 直传地址</strong>。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>SDK 直传 S3</h4><p>SDK 凭 URL 把本体<strong>直接 PUT 进 S3 媒体桶</strong>，不经 Langfuse 应用服务器——省带宽、不堵 API。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>关联 + 记台账</h4><p>媒体与 trace/observation 关联；<code>blob_storage_file_log</code> 记下这个 blob 归属哪个 entity，供生命周期管理与导出。</p></div></div>
+</div>
+
+<p>内容寻址去重在真实场景里收益惊人。设想你做了个「图片问答」应用，<strong>每条对话都带同一张企业 logo 当水印</strong>，或者一个 few-shot 提示里固定塞着<strong>同几张示例图</strong>——
+一天下来可能有<strong>上万条 trace 引用同一张图</strong>。靠 sha256 指纹，这张图在 S3 里<strong>只存一份</strong>，后续每次「上传」都会在第 2 步被识破、<code>uploadUrl: null</code> 秒过，
+既省存储、又省带宽、还省了 SDK 反复上传的时间。这就是把「同一性」交给内容哈希、而非文件名或时间戳来判断的妙处——<strong>相同的字节，永远只有一份</strong>，无论它被多少条 trace、多少个项目内的对话引用。</p>
+""")
+
+# (spark + key below)
+
+_ZH19.append(r"""
+<p>取用时反过来：<code>GET /api/public/media/[mediaId]</code> 返回一个<strong>有时效的下载地址</strong>，UI 或你的程序凭它去 S3 取回本体。
+这个「有时效」也顺带管住了<strong>访问控制</strong>：下载链接由服务端在鉴权之后才签发、且很快过期，媒体既不会被公开裸奔在互联网上、也不会绕过项目边界（第 10 课）被别的租户读到。
+整个生命周期里，几 MB 的二进制<strong>只在 SDK 和 S3 之间流动</strong>，Langfuse 的应用层和 ClickHouse 全程只碰那个轻飘飘的引用串——这正是把笨重负载挡在热路径之外的关键。</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 假如塞进 ClickHouse</h4><p>input 列里躺着几 MB base64，宽表体积暴涨；连「查最近 100 条 trace」这种<strong>压根不碰图</strong>的查询，也要扫过这些大字段，全表跟着变慢——一颗老鼠屎坏一锅汤。</p></div>
+  <div class="col"><h4>😀 分离到 S3</h4><p>ClickHouse 只存几十字节引用，宽表<strong>始终精瘦</strong>、扫描飞快；图片躺在便宜的对象存储里，要用才按 id 取。各自待在最适合的地方，<strong>互不拖累</strong>，这也是第 7 课「双存储分工」在媒体场景的延续。</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么大费周章地把媒体单拎出来，而不是图省事直接塞进事件？</strong> 因为<strong>blob 和遥测数据的「体质」完全不同</strong>，硬塞在一起会两败俱伤。
+  遥测数据（trace/observation）<strong>小、结构化、要被高频查询和聚合</strong>，所以放进 ClickHouse 宽表（第 8 课）；而媒体<strong>大、是不透明二进制、几乎只按 id 整取</strong>，
+  天生属于对象存储。如果把几 MB 的图片塞进 ClickHouse 的 input 列，会<strong>同时毁掉两件事</strong>：宽表被撑爆、扫描变慢（连不带图的查询都被拖累），又用昂贵的分析库去干对象存储的活。
+  Langfuse 的做法是<strong>各按本性安置</strong>：结构化的进 ClickHouse、二进制的进 S3，中间用一个 <code>@@@langfuseMedia@@@</code> 引用串牵线；再用 sha256 内容寻址<strong>天然去重</strong>、
+  用 presigned URL 让本体<strong>绕开应用层直传</strong>。这套组合拳背后是一条朴素的工程智慧：<strong>让每种数据待在最适合它的存储里</strong>——这也为第三部分「摄取链路」画上句点。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>多模态媒体（图/音/文件）是<strong>大块二进制</strong>，绝不能塞进第 8 课的 ClickHouse 宽表——会撑爆 input/output 列、拖慢所有查询。</li>
+    <li><strong>blob 与引用分离</strong>：本体存进 S3 媒体桶，事件里只留一个小引用串 <code>@@@langfuseMedia:…@@@</code>（<code>MEDIA_REFERENCE_PATTERN</code>）。</li>
+    <li><strong>presigned 直传</strong>：SDK 凭服务端发的有时效 URL 把媒体<strong>直接 PUT 进 S3</strong>，本体不经 Langfuse 应用层，省带宽、不堵 API。</li>
+    <li><strong>内容寻址去重</strong>：媒体按 <code>(projectId, sha256)</code> 唯一；已传过则回 <code>uploadUrl: null</code> 跳过——同一文件只占一份存储。</li>
+    <li><code>blob_storage_file_log</code>（第 8 课同款 ReplacingMergeTree 宽表）记录每个 blob 归属哪个 entity，供生命周期管理与导出。核心智慧：<strong>让每种数据待在最适合它的存储里</strong>。</li>
+  </ul>
+</div>
+""")
+
+_EN19.append(r"""
+<p class="lead">
+In the multimodal era, an LLM call's input/output may carry <strong>an image, an audio clip, a PDF</strong> — binaries of several MB. Write those verbatim
+into Lesson 8's ClickHouse wide tables and the input/output columns <strong>balloon instantly</strong>, queries slow, storage is wasted. Langfuse's answer is
+clean: <strong>large binaries never enter ClickHouse</strong> at all; they're stored separately in an S3 media bucket, and the event keeps only a <strong>tiny
+reference string</strong>. This lesson covers that media-storage design — keeping bulky blobs off the hot path.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📚 Analogy</div>
+  Think of a <strong>library</strong>. The catalog card (the ClickHouse event) <strong>never transcribes the whole book</strong>, just a <strong>call
+  number</strong> (the reference string <code>@@@langfuseMedia:…@@@</code>); the heavy books themselves (the media binaries) sit on the <strong>stacks</strong>
+  (the S3 media bucket). Two people upload the same book and the library <strong>doesn't shelve two copies</strong> — it recognizes them as one by the book's
+  "fingerprint" (the sha256 hash), storing just one. When you want to read, you fetch the book by its call number. Cards are light and searchable; stacks
+  are cheap and roomy — <strong>each in its right place</strong>.
+</div>
+""")
+
+_EN19.append(r"""
+<h2>Blob and reference, split: the event keeps only a call number</h2>
+<p>The core idea in one line: <strong>pull the blob out of the event</strong>. Media binaries go to the S3 media bucket; in the event's input/output, where
+that image used to sit, a reference string <code>@@@langfuseMedia:…@@@</code> takes its place. So ClickHouse stores a few-dozen-byte call number, not a
+multi-MB image.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="the image in a raw multimodal message is replaced by a langfuseMedia reference string; the image body goes into the S3 media bucket; ClickHouse stores only the reference">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Blob/reference split: heavy to S3, light to ClickHouse</text>
+  <rect x="20" y="46" width="220" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">raw message (multimodal)</text>
+  <rect x="36" y="78" width="188" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="130" y="97" text-anchor="middle" font-size="8" fill="var(--ink)">"text": "what's in this image?"</text>
+  <rect x="36" y="114" width="188" height="66" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="130" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">"image": &lt;3.4 MB base64&gt;</text><text x="130" y="152" text-anchor="middle" font-size="7.5" fill="var(--muted)">🖼️ bulky binary</text><text x="130" y="167" text-anchor="middle" font-size="7.5" fill="var(--muted)">must NOT enter ClickHouse</text>
+  <text x="260" y="120" font-size="14" fill="var(--faint)">▶</text><text x="278" y="112" font-size="7.5" fill="var(--faint)">split</text>
+  <rect x="300" y="40" width="190" height="70" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="395" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 media bucket</text><text x="395" y="78" text-anchor="middle" font-size="7.5" fill="var(--muted)">stores the image (once)</text><text x="395" y="93" text-anchor="middle" font-size="7.5" fill="var(--muted)">named/deduped by sha256</text>
+  <rect x="300" y="126" width="190" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="395" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ClickHouse event</text><text x="395" y="164" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"text": "what's in this image?"</text><text x="395" y="180" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"image": @@@langfuseMedia:…@@@</text>
+  <rect x="540" y="84" width="166" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="623" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">blob_storage_file_log</text><text x="623" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">ledger: which blob</text><text x="623" y="138" text-anchor="middle" font-size="7.5" fill="var(--muted)">belongs to which entity</text>
+  <line x1="490" y1="75" x2="538" y2="105" stroke="var(--faint)" stroke-width="1.3"/><line x1="490" y1="160" x2="538" y2="130" stroke="var(--faint)" stroke-width="1.3"/>
+</svg>
+<div class="figcap"><b>Heavy to S3, light to ClickHouse</b>: the image in a multimodal message is replaced by a <code>@@@langfuseMedia:…@@@</code> reference; the body goes to the S3 media bucket (deduped by sha256), and <code>blob_storage_file_log</code> records which entity each blob belongs to. Source: <code>packages/shared/src/utils/mediaReferences.ts:6</code> (<code>MEDIA_REFERENCE_PATTERN</code>).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/utils/mediaReferences.ts &amp; clickhouse/migrations/.../0011_*.sql</span><span class="ln">reference + ledger</span></div>
+  <pre class="code"><span class="cm">// media in events is replaced by this small reference string; ClickHouse stores only it (~bytes)</span>
+<span class="kw">export const</span> MEDIA_REFERENCE_PATTERN = /@@@langfuseMedia:.+?@@@/g;
+<span class="cm">// e.g. @@@langfuseMedia:type=image/png|id=abc123|source=base64@@@</span>
+
+<span class="cm">// blob_storage_file_log: a ledger of all blobs (again Lesson 8's ReplacingMergeTree wide table)</span>
+CREATE TABLE blob_storage_file_log (
+  project_id String, entity_type String, entity_id String, event_id String,
+  bucket_name String, bucket_path String,        <span class="cm">-- where this blob lives</span>
+  event_ts DateTime64(3), is_deleted UInt8,
+) ENGINE = ReplacingMergeTree(event_ts, is_deleted)
+  ORDER BY (project_id, entity_type, entity_id, event_id);</pre>
+</div>
+
+<p>Why split this way? Because telemetry data and media blobs have fundamentally different "constitutions", and forcing them together hurts both. A quick
+comparison makes it obvious:</p>
+
+<table class="t">
+  <tr><th>dimension</th><th>telemetry (trace/observation)</th><th>media blob (image/audio/file)</th></tr>
+  <tr><td><b>size</b></td><td>small, a few KB of structured JSON/text</td><td>large, often several MB of binary</td></tr>
+  <tr><td><b>access</b></td><td>frequent <strong>query, filter, aggregate</strong></td><td>almost only fetched whole by id, never queried inside</td></tr>
+  <tr><td><b>where it belongs</b></td><td>ClickHouse wide tables (Lesson 8) — built for analytics</td><td>S3 object storage — built for big files, cheap</td></tr>
+  <tr><td><b>what stays in the event</b></td><td>—</td><td>only the <code>@@@langfuseMedia:…@@@</code> reference</td></tr>
+</table>
+""")
+
+_EN19.append(r"""
+<h2>Upload: direct to S3, deduped by fingerprint</h2>
+<p>How does media get into S3? The key: the <strong>SDK uploads directly to S3</strong>, the body <strong>never passing through Langfuse's app
+servers</strong>. The flow: the SDK first reports the media's <strong>fingerprint</strong> (sha256 hash), type and size to <code>POST /api/public/media</code>;
+the server decides — has this media <strong>been uploaded before</strong>?</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="the SDK reports sha256 to the media endpoint; if it exists, returns uploadUrl=null to skip upload, otherwise returns a presigned URL for the SDK to upload directly to S3">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Presigned direct upload + content-addressed dedup</text>
+  <rect x="20" y="44" width="120" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">SDK</text><text x="80" y="80" text-anchor="middle" font-size="7.5" fill="var(--muted)">reports sha256+type+size</text>
+  <rect x="180" y="44" width="140" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="250" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">media endpoint</text><text x="250" y="78" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">checks prisma.media</text>
+  <line x1="140" y1="68" x2="178" y2="68" stroke="var(--faint)" stroke-width="1.5"/><polygon points="178,68 170,64 170,72" fill="var(--faint)"/>
+  <rect x="360" y="20" width="180" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="450" y="38" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">hit: same fingerprint exists</text><text x="450" y="52" text-anchor="middle" font-size="7.5" fill="var(--muted)">→ uploadUrl=null, skip upload</text>
+  <rect x="360" y="74" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="450" y="92" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">miss: return presigned URL</text><text x="450" y="107" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">a time-limited direct-to-S3 address</text>
+  <line x1="320" y1="60" x2="358" y2="42" stroke="var(--faint)" stroke-width="1.3"/><line x1="320" y1="76" x2="358" y2="94" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="566" y="74" width="140" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="636" y="92" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 media bucket</text><text x="636" y="107" text-anchor="middle" font-size="7.5" fill="var(--muted)">SDK uploads body via URL</text>
+  <line x1="540" y1="96" x2="564" y2="96" stroke="var(--amber)" stroke-width="1.6"/><polygon points="564,96 555,92 555,100" fill="var(--amber)"/>
+  <text x="360" y="150" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Key: media body goes SDK→S3 directly, never through Langfuse app servers</text>
+  <rect x="120" y="166" width="480" height="36" rx="8" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--muted)">content-addressed: media unique by (project, sha256); upload the same file 100x, store one copy</text><text x="360" y="196" text-anchor="middle" font-size="7.5" fill="var(--faint)">size capped by LANGFUSE_S3_MEDIA_MAX_CONTENT_LENGTH</text>
+</svg>
+<div class="figcap"><b>Presigned direct upload + dedup</b>: the SDK reports the fingerprint → the server checks <code>prisma.media</code> (unique by projectId+sha256); already uploaded → returns <code>uploadUrl: null</code> to skip, else a presigned URL for the SDK to <strong>upload directly to S3</strong>. The body never touches the app layer. Source: <code>web/src/features/media/server/mediaService.ts:66-122</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK reports the fingerprint</h4><p>Computes the media's sha256, contentType, contentLength, <code>POST /api/public/media</code> (no body yet).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>server dedup check</h4><p>Looks up <code>prisma.media</code> by <code>(projectId, sha256Hash)</code>; already uploaded with same type → returns <code>uploadUrl: null</code>, <strong>instant pass</strong>.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>else issue a presigned URL</h4><p>For new media, compute <code>mediaId</code>, bucketPath, and return a <strong>time-limited direct-to-S3 address</strong>.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>SDK uploads directly to S3</h4><p>The SDK PUTs the body <strong>straight into the S3 media bucket</strong> via the URL, bypassing Langfuse app servers — saves bandwidth, doesn't clog the API.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>link + log</h4><p>The media is linked to the trace/observation; <code>blob_storage_file_log</code> records which entity this blob belongs to, for lifecycle and export.</p></div></div>
+</div>
+
+<p>Content-addressed dedup pays off dramatically in practice. Imagine an "image Q&amp;A" app where <strong>every conversation carries the same company logo</strong>
+as a watermark, or a few-shot prompt fixed with <strong>the same example images</strong> — over a day that could be <strong>tens of thousands of traces
+referencing one image</strong>. By sha256 fingerprint, that image is <strong>stored once</strong> in S3; every subsequent "upload" is caught at step 2 with an
+instant <code>uploadUrl: null</code> — saving storage, bandwidth, and the SDK's repeated upload time. That's the beauty of deciding "sameness" by content hash
+rather than filename or timestamp — <strong>identical bytes, only ever one copy</strong>, however many traces or conversations within a project reference it.</p>
+""")
+
+_EN19.append(r"""
+<p>Retrieval is the reverse: <code>GET /api/public/media/[mediaId]</code> returns a <strong>time-limited download address</strong>, and the UI or your code
+fetches the body from S3 with it. That "time-limited" also handles <strong>access control</strong>: the download link is signed by the server only after auth
+and expires quickly, so media is neither left publicly exposed nor readable across the project boundary (Lesson 10) by another tenant. Across the whole
+lifecycle, the multi-MB binary <strong>only flows between the SDK and S3</strong>; Langfuse's app layer and ClickHouse only ever touch the featherweight
+reference string — exactly what keeps bulky payloads off the hot path.</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 if stuffed into ClickHouse</h4><p>Several MB of base64 sit in the input column, the wide table bloats; even a query like "fetch the latest 100 traces" that <strong>never touches the image</strong> must scan past these huge fields, slowing the whole table — one bad apple spoils the barrel.</p></div>
+  <div class="col"><h4>😀 split out to S3</h4><p>ClickHouse stores a few-dozen-byte reference, the wide table <strong>stays lean</strong> and scans fast; images rest in cheap object storage, fetched by id only when needed. Each in its best-fit place, <strong>neither dragging the other</strong>.</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why go to all this trouble to pull media out, rather than just stuffing it into the event?</strong> Because <strong>blobs and telemetry have utterly
+  different constitutions</strong>, and cramming them together hurts both. Telemetry (trace/observation) is <strong>small, structured, queried and aggregated
+  frequently</strong>, so it lives in ClickHouse wide tables (Lesson 8); media is <strong>large, opaque binary, almost only fetched whole by id</strong>,
+  inherently belonging in object storage. Stuff a multi-MB image into a ClickHouse input column and you <strong>ruin two things at once</strong>: the wide table
+  bloats and scans slow (dragging down even image-free queries), and you waste a pricey analytical store doing object storage's job. Langfuse instead
+  <strong>places each by its nature</strong>: structured into ClickHouse, binary into S3, linked by a <code>@@@langfuseMedia@@@</code> reference; plus sha256
+  content addressing for <strong>natural dedup</strong> and presigned URLs to let bodies <strong>bypass the app layer</strong>. Behind this combo is a plain
+  engineering wisdom: <strong>let each kind of data live in the storage that fits it best</strong> — fittingly closing out Part 3, "the ingestion path".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Multimodal media (image/audio/file) are <strong>large binaries</strong> that must never enter Lesson 8's ClickHouse wide tables — they'd bloat input/output columns and slow every query.</li>
+    <li><strong>Blob/reference split</strong>: the body goes to the S3 media bucket, the event keeps only a small reference <code>@@@langfuseMedia:…@@@</code> (<code>MEDIA_REFERENCE_PATTERN</code>).</li>
+    <li><strong>Presigned direct upload</strong>: the SDK PUTs media <strong>straight to S3</strong> via a server-issued time-limited URL, the body bypassing Langfuse's app layer — saving bandwidth, not clogging the API.</li>
+    <li><strong>Content-addressed dedup</strong>: media unique by <code>(projectId, sha256)</code>; already uploaded → <code>uploadUrl: null</code> skip — the same file stored only once.</li>
+    <li><code>blob_storage_file_log</code> (Lesson 8's ReplacingMergeTree wide table) records which entity each blob belongs to, for lifecycle and export. The core wisdom: <strong>let each kind of data live in the storage that fits it best</strong>.</li>
+  </ul>
+</div>
+""")
+LESSON_19 = {"zh": "\n".join(_ZH19), "en": "\n".join(_EN19)}

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 18 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 19 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -355,6 +355,7 @@ details[open] > summary { list-style: none; }
   <li>Token counting & cost</li>
   <li>ClickhouseWriter: batched persistence</li>
   <li>OpenTelemetry ingestion</li>
+  <li>Media & blob storage</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -4325,6 +4326,193 @@ time.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Confine the grunt work of adapting various external formats to one edge adapter, and let the core know only one unified format' — can you apply this in your own systems? If you must support multiple input protocols/data sources, where would you draw the 'adapter vs core' boundary? What goes wrong if you draw it wrong?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Media & blob storage</h1>
+
+<p class="lead">
+In the multimodal era, an LLM call's input/output may carry <strong>an image, an audio clip, a PDF</strong> — binaries of several MB. Write those verbatim
+into Lesson 8's ClickHouse wide tables and the input/output columns <strong>balloon instantly</strong>, queries slow, storage is wasted. Langfuse's answer is
+clean: <strong>large binaries never enter ClickHouse</strong> at all; they're stored separately in an S3 media bucket, and the event keeps only a <strong>tiny
+reference string</strong>. This lesson covers that media-storage design — keeping bulky blobs off the hot path.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📚 Analogy</div>
+  Think of a <strong>library</strong>. The catalog card (the ClickHouse event) <strong>never transcribes the whole book</strong>, just a <strong>call
+  number</strong> (the reference string <code>@@@langfuseMedia:…@@@</code>); the heavy books themselves (the media binaries) sit on the <strong>stacks</strong>
+  (the S3 media bucket). Two people upload the same book and the library <strong>doesn't shelve two copies</strong> — it recognizes them as one by the book's
+  "fingerprint" (the sha256 hash), storing just one. When you want to read, you fetch the book by its call number. Cards are light and searchable; stacks
+  are cheap and roomy — <strong>each in its right place</strong>.
+</div>
+
+
+<h2>Blob and reference, split: the event keeps only a call number</h2>
+<p>The core idea in one line: <strong>pull the blob out of the event</strong>. Media binaries go to the S3 media bucket; in the event's input/output, where
+that image used to sit, a reference string <code>@@@langfuseMedia:…@@@</code> takes its place. So ClickHouse stores a few-dozen-byte call number, not a
+multi-MB image.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="the image in a raw multimodal message is replaced by a langfuseMedia reference string; the image body goes into the S3 media bucket; ClickHouse stores only the reference">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Blob/reference split: heavy to S3, light to ClickHouse</text>
+  <rect x="20" y="46" width="220" height="150" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">raw message (multimodal)</text>
+  <rect x="36" y="78" width="188" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="130" y="97" text-anchor="middle" font-size="8" fill="var(--ink)">"text": "what's in this image?"</text>
+  <rect x="36" y="114" width="188" height="66" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="130" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">"image": &lt;3.4 MB base64&gt;</text><text x="130" y="152" text-anchor="middle" font-size="7.5" fill="var(--muted)">🖼️ bulky binary</text><text x="130" y="167" text-anchor="middle" font-size="7.5" fill="var(--muted)">must NOT enter ClickHouse</text>
+  <text x="260" y="120" font-size="14" fill="var(--faint)">▶</text><text x="278" y="112" font-size="7.5" fill="var(--faint)">split</text>
+  <rect x="300" y="40" width="190" height="70" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="395" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 media bucket</text><text x="395" y="78" text-anchor="middle" font-size="7.5" fill="var(--muted)">stores the image (once)</text><text x="395" y="93" text-anchor="middle" font-size="7.5" fill="var(--muted)">named/deduped by sha256</text>
+  <rect x="300" y="126" width="190" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="395" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ClickHouse event</text><text x="395" y="164" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"text": "what's in this image?"</text><text x="395" y="180" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">"image": @@@langfuseMedia:…@@@</text>
+  <rect x="540" y="84" width="166" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="623" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">blob_storage_file_log</text><text x="623" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">ledger: which blob</text><text x="623" y="138" text-anchor="middle" font-size="7.5" fill="var(--muted)">belongs to which entity</text>
+  <line x1="490" y1="75" x2="538" y2="105" stroke="var(--faint)" stroke-width="1.3"/><line x1="490" y1="160" x2="538" y2="130" stroke="var(--faint)" stroke-width="1.3"/>
+</svg>
+<div class="figcap"><b>Heavy to S3, light to ClickHouse</b>: the image in a multimodal message is replaced by a <code>@@@langfuseMedia:…@@@</code> reference; the body goes to the S3 media bucket (deduped by sha256), and <code>blob_storage_file_log</code> records which entity each blob belongs to. Source: <code>packages/shared/src/utils/mediaReferences.ts:6</code> (<code>MEDIA_REFERENCE_PATTERN</code>).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/utils/mediaReferences.ts &amp; clickhouse/migrations/.../0011_*.sql</span><span class="ln">reference + ledger</span></div>
+  <pre class="code"><span class="cm">// media in events is replaced by this small reference string; ClickHouse stores only it (~bytes)</span>
+<span class="kw">export const</span> MEDIA_REFERENCE_PATTERN = /@@@langfuseMedia:.+?@@@/g;
+<span class="cm">// e.g. @@@langfuseMedia:type=image/png|id=abc123|source=base64@@@</span>
+
+<span class="cm">// blob_storage_file_log: a ledger of all blobs (again Lesson 8's ReplacingMergeTree wide table)</span>
+CREATE TABLE blob_storage_file_log (
+  project_id String, entity_type String, entity_id String, event_id String,
+  bucket_name String, bucket_path String,        <span class="cm">-- where this blob lives</span>
+  event_ts DateTime64(3), is_deleted UInt8,
+) ENGINE = ReplacingMergeTree(event_ts, is_deleted)
+  ORDER BY (project_id, entity_type, entity_id, event_id);</pre>
+</div>
+
+<p>Why split this way? Because telemetry data and media blobs have fundamentally different "constitutions", and forcing them together hurts both. A quick
+comparison makes it obvious:</p>
+
+<table class="t">
+  <tr><th>dimension</th><th>telemetry (trace/observation)</th><th>media blob (image/audio/file)</th></tr>
+  <tr><td><b>size</b></td><td>small, a few KB of structured JSON/text</td><td>large, often several MB of binary</td></tr>
+  <tr><td><b>access</b></td><td>frequent <strong>query, filter, aggregate</strong></td><td>almost only fetched whole by id, never queried inside</td></tr>
+  <tr><td><b>where it belongs</b></td><td>ClickHouse wide tables (Lesson 8) — built for analytics</td><td>S3 object storage — built for big files, cheap</td></tr>
+  <tr><td><b>what stays in the event</b></td><td>—</td><td>only the <code>@@@langfuseMedia:…@@@</code> reference</td></tr>
+</table>
+
+
+<h2>Upload: direct to S3, deduped by fingerprint</h2>
+<p>How does media get into S3? The key: the <strong>SDK uploads directly to S3</strong>, the body <strong>never passing through Langfuse's app
+servers</strong>. The flow: the SDK first reports the media's <strong>fingerprint</strong> (sha256 hash), type and size to <code>POST /api/public/media</code>;
+the server decides — has this media <strong>been uploaded before</strong>?</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="the SDK reports sha256 to the media endpoint; if it exists, returns uploadUrl=null to skip upload, otherwise returns a presigned URL for the SDK to upload directly to S3">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Presigned direct upload + content-addressed dedup</text>
+  <rect x="20" y="44" width="120" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">SDK</text><text x="80" y="80" text-anchor="middle" font-size="7.5" fill="var(--muted)">reports sha256+type+size</text>
+  <rect x="180" y="44" width="140" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="250" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">media endpoint</text><text x="250" y="78" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">checks prisma.media</text>
+  <line x1="140" y1="68" x2="178" y2="68" stroke="var(--faint)" stroke-width="1.5"/><polygon points="178,68 170,64 170,72" fill="var(--faint)"/>
+  <rect x="360" y="20" width="180" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="450" y="38" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">hit: same fingerprint exists</text><text x="450" y="52" text-anchor="middle" font-size="7.5" fill="var(--muted)">→ uploadUrl=null, skip upload</text>
+  <rect x="360" y="74" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="450" y="92" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">miss: return presigned URL</text><text x="450" y="107" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">a time-limited direct-to-S3 address</text>
+  <line x1="320" y1="60" x2="358" y2="42" stroke="var(--faint)" stroke-width="1.3"/><line x1="320" y1="76" x2="358" y2="94" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="566" y="74" width="140" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="636" y="92" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">S3 media bucket</text><text x="636" y="107" text-anchor="middle" font-size="7.5" fill="var(--muted)">SDK uploads body via URL</text>
+  <line x1="540" y1="96" x2="564" y2="96" stroke="var(--amber)" stroke-width="1.6"/><polygon points="564,96 555,92 555,100" fill="var(--amber)"/>
+  <text x="360" y="150" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Key: media body goes SDK→S3 directly, never through Langfuse app servers</text>
+  <rect x="120" y="166" width="480" height="36" rx="8" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--muted)">content-addressed: media unique by (project, sha256); upload the same file 100x, store one copy</text><text x="360" y="196" text-anchor="middle" font-size="7.5" fill="var(--faint)">size capped by LANGFUSE_S3_MEDIA_MAX_CONTENT_LENGTH</text>
+</svg>
+<div class="figcap"><b>Presigned direct upload + dedup</b>: the SDK reports the fingerprint → the server checks <code>prisma.media</code> (unique by projectId+sha256); already uploaded → returns <code>uploadUrl: null</code> to skip, else a presigned URL for the SDK to <strong>upload directly to S3</strong>. The body never touches the app layer. Source: <code>web/src/features/media/server/mediaService.ts:66-122</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK reports the fingerprint</h4><p>Computes the media's sha256, contentType, contentLength, <code>POST /api/public/media</code> (no body yet).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>server dedup check</h4><p>Looks up <code>prisma.media</code> by <code>(projectId, sha256Hash)</code>; already uploaded with same type → returns <code>uploadUrl: null</code>, <strong>instant pass</strong>.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>else issue a presigned URL</h4><p>For new media, compute <code>mediaId</code>, bucketPath, and return a <strong>time-limited direct-to-S3 address</strong>.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>SDK uploads directly to S3</h4><p>The SDK PUTs the body <strong>straight into the S3 media bucket</strong> via the URL, bypassing Langfuse app servers — saves bandwidth, doesn't clog the API.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>link + log</h4><p>The media is linked to the trace/observation; <code>blob_storage_file_log</code> records which entity this blob belongs to, for lifecycle and export.</p></div></div>
+</div>
+
+<p>Content-addressed dedup pays off dramatically in practice. Imagine an "image Q&amp;A" app where <strong>every conversation carries the same company logo</strong>
+as a watermark, or a few-shot prompt fixed with <strong>the same example images</strong> — over a day that could be <strong>tens of thousands of traces
+referencing one image</strong>. By sha256 fingerprint, that image is <strong>stored once</strong> in S3; every subsequent "upload" is caught at step 2 with an
+instant <code>uploadUrl: null</code> — saving storage, bandwidth, and the SDK's repeated upload time. That's the beauty of deciding "sameness" by content hash
+rather than filename or timestamp — <strong>identical bytes, only ever one copy</strong>, however many traces or conversations within a project reference it.</p>
+
+
+<p>Retrieval is the reverse: <code>GET /api/public/media/[mediaId]</code> returns a <strong>time-limited download address</strong>, and the UI or your code
+fetches the body from S3 with it. That "time-limited" also handles <strong>access control</strong>: the download link is signed by the server only after auth
+and expires quickly, so media is neither left publicly exposed nor readable across the project boundary (Lesson 10) by another tenant. Across the whole
+lifecycle, the multi-MB binary <strong>only flows between the SDK and S3</strong>; Langfuse's app layer and ClickHouse only ever touch the featherweight
+reference string — exactly what keeps bulky payloads off the hot path.</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 if stuffed into ClickHouse</h4><p>Several MB of base64 sit in the input column, the wide table bloats; even a query like "fetch the latest 100 traces" that <strong>never touches the image</strong> must scan past these huge fields, slowing the whole table — one bad apple spoils the barrel.</p></div>
+  <div class="col"><h4>😀 split out to S3</h4><p>ClickHouse stores a few-dozen-byte reference, the wide table <strong>stays lean</strong> and scans fast; images rest in cheap object storage, fetched by id only when needed. Each in its best-fit place, <strong>neither dragging the other</strong>.</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why go to all this trouble to pull media out, rather than just stuffing it into the event?</strong> Because <strong>blobs and telemetry have utterly
+  different constitutions</strong>, and cramming them together hurts both. Telemetry (trace/observation) is <strong>small, structured, queried and aggregated
+  frequently</strong>, so it lives in ClickHouse wide tables (Lesson 8); media is <strong>large, opaque binary, almost only fetched whole by id</strong>,
+  inherently belonging in object storage. Stuff a multi-MB image into a ClickHouse input column and you <strong>ruin two things at once</strong>: the wide table
+  bloats and scans slow (dragging down even image-free queries), and you waste a pricey analytical store doing object storage's job. Langfuse instead
+  <strong>places each by its nature</strong>: structured into ClickHouse, binary into S3, linked by a <code>@@@langfuseMedia@@@</code> reference; plus sha256
+  content addressing for <strong>natural dedup</strong> and presigned URLs to let bodies <strong>bypass the app layer</strong>. Behind this combo is a plain
+  engineering wisdom: <strong>let each kind of data live in the storage that fits it best</strong> — fittingly closing out Part 3, "the ingestion path".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Multimodal media (image/audio/file) are <strong>large binaries</strong> that must never enter Lesson 8's ClickHouse wide tables — they'd bloat input/output columns and slow every query.</li>
+    <li><strong>Blob/reference split</strong>: the body goes to the S3 media bucket, the event keeps only a small reference <code>@@@langfuseMedia:…@@@</code> (<code>MEDIA_REFERENCE_PATTERN</code>).</li>
+    <li><strong>Presigned direct upload</strong>: the SDK PUTs media <strong>straight to S3</strong> via a server-issued time-limited URL, the body bypassing Langfuse's app layer — saving bandwidth, not clogging the API.</li>
+    <li><strong>Content-addressed dedup</strong>: media unique by <code>(projectId, sha256)</code>; already uploaded → <code>uploadUrl: null</code> skip — the same file stored only once.</li>
+    <li><code>blob_storage_file_log</code> (Lesson 8's ReplacingMergeTree wide table) records which entity each blob belongs to, for lifecycle and export. The core wisdom: <strong>let each kind of data live in the storage that fits it best</strong>.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. A multimodal call's input has a 3MB image. How does Langfuse handle it, and what ends up in ClickHouse?</div>
+  <ol class="opts">
+    <li>stores the 3MB base64 straight into ClickHouse's input column</li>
+    <li>compresses the image into Postgres</li>
+    <li>discards the image, keeping only text</li>
+    <li>the image body goes into the S3 media bucket, and in the event the image is replaced by a small reference @@@langfuseMedia:…@@@; ClickHouse stores only that few-dozen-byte reference, never the 3MB binary</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Large binaries must never enter ClickHouse wide tables, or input/output columns balloon and slow every query. Langfuse splits blob from reference: the body to the S3 media bucket, the event keeping only a small reference matched by MEDIA_REFERENCE_PATTERN, keeping ClickHouse lean.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. On media upload, the SDK first reports the sha256 to the server instead of POSTing the file directly. What two benefits does this 'fingerprint first' design bring?</div>
+  <ol class="opts">
+    <li>① encrypt the file ② compress the file</li>
+    <li>① dedup: look up prisma.media by (projectId, sha256), if already uploaded return uploadUrl=null to skip, storing the same file once; ② direct upload: on miss return a presigned URL so the SDK PUTs the body straight to S3, bypassing app servers and saving bandwidth</li>
+    <li>① rename the file ② categorize it</li>
+    <li>① slow the upload ② busy the API</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Reporting the fingerprint first lets the server decide 'do we already have this file' before any transfer, achieving content-addressed dedup; on hit it passes instantly, on miss it issues a presigned URL for the SDK to upload directly to S3. The body never passes through Langfuse's app layer, saving bandwidth and not clogging the API — key to keeping big files off the hot path.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why does Langfuse put telemetry in ClickHouse and media blobs in S3, rather than everything in one place? What's the core principle?</div>
+  <ol class="opts">
+    <li>because their 'constitutions' differ: telemetry is small, structured, frequently queried/aggregated (fits ClickHouse wide tables); media is large, opaque binary, almost only fetched whole by id (fits object storage). Let each kind of data live in the storage that fits it best, neither dragging the other</li>
+    <li>because S3 queries faster than ClickHouse</li>
+    <li>purely historical reasons</li>
+    <li>because ClickHouse can't store text</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Stuffing a multi-MB image into ClickHouse ruins two things: the wide table bloats and even image-free queries slow, and you waste a pricey analytical store on object storage's job. Placing each by its nature — structured to ClickHouse, binary to S3, linked by a reference, deduped by sha256 — extends Lesson 7's dual-store division of labor and closes out Part 3.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Let each kind of data live in the storage that fits it best, linked by a small reference' — is there a similar scenario in systems you've built (large files, logs, thumbnails)? How would you decide 'what goes in the main DB vs object/external storage', and where to draw that line? What could content-addressed dedup save you?</li>
   </ul>
 </div>
 </div>

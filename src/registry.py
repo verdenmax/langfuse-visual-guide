@@ -29,4 +29,5 @@ CONTENT = {
     "16-token-counting-cost.html": part3.LESSON_16,
     "17-clickhouse-writer.html": part3.LESSON_17,
     "18-opentelemetry-ingestion.html": part3.LESSON_18,
+    "19-media-blob-storage.html": part3.LESSON_19,
 }

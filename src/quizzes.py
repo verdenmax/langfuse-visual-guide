@@ -1305,6 +1305,76 @@ QUIZZES = {
             },
         ],
     },
+    "19-media-blob-storage.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "一次多模态调用的 input 里有一张 3MB 的图。Langfuse 是怎么处理它的，ClickHouse 里最终存了什么？",
+                    "en": "A multimodal call's input has a 3MB image. How does Langfuse handle it, and what ends up in ClickHouse?",
+                },
+                "opts": [
+                    {
+                        "zh": "图片本体存进 S3 媒体桶，事件里那张图被替换成一个小引用串 @@@langfuseMedia:…@@@；ClickHouse 只存这个几十字节的引用，绝不存 3MB 二进制",
+                        "en": "the image body goes into the S3 media bucket, and in the event the image is replaced by a small reference @@@langfuseMedia:…@@@; ClickHouse stores only that few-dozen-byte reference, never the 3MB binary",
+                    },
+                    {"zh": "把 3MB base64 直接存进 ClickHouse 的 input 列", "en": "stores the 3MB base64 straight into ClickHouse's input column"},
+                    {"zh": "把图片丢弃，只留文字", "en": "discards the image, keeping only text"},
+                    {"zh": "把图片压缩后存进 Postgres", "en": "compresses the image into Postgres"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "大块二进制绝不能进 ClickHouse 宽表，否则 input/output 列暴涨、拖慢所有查询。Langfuse 把 blob 与引用分离：本体进 S3 媒体桶，事件里只留 MEDIA_REFERENCE_PATTERN 匹配的小引用串，ClickHouse 始终精瘦。",
+                    "en": "Large binaries must never enter ClickHouse wide tables, or input/output columns balloon and slow every query. Langfuse splits blob from reference: the body to the S3 media bucket, the event keeping only a small reference matched by MEDIA_REFERENCE_PATTERN, keeping ClickHouse lean.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "媒体上传时，SDK 先把 sha256 报给服务端、而不是直接把文件 POST 过去。这个“先报指纹”的设计带来哪两个好处？",
+                    "en": "On media upload, the SDK first reports the sha256 to the server instead of POSTing the file directly. What two benefits does this 'fingerprint first' design bring?",
+                },
+                "opts": [
+                    {
+                        "zh": "① 去重：按 (projectId, sha256) 查 prisma.media，已传过就回 uploadUrl=null 跳过，同一文件只存一份；② 直传：未命中则返回 presigned URL，SDK 把本体直接 PUT 进 S3，绕开应用服务器省带宽",
+                        "en": "① dedup: look up prisma.media by (projectId, sha256), if already uploaded return uploadUrl=null to skip, storing the same file once; ② direct upload: on miss return a presigned URL so the SDK PUTs the body straight to S3, bypassing app servers and saving bandwidth",
+                    },
+                    {"zh": "① 加密文件 ② 压缩文件", "en": "① encrypt the file ② compress the file"},
+                    {"zh": "① 给文件改名 ② 给文件分类", "en": "① rename the file ② categorize it"},
+                    {"zh": "① 让上传更慢 ② 让 API 更忙", "en": "① slow the upload ② busy the API"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "先报指纹让服务端能在传输前就判断“是否已有同一文件”，实现内容寻址去重；命中则秒过，未命中才发 presigned URL 让 SDK 直传 S3。本体全程不经 Langfuse 应用层，既省带宽又不堵 API——这是把大文件挡在热路径之外的关键一招。",
+                    "en": "Reporting the fingerprint first lets the server decide 'do we already have this file' before any transfer, achieving content-addressed dedup; on hit it passes instantly, on miss it issues a presigned URL for the SDK to upload directly to S3. The body never passes through Langfuse's app layer, saving bandwidth and not clogging the API — key to keeping big files off the hot path.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么 Langfuse 要把遥测数据放 ClickHouse、媒体 blob 放 S3，而不是图省事都放一处？背后的核心原则是什么？",
+                    "en": "Why does Langfuse put telemetry in ClickHouse and media blobs in S3, rather than everything in one place? What's the core principle?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为两者“体质”不同：遥测小、结构化、要高频查询聚合（适合 ClickHouse 宽表）；媒体大、是不透明二进制、几乎只按 id 整取（适合对象存储）。让每种数据待在最适合它的存储里，互不拖累",
+                        "en": "because their 'constitutions' differ: telemetry is small, structured, frequently queried/aggregated (fits ClickHouse wide tables); media is large, opaque binary, almost only fetched whole by id (fits object storage). Let each kind of data live in the storage that fits it best, neither dragging the other",
+                    },
+                    {"zh": "因为 S3 比 ClickHouse 更快查询", "en": "because S3 queries faster than ClickHouse"},
+                    {"zh": "因为 ClickHouse 不能存文本", "en": "because ClickHouse can't store text"},
+                    {"zh": "纯粹是历史原因", "en": "purely historical reasons"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "把几 MB 图片塞进 ClickHouse 会同时毁两件事：宽表撑爆、连不碰图的查询也被拖慢，又用昂贵分析库干对象存储的活。各按本性安置——结构化进 ClickHouse、二进制进 S3、引用串牵线、sha256 去重——这条“让每种数据待在最适合的存储里”正是第 7 课双存储分工的延续，也为第三部分收尾。",
+                    "en": "Stuffing a multi-MB image into ClickHouse ruins two things: the wide table bloats and even image-free queries slow, and you waste a pricey analytical store on object storage's job. Placing each by its nature — structured to ClickHouse, binary to S3, linked by a reference, deduped by sha256 — extends Lesson 7's dual-store division of labor and closes out Part 3.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“让每种数据待在最适合它的存储里，用一个小引用把它们牵起来”——这条原则在你做过的系统里有没有类似场景（比如大文件、日志、缩略图）？你会怎么决定“什么放主库、什么放对象存储/外部存储”，那条边界怎么画？内容寻址去重又能帮你省下什么？",
+                "en": "'Let each kind of data live in the storage that fits it best, linked by a small reference' — is there a similar scenario in systems you've built (large files, logs, thumbnails)? How would you decide 'what goes in the main DB vs object/external storage', and where to draw that line? What could content-addressed dedup save you?",
+            },
+        ],
+    },
 }
 
 
