@@ -3335,6 +3335,76 @@ QUIZZES = {
             },
         ],
     },
+    "48-auth-and-sessions.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的密码登录里有一段「看似浪费」的代码：当用户邮箱在库里查不到时，仍然照样调用一次 hashPassword 再返回「Invalid credentials」。这段代码的目的是？",
+                    "en": "Langfuse's password login has a 'seemingly wasteful' bit: when the email isn't found in the DB, it still calls hashPassword once before returning 'Invalid credentials'. What's the purpose?",
+                },
+                "opts": [
+                    {
+                        "zh": "防时序攻击下的用户枚举：bcrypt故意慢，若「用户不存在」秒回而「密码错」要慢慢算，两条失败路径耗时差异会让攻击者靠响应快慢判断某邮箱是否注册过；让两路耗时相近就堵住了这个旁路",
+                        "en": "defeats user enumeration via timing attack: bcrypt is deliberately slow; if 'user absent' returns instantly while 'wrong password' runs the slow hash, the time difference lets an attacker tell whether an email is registered by response speed; making both paths take similar time closes this side channel",
+                    },
+                    {"zh": "为了给数据库预热缓存", "en": "to warm up the database cache"},
+                    {"zh": "为了记录登录失败日志", "en": "to record a login-failure log"},
+                    {"zh": "为了兼容旧版密码格式", "en": "for compatibility with the legacy password format"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是安全工程里「错误也要长得一样、慢得一样」的经典实践。bcrypt 被设计成计算慢（12 轮）以抵抗暴力破解。但这个「慢」会泄露信息：如果只有「用户存在」时才走 bcrypt，攻击者拿一批邮箱来登，响应明显慢的就是已注册的——不费密码就能枚举出「谁在你这注册过」，既是隐私泄露也是撞库弹药。对策是让「用户不存在」这条路也白算一遍 hash，使两条失败路径耗时相近，时序侧信道就被堵死。许多登录实现忽略了这一点。",
+                    "en": "This is the classic 'errors should look the same and take the same time' practice in security engineering. bcrypt is designed slow (12 rounds) to resist brute force. But that slowness leaks info: if only 'user exists' runs bcrypt, an attacker logging in with a batch of emails sees the noticeably-slow ones as registered—enumerating 'who's registered here' without any password, a privacy leak and credential-stuffing ammo. The countermeasure is to run a throwaway hash on the 'user absent' path too, making both failure paths take similar time and closing the timing side channel. Many login implementations miss this.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的会话用 JWT（session.strategy:\"jwt\"）而不是把 session 存在数据库里。在多实例水平扩展的部署下，JWT 的核心优势是？",
+                    "en": "Langfuse's session uses JWT (session.strategy:\"jwt\") rather than storing sessions in a database. Under a multi-instance horizontally-scaled deployment, JWT's core advantage is?",
+                },
+                "opts": [
+                    {
+                        "zh": "无状态：身份信息直接印在凭证里并用密钥签名防篡改，任一web实例本地验签即可确认「你是谁」，无需每次请求都回头查共享session存储——后者在多实例下会成为瓶颈和单点",
+                        "en": "stateless: identity info is printed on the credential and key-signed against tampering, so any web instance can verify locally to confirm 'who you are' without a per-request lookup to shared session storage—which under multi-instance becomes a bottleneck and single point",
+                    },
+                    {"zh": "JWT 永远不会过期，更省心", "en": "JWT never expires, more convenient"},
+                    {"zh": "JWT 能存更多数据", "en": "JWT can store more data"},
+                    {"zh": "JWT 比数据库查询更安全", "en": "JWT is more secure than a database query"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "数据库 session 的做法是发个随机 id、把「id→用户」存库，每次请求都拿 id 回库查。单机没问题，但 Langfuse 跑多个 web 实例横向扩展时，这个共享 session 存储就成了每请求都要访问的瓶颈和单点。JWT 把身份直接写进凭证、用密钥签名防篡改，任一实例本地验签就能确认身份，无需查库——这正是无状态架构能水平扩展的关键。代价是即时吊销变难（凭证发出后在有效期内一直有效），所以配一个不长的 maxAge 折中。这是一个典型的「用一点可控性换取扩展性」的权衡。",
+                    "en": "A DB session issues a random id, stores 'id→user' in the DB, and queries the DB by id on every request. Fine on one machine, but when Langfuse runs multiple web instances for horizontal scaling, that shared session store becomes a per-request bottleneck and single point. JWT writes identity into the credential and signs it against tampering, so any instance verifies locally to confirm identity without a DB lookup—the key to a stateless, horizontally-scalable architecture. The cost is harder instant revocation (an issued credential stays valid through its window), so a not-too-long maxAge splits the difference. A classic 'trade a bit of control for scalability'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "NextAuth 的 session 回调在每次构建会话时，会查出用户的 organizationMemberships→projects 和 ProjectMemberships 并塞进 session 对象。这一步在整个鉴权/授权体系里扮演什么角色？",
+                    "en": "NextAuth's session callback, on each session build, queries the user's organizationMemberships→projects and ProjectMemberships and stuffs them into the session object. What role does this step play in the whole authn/authz system?",
+                },
+                "opts": [
+                    {
+                        "zh": "它是把「你是谁」(鉴权)接到「你能干什么」(授权/RBAC)的那根线：把用户的组织/项目成员关系和角色注入会话，下一课的 throwIfNoProjectAccess 正是读这里注入的角色来判断 scope 权限",
+                        "en": "it's the wire connecting 'who you are' (authn) to 'what you can do' (authz/RBAC): it injects the user's org/project memberships and roles into the session, and the next lesson's throwIfNoProjectAccess reads exactly these injected roles to judge scope permissions",
+                    },
+                    {"zh": "它只是为了在页面上显示用户名", "en": "it's just to display the username on the page"},
+                    {"zh": "它负责给用户的密码加密", "en": "it's responsible for encrypting the user's password"},
+                    {"zh": "它决定用户能用哪些 SSO 提供商", "en": "it decides which SSO providers the user can use"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "鉴权（authentication）回答「你是谁」，授权（authorization/RBAC）回答「你能干什么」，两者需要一座桥把前者的结果交给后者。Langfuse 的这座桥就是 session 回调：登录确认身份后，它顺手把「该用户属于哪些组织、哪些项目、在每处是什么角色」查出来注入会话。于是后续任何一次权限判断（下一课的 throwIfNoProjectAccess / useHasProjectAccess）都能直接从会话里读到角色，再据角色→scope 映射判定能否执行某操作。没有这一步注入，RBAC 就拿不到判断所需的输入。",
+                    "en": "Authentication answers 'who you are', authorization/RBAC answers 'what you can do', and a bridge must hand the former's result to the latter. Langfuse's bridge is the session callback: after login confirms identity, it conveniently queries 'which orgs, which projects, what role in each' and injects them into the session. So any later permission check (next lesson's throwIfNoProjectAccess / useHasProjectAccess) reads the role straight from the session, then judges via the role→scope map whether an action is allowed. Without this injection step, RBAC wouldn't have the input it needs.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课展示了 Langfuse 对「邮箱密码登录」这条最朴素的路堆了一圈安全护栏：SSO 强制、时序攻击防护、SSO 用户拦截、bcrypt 加盐慢哈希。请结合你的经验谈谈：为什么「自己实现密码登录」常被认为是危险且容易出错的？这一课的哪些细节是你以前没意识到要做的？如果让你在「自建密码体系」与「全部交给 SSO/IdP」之间为一个新产品做选择，你会怎么权衡（安全、合规、用户体验、实现成本）？",
+                "en": "This lesson shows Langfuse piling a ring of guardrails on the plainest 'email-password login' path: SSO enforcement, timing-attack defense, SSO-user interception, bcrypt salted slow hashing. Drawing on your experience: why is 'rolling your own password login' often considered dangerous and error-prone? Which details here had you not realized were needed? If choosing for a new product between 'building your own password system' and 'delegating entirely to SSO/IdP', how would you weigh it (security, compliance, UX, implementation cost)?",
+            },
+        ],
+    },
 }
 
 
