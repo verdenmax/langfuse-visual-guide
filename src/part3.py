@@ -460,18 +460,21 @@ _ZH13.append(r"""
 # (taxonomy table + dedup code below)
 
 _ZH13.append(r"""
-<h2>18 种事件，3 张表</h2>
+<h2>18 种事件，5 类实体，3 张核心表</h2>
 <p>事件 <code>type</code> 五花八门，但 worker 写库时只关心一件事：<strong>这条该进哪张表</strong>。一个叫 <code>getClickhouseEntityType</code> 的小函数把 18 种 type
-干净地坍缩成 <strong>3 个实体类型</strong>——正好对应第 8 课的三张 ReplacingMergeTree 宽表：</p>
+坍缩成 <strong>5 个实体类型</strong>（<code>trace / observation / score / sdk_log / dataset_run_item</code>）；其中<strong>三个核心类型——trace / observation / score——
+正好对应第 8 课的三张 ReplacingMergeTree 宽表</strong>，另两个（SDK 诊断日志 <code>sdk_log</code>、数据集运行项 <code>dataset_run_item</code>）走各自的处理：</p>
 
 <table class="t">
-  <tr><th>实体类型</th><th>由哪些事件 type 映射而来</th><th>落到哪张表（第 8 课）</th></tr>
-  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code></td></tr>
-  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + 旧 <code>observation-*</code></td><td><code>observations</code></td></tr>
-  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code></td></tr>
+  <tr><th>实体类型</th><th>由哪些事件 type 映射而来</th><th>落到哪张表</th></tr>
+  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code>（第 8 课）</td></tr>
+  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + 旧 <code>observation-*</code></td><td><code>observations</code>（第 8 课）</td></tr>
+  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code>（第 8 课）</td></tr>
+  <tr><td><b>sdk_log</b></td><td><code>sdk-log</code></td><td>SDK 诊断日志，单独处理</td></tr>
+  <tr><td><b>dataset_run_item</b></td><td><code>dataset-run-item-create</code></td><td>数据集运行项，单独处理</td></tr>
 </table>
 
-<p>所有「像观测」的类型——无论它叫 span、generation 还是 agent——统统归到 <code>observation</code>，进同一张表，靠 observation 行里的 <code>type</code> 列区分。
+<p>三个核心类型里，所有「像观测」的 type——无论它叫 span、generation 还是 agent——统统归到 <code>observation</code>，进同一张表，靠 observation 行里的 <code>type</code> 列区分。
 这就是第 8 课「宽事件」的威力：<strong>一张表容纳所有观测形态</strong>，新增一种观测类型不必加表、不必改 schema。</p>
 
 <div class="codefile">
@@ -502,7 +505,7 @@ key: <span class="fn">safeBlobFilenameStem</span>(event.id, <span class="st">".j
     <li>body 是<strong>继承链</strong>：<code>OptionalObservationBody</code> → +id <code>CreateEventEvent</code> → +endTime <code>CreateSpanBody</code> → +model/usage <code>CreateGenerationBody</code>，对应 EVENT⊂SPAN⊂GENERATION。</li>
     <li><strong>两套 id</strong>：实体 id（<code>body.id</code>）是合并键——同 id 的 create/update 汇成一行；事件 id（信封 id）是去重键——成为 S3 文件名，保证幂等。</li>
     <li>冲突字段<strong>以 timestamp 更晚者为准</strong>（last-write-wins），是第 8 课 <code>ReplacingMergeTree(event_ts)</code> 在写入侧的镜像。</li>
-    <li><code>getClickhouseEntityType</code> 把 18 种事件 type 坍缩成 <strong>3 个实体类型</strong>（trace / observation / score）→ 第 8 课的三张宽表。</li>
+    <li><code>getClickhouseEntityType</code> 把 18 种事件 type 坍缩成 <strong>5 个实体类型</strong>；其中三个核心的 <code>trace / observation / score</code> → 第 8 课的三张宽表（另两个 sdk_log、dataset_run_item 各自处理）。</li>
   </ul>
 </div>
 """)
@@ -664,19 +667,23 @@ three on the Langfuse server:</p>
 """)
 
 _EN13.append(r"""
-<h2>18 event types, 3 tables</h2>
+<h2>18 event types, 5 entities, 3 core tables</h2>
 <p>Event <code>type</code> comes in many flavors, but when the worker writes, it cares about one thing: <strong>which table does this go to</strong>. A
-small function <code>getClickhouseEntityType</code> collapses the 18 types cleanly into <strong>3 entity types</strong> — exactly Lesson 8's three
-ReplacingMergeTree wide tables:</p>
+small function <code>getClickhouseEntityType</code> collapses the 18 types into <strong>5 entity types</strong>
+(<code>trace / observation / score / sdk_log / dataset_run_item</code>); of these, the <strong>three core ones — trace / observation / score — map
+exactly onto Lesson 8's three ReplacingMergeTree wide tables</strong>, while the other two (SDK diagnostic <code>sdk_log</code>, dataset-run linkage
+<code>dataset_run_item</code>) take their own handling:</p>
 
 <table class="t">
-  <tr><th>entity type</th><th>mapped from which event types</th><th>which table (Lesson 8)</th></tr>
-  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code></td></tr>
-  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + legacy <code>observation-*</code></td><td><code>observations</code></td></tr>
-  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code></td></tr>
+  <tr><th>entity type</th><th>mapped from which event types</th><th>which table</th></tr>
+  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code> (Lesson 8)</td></tr>
+  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + legacy <code>observation-*</code></td><td><code>observations</code> (Lesson 8)</td></tr>
+  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code> (Lesson 8)</td></tr>
+  <tr><td><b>sdk_log</b></td><td><code>sdk-log</code></td><td>SDK diagnostics, handled separately</td></tr>
+  <tr><td><b>dataset_run_item</b></td><td><code>dataset-run-item-create</code></td><td>dataset run linkage, handled separately</td></tr>
 </table>
 
-<p>Everything "observation-like" — be it span, generation or agent — lands in <code>observation</code>, the same table, distinguished by the
+<p>Within the three core types, everything "observation-like" — be it span, generation or agent — lands in <code>observation</code>, the same table, distinguished by the
 <code>type</code> column on the observation row. That's the power of Lesson 8's "wide events": <strong>one table holds every observation shape</strong>,
 and adding a new observation kind needs no new table, no schema change.</p>
 
@@ -711,7 +718,7 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
     <li>body is an <strong>inheritance chain</strong>: <code>OptionalObservationBody</code> → +id <code>CreateEventEvent</code> → +endTime <code>CreateSpanBody</code> → +model/usage <code>CreateGenerationBody</code>, mapping EVENT⊂SPAN⊂GENERATION.</li>
     <li><strong>Two ids</strong>: entity id (<code>body.id</code>) is the merge key — same-id create/update converge into one row; event id (envelope id) is the dedup key — becomes the S3 filename, guaranteeing idempotency.</li>
     <li>Conflicting fields resolve <strong>by later timestamp</strong> (last-write-wins), the write-side mirror of Lesson 8's <code>ReplacingMergeTree(event_ts)</code>.</li>
-    <li><code>getClickhouseEntityType</code> collapses the 18 event types into <strong>3 entity types</strong> (trace / observation / score) → Lesson 8's three wide tables.</li>
+    <li><code>getClickhouseEntityType</code> collapses the 18 event types into <strong>5 entity types</strong>; the three core ones <code>trace / observation / score</code> → Lesson 8's three wide tables (the other two, sdk_log &amp; dataset_run_item, handled separately).</li>
   </ul>
 </div>
 """)

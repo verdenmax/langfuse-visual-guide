@@ -3246,19 +3246,23 @@ three on the Langfuse server:</p>
 </div>
 
 
-<h2>18 event types, 3 tables</h2>
+<h2>18 event types, 5 entities, 3 core tables</h2>
 <p>Event <code>type</code> comes in many flavors, but when the worker writes, it cares about one thing: <strong>which table does this go to</strong>. A
-small function <code>getClickhouseEntityType</code> collapses the 18 types cleanly into <strong>3 entity types</strong> — exactly Lesson 8's three
-ReplacingMergeTree wide tables:</p>
+small function <code>getClickhouseEntityType</code> collapses the 18 types into <strong>5 entity types</strong>
+(<code>trace / observation / score / sdk_log / dataset_run_item</code>); of these, the <strong>three core ones — trace / observation / score — map
+exactly onto Lesson 8's three ReplacingMergeTree wide tables</strong>, while the other two (SDK diagnostic <code>sdk_log</code>, dataset-run linkage
+<code>dataset_run_item</code>) take their own handling:</p>
 
 <table class="t">
-  <tr><th>entity type</th><th>mapped from which event types</th><th>which table (Lesson 8)</th></tr>
-  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code></td></tr>
-  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + legacy <code>observation-*</code></td><td><code>observations</code></td></tr>
-  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code></td></tr>
+  <tr><th>entity type</th><th>mapped from which event types</th><th>which table</th></tr>
+  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code> (Lesson 8)</td></tr>
+  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + legacy <code>observation-*</code></td><td><code>observations</code> (Lesson 8)</td></tr>
+  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code> (Lesson 8)</td></tr>
+  <tr><td><b>sdk_log</b></td><td><code>sdk-log</code></td><td>SDK diagnostics, handled separately</td></tr>
+  <tr><td><b>dataset_run_item</b></td><td><code>dataset-run-item-create</code></td><td>dataset run linkage, handled separately</td></tr>
 </table>
 
-<p>Everything "observation-like" — be it span, generation or agent — lands in <code>observation</code>, the same table, distinguished by the
+<p>Within the three core types, everything "observation-like" — be it span, generation or agent — lands in <code>observation</code>, the same table, distinguished by the
 <code>type</code> column on the observation row. That's the power of Lesson 8's "wide events": <strong>one table holds every observation shape</strong>,
 and adding a new observation kind needs no new table, no schema change.</p>
 
@@ -3293,7 +3297,7 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
     <li>body is an <strong>inheritance chain</strong>: <code>OptionalObservationBody</code> → +id <code>CreateEventEvent</code> → +endTime <code>CreateSpanBody</code> → +model/usage <code>CreateGenerationBody</code>, mapping EVENT⊂SPAN⊂GENERATION.</li>
     <li><strong>Two ids</strong>: entity id (<code>body.id</code>) is the merge key — same-id create/update converge into one row; event id (envelope id) is the dedup key — becomes the S3 filename, guaranteeing idempotency.</li>
     <li>Conflicting fields resolve <strong>by later timestamp</strong> (last-write-wins), the write-side mirror of Lesson 8's <code>ReplacingMergeTree(event_ts)</code>.</li>
-    <li><code>getClickhouseEntityType</code> collapses the 18 event types into <strong>3 entity types</strong> (trace / observation / score) → Lesson 8's three wide tables.</li>
+    <li><code>getClickhouseEntityType</code> collapses the 18 event types into <strong>5 entity types</strong>; the three core ones <code>trace / observation / score</code> → Lesson 8's three wide tables (the other two, sdk_log &amp; dataset_run_item, handled separately).</li>
   </ul>
 </div>
 
@@ -3326,7 +3330,7 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. getClickhouseEntityType collapses 18 event types into 3 entity types. Where do span/generation/agent/tool land, and what does that imply?</div>
+  <div class="qn">3. getClickhouseEntityType collapses 18 event types into 5 entity types; where do span/generation/agent/tool land among them, and what does that imply?</div>
   <ol class="opts">
     <li>all into observation, the same observations table, distinguished by the row's type column; adding a new observation kind needs no new table or schema change — the power of L08's 'wide events'</li>
     <li>each into its own separate table</li>
@@ -3335,7 +3339,7 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. The three entity types trace / observation / score map onto L08's three ReplacingMergeTree wide tables. Every 'observation-like' shape shares one table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Among the 5 entity types, the three core ones trace / observation / score map onto L08's three ReplacingMergeTree wide tables (the other two, sdk_log & dataset_run_item, are handled separately). Every 'observation-like' shape shares the one observations table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.</div></div></div>
   </details>
 </div>
 <div class="card spark">

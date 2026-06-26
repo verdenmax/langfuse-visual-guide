@@ -929,8 +929,8 @@ QUIZZES = {
             },
             {
                 "q": {
-                    "zh": "getClickhouseEntityType 把 18 种事件 type 坍缩成 3 个实体类型。span / generation / agent / tool 等都归到哪个，意味着什么？",
-                    "en": "getClickhouseEntityType collapses 18 event types into 3 entity types. Where do span/generation/agent/tool land, and what does that imply?",
+                    "zh": "getClickhouseEntityType 把 18 种事件 type 坍缩成 5 个实体类型，其中 span / generation / agent / tool 等都归到哪个，意味着什么？",
+                    "en": "getClickhouseEntityType collapses 18 event types into 5 entity types; where do span/generation/agent/tool land among them, and what does that imply?",
                 },
                 "opts": [
                     {
@@ -943,8 +943,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "三个实体类型 trace / observation / score 正好对应第 8 课的三张 ReplacingMergeTree 宽表。所有“像观测”的形态共用一张表、用 type 列区分，所以 Langfuse 能不断新增观测类型（AGENT/TOOL/CHAIN…）而无需迁移表结构。",
-                    "en": "The three entity types trace / observation / score map onto L08's three ReplacingMergeTree wide tables. Every 'observation-like' shape shares one table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.",
+                    "zh": "5 个实体类型里，三个核心的 trace / observation / score 正好对应第 8 课的三张 ReplacingMergeTree 宽表（另两个 sdk_log、dataset_run_item 各自处理）。所有“像观测”的形态共用 observations 一张表、用 type 列区分，所以 Langfuse 能不断新增观测类型（AGENT/TOOL/CHAIN…）而无需迁移表结构。",
+                    "en": "Among the 5 entity types, the three core ones trace / observation / score map onto L08's three ReplacingMergeTree wide tables (the other two, sdk_log & dataset_run_item, are handled separately). Every 'observation-like' shape shares the one observations table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.",
                 },
             },
         ],
