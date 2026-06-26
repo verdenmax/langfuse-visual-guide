@@ -885,6 +885,76 @@ QUIZZES = {
             },
         ],
     },
+    "13-event-types-merge.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "一次 LLM 调用，SDK 先发 generation-create、后发 generation-update，最后却落成 ClickHouse 里同一行。靠的是什么？",
+                    "en": "For one LLM call the SDK sends generation-create then generation-update, yet they land as the same row in ClickHouse. How?",
+                },
+                "opts": [
+                    {
+                        "zh": "两个事件共享同一个实体 id（body.id），服务端按 body.id 分组合并成一行；冲突字段以 timestamp 更晚者为准（last-write-wins）",
+                        "en": "Both events share one entity id (body.id); the server groups by body.id and merges into one row, conflicts resolved by later timestamp (last-write-wins)",
+                    },
+                    {"zh": "靠事件 id 相同来合并", "en": "they merge because their event ids are equal"},
+                    {"zh": "靠 SDK 在本地先合并好再发一条", "en": "the SDK merges locally and sends just one"},
+                    {"zh": "靠 ClickHouse 随机挑一条保留", "en": "ClickHouse randomly keeps one of them"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "实体 id（body.id）是合并键：同 id 的 create/update 注定汇成一行；事件 id（信封 id）是去重键，成为 S3 文件名 <eventId>.json 保证幂等。合并冲突时按 timestamp 最新者胜，正是第 8 课 ReplacingMergeTree(event_ts) 在写入侧的镜像。",
+                    "en": "The entity id (body.id) is the merge key: same-id create/update converge into one row; the event id (envelope id) is the dedup key, becoming the S3 filename <eventId>.json for idempotency. Conflicts resolve latest-timestamp-wins — the write-side mirror of L08's ReplacingMergeTree(event_ts).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "事件用 z.discriminatedUnion(\"type\", […]) 定义，而不是“一个所有字段都可选的大 schema”。这样做的核心好处是？",
+                    "en": "Events are defined with z.discriminatedUnion(\"type\", […]) rather than 'one big schema with all fields optional'. The core benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "每种 type 配一套严格的 body 规则：发 generation-create 必须符合 CreateGenerationBody，缺字段/填错类型当场被 Zod 拦下，校验既精确又能给出清晰错误",
+                        "en": "A strict body ruleset per type: generation-create must match CreateGenerationBody; missing/wrong fields are rejected by Zod on the spot — precise validation with clear errors",
+                    },
+                    {"zh": "让所有事件都能随便填字段", "en": "lets every event fill any field freely"},
+                    {"zh": "让事件体积更小", "en": "makes events smaller on the wire"},
+                    {"zh": "可以省掉 type 字段", "en": "lets you drop the type field"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "判别联合用 type 这一个字段决定该套哪套 body 规则，是“一个字段定身份、一套规则配一种身”。比“全字段可选”精确得多——后者无法在入口拦下结构性错误，脏数据会一路流到 worker 才崩。",
+                    "en": "The discriminated union uses the single type field to pick the body ruleset — 'one field sets identity, one ruleset per identity'. Far more precise than 'all-optional', which can't catch structural errors at the entry and lets dirty data crash the worker downstream.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "getClickhouseEntityType 把 18 种事件 type 坍缩成 3 个实体类型。span / generation / agent / tool 等都归到哪个，意味着什么？",
+                    "en": "getClickhouseEntityType collapses 18 event types into 3 entity types. Where do span/generation/agent/tool land, and what does that imply?",
+                },
+                "opts": [
+                    {
+                        "zh": "全归到 observation，进同一张 observations 表，靠行内 type 列区分；新增一种观测类型不必加表、不必改 schema——这正是第 8 课“宽事件”的威力",
+                        "en": "all into observation, the same observations table, distinguished by the row's type column; adding a new observation kind needs no new table or schema change — the power of L08's 'wide events'",
+                    },
+                    {"zh": "各自进一张独立的表", "en": "each into its own separate table"},
+                    {"zh": "归到 trace 表", "en": "into the trace table"},
+                    {"zh": "归到 score 表", "en": "into the score table"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "三个实体类型 trace / observation / score 正好对应第 8 课的三张 ReplacingMergeTree 宽表。所有“像观测”的形态共用一张表、用 type 列区分，所以 Langfuse 能不断新增观测类型（AGENT/TOOL/CHAIN…）而无需迁移表结构。",
+                    "en": "The three entity types trace / observation / score map onto L08's three ReplacingMergeTree wide tables. Every 'observation-like' shape shares one table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "create/update 拆成两个事件，把“攒着整条记录”的状态从客户端推给了服务端。你自己的系统里，有没有类似“让边缘无状态、让中心兜底”的地方？这样做的代价和收益各是什么？",
+                "en": "Splitting create/update into two events pushes the 'hold the whole record' state from client to server. In your own systems, is there a similar 'keep the edge stateless, let the center backstop' spot? What are its costs and benefits?",
+            },
+        ],
+    },
 }
 
 

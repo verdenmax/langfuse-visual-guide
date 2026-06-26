@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 12 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 13 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -349,6 +349,7 @@ details[open] > summary { list-style: none; }
   <li>多租户：org → project → environment</li>
   <li>部署拓扑与依赖</li>
   <li>摄取 API</li>
+  <li>事件类型与合并语义</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -2846,6 +2847,246 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>把“接收”和“处理”切开、入口只做最小集合——这条思路你能用到自己写的 API 上吗？哪些工作“必须当场做”，哪些可以丢给后台异步？切错了会怎样？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>事件类型与合并语义</h1>
+
+<p class="lead">
+上一课，API 把<strong>一批事件</strong>收下并入队。这一课我们把镜头怼到<strong>单个事件</strong>上：它长什么样？为什么有 <code>create</code> 和 <code>update</code> 两副面孔？
+最关键的是——你的 SDK 先后发来的<strong>好几个事件</strong>，最后怎么会变成数据库里<strong>同一行</strong>？这就是 Langfuse 摄取的灵魂：<strong>事件流 → 合并成记录</strong>。
+看懂这一课，第 8 课那张 <code>ReplacingMergeTree(event_ts, is_deleted)</code> 的设计才算真正落地。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🩺 生活类比</div>
+  把一个观测想成医院里的一份<strong>病历</strong>。病人挂号那一刻，医生写下第一条<strong>就诊记录</strong>（<code>generation-create</code>：开始时间、输入的主诉）；
+  检查做完、开完药，医生<strong>补一条记录</strong>（<code>generation-update</code>：结束时间、诊断结论、用了多少药）。这两条记录都贴着<strong>同一个病人号</strong>（实体 id）——
+  护士归档时，不会建两份病历，而是把它们<strong>合并进同一份</strong>，冲突字段<strong>以最新一条为准</strong>。而每条记录本身还有自己的<strong>流水号</strong>（事件 id），
+  保证同一条记录<strong>归档两次也不会重复</strong>。「病人号合并、流水号去重」——正是这一课要拆解的两套 id。
+</div>
+
+
+<h2>事件的信封：id · timestamp · type · body</h2>
+<p>每个摄取事件，无论它描述的是 trace、observation 还是 score，都套着<strong>同一个信封</strong>。信封里有一个公共的「外壳」，再加一个随类型而变的「内容物」<code>body</code>。
+Langfuse 用 Zod 把它定义得一清二楚：先有一个 <code>base</code>（外壳），各类型在它上面 <code>extend</code> 出自己的 <code>type</code> 与 <code>body</code>，
+最后用 <strong>判别联合</strong>（<code>z.discriminatedUnion("type", […])</code>）把十几种事件拢成一个 schema。校验时，Zod 看 <code>type</code> 这个字段，
+就知道该用哪一套 <code>body</code> 规则去验——这就是「<strong>一个字段定身份，一套规则配一种身</strong>」。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="事件信封结构：base 外壳 id/timestamp/metadata，type 字段作为判别器，路由到对应的 body schema">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一个事件的信封：外壳固定，body 随 type 而变</text>
+  <rect x="30" y="44" width="230" height="180" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="145" y="64" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">base（公共外壳）</text>
+  <rect x="48" y="76" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="93" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">id</tspan> · 事件 id（流水号）</text>
+  <rect x="48" y="108" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="125" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">timestamp</tspan> · 事件发生时刻</text>
+  <rect x="48" y="140" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="157" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">metadata</tspan> · 附带信息</text>
+  <rect x="48" y="176" width="194" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="58" y="190" font-size="9.5" font-weight="700" fill="var(--accent-ink)">type · 判别器 🔑</text><text x="58" y="203" font-size="8" fill="var(--accent-ink)">决定下面 body 用哪套规则</text>
+  <line x1="260" y1="193" x2="300" y2="193" stroke="var(--accent)" stroke-width="2"/><polygon points="300,193 290,188 290,198" fill="var(--accent)"/>
+  <text x="280" y="184" text-anchor="middle" font-size="8" fill="var(--accent-ink)">按 type 路由</text>
+  <rect x="310" y="50" width="380" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="500" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">type=generation-create → body: CreateGenerationBody</text><text x="500" y="82" text-anchor="middle" font-size="8" fill="var(--accent-ink)">startTime · model · usage · input/output…</text>
+  <rect x="310" y="98" width="380" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="500" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">type=span-update → body: UpdateSpanBody</text><text x="500" y="130" text-anchor="middle" font-size="8" fill="var(--muted)">id · endTime · output…（补一条）</text>
+  <rect x="310" y="146" width="380" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="500" y="164" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">type=score-create → body: ScoreBody</text><text x="500" y="178" text-anchor="middle" font-size="8" fill="var(--muted)">name · value · dataType…</text>
+  <rect x="310" y="194" width="380" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="500" y="212" text-anchor="middle" font-size="8.5" fill="var(--faint)">…共 18 种 type（trace / 14 个 observation 事件 / score / sdk-log / dataset-run-item）</text>
+</svg>
+<div class="figcap"><b>信封 = 固定外壳 + 可变 body</b>：<code>base</code> 持有 <code>id</code>（事件 id）、<code>timestamp</code>、<code>metadata</code> 和判别字段 <code>type</code>；<code>type</code> 决定 <code>body</code> 套用哪一套 Zod 规则。这正是 <code>z.discriminatedUnion("type", […])</code> 的工作方式。源码：<code>packages/shared/src/server/ingestion/types.ts:597</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts</span><span class="ln">L597</span></div>
+  <pre class="code"><span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                        <span class="cm">// 事件 id（流水号）</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),
+  body: CreateGenerationBody,          <span class="cm">// 随 type 而变的内容物</span>
+});
+<span class="cm">// …span-create / span-update / score-create / 共 18 种…</span>
+
+<span class="kw">const</span> ingestionEvent = z.<span class="fn">discriminatedUnion</span>(<span class="st">"type"</span>, [
+  traceEvent, scoreEvent, spanCreateEvent, spanUpdateEvent,
+  generationCreateEvent, generationUpdateEvent, <span class="cm">/* … */</span>
+]);</pre>
+</div>
+
+<p>判别联合的妙处在于：它不是「把所有字段都设成可选、随便你填」，而是<strong>每种 type 配一套严格的 body 规则</strong>。
+发 <code>generation-create</code> 就必须符合 <code>CreateGenerationBody</code>，发 <code>score-create</code> 就必须符合 <code>ScoreBody</code>——填错了类型、缺了字段，第 12 课那道 Zod 关当场就拦下。
+而且这套 schema 还分<strong>公共版与内部版</strong>两个实例：像 <code>dataset-run-item-create</code> 这种就只允许内部使用，公共 API 发它会被拒。</p>
+
+
+<h2>body 的「俄罗斯套娃」：Event ⊂ Span ⊂ Generation</h2>
+<p>那些 <code>body</code> 不是各写各的，而是<strong>层层继承</strong>出来的。最里层是 <code>OptionalObservationBody</code>（traceId、name、startTime、input/output…），
+往外 <code>extend</code> 一层加 <code>id</code> 成 <code>CreateEventEvent</code>，再加 <code>endTime</code> 成 <code>CreateSpanBody</code>，再加 <code>model / usage / modelParameters</code> 成 <code>CreateGenerationBody</code>。
+这条链精确对应第 3 课的观测三型：<strong>EVENT 是时间点</strong>（无时长）、<strong>SPAN 有起止</strong>（多了 endTime）、<strong>GENERATION 是带 LLM 字段的 SPAN</strong>（多了 model/usage）。
+有趣的是，第 8 课提到的那些新观测类型——AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL——它们的 <code>body</code> <strong>全都复用 <code>CreateGenerationBody</code></strong>：
+本质上都是「generation 那么丰富的一段观测」，只是语义标签不同。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="body 继承链：OptionalObservationBody 加 id 成 CreateEventEvent，加 endTime 成 CreateSpanBody，加 model/usage 成 CreateGenerationBody">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">body schema 的继承链（每往外一层，多几个字段）</text>
+  <rect x="40" y="60" width="620" height="150" rx="12" fill="none" stroke="var(--teal)" stroke-dasharray="5 4"/>
+  <text x="56" y="78" font-size="9" font-weight="700" fill="var(--teal)">CreateGenerationBody（+ model · usage · modelParameters · completionStartTime）</text>
+  <rect x="70" y="88" width="560" height="112" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="86" y="106" font-size="9" font-weight="700" fill="var(--accent-ink)">CreateSpanBody（+ endTime）</text>
+  <rect x="100" y="116" width="500" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="116" y="134" font-size="9" font-weight="700" fill="var(--ink)">CreateEventEvent（+ id）</text>
+  <rect x="130" y="144" width="440" height="40" rx="8" fill="var(--bg)" stroke="var(--faint)"/>
+  <text x="350" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">OptionalObservationBody</text>
+  <text x="350" y="176" text-anchor="middle" font-size="8" fill="var(--muted)">traceId · name · startTime · input/output · level · parentObservationId…</text>
+  <text x="685" y="120" text-anchor="end" font-size="8.5" fill="var(--accent-ink)">GENERATION</text>
+  <text x="685" y="150" text-anchor="end" font-size="8.5" fill="var(--blue)">SPAN</text>
+  <text x="685" y="178" text-anchor="end" font-size="8.5" fill="var(--faint)">EVENT</text>
+</svg>
+<div class="figcap"><b>越往外，能力越强</b>：EVENT 是无时长的时间点 → SPAN 加 <code>endTime</code> 有了起止 → GENERATION 再加 <code>model/usage</code> 成为可记 token 与成本的 LLM 调用。AGENT/TOOL/CHAIN 等 7 种新类型直接复用 <code>CreateGenerationBody</code>。源码：<code>types.ts:421-470</code>。</div>
+</div>
+
+<p>这套继承不仅省代码，更让<strong>类型语义层层递进</strong>：你不可能给一个 EVENT 填 endTime（它的 body 里压根没这字段），也不可能给一个 SPAN 填 usage。
+schema 即文档——读完这条链，三型观测「能装什么、不能装什么」一目了然。</p>
+
+
+<h2>灵魂所在：好几个事件，怎么变成一行</h2>
+<p>现在来回答开篇那个问题。一次 LLM 调用，SDK 通常发<strong>两个</strong>事件：开始时 <code>generation-create</code>（带 startTime、input），结束时 <code>generation-update</code>（带 endTime、output、usage）。
+它们最终却落成 ClickHouse 里<strong>同一行 observation</strong>。秘密在于<strong>两套 id 各司其职</strong>：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">实体 id</span><span class="name">body.id（合并键）</span></div><div class="ld">观测/trace 本身的 id。<strong>同一个 body.id 的所有事件，注定合并成一行</strong>。create 和 update 共享它，所以它们指向同一条记录。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">事件 id</span><span class="name">信封 base.id（去重键）</span></div><div class="ld">每个事件自己的流水号。它在 S3 里成为文件名 <code>&lt;eventId&gt;.json</code>——<strong>同一事件重发，覆盖同一个文件，天然幂等</strong>，不会算两次。</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">版本</span><span class="name">timestamp（谁更新）</span></div><div class="ld">合并冲突字段时，<strong>以时间更晚的事件为准</strong>（last-write-wins）。这正是第 8 课 <code>ReplacingMergeTree(event_ts)</code> 在写入侧的镜像。</div></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="同一 body.id 的 create 与 update 两个事件，按 timestamp 合并成一行 observation，冲突字段以最新为准">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">事件流 → 合并成一条记录（同 body.id，最新者胜）</text>
+  <rect x="30" y="50" width="250" height="78" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="155" y="68" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">事件① generation-create</text>
+  <text x="46" y="86" font-size="8.5" fill="var(--muted)">eventId=e1 · body.id=<tspan font-weight="700" fill="var(--accent-ink)">obs-42</tspan> · t=10:00:00</text>
+  <text x="46" y="102" font-size="8.5" fill="var(--ink)">startTime=10:00 · input="..." </text>
+  <text x="46" y="118" font-size="8.5" fill="var(--ink)">model="gpt-4o"</text>
+  <rect x="30" y="140" width="250" height="78" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="155" y="158" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">事件② generation-update</text>
+  <text x="46" y="176" font-size="8.5" fill="var(--accent-ink)">eventId=e2 · body.id=<tspan font-weight="700">obs-42</tspan> · t=10:00:03</text>
+  <text x="46" y="192" font-size="8.5" fill="var(--accent-ink)">endTime=10:00:03 · output="..."</text>
+  <text x="46" y="208" font-size="8.5" fill="var(--accent-ink)">usage={in:120,out:80}</text>
+  <line x1="280" y1="134" x2="430" y2="134" stroke="var(--faint)" stroke-width="1.8"/><polygon points="430,134 420,129 420,139" fill="var(--faint)"/>
+  <text x="355" y="126" text-anchor="middle" font-size="8.5" fill="var(--faint)">按 body.id 分组合并</text>
+  <rect x="440" y="74" width="250" height="120" rx="12" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/>
+  <text x="565" y="94" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">合并后的 observation 行</text>
+  <text x="456" y="114" font-size="8.5" fill="var(--ink)">id=<tspan font-weight="700" fill="var(--accent-ink)">obs-42</tspan> · type=GENERATION</text>
+  <text x="456" y="132" font-size="8.5" fill="var(--ink)">startTime=10:00 · endTime=10:00:03</text>
+  <text x="456" y="150" font-size="8.5" fill="var(--ink)">input + output（各取有值的一方）</text>
+  <text x="456" y="168" font-size="8.5" fill="var(--ink)">model=gpt-4o · usage={120,80}</text>
+  <text x="456" y="186" font-size="8" fill="var(--muted)">冲突字段：t 更大的②胜</text>
+</svg>
+<div class="figcap"><b>create + update → 一行</b>：两个事件共享 <code>body.id=obs-42</code>，被分到一组合并；各字段取有值的一方，冲突时以 <code>timestamp</code> 更晚者为准。worker 端的合并逻辑（第 15 课）正是第 8 课 ReplacingMergeTree 行为的「写入侧预演」。</div>
+</div>
+
+<p>把这条「事件流 → 一行」的路径拆成五步，合并的来龙去脉就完全清楚了——前两步在你的应用侧发生，后三步在 Langfuse 服务端发生：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>开始：发 create</h4><p>LLM 调用一开始，SDK 发 <code>generation-create</code>，带上 <code>body.id</code>、startTime、input。发完即忘，不在内存里攥着。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>结束：发 update</h4><p>调用结束，SDK 再发 <code>generation-update</code>，<strong>沿用同一个 body.id</strong>，补上 endTime、output、usage。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>按 body.id 分组</h4><p>服务端把 <code>dedupKey = 实体类型-body.id</code> 相同的事件归到一组——这两条就被认成「同一条记录的两次上报」。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>合并字段（最新者胜）</h4><p>逐字段取有值的一方；create 与 update 都给了的字段，以 <code>timestamp</code> 更晚的为准。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>落成一行</h4><p>合并结果写进 <code>observations</code> 表的<strong>同一行</strong>（id=body.id）；ReplacingMergeTree 在后台再做一次同样的去重兜底（第 8 课）。</p></div></div>
+</div>
+
+
+<h2>18 种事件，3 张表</h2>
+<p>事件 <code>type</code> 五花八门，但 worker 写库时只关心一件事：<strong>这条该进哪张表</strong>。一个叫 <code>getClickhouseEntityType</code> 的小函数把 18 种 type
+干净地坍缩成 <strong>3 个实体类型</strong>——正好对应第 8 课的三张 ReplacingMergeTree 宽表：</p>
+
+<table class="t">
+  <tr><th>实体类型</th><th>由哪些事件 type 映射而来</th><th>落到哪张表（第 8 课）</th></tr>
+  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code></td></tr>
+  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + 旧 <code>observation-*</code></td><td><code>observations</code></td></tr>
+  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code></td></tr>
+</table>
+
+<p>所有「像观测」的类型——无论它叫 span、generation 还是 agent——统统归到 <code>observation</code>，进同一张表，靠 observation 行里的 <code>type</code> 列区分。
+这就是第 8 课「宽事件」的威力：<strong>一张表容纳所有观测形态</strong>，新增一种观测类型不必加表、不必改 schema。</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/processEventBatch.ts</span><span class="ln">分组</span></div>
+  <pre class="code"><span class="cm">// 按 eventBodyId 把事件分组，使「同一实体」的多个事件能一起存、一起处理</span>
+<span class="kw">const</span> entityType = <span class="fn">getClickhouseEntityType</span>(event.type);  <span class="cm">// → trace / observation / score</span>
+<span class="kw">const</span> dedupKey = <span class="st">`${entityType}-${event.body.id}`</span>;       <span class="cm">// 合并键 = 实体类型 + 实体 id</span>
+
+<span class="cm">// 每个事件以「事件 id」为名落 S3：&lt;eventId&gt;.json（同事件重发→覆盖同文件，幂等）</span>
+key: <span class="fn">safeBlobFilenameStem</span>(event.id, <span class="st">".json"</span>),</pre>
+</div>
+
+<p>看清这段就懂了全局：<strong>实体 id（body.id）决定「合并到哪一行」，事件 id（envelope id）决定「在 S3 里叫什么名」</strong>。
+前者保证 create/update 汇成一条；后者保证同一个事件重传一百次也只算一次。两套 id，两个目的，配合得严丝合缝。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么不直接做一个 upsert，非要拆成 create / update 两个事件？</strong> 因为<strong>SDK 端不该背状态</strong>。一次 LLM 调用，开始和结束之间可能隔着几秒、几十秒，
+  期间应用甚至可能崩、可能换机器。如果要求「等结束后一次性 upsert 全量」，SDK 就得在内存里<strong>攥着</strong>这条记录直到结束——既占内存又怕丢。
+  拆成 create + update，SDK 可以<strong>开始就发一半、结束再补一半</strong>，发完即忘；合并的脏活交给服务端按 body.id 去拼。<strong>把状态从客户端推给服务端</strong>，
+  正是分布式系统里「让边缘无状态、让中心兜底」的经典思路——也呼应第 5 课那条「快路 / 慢路」分工。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>每个事件 = <strong>信封</strong>（<code>base</code>: id · timestamp · metadata + 判别字段 <code>type</code>）+ 随 type 而变的 <code>body</code>，由 <code>z.discriminatedUnion("type")</code> 拢成一个 schema。</li>
+    <li>body 是<strong>继承链</strong>：<code>OptionalObservationBody</code> → +id <code>CreateEventEvent</code> → +endTime <code>CreateSpanBody</code> → +model/usage <code>CreateGenerationBody</code>，对应 EVENT⊂SPAN⊂GENERATION。</li>
+    <li><strong>两套 id</strong>：实体 id（<code>body.id</code>）是合并键——同 id 的 create/update 汇成一行；事件 id（信封 id）是去重键——成为 S3 文件名，保证幂等。</li>
+    <li>冲突字段<strong>以 timestamp 更晚者为准</strong>（last-write-wins），是第 8 课 <code>ReplacingMergeTree(event_ts)</code> 在写入侧的镜像。</li>
+    <li><code>getClickhouseEntityType</code> 把 18 种事件 type 坍缩成 <strong>3 个实体类型</strong>（trace / observation / score）→ 第 8 课的三张宽表。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 一次 LLM 调用，SDK 先发 generation-create、后发 generation-update，最后却落成 ClickHouse 里同一行。靠的是什么？</div>
+  <ol class="opts">
+    <li>两个事件共享同一个实体 id（body.id），服务端按 body.id 分组合并成一行；冲突字段以 timestamp 更晚者为准（last-write-wins）</li>
+    <li>靠事件 id 相同来合并</li>
+    <li>靠 ClickHouse 随机挑一条保留</li>
+    <li>靠 SDK 在本地先合并好再发一条</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。实体 id（body.id）是合并键：同 id 的 create/update 注定汇成一行；事件 id（信封 id）是去重键，成为 S3 文件名 <eventId>.json 保证幂等。合并冲突时按 timestamp 最新者胜，正是第 8 课 ReplacingMergeTree(event_ts) 在写入侧的镜像。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 事件用 z.discriminatedUnion("type", […]) 定义，而不是“一个所有字段都可选的大 schema”。这样做的核心好处是？</div>
+  <ol class="opts">
+    <li>每种 type 配一套严格的 body 规则：发 generation-create 必须符合 CreateGenerationBody，缺字段/填错类型当场被 Zod 拦下，校验既精确又能给出清晰错误</li>
+    <li>让事件体积更小</li>
+    <li>可以省掉 type 字段</li>
+    <li>让所有事件都能随便填字段</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。判别联合用 type 这一个字段决定该套哪套 body 规则，是“一个字段定身份、一套规则配一种身”。比“全字段可选”精确得多——后者无法在入口拦下结构性错误，脏数据会一路流到 worker 才崩。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. getClickhouseEntityType 把 18 种事件 type 坍缩成 3 个实体类型。span / generation / agent / tool 等都归到哪个，意味着什么？</div>
+  <ol class="opts">
+    <li>全归到 observation，进同一张 observations 表，靠行内 type 列区分；新增一种观测类型不必加表、不必改 schema——这正是第 8 课“宽事件”的威力</li>
+    <li>各自进一张独立的表</li>
+    <li>归到 score 表</li>
+    <li>归到 trace 表</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。三个实体类型 trace / observation / score 正好对应第 8 课的三张 ReplacingMergeTree 宽表。所有“像观测”的形态共用一张表、用 type 列区分，所以 Langfuse 能不断新增观测类型（AGENT/TOOL/CHAIN…）而无需迁移表结构。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>create/update 拆成两个事件，把“攒着整条记录”的状态从客户端推给了服务端。你自己的系统里，有没有类似“让边缘无状态、让中心兜底”的地方？这样做的代价和收益各是什么？</li>
   </ul>
 </div>
 </div>

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 12 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 13 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -349,6 +349,7 @@ details[open] > summary { list-style: none; }
   <li>Multi-tenancy</li>
   <li>Deployment topology</li>
   <li>The ingestion API</li>
+  <li>Event types & merge semantics</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -3080,6 +3081,261 @@ no full-batch retry.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Splitting 'accept' from 'process' so the entry does the minimum — can you apply this to your own APIs? Which work 'must happen now', and which can be deferred to async background? What if you split it wrong?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Event types & merge semantics</h1>
+
+<p class="lead">
+Last lesson the API accepted <strong>a batch of events</strong> and enqueued them. Now we zoom into a <strong>single event</strong>: what does it
+look like? Why does it have two faces, <code>create</code> and <code>update</code>? And most crucially — how do the <strong>several events</strong> your
+SDK sends end up as <strong>one row</strong> in the database? This is the soul of Langfuse ingestion: <strong>an event stream merges into a
+record</strong>. Get this and Lesson 8's <code>ReplacingMergeTree(event_ts, is_deleted)</code> design finally clicks into place.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🩺 Analogy</div>
+  Think of one observation as a hospital <strong>chart</strong>. When the patient checks in, the doctor writes the first <strong>visit note</strong>
+  (<code>generation-create</code>: start time, the input complaint). After tests and a prescription, the doctor <strong>adds a note</strong>
+  (<code>generation-update</code>: end time, diagnosis, dosage). Both notes carry the <strong>same patient number</strong> (entity id) — so when
+  filing, the nurse doesn't create two charts, she <strong>merges them into one</strong>, latest note winning on conflicts. Each note also has its
+  own <strong>serial number</strong> (event id), so filing the same note twice never duplicates it. "Merge by patient number, dedup by serial" —
+  exactly the two ids this lesson dissects.
+</div>
+
+
+<h2>The envelope: id · timestamp · type · body</h2>
+<p>Every ingestion event — whether it describes a trace, an observation or a score — rides in the <strong>same envelope</strong>: a shared "shell"
+plus a type-dependent payload <code>body</code>. Langfuse pins this down with Zod: a <code>base</code> (the shell), each type <code>extend</code>s it
+with its own <code>type</code> and <code>body</code>, and finally a <strong>discriminated union</strong> (<code>z.discriminatedUnion("type", […])</code>)
+gathers the dozen-plus events into one schema. To validate, Zod reads the <code>type</code> field and knows which <code>body</code> rules to apply —
+"<strong>one field sets the identity, one ruleset per identity</strong>".</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="event envelope: base shell id/timestamp/metadata, the type field as discriminator routing to the matching body schema">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">An event's envelope: fixed shell, body varies by type</text>
+  <rect x="30" y="44" width="230" height="180" rx="12" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="145" y="64" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">base (shared shell)</text>
+  <rect x="48" y="76" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="93" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">id</tspan> · event id (serial)</text>
+  <rect x="48" y="108" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="125" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">timestamp</tspan> · when it happened</text>
+  <rect x="48" y="140" width="194" height="26" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="58" y="157" font-size="9.5" fill="var(--ink)"><tspan font-weight="700">metadata</tspan> · side info</text>
+  <rect x="48" y="176" width="194" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="58" y="190" font-size="9.5" font-weight="700" fill="var(--accent-ink)">type · discriminator 🔑</text><text x="58" y="203" font-size="8" fill="var(--accent-ink)">picks the body ruleset below</text>
+  <line x1="260" y1="193" x2="300" y2="193" stroke="var(--accent)" stroke-width="2"/><polygon points="300,193 290,188 290,198" fill="var(--accent)"/>
+  <text x="280" y="184" text-anchor="middle" font-size="8" fill="var(--accent-ink)">route by type</text>
+  <rect x="310" y="50" width="380" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="500" y="68" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">type=generation-create → body: CreateGenerationBody</text><text x="500" y="82" text-anchor="middle" font-size="8" fill="var(--accent-ink)">startTime · model · usage · input/output…</text>
+  <rect x="310" y="98" width="380" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="500" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">type=span-update → body: UpdateSpanBody</text><text x="500" y="130" text-anchor="middle" font-size="8" fill="var(--muted)">id · endTime · output… (a patch)</text>
+  <rect x="310" y="146" width="380" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="500" y="164" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">type=score-create → body: ScoreBody</text><text x="500" y="178" text-anchor="middle" font-size="8" fill="var(--muted)">name · value · dataType…</text>
+  <rect x="310" y="194" width="380" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="500" y="212" text-anchor="middle" font-size="8.5" fill="var(--faint)">…18 types total (trace / 14 observation events / score / sdk-log / dataset-run-item)</text>
+</svg>
+<div class="figcap"><b>Envelope = fixed shell + variable body</b>: <code>base</code> holds <code>id</code> (event id), <code>timestamp</code>, <code>metadata</code> and the discriminator <code>type</code>; <code>type</code> decides which Zod ruleset the <code>body</code> follows. That's exactly how <code>z.discriminatedUnion("type", […])</code> works. Source: <code>packages/shared/src/server/ingestion/types.ts:597</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts</span><span class="ln">L597</span></div>
+  <pre class="code"><span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                        <span class="cm">// event id (serial)</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),
+  body: CreateGenerationBody,          <span class="cm">// payload varies by type</span>
+});
+<span class="cm">// …span-create / span-update / score-create / 18 in total…</span>
+
+<span class="kw">const</span> ingestionEvent = z.<span class="fn">discriminatedUnion</span>(<span class="st">"type"</span>, [
+  traceEvent, scoreEvent, spanCreateEvent, spanUpdateEvent,
+  generationCreateEvent, generationUpdateEvent, <span class="cm">/* … */</span>
+]);</pre>
+</div>
+
+<p>The beauty of the discriminated union: it isn't "make every field optional, fill in whatever" — it's <strong>a strict body ruleset per
+type</strong>. Send <code>generation-create</code> and you must match <code>CreateGenerationBody</code>; send <code>score-create</code> and you must
+match <code>ScoreBody</code> — wrong type or missing field, and Lesson 12's Zod gate rejects it on the spot. The schema even ships as <strong>two
+instances, public and internal</strong>: things like <code>dataset-run-item-create</code> are internal-only and rejected on the public API.</p>
+
+
+<h2>The body "matryoshka": Event ⊂ Span ⊂ Generation</h2>
+<p>Those <code>body</code> schemas aren't written separately — they <strong>inherit layer by layer</strong>. The innermost is
+<code>OptionalObservationBody</code> (traceId, name, startTime, input/output…); <code>extend</code> it with <code>id</code> to get
+<code>CreateEventEvent</code>, add <code>endTime</code> for <code>CreateSpanBody</code>, then add <code>model / usage / modelParameters</code> for
+<code>CreateGenerationBody</code>. This chain maps precisely onto Lesson 3's three observation kinds: <strong>EVENT is a point in time</strong> (no
+duration), <strong>SPAN has start &amp; end</strong> (adds endTime), <strong>GENERATION is a SPAN with LLM fields</strong> (adds model/usage). Tellingly,
+the newer observation types from Lesson 8 — AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL — <strong>all reuse
+<code>CreateGenerationBody</code></strong>: at heart they're each "a generation-rich span", differing only in semantic label.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="body inheritance chain: OptionalObservationBody plus id makes CreateEventEvent, plus endTime makes CreateSpanBody, plus model/usage makes CreateGenerationBody">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The body schema inheritance chain (each outer layer adds fields)</text>
+  <rect x="40" y="60" width="620" height="150" rx="12" fill="none" stroke="var(--teal)" stroke-dasharray="5 4"/>
+  <text x="56" y="78" font-size="9" font-weight="700" fill="var(--teal)">CreateGenerationBody (+ model · usage · modelParameters · completionStartTime)</text>
+  <rect x="70" y="88" width="560" height="112" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="86" y="106" font-size="9" font-weight="700" fill="var(--accent-ink)">CreateSpanBody (+ endTime)</text>
+  <rect x="100" y="116" width="500" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="116" y="134" font-size="9" font-weight="700" fill="var(--ink)">CreateEventEvent (+ id)</text>
+  <rect x="130" y="144" width="440" height="40" rx="8" fill="var(--bg)" stroke="var(--faint)"/>
+  <text x="350" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">OptionalObservationBody</text>
+  <text x="350" y="176" text-anchor="middle" font-size="8" fill="var(--muted)">traceId · name · startTime · input/output · level · parentObservationId…</text>
+  <text x="685" y="120" text-anchor="end" font-size="8.5" fill="var(--accent-ink)">GENERATION</text>
+  <text x="685" y="150" text-anchor="end" font-size="8.5" fill="var(--blue)">SPAN</text>
+  <text x="685" y="178" text-anchor="end" font-size="8.5" fill="var(--faint)">EVENT</text>
+</svg>
+<div class="figcap"><b>The further out, the more capable</b>: EVENT is a duration-less point → SPAN adds <code>endTime</code> and gains start/end → GENERATION adds <code>model/usage</code>, becoming an LLM call that records tokens and cost. The 7 newer types (AGENT/TOOL/CHAIN…) reuse <code>CreateGenerationBody</code> directly. Source: <code>types.ts:421-470</code>.</div>
+</div>
+
+<p>This inheritance doesn't just save code, it makes <strong>the type semantics escalate step by step</strong>: you can't put an endTime on an EVENT
+(its body simply has no such field), nor a usage on a SPAN. The schema is the documentation — read the chain and you see at a glance what each of
+the three observation kinds can and cannot carry.</p>
+
+
+<h2>The heart of it: several events, one row</h2>
+<p>Now to answer the opening question. For one LLM call, the SDK usually sends <strong>two</strong> events: <code>generation-create</code> at the start
+(with startTime, input) and <code>generation-update</code> at the end (with endTime, output, usage). Yet they land as <strong>the same observation
+row</strong> in ClickHouse. The secret is <strong>two ids, each with its own job</strong>:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">entity id</span><span class="name">body.id (merge key)</span></div><div class="ld">The id of the observation/trace itself. <strong>All events with the same body.id are destined to merge into one row</strong>. create and update share it, so they point at the same record.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">event id</span><span class="name">envelope base.id (dedup key)</span></div><div class="ld">Each event's own serial. In S3 it becomes the filename <code>&lt;eventId&gt;.json</code> — <strong>resend the same event, overwrite the same file, naturally idempotent</strong>, never counted twice.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">version</span><span class="name">timestamp (who wins)</span></div><div class="ld">When merging conflicting fields, <strong>the later-timestamped event wins</strong> (last-write-wins). This is the write-side mirror of Lesson 8's <code>ReplacingMergeTree(event_ts)</code>.</div></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="create and update events sharing one body.id merge by timestamp into one observation row, conflicts resolved latest-wins">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Event stream → one record (same body.id, latest wins)</text>
+  <rect x="30" y="50" width="250" height="78" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="155" y="68" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">event ① generation-create</text>
+  <text x="46" y="86" font-size="8.5" fill="var(--muted)">eventId=e1 · body.id=<tspan font-weight="700" fill="var(--accent-ink)">obs-42</tspan> · t=10:00:00</text>
+  <text x="46" y="102" font-size="8.5" fill="var(--ink)">startTime=10:00 · input="..." </text>
+  <text x="46" y="118" font-size="8.5" fill="var(--ink)">model="gpt-4o"</text>
+  <rect x="30" y="140" width="250" height="78" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="155" y="158" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">event ② generation-update</text>
+  <text x="46" y="176" font-size="8.5" fill="var(--accent-ink)">eventId=e2 · body.id=<tspan font-weight="700">obs-42</tspan> · t=10:00:03</text>
+  <text x="46" y="192" font-size="8.5" fill="var(--accent-ink)">endTime=10:00:03 · output="..."</text>
+  <text x="46" y="208" font-size="8.5" fill="var(--accent-ink)">usage={in:120,out:80}</text>
+  <line x1="280" y1="134" x2="430" y2="134" stroke="var(--faint)" stroke-width="1.8"/><polygon points="430,134 420,129 420,139" fill="var(--faint)"/>
+  <text x="355" y="126" text-anchor="middle" font-size="8.5" fill="var(--faint)">group &amp; merge by body.id</text>
+  <rect x="440" y="74" width="250" height="120" rx="12" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/>
+  <text x="565" y="94" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">merged observation row</text>
+  <text x="456" y="114" font-size="8.5" fill="var(--ink)">id=<tspan font-weight="700" fill="var(--accent-ink)">obs-42</tspan> · type=GENERATION</text>
+  <text x="456" y="132" font-size="8.5" fill="var(--ink)">startTime=10:00 · endTime=10:00:03</text>
+  <text x="456" y="150" font-size="8.5" fill="var(--ink)">input + output (each takes the set side)</text>
+  <text x="456" y="168" font-size="8.5" fill="var(--ink)">model=gpt-4o · usage={120,80}</text>
+  <text x="456" y="186" font-size="8" fill="var(--muted)">conflicts: later-t ② wins</text>
+</svg>
+<div class="figcap"><b>create + update → one row</b>: the two events share <code>body.id=obs-42</code>, get grouped and merged; each field takes the side that has a value, conflicts resolved by later <code>timestamp</code>. The worker's merge logic (Lesson 15) is a "write-side rehearsal" of Lesson 8's ReplacingMergeTree behavior.</div>
+</div>
+
+<p>Break this "event stream → one row" path into five steps and the whole merge story is clear — the first two happen on your app side, the last
+three on the Langfuse server:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Start: send create</h4><p>As the LLM call begins, the SDK sends <code>generation-create</code> with <code>body.id</code>, startTime, input. Fire-and-forget, nothing held in memory.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>End: send update</h4><p>When the call ends, the SDK sends <code>generation-update</code>, <strong>reusing the same body.id</strong>, adding endTime, output, usage.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Group by body.id</h4><p>The server groups events with the same <code>dedupKey = entityType-body.id</code> — these two are recognized as "two reports of one record".</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Merge fields (latest wins)</h4><p>Take the set side of each field; where both create and update gave a value, the later <code>timestamp</code> wins.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>Land as one row</h4><p>The merged result writes into <strong>one row</strong> of <code>observations</code> (id=body.id); ReplacingMergeTree re-dedups in the background as a safety net (Lesson 8).</p></div></div>
+</div>
+
+
+<h2>18 event types, 3 tables</h2>
+<p>Event <code>type</code> comes in many flavors, but when the worker writes, it cares about one thing: <strong>which table does this go to</strong>. A
+small function <code>getClickhouseEntityType</code> collapses the 18 types cleanly into <strong>3 entity types</strong> — exactly Lesson 8's three
+ReplacingMergeTree wide tables:</p>
+
+<table class="t">
+  <tr><th>entity type</th><th>mapped from which event types</th><th>which table (Lesson 8)</th></tr>
+  <tr><td><b>trace</b></td><td><code>trace-create</code></td><td><code>traces</code></td></tr>
+  <tr><td><b>observation</b></td><td><code>event/span/generation-create·update</code> + <code>agent/tool/chain/retriever/evaluator/embedding/guardrail-create</code> + legacy <code>observation-*</code></td><td><code>observations</code></td></tr>
+  <tr><td><b>score</b></td><td><code>score-create</code></td><td><code>scores</code></td></tr>
+</table>
+
+<p>Everything "observation-like" — be it span, generation or agent — lands in <code>observation</code>, the same table, distinguished by the
+<code>type</code> column on the observation row. That's the power of Lesson 8's "wide events": <strong>one table holds every observation shape</strong>,
+and adding a new observation kind needs no new table, no schema change.</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/processEventBatch.ts</span><span class="ln">grouping</span></div>
+  <pre class="code"><span class="cm">// Group events by eventBodyId so multiple events of "one entity" store &amp; process together</span>
+<span class="kw">const</span> entityType = <span class="fn">getClickhouseEntityType</span>(event.type);  <span class="cm">// → trace / observation / score</span>
+<span class="kw">const</span> dedupKey = <span class="st">`${entityType}-${event.body.id}`</span>;       <span class="cm">// merge key = entity type + entity id</span>
+
+<span class="cm">// each event lands in S3 named by its "event id": &lt;eventId&gt;.json (resend → overwrite, idempotent)</span>
+key: <span class="fn">safeBlobFilenameStem</span>(event.id, <span class="st">".json"</span>),</pre>
+</div>
+
+<p>Read this snippet and the whole picture lands: <strong>the entity id (body.id) decides "which row to merge into", the event id (envelope id)
+decides "what it's named in S3"</strong>. The former lets create/update converge into one record; the latter ensures resending the same event a
+hundred times still counts once. Two ids, two purposes, fitting together seamlessly.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not just do an upsert — why split into two create / update events?</strong> Because <strong>the SDK shouldn't carry state</strong>. An
+  LLM call can take seconds, even tens of seconds, between start and end; meanwhile the app might crash or move machines. Requiring "wait until the
+  end, then upsert the whole thing" forces the SDK to <strong>hold</strong> that record in memory until completion — costing memory and risking loss.
+  Splitting into create + update lets the SDK <strong>send half at the start, the rest at the end</strong>, forgetting each as it goes; the dirty work
+  of merging by body.id falls to the server. <strong>Pushing state from the client to the center</strong> is the classic distributed-systems move —
+  "keep the edge stateless, let the center backstop it" — echoing Lesson 5's fast-lane / slow-lane split.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Each event = an <strong>envelope</strong> (<code>base</code>: id · timestamp · metadata + discriminator <code>type</code>) + a type-varying <code>body</code>, gathered by <code>z.discriminatedUnion("type")</code> into one schema.</li>
+    <li>body is an <strong>inheritance chain</strong>: <code>OptionalObservationBody</code> → +id <code>CreateEventEvent</code> → +endTime <code>CreateSpanBody</code> → +model/usage <code>CreateGenerationBody</code>, mapping EVENT⊂SPAN⊂GENERATION.</li>
+    <li><strong>Two ids</strong>: entity id (<code>body.id</code>) is the merge key — same-id create/update converge into one row; event id (envelope id) is the dedup key — becomes the S3 filename, guaranteeing idempotency.</li>
+    <li>Conflicting fields resolve <strong>by later timestamp</strong> (last-write-wins), the write-side mirror of Lesson 8's <code>ReplacingMergeTree(event_ts)</code>.</li>
+    <li><code>getClickhouseEntityType</code> collapses the 18 event types into <strong>3 entity types</strong> (trace / observation / score) → Lesson 8's three wide tables.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. For one LLM call the SDK sends generation-create then generation-update, yet they land as the same row in ClickHouse. How?</div>
+  <ol class="opts">
+    <li>Both events share one entity id (body.id); the server groups by body.id and merges into one row, conflicts resolved by later timestamp (last-write-wins)</li>
+    <li>they merge because their event ids are equal</li>
+    <li>ClickHouse randomly keeps one of them</li>
+    <li>the SDK merges locally and sends just one</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. The entity id (body.id) is the merge key: same-id create/update converge into one row; the event id (envelope id) is the dedup key, becoming the S3 filename <eventId>.json for idempotency. Conflicts resolve latest-timestamp-wins — the write-side mirror of L08's ReplacingMergeTree(event_ts).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Events are defined with z.discriminatedUnion("type", […]) rather than 'one big schema with all fields optional'. The core benefit?</div>
+  <ol class="opts">
+    <li>A strict body ruleset per type: generation-create must match CreateGenerationBody; missing/wrong fields are rejected by Zod on the spot — precise validation with clear errors</li>
+    <li>makes events smaller on the wire</li>
+    <li>lets you drop the type field</li>
+    <li>lets every event fill any field freely</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. The discriminated union uses the single type field to pick the body ruleset — 'one field sets identity, one ruleset per identity'. Far more precise than 'all-optional', which can't catch structural errors at the entry and lets dirty data crash the worker downstream.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. getClickhouseEntityType collapses 18 event types into 3 entity types. Where do span/generation/agent/tool land, and what does that imply?</div>
+  <ol class="opts">
+    <li>all into observation, the same observations table, distinguished by the row's type column; adding a new observation kind needs no new table or schema change — the power of L08's 'wide events'</li>
+    <li>each into its own separate table</li>
+    <li>into the score table</li>
+    <li>into the trace table</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. The three entity types trace / observation / score map onto L08's three ReplacingMergeTree wide tables. Every 'observation-like' shape shares one table, distinguished by the type column, so Langfuse can keep adding observation kinds (AGENT/TOOL/CHAIN…) without schema migrations.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Splitting create/update into two events pushes the 'hold the whole record' state from client to server. In your own systems, is there a similar 'keep the edge stateless, let the center backstop' spot? What are its costs and benefits?</li>
   </ul>
 </div>
 </div>

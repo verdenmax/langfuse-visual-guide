@@ -23,4 +23,5 @@ CONTENT = {
     "10-multi-tenancy.html": part2.LESSON_10,
     "11-deployment-topology.html": part2.LESSON_11,
     "12-ingestion-api.html": part3.LESSON_12,
+    "13-event-types-merge.html": part3.LESSON_13,
 }
