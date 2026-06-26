@@ -24,4 +24,5 @@ CONTENT = {
     "11-deployment-topology.html": part2.LESSON_11,
     "12-ingestion-api.html": part3.LESSON_12,
     "13-event-types-merge.html": part3.LESSON_13,
+    "14-ingestion-queue.html": part3.LESSON_14,
 }

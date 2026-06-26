@@ -75,6 +75,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("13-event-types-merge.html", "事件类型与合并语义", "Event types & merge semantics",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("14-ingestion-queue.html", "摄取队列", "The ingestion queue",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -584,6 +586,8 @@ SUBTITLES = {
                               "auth+Zod+enqueue; processEventBatch; batched reporting; two gates; fast return"),
     "13-event-types-merge.html": ("事件信封 · discriminatedUnion · body 继承链 · 两套 id · 合并最新者胜 · 18→3",
                                   "event envelope; discriminatedUnion; body inheritance; two ids; latest-wins merge; 18→3"),
+    "14-ingestion-queue.html": ("Redis+BullMQ · 队列放指针 fileKey · S3 存本体 · 分片 · 主/次队列 · 重试退避",
+                                "Redis+BullMQ; queue holds fileKey pointer; S3 stores body; sharding; primary/secondary; retry backoff"),
 }
 
 

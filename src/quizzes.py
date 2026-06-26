@@ -955,6 +955,76 @@ QUIZZES = {
             },
         ],
     },
+    "14-ingestion-queue.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "摄取队列里到底放了什么？为什么不直接把事件本体塞进 Redis？",
+                    "en": "What's actually in the ingestion queue, and why not stuff the event body straight into Redis?",
+                },
+                "opts": [
+                    {
+                        "zh": "只放含 fileKey 的轻量任务（指针）；事件本体先写进 S3 的 <eventId>.json，worker 再照 fileKey 回 S3 读回——队列轻则 Redis 内存省、入队快，本体留在 S3 当“真账本”，任务丢了也能重建",
+                        "en": "only a lightweight job carrying fileKey (a pointer); the body is first written to S3 as <eventId>.json, the worker reads it back by fileKey — a light queue saves Redis memory and speeds enqueue, while the body stays in S3 as the 'real ledger', rebuildable if a job is lost",
+                    },
+                    {"zh": "放事件的完整内容，包括可能很大的 input/output", "en": "the full event content, including possibly huge input/output"},
+                    {"zh": "什么都不放，worker 自己去数据库查", "en": "nothing; the worker queries the DB itself"},
+                    {"zh": "放一份加密后的事件副本", "en": "an encrypted copy of the event"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "S3 存本体、队列递指针是这条链路最易误解的点。Redis 内存金贵，任务越小越快越扛积压；S3 既是合并要回读的历史事件源（第 15 课），也是任务失败时的可重放依据。这就买到了“轻队列 + 持久存储”两样好处。",
+                    "en": "S3 holds the body, the queue passes a pointer — the most-misunderstood point of the path. Redis memory is precious, so smaller jobs are faster and survive backlog; S3 is both the historical event source the merge reads back (L15) and the replay basis on job failure. You get 'light queue + durable storage' at once.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "分片键为什么选 projectId-eventBodyId，而不是随机分配？",
+                    "en": "Why is the shard key projectId-eventBodyId rather than a random assignment?",
+                },
+                "opts": [
+                    {
+                        "zh": "对实体 id 哈希取模能保证“同一实体永远落同一 shard”：一条记录的 create/update 始终在同一队列、被同一 worker 有序处理，合并无需跨队列协调；随机分会把它们打散、合并时复杂又可能乱序",
+                        "en": "hashing the entity id guarantees 'same entity always on the same shard': a record's create/update stay in one queue, processed in order by one worker, no cross-queue coordination at merge; random scatter would split them, making merge complex and prone to disorder",
+                    },
+                    {"zh": "因为随机分配根本无法实现", "en": "because random assignment is impossible to implement"},
+                    {"zh": "因为 projectId-eventBodyId 最短", "en": "because projectId-eventBodyId is the shortest string"},
+                    {"zh": "为了让每个 shard 负载完全相等", "en": "to make every shard's load exactly equal"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "用一致性哈希（SHA-256 取模）把负载摊到多个 Redis 节点，同时用实体 id 当键，让“同一实体同一 shard”天然成立——这与第 8 课用 project_id 领头排序键、第 13 课用 body.id 当合并键，是同一种“让相关数据物理聚在一起”的思路。",
+                    "en": "Consistent hashing (SHA-256 modulo) spreads load across Redis nodes, while using the entity id as key makes 'same entity, same shard' hold naturally — the same 'keep related data physically together' idea as L08 leading the ordering key with project_id and L13 using body.id as the merge key.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "主队列 vs 次队列的隔离机制解决了什么问题？worker 何时把任务改道次队列？",
+                    "en": "What problem does primary-vs-secondary isolation solve, and when does the worker redirect a job to the secondary?",
+                },
+                "opts": [
+                    {
+                        "zh": "防止某个超高吞吐项目塞满主队列、饿死其他项目；命中 env 白名单（静态隔离已知大户）或 S3 限流标志（动态临时改道）就把该任务原样入次队列并 return，主队列立刻服务别人",
+                        "en": "it prevents one ultra-high-throughput project from packing the primary and starving others; on hitting the env allowlist (statically isolating known heavy hitters) or the S3 slowdown flag (dynamic temporary redirect), the worker re-enqueues the job to the secondary and returns, freeing the primary to serve others",
+                    },
+                    {"zh": "让次队列处理得更慢以省钱", "en": "to make the secondary slower to save money"},
+                    {"zh": "次队列只处理失败的任务", "en": "the secondary only handles failed jobs"},
+                    {"zh": "主队列只处理 trace，次队列只处理 score", "en": "primary handles only traces, secondary only scores"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "次队列有独立的分片数和独立的 worker，把洪峰与日常物理隔离。两条判断：env 白名单（LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS）做静态隔离，S3 SlowDown 标志做动态减压。这是典型的“吵闹邻居”隔离，保障多租户公平。",
+                    "en": "The secondary has its own shard count and workers, physically isolating spike from steady-state. Two checks: the env allowlist (LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS) for static isolation, the S3 SlowDown flag for dynamic relief. A classic 'noisy neighbor' isolation safeguarding multi-tenant fairness.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“队列 + S3 当真账本”换来了削峰、容错、可重放，代价是多一跳和最终一致的延迟。如果让你给一个高并发写入系统做选型，你会在“直接写库”和“队列缓冲 + 对象存储”之间怎么权衡？哪些信号会让你倒向后者？",
+                "en": "'Queue + S3 as real ledger' buys spike absorption, fault tolerance and replayability, at the cost of an extra hop and eventual-consistency latency. Designing a high-concurrency write system, how would you weigh 'write the DB directly' against 'queue buffer + object storage'? What signals would tip you toward the latter?",
+            },
+        ],
+    },
 }
 
 

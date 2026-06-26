@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 13 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 14 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -350,6 +350,7 @@ details[open] > summary { list-style: none; }
   <li>部署拓扑与依赖</li>
   <li>摄取 API</li>
   <li>事件类型与合并语义</li>
+  <li>摄取队列</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -3087,6 +3088,185 @@ key: <span class="fn">safeBlobFilenameStem</span>(event.id, <span class="st">".j
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>create/update 拆成两个事件，把“攒着整条记录”的状态从客户端推给了服务端。你自己的系统里，有没有类似“让边缘无状态、让中心兜底”的地方？这样做的代价和收益各是什么？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>摄取队列</h1>
+
+<p class="lead">
+第 12 课 API「入队」后就闪人了，第 13 课讲清了入的是什么「事件」。这一课的主角，就是那条<strong>队列</strong>本身——Langfuse 用 <strong>Redis + BullMQ</strong>
+搭起来的传送带。它是第 5 课「快路 / 慢路」之间的<strong>交接点</strong>：web 把活儿往上一放就走人，worker 在另一头不紧不慢地取走慢慢做。
+这一课要回答三个问题：队列里到底放了<strong>什么</strong>（剧透：不是事件本体，而是一张「取件票」）、为什么要分<strong>主队列 / 次队列</strong>、以及高并发下怎么<strong>分片</strong>扛住洪峰。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🛄 生活类比</div>
+  把队列想成机场的<strong>行李传送带</strong>。值机柜台（API）不会把你的行李箱直接堆在柜台上——它把箱子送进<strong>后仓</strong>（S3），只在传送带上放一张<strong>行李条</strong>（指针：箱子在后仓的编号）。
+  分拣员（worker）从传送带上取下行李条，<strong>照着编号去后仓取箱子</strong>，再处理。这样设计的妙处：传送带（Redis 内存）只跑轻飘飘的纸条，<strong>又快又省</strong>；
+  真正笨重的箱子（事件本体，可能很大）安安静静躺在后仓。万一分拣员忙不过来，纸条就在带上排队等着，<strong>箱子一件都不会丢</strong>——因为后仓才是货物的「真账本」。
+</div>
+
+
+<h2>队列里放的是「取件票」，不是事件本体</h2>
+<p>这是整条摄取链路最容易误解的一点：Redis 队列里<strong>并不存事件的完整内容</strong>。第 12 课 <code>processEventBatch</code> 在入队前，先把每个事件按
+<code>&lt;eventId&gt;.json</code> 的名字<strong>写进 S3</strong>（第 13 课的事件 id 在这里当文件名）；队列里只放一个<strong>轻量任务</strong>，载荷里关键的就一个 <code>fileKey</code>——
+指向 S3 里那个文件。worker 取到任务，再<strong>照着 fileKey 去 S3 把事件读回来</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="web 把事件写入 S3 并把含 fileKey 的轻量任务放入 Redis 队列，worker 取任务后照 fileKey 从 S3 读回事件再交给 IngestionService">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">交接：S3 存本体，队列只递指针</text>
+  <rect x="24" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="108" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">web</text><text x="84" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">processEventBatch</text><text x="84" y="138" text-anchor="middle" font-size="8" fill="var(--muted)">（第 12 课）</text>
+  <rect x="300" y="36" width="170" height="56" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="385" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="var(--amber)">S3 事件日志</text><text x="385" y="74" text-anchor="middle" font-size="8" fill="var(--muted)">&lt;eventId&gt;.json（本体，可能很大）</text>
+  <rect x="300" y="140" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="385" y="162" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">Redis 队列（BullMQ）</text><text x="385" y="178" text-anchor="middle" font-size="8" fill="var(--accent-ink)">任务载荷：fileKey · eventBodyId · type</text>
+  <rect x="576" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="636" y="104" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">worker</text><text x="636" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">取任务 → 读 S3</text><text x="636" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">→ IngestionService</text>
+  <line x1="144" y1="100" x2="298" y2="70" stroke="var(--amber)" stroke-width="1.8"/><polygon points="298,70 288,70 293,79" fill="var(--amber)"/><text x="215" y="78" text-anchor="middle" font-size="8" fill="var(--amber)">① 写本体</text>
+  <line x1="144" y1="128" x2="298" y2="162" stroke="var(--accent)" stroke-width="1.8"/><polygon points="298,162 288,158 290,168" fill="var(--accent)"/><text x="215" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② 放指针</text>
+  <line x1="470" y1="168" x2="574" y2="120" stroke="var(--accent)" stroke-width="1.8"/><polygon points="574,120 564,120 569,129" fill="var(--accent)"/><text x="528" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">③ 取指针</text>
+  <line x1="574" y1="100" x2="472" y2="66" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="3 2"/><polygon points="472,66 482,66 477,75" fill="var(--amber)"/><text x="528" y="74" text-anchor="middle" font-size="8" fill="var(--amber)">④ 按 fileKey 读回</text>
+  <text x="360" y="222" text-anchor="middle" font-size="9" fill="var(--faint)">队列轻 → Redis 内存省、入队快；本体重 → 落 S3 当「真账本」，任务丢了也能从 S3 重建</text>
+</svg>
+<div class="figcap"><b>指针与本体分离</b>：事件本体写入 S3（<code>&lt;eventId&gt;.json</code>），队列里只放含 <code>fileKey</code> 的轻量任务。worker 取任务后照 <code>fileKey</code> 回 S3 读本体。源码：<code>processEventBatch.ts:340-398</code>（<code>queue.add(IngestionJob, {payload:{data:{type, eventBodyId, fileKey,…}, authCheck}}})</code>）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/processEventBatch.ts</span><span class="ln">入队</span></div>
+  <pre class="code"><span class="kw">const</span> shardingKey = <span class="st">`${projectId}-${eventData.eventBodyId}`</span>;   <span class="cm">// 分片键（见下）</span>
+<span class="kw">const</span> queue = IngestionQueue.<span class="fn">getInstance</span>({ shardingKey });
+
+<span class="kw">await</span> queue.<span class="fn">add</span>(QueueJobs.IngestionJob, {
+  id: <span class="fn">randomUUID</span>(), timestamp: <span class="kw">new</span> Date(),
+  payload: {
+    data: { type, eventBodyId, fileKey: eventData.key, <span class="cm">/* 指向 S3 */</span> },
+    authCheck,                          <span class="cm">// 把租户身份也带上（第 10 课）</span>
+  },
+}, { delay });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>📨 队列只放指针</h4><p>载荷是 <code>{ type, eventBodyId, fileKey, authCheck }</code> 这种几十字节的小任务。Redis 内存金贵，任务越小，入队越快、积压时也撑得住。</p></div>
+  <div class="col"><h4>📦 S3 存本体</h4><p>事件原文（input/output 可能很大）躺在 S3。它还是第 15 课「合并」要回读的<strong>历史事件源</strong>，更是任务万一丢失时的<strong>可重建依据</strong>。</p></div>
+</div>
+
+<p>入队时还藏着一个细节：<code>queue.add(…, { delay })</code> 给任务挂了一小段<strong>延迟</strong>（默认约 5 秒）。为什么要故意「慢一拍」？因为同一实体的 create 和 update
+可能<strong>先后脚到达</strong>，若 worker 抢在 update 落 S3 之前就处理 create，容易产生重复或乱序写入。延迟让一批相关事件先「落定」，worker 再统一取走，<strong>天然减少重复处理</strong>。
+更妙的是 <code>getDelay</code> 在每天 UTC 的 <code>23:45–00:15</code> 这段「日界线」会把延迟拉长——因为第 8 课的排序键里有 <code>toDate(start_time)</code>，跨午夜的事件若处理太急，
+可能被分到相邻两天的分区里造成重复。这个不起眼的延迟，正是为第 8 课那套按天组织的存储「保驾护航」，是工程上「用一点延迟换一致性」的典型权衡。</p>
+
+
+<h2>分片：把一条队列摊成 N 条，扛住洪峰</h2>
+<p>单条 Redis 队列总有上限。当部署开启 Redis 集群（<code>REDIS_CLUSTER_ENABLED=true</code>）时，摄取队列会<strong>分片</strong>成多条：
+<code>ingestion-queue</code>、<code>ingestion-queue-1</code>、<code>ingestion-queue-2</code>……数量由 <code>LANGFUSE_INGESTION_QUEUE_SHARD_COUNT</code> 决定。
+分到哪条，取决于<strong>分片键</strong> <code>projectId-eventBodyId</code> 的哈希：用 SHA-256 算出一个数，对分片数取模，得到 shard 下标。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="分片键 projectId-eventBodyId 经 SHA-256 哈希取模映射到某条 shard 队列，同一实体的事件始终落同一 shard">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一致性哈希分片：同一实体永远落同一 shard</text>
+  <rect x="24" y="92" width="180" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">分片键</text><text x="114" y="130" text-anchor="middle" font-size="8.5" fill="var(--muted)">projectId-eventBodyId</text>
+  <rect x="244" y="92" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="319" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">SHA-256 % N</text><text x="319" y="130" text-anchor="middle" font-size="8" fill="var(--accent-ink)">getShardIndex()</text>
+  <line x1="204" y1="119" x2="242" y2="119" stroke="var(--faint)" stroke-width="1.8"/><polygon points="242,119 233,114 233,124" fill="var(--faint)"/>
+  <rect x="470" y="44" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="580" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ingestion-queue（shard 0）</text>
+  <rect x="470" y="86" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="107" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-1</text>
+  <rect x="470" y="128" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="149" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-2</text>
+  <rect x="470" y="170" width="220" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="580" y="189" text-anchor="middle" font-size="8.5" fill="var(--faint)">…直到 SHARD_COUNT-1</text>
+  <line x1="394" y1="116" x2="468" y2="61" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="119" x2="468" y2="103" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="122" x2="468" y2="145" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="216" text-anchor="middle" font-size="9" fill="var(--faint)">同一 projectId-eventBodyId → 同一哈希 → 同一 shard：create 和 update 永远在一条队列里、有序处理</text>
+</svg>
+<div class="figcap"><b>分片但不打乱实体</b>：哈希的是 <code>projectId-eventBodyId</code>，所以同一实体的所有事件（create/update）<strong>必然落到同一条 shard</strong>，既把负载摊到多个 Redis 节点，又保证一条记录的多次上报被同一个 worker 有序处理。源码：<code>redis/ingestionQueue.ts:38-52</code>、<code>redis/sharding.ts:9</code>。</div>
+</div>
+
+<p>注意分片键选 <code>projectId-eventBodyId</code> 而不是随机数，是有讲究的：随机分会把同一条记录的 create 和 update <strong>打散到不同 shard</strong>，
+合并时就得跨队列协调，既复杂又可能乱序。用实体 id 当分片键，<strong>「同一实体同一 shard」</strong>天然成立——这和第 8 课用 <code>project_id</code> 领头排序键、
+第 13 课用 <code>body.id</code> 当合并键，是同一种「让相关数据物理上聚在一起」的思路。</p>
+
+
+<h2>主队列 vs 次队列：别让吵闹的租户堵住所有人</h2>
+<p>所有项目共用一条主队列，会有个隐患：某个超高吞吐的项目<strong>瞬间灌进百万事件</strong>，把队列塞满，其他项目的事件只能干等。Langfuse 的解法是<strong>次队列隔离</strong>：
+worker 在处理每个任务前先判断——这个 project 该不该<strong>改道</strong>去次队列？判断有两条：</p>
+
+<table class="t">
+  <tr><th>判断</th><th>触发条件</th><th>含义</th></tr>
+  <tr><td><b>env 白名单</b></td><td>project 在 <code>LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS</code> 里</td><td>已知的高吞吐大户，<strong>静态</strong>隔离到次队列</td></tr>
+  <tr><td><b>S3 限流标志</b></td><td><code>hasS3SlowdownFlag(projectId)</code> 为真</td><td>该项目刚把 S3 写出 SlowDown，<strong>动态</strong>临时改道，给主队列减压</td></tr>
+  <tr><td><b>都不满足</b></td><td>—</td><td>留在主队列正常处理</td></tr>
+</table>
+
+<p>命中任一条，worker 就把这条任务原样 <code>add</code> 进 <code>SecondaryIngestionQueue</code> 然后 <code>return</code>，主队列立刻腾出手处理别人的。
+次队列有自己独立的分片数（<code>LANGFUSE_INGESTION_SECONDARY_QUEUE_SHARD_COUNT</code>）和独立的 worker，<strong>洪峰与日常彻底物理隔离</strong>，互不拖累。OTel 摄取也有同样的主 / 次一对（第 18 课）。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>worker 取下一个任务</h4><p>从某条 shard 队列拿到 <code>{ fileKey, eventBodyId, type, authCheck }</code>。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>判断是否改道次队列</h4><p>命中 env 白名单或 S3 限流标志 → 重新入次队列并结束；否则继续。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>照 fileKey 读 S3</h4><p>取回事件本体（以及该实体此前的历史事件，供第 15 课合并）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>交给 IngestionService</h4><p><code>mergeAndWrite</code> 合并成一条记录（第 15 课），再交 <code>ClickhouseWriter</code> 攒批写库（第 17 课）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>失败则重试</h4><p>任务配 <code>attempts: 6</code> + 指数退避（5s 起）；成功即 <code>removeOnComplete</code>，失败保留便于排查。</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么非要队列 + S3 这一套，不能 API 直接写库？</strong> 因为这套组合同时买到了<strong>解耦</strong>和<strong>持久</strong>两样东西。解耦：web 和 worker 各按自己的节奏跑，
+  worker 挂了、ClickHouse 抖了，事件就在队列里排队、在 S3 里躺着，<strong>一条不丢</strong>，等下游恢复再慢慢消化（第 5 课最终一致）。持久：S3 是事件的「真账本」，
+  即便某个队列任务彻底失败，数据也能从 S3 重放重建。代价是多了一跳（写 S3 + 入队 + 读 S3）和最终一致的延迟，但换来的是一个<strong>削峰、容错、可重放</strong>的摄取管道——
+  对一个每天吞百亿事件的系统，这笔买卖太划算了。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>队列用 <strong>Redis + BullMQ</strong>，是 web（快路）与 worker（慢路）的交接点；任务载荷只放<strong>指针</strong>（<code>fileKey</code> 等），事件本体在 <strong>S3</strong>。</li>
+    <li><strong>S3 是真账本</strong>：本体落 <code>&lt;eventId&gt;.json</code>，既供第 15 课合并回读，也让任务丢失时能重建——队列轻、内存省、可重放。</li>
+    <li><strong>分片</strong>：集群下队列拆成 <code>ingestion-queue-N</code>，按 <code>projectId-eventBodyId</code> 的 SHA-256 取模定 shard——同一实体永远同一 shard，有序又均衡。</li>
+    <li><strong>主 / 次队列</strong>：按 env 白名单（静态）或 S3 限流标志（动态）把高吞吐项目改道次队列，物理隔离，避免一个吵闹租户堵住所有人。</li>
+    <li><strong>韧性</strong>：任务 <code>attempts: 6</code> + 指数退避；成功即删、失败保留。队列 + S3 = 削峰 + 容错 + 可重放。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 摄取队列里到底放了什么？为什么不直接把事件本体塞进 Redis？</div>
+  <ol class="opts">
+    <li>放一份加密后的事件副本</li>
+    <li>只放含 fileKey 的轻量任务（指针）；事件本体先写进 S3 的 <eventId>.json，worker 再照 fileKey 回 S3 读回——队列轻则 Redis 内存省、入队快，本体留在 S3 当“真账本”，任务丢了也能重建</li>
+    <li>放事件的完整内容，包括可能很大的 input/output</li>
+    <li>什么都不放，worker 自己去数据库查</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。S3 存本体、队列递指针是这条链路最易误解的点。Redis 内存金贵，任务越小越快越扛积压；S3 既是合并要回读的历史事件源（第 15 课），也是任务失败时的可重放依据。这就买到了“轻队列 + 持久存储”两样好处。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 分片键为什么选 projectId-eventBodyId，而不是随机分配？</div>
+  <ol class="opts">
+    <li>因为 projectId-eventBodyId 最短</li>
+    <li>对实体 id 哈希取模能保证“同一实体永远落同一 shard”：一条记录的 create/update 始终在同一队列、被同一 worker 有序处理，合并无需跨队列协调；随机分会把它们打散、合并时复杂又可能乱序</li>
+    <li>为了让每个 shard 负载完全相等</li>
+    <li>因为随机分配根本无法实现</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。用一致性哈希（SHA-256 取模）把负载摊到多个 Redis 节点，同时用实体 id 当键，让“同一实体同一 shard”天然成立——这与第 8 课用 project_id 领头排序键、第 13 课用 body.id 当合并键，是同一种“让相关数据物理聚在一起”的思路。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 主队列 vs 次队列的隔离机制解决了什么问题？worker 何时把任务改道次队列？</div>
+  <ol class="opts">
+    <li>次队列只处理失败的任务</li>
+    <li>让次队列处理得更慢以省钱</li>
+    <li>防止某个超高吞吐项目塞满主队列、饿死其他项目；命中 env 白名单（静态隔离已知大户）或 S3 限流标志（动态临时改道）就把该任务原样入次队列并 return，主队列立刻服务别人</li>
+    <li>主队列只处理 trace，次队列只处理 score</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。次队列有独立的分片数和独立的 worker，把洪峰与日常物理隔离。两条判断：env 白名单（LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS）做静态隔离，S3 SlowDown 标志做动态减压。这是典型的“吵闹邻居”隔离，保障多租户公平。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>“队列 + S3 当真账本”换来了削峰、容错、可重放，代价是多一跳和最终一致的延迟。如果让你给一个高并发写入系统做选型，你会在“直接写库”和“队列缓冲 + 对象存储”之间怎么权衡？哪些信号会让你倒向后者？</li>
   </ul>
 </div>
 </div>

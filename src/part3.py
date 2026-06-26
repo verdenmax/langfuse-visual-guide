@@ -716,3 +716,296 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
 </div>
 """)
 LESSON_13 = {"zh": "\n".join(_ZH13), "en": "\n".join(_EN13)}
+
+# ══════════════════════════════════════════════════════════════════════
+# L14 · 摄取队列 / The ingestion queue
+# ══════════════════════════════════════════════════════════════════════
+_ZH14 = []
+_EN14 = []
+
+_ZH14.append(r"""
+<p class="lead">
+第 12 课 API「入队」后就闪人了，第 13 课讲清了入的是什么「事件」。这一课的主角，就是那条<strong>队列</strong>本身——Langfuse 用 <strong>Redis + BullMQ</strong>
+搭起来的传送带。它是第 5 课「快路 / 慢路」之间的<strong>交接点</strong>：web 把活儿往上一放就走人，worker 在另一头不紧不慢地取走慢慢做。
+这一课要回答三个问题：队列里到底放了<strong>什么</strong>（剧透：不是事件本体，而是一张「取件票」）、为什么要分<strong>主队列 / 次队列</strong>、以及高并发下怎么<strong>分片</strong>扛住洪峰。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🛄 生活类比</div>
+  把队列想成机场的<strong>行李传送带</strong>。值机柜台（API）不会把你的行李箱直接堆在柜台上——它把箱子送进<strong>后仓</strong>（S3），只在传送带上放一张<strong>行李条</strong>（指针：箱子在后仓的编号）。
+  分拣员（worker）从传送带上取下行李条，<strong>照着编号去后仓取箱子</strong>，再处理。这样设计的妙处：传送带（Redis 内存）只跑轻飘飘的纸条，<strong>又快又省</strong>；
+  真正笨重的箱子（事件本体，可能很大）安安静静躺在后仓。万一分拣员忙不过来，纸条就在带上排队等着，<strong>箱子一件都不会丢</strong>——因为后仓才是货物的「真账本」。
+</div>
+""")
+
+# (L14 sections appended below)
+
+_ZH14.append(r"""
+<h2>队列里放的是「取件票」，不是事件本体</h2>
+<p>这是整条摄取链路最容易误解的一点：Redis 队列里<strong>并不存事件的完整内容</strong>。第 12 课 <code>processEventBatch</code> 在入队前，先把每个事件按
+<code>&lt;eventId&gt;.json</code> 的名字<strong>写进 S3</strong>（第 13 课的事件 id 在这里当文件名）；队列里只放一个<strong>轻量任务</strong>，载荷里关键的就一个 <code>fileKey</code>——
+指向 S3 里那个文件。worker 取到任务，再<strong>照着 fileKey 去 S3 把事件读回来</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="web 把事件写入 S3 并把含 fileKey 的轻量任务放入 Redis 队列，worker 取任务后照 fileKey 从 S3 读回事件再交给 IngestionService">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">交接：S3 存本体，队列只递指针</text>
+  <rect x="24" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="108" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">web</text><text x="84" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">processEventBatch</text><text x="84" y="138" text-anchor="middle" font-size="8" fill="var(--muted)">（第 12 课）</text>
+  <rect x="300" y="36" width="170" height="56" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="385" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="var(--amber)">S3 事件日志</text><text x="385" y="74" text-anchor="middle" font-size="8" fill="var(--muted)">&lt;eventId&gt;.json（本体，可能很大）</text>
+  <rect x="300" y="140" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="385" y="162" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">Redis 队列（BullMQ）</text><text x="385" y="178" text-anchor="middle" font-size="8" fill="var(--accent-ink)">任务载荷：fileKey · eventBodyId · type</text>
+  <rect x="576" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="636" y="104" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">worker</text><text x="636" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">取任务 → 读 S3</text><text x="636" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">→ IngestionService</text>
+  <line x1="144" y1="100" x2="298" y2="70" stroke="var(--amber)" stroke-width="1.8"/><polygon points="298,70 288,70 293,79" fill="var(--amber)"/><text x="215" y="78" text-anchor="middle" font-size="8" fill="var(--amber)">① 写本体</text>
+  <line x1="144" y1="128" x2="298" y2="162" stroke="var(--accent)" stroke-width="1.8"/><polygon points="298,162 288,158 290,168" fill="var(--accent)"/><text x="215" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② 放指针</text>
+  <line x1="470" y1="168" x2="574" y2="120" stroke="var(--accent)" stroke-width="1.8"/><polygon points="574,120 564,120 569,129" fill="var(--accent)"/><text x="528" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">③ 取指针</text>
+  <line x1="574" y1="100" x2="472" y2="66" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="3 2"/><polygon points="472,66 482,66 477,75" fill="var(--amber)"/><text x="528" y="74" text-anchor="middle" font-size="8" fill="var(--amber)">④ 按 fileKey 读回</text>
+  <text x="360" y="222" text-anchor="middle" font-size="9" fill="var(--faint)">队列轻 → Redis 内存省、入队快；本体重 → 落 S3 当「真账本」，任务丢了也能从 S3 重建</text>
+</svg>
+<div class="figcap"><b>指针与本体分离</b>：事件本体写入 S3（<code>&lt;eventId&gt;.json</code>），队列里只放含 <code>fileKey</code> 的轻量任务。worker 取任务后照 <code>fileKey</code> 回 S3 读本体。源码：<code>processEventBatch.ts:340-398</code>（<code>queue.add(IngestionJob, {payload:{data:{type, eventBodyId, fileKey,…}, authCheck}}})</code>）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/processEventBatch.ts</span><span class="ln">入队</span></div>
+  <pre class="code"><span class="kw">const</span> shardingKey = <span class="st">`${projectId}-${eventData.eventBodyId}`</span>;   <span class="cm">// 分片键（见下）</span>
+<span class="kw">const</span> queue = IngestionQueue.<span class="fn">getInstance</span>({ shardingKey });
+
+<span class="kw">await</span> queue.<span class="fn">add</span>(QueueJobs.IngestionJob, {
+  id: <span class="fn">randomUUID</span>(), timestamp: <span class="kw">new</span> Date(),
+  payload: {
+    data: { type, eventBodyId, fileKey: eventData.key, <span class="cm">/* 指向 S3 */</span> },
+    authCheck,                          <span class="cm">// 把租户身份也带上（第 10 课）</span>
+  },
+}, { delay });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>📨 队列只放指针</h4><p>载荷是 <code>{ type, eventBodyId, fileKey, authCheck }</code> 这种几十字节的小任务。Redis 内存金贵，任务越小，入队越快、积压时也撑得住。</p></div>
+  <div class="col"><h4>📦 S3 存本体</h4><p>事件原文（input/output 可能很大）躺在 S3。它还是第 15 课「合并」要回读的<strong>历史事件源</strong>，更是任务万一丢失时的<strong>可重建依据</strong>。</p></div>
+</div>
+
+<p>入队时还藏着一个细节：<code>queue.add(…, { delay })</code> 给任务挂了一小段<strong>延迟</strong>（默认约 5 秒）。为什么要故意「慢一拍」？因为同一实体的 create 和 update
+可能<strong>先后脚到达</strong>，若 worker 抢在 update 落 S3 之前就处理 create，容易产生重复或乱序写入。延迟让一批相关事件先「落定」，worker 再统一取走，<strong>天然减少重复处理</strong>。
+更妙的是 <code>getDelay</code> 在每天 UTC 的 <code>23:45–00:15</code> 这段「日界线」会把延迟拉长——因为第 8 课的排序键里有 <code>toDate(start_time)</code>，跨午夜的事件若处理太急，
+可能被分到相邻两天的分区里造成重复。这个不起眼的延迟，正是为第 8 课那套按天组织的存储「保驾护航」，是工程上「用一点延迟换一致性」的典型权衡。</p>
+""")
+
+# (sharding section below)
+
+_ZH14.append(r"""
+<h2>分片：把一条队列摊成 N 条，扛住洪峰</h2>
+<p>单条 Redis 队列总有上限。当部署开启 Redis 集群（<code>REDIS_CLUSTER_ENABLED=true</code>）时，摄取队列会<strong>分片</strong>成多条：
+<code>ingestion-queue</code>、<code>ingestion-queue-1</code>、<code>ingestion-queue-2</code>……数量由 <code>LANGFUSE_INGESTION_QUEUE_SHARD_COUNT</code> 决定。
+分到哪条，取决于<strong>分片键</strong> <code>projectId-eventBodyId</code> 的哈希：用 SHA-256 算出一个数，对分片数取模，得到 shard 下标。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="分片键 projectId-eventBodyId 经 SHA-256 哈希取模映射到某条 shard 队列，同一实体的事件始终落同一 shard">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一致性哈希分片：同一实体永远落同一 shard</text>
+  <rect x="24" y="92" width="180" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">分片键</text><text x="114" y="130" text-anchor="middle" font-size="8.5" fill="var(--muted)">projectId-eventBodyId</text>
+  <rect x="244" y="92" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="319" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">SHA-256 % N</text><text x="319" y="130" text-anchor="middle" font-size="8" fill="var(--accent-ink)">getShardIndex()</text>
+  <line x1="204" y1="119" x2="242" y2="119" stroke="var(--faint)" stroke-width="1.8"/><polygon points="242,119 233,114 233,124" fill="var(--faint)"/>
+  <rect x="470" y="44" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="580" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ingestion-queue（shard 0）</text>
+  <rect x="470" y="86" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="107" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-1</text>
+  <rect x="470" y="128" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="149" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-2</text>
+  <rect x="470" y="170" width="220" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="580" y="189" text-anchor="middle" font-size="8.5" fill="var(--faint)">…直到 SHARD_COUNT-1</text>
+  <line x1="394" y1="116" x2="468" y2="61" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="119" x2="468" y2="103" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="122" x2="468" y2="145" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="216" text-anchor="middle" font-size="9" fill="var(--faint)">同一 projectId-eventBodyId → 同一哈希 → 同一 shard：create 和 update 永远在一条队列里、有序处理</text>
+</svg>
+<div class="figcap"><b>分片但不打乱实体</b>：哈希的是 <code>projectId-eventBodyId</code>，所以同一实体的所有事件（create/update）<strong>必然落到同一条 shard</strong>，既把负载摊到多个 Redis 节点，又保证一条记录的多次上报被同一个 worker 有序处理。源码：<code>redis/ingestionQueue.ts:38-52</code>、<code>redis/sharding.ts:9</code>。</div>
+</div>
+
+<p>注意分片键选 <code>projectId-eventBodyId</code> 而不是随机数，是有讲究的：随机分会把同一条记录的 create 和 update <strong>打散到不同 shard</strong>，
+合并时就得跨队列协调，既复杂又可能乱序。用实体 id 当分片键，<strong>「同一实体同一 shard」</strong>天然成立——这和第 8 课用 <code>project_id</code> 领头排序键、
+第 13 课用 <code>body.id</code> 当合并键，是同一种「让相关数据物理上聚在一起」的思路。</p>
+""")
+
+# (primary-secondary + worker flow below)
+
+_ZH14.append(r"""
+<h2>主队列 vs 次队列：别让吵闹的租户堵住所有人</h2>
+<p>所有项目共用一条主队列，会有个隐患：某个超高吞吐的项目<strong>瞬间灌进百万事件</strong>，把队列塞满，其他项目的事件只能干等。Langfuse 的解法是<strong>次队列隔离</strong>：
+worker 在处理每个任务前先判断——这个 project 该不该<strong>改道</strong>去次队列？判断有两条：</p>
+
+<table class="t">
+  <tr><th>判断</th><th>触发条件</th><th>含义</th></tr>
+  <tr><td><b>env 白名单</b></td><td>project 在 <code>LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS</code> 里</td><td>已知的高吞吐大户，<strong>静态</strong>隔离到次队列</td></tr>
+  <tr><td><b>S3 限流标志</b></td><td><code>hasS3SlowdownFlag(projectId)</code> 为真</td><td>该项目刚把 S3 写出 SlowDown，<strong>动态</strong>临时改道，给主队列减压</td></tr>
+  <tr><td><b>都不满足</b></td><td>—</td><td>留在主队列正常处理</td></tr>
+</table>
+
+<p>命中任一条，worker 就把这条任务原样 <code>add</code> 进 <code>SecondaryIngestionQueue</code> 然后 <code>return</code>，主队列立刻腾出手处理别人的。
+次队列有自己独立的分片数（<code>LANGFUSE_INGESTION_SECONDARY_QUEUE_SHARD_COUNT</code>）和独立的 worker，<strong>洪峰与日常彻底物理隔离</strong>，互不拖累。OTel 摄取也有同样的主 / 次一对（第 18 课）。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>worker 取下一个任务</h4><p>从某条 shard 队列拿到 <code>{ fileKey, eventBodyId, type, authCheck }</code>。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>判断是否改道次队列</h4><p>命中 env 白名单或 S3 限流标志 → 重新入次队列并结束；否则继续。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>照 fileKey 读 S3</h4><p>取回事件本体（以及该实体此前的历史事件，供第 15 课合并）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>交给 IngestionService</h4><p><code>mergeAndWrite</code> 合并成一条记录（第 15 课），再交 <code>ClickhouseWriter</code> 攒批写库（第 17 课）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>失败则重试</h4><p>任务配 <code>attempts: 6</code> + 指数退避（5s 起）；成功即 <code>removeOnComplete</code>，失败保留便于排查。</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么非要队列 + S3 这一套，不能 API 直接写库？</strong> 因为这套组合同时买到了<strong>解耦</strong>和<strong>持久</strong>两样东西。解耦：web 和 worker 各按自己的节奏跑，
+  worker 挂了、ClickHouse 抖了，事件就在队列里排队、在 S3 里躺着，<strong>一条不丢</strong>，等下游恢复再慢慢消化（第 5 课最终一致）。持久：S3 是事件的「真账本」，
+  即便某个队列任务彻底失败，数据也能从 S3 重放重建。代价是多了一跳（写 S3 + 入队 + 读 S3）和最终一致的延迟，但换来的是一个<strong>削峰、容错、可重放</strong>的摄取管道——
+  对一个每天吞百亿事件的系统，这笔买卖太划算了。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>队列用 <strong>Redis + BullMQ</strong>，是 web（快路）与 worker（慢路）的交接点；任务载荷只放<strong>指针</strong>（<code>fileKey</code> 等），事件本体在 <strong>S3</strong>。</li>
+    <li><strong>S3 是真账本</strong>：本体落 <code>&lt;eventId&gt;.json</code>，既供第 15 课合并回读，也让任务丢失时能重建——队列轻、内存省、可重放。</li>
+    <li><strong>分片</strong>：集群下队列拆成 <code>ingestion-queue-N</code>，按 <code>projectId-eventBodyId</code> 的 SHA-256 取模定 shard——同一实体永远同一 shard，有序又均衡。</li>
+    <li><strong>主 / 次队列</strong>：按 env 白名单（静态）或 S3 限流标志（动态）把高吞吐项目改道次队列，物理隔离，避免一个吵闹租户堵住所有人。</li>
+    <li><strong>韧性</strong>：任务 <code>attempts: 6</code> + 指数退避；成功即删、失败保留。队列 + S3 = 削峰 + 容错 + 可重放。</li>
+  </ul>
+</div>
+""")
+
+_EN14.append(r"""
+<p class="lead">
+Lesson 12 had the API "enqueue" and vanish; Lesson 13 explained what "event" it enqueues. The star of this lesson is the <strong>queue</strong>
+itself — a conveyor belt built on <strong>Redis + BullMQ</strong>. It's the <strong>handoff point</strong> between Lesson 5's fast lane and slow lane:
+web drops the work and leaves, while the worker pulls it off the other end and processes at its own pace. Three questions to answer: what's actually
+<strong>in</strong> the queue (spoiler: not the event itself, but a "claim ticket"), why split into a <strong>primary / secondary</strong> queue, and how
+<strong>sharding</strong> survives spikes under high concurrency.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🛄 Analogy</div>
+  Think of the queue as an airport <strong>baggage belt</strong>. The check-in desk (API) doesn't pile your suitcase on the counter — it sends the case
+  to the <strong>back room</strong> (S3) and puts only a <strong>baggage tag</strong> (a pointer: the case's id in the back room) on the belt. A handler
+  (worker) takes the tag off the belt, <strong>fetches the case by its id</strong>, then processes it. The beauty: the belt (Redis memory) only carries
+  featherweight tags, <strong>fast and cheap</strong>; the bulky cases (event bodies, possibly large) rest quietly in the back. If handlers fall behind,
+  tags simply queue on the belt and <strong>not a single case is lost</strong> — because the back room is the goods' "real ledger".
+</div>
+""")
+
+# (L14 EN more sections)
+
+_EN14.append(r"""
+<h2>The queue holds a "claim ticket", not the event body</h2>
+<p>Here's the most-misunderstood point of the whole ingestion path: the Redis queue <strong>does not store the event's full content</strong>. Before
+enqueuing, Lesson 12's <code>processEventBatch</code> first <strong>writes each event to S3</strong> named <code>&lt;eventId&gt;.json</code> (Lesson 13's
+event id becomes the filename); the queue holds only a <strong>lightweight job</strong> whose key field is a <code>fileKey</code> — a pointer to that S3
+file. The worker takes the job, then <strong>reads the event back from S3 by fileKey</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="web writes the event to S3 and puts a lightweight job carrying fileKey on the Redis queue; the worker takes the job and reads the event from S3 by fileKey then hands to IngestionService">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Handoff: S3 stores the body, the queue passes a pointer</text>
+  <rect x="24" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="108" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">web</text><text x="84" y="124" text-anchor="middle" font-size="8" fill="var(--muted)">processEventBatch</text><text x="84" y="138" text-anchor="middle" font-size="8" fill="var(--muted)">(Lesson 12)</text>
+  <rect x="300" y="36" width="170" height="56" rx="10" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="385" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="var(--amber)">S3 event log</text><text x="385" y="74" text-anchor="middle" font-size="8" fill="var(--muted)">&lt;eventId&gt;.json (body, may be large)</text>
+  <rect x="300" y="140" width="170" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="385" y="162" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">Redis queue (BullMQ)</text><text x="385" y="178" text-anchor="middle" font-size="8" fill="var(--accent-ink)">job: fileKey · eventBodyId · type</text>
+  <rect x="576" y="80" width="120" height="70" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="636" y="104" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">worker</text><text x="636" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">take job → read S3</text><text x="636" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">→ IngestionService</text>
+  <line x1="144" y1="100" x2="298" y2="70" stroke="var(--amber)" stroke-width="1.8"/><polygon points="298,70 288,70 293,79" fill="var(--amber)"/><text x="215" y="78" text-anchor="middle" font-size="8" fill="var(--amber)">① write body</text>
+  <line x1="144" y1="128" x2="298" y2="162" stroke="var(--accent)" stroke-width="1.8"/><polygon points="298,162 288,158 290,168" fill="var(--accent)"/><text x="215" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② put pointer</text>
+  <line x1="470" y1="168" x2="574" y2="120" stroke="var(--accent)" stroke-width="1.8"/><polygon points="574,120 564,120 569,129" fill="var(--accent)"/><text x="528" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">③ take pointer</text>
+  <line x1="574" y1="100" x2="472" y2="66" stroke="var(--amber)" stroke-width="1.8" stroke-dasharray="3 2"/><polygon points="472,66 482,66 477,75" fill="var(--amber)"/><text x="528" y="74" text-anchor="middle" font-size="8" fill="var(--amber)">④ read back by fileKey</text>
+  <text x="360" y="222" text-anchor="middle" font-size="9" fill="var(--faint)">light queue → Redis memory saved, fast enqueue; heavy body → S3 as "real ledger", rebuildable if a job is lost</text>
+</svg>
+<div class="figcap"><b>Pointer and body, separated</b>: the event body is written to S3 (<code>&lt;eventId&gt;.json</code>); the queue holds only a lightweight job carrying <code>fileKey</code>. The worker reads the body back from S3 by <code>fileKey</code>. Source: <code>processEventBatch.ts:340-398</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/processEventBatch.ts</span><span class="ln">enqueue</span></div>
+  <pre class="code"><span class="kw">const</span> shardingKey = <span class="st">`${projectId}-${eventData.eventBodyId}`</span>;   <span class="cm">// shard key (below)</span>
+<span class="kw">const</span> queue = IngestionQueue.<span class="fn">getInstance</span>({ shardingKey });
+
+<span class="kw">await</span> queue.<span class="fn">add</span>(QueueJobs.IngestionJob, {
+  id: <span class="fn">randomUUID</span>(), timestamp: <span class="kw">new</span> Date(),
+  payload: {
+    data: { type, eventBodyId, fileKey: eventData.key, <span class="cm">/* points to S3 */</span> },
+    authCheck,                          <span class="cm">// carry the tenant identity too (Lesson 10)</span>
+  },
+}, { delay });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>📨 the queue holds a pointer</h4><p>The payload is a tiny <code>{ type, eventBodyId, fileKey, authCheck }</code> job of a few dozen bytes. Redis memory is precious; the smaller the job, the faster the enqueue and the better it holds up under backlog.</p></div>
+  <div class="col"><h4>📦 S3 holds the body</h4><p>The raw event (input/output can be large) sits in S3. It's also the <strong>historical event source</strong> Lesson 15's merge reads back, and the <strong>basis for rebuilding</strong> should a job ever be lost.</p></div>
+</div>
+
+<p>One more detail hides in the enqueue: <code>queue.add(…, { delay })</code> attaches a small <strong>delay</strong> (about 5s by default). Why be
+deliberately "a beat slow"? Because the create and update for one entity may arrive <strong>back to back</strong>; if a worker processes the create
+before the update lands in S3, duplicates or out-of-order writes can result. The delay lets a batch of related events "settle" first, so the worker
+takes them together, <strong>naturally reducing duplicate processing</strong>. Better still, <code>getDelay</code> lengthens the delay around the UTC
+<code>23:45–00:15</code> "date boundary" — because Lesson 8's ordering key contains <code>toDate(start_time)</code>, events straddling midnight, if
+processed too eagerly, could split across two date partitions and duplicate. This unassuming delay is exactly what safeguards Lesson 8's
+day-organized storage — a classic "trade a little latency for consistency".</p>
+""")
+
+_EN14.append(r"""
+<h2>Sharding: split one queue into N, survive the spike</h2>
+<p>A single Redis queue always has a ceiling. When a deployment enables Redis cluster (<code>REDIS_CLUSTER_ENABLED=true</code>), the ingestion queue is
+<strong>sharded</strong> into several: <code>ingestion-queue</code>, <code>ingestion-queue-1</code>, <code>ingestion-queue-2</code>… the count set by
+<code>LANGFUSE_INGESTION_QUEUE_SHARD_COUNT</code>. Which shard depends on the hash of the <strong>shard key</strong> <code>projectId-eventBodyId</code>:
+SHA-256 produces a number, taken modulo the shard count to yield a shard index.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="shard key projectId-eventBodyId hashed by SHA-256 modulo maps to one shard queue; events of one entity always land on the same shard">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Consistent-hash sharding: one entity always lands on one shard</text>
+  <rect x="24" y="92" width="180" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">shard key</text><text x="114" y="130" text-anchor="middle" font-size="8.5" fill="var(--muted)">projectId-eventBodyId</text>
+  <rect x="244" y="92" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="319" y="113" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">SHA-256 % N</text><text x="319" y="130" text-anchor="middle" font-size="8" fill="var(--accent-ink)">getShardIndex()</text>
+  <line x1="204" y1="119" x2="242" y2="119" stroke="var(--faint)" stroke-width="1.8"/><polygon points="242,119 233,114 233,124" fill="var(--faint)"/>
+  <rect x="470" y="44" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="580" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ingestion-queue (shard 0)</text>
+  <rect x="470" y="86" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="107" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-1</text>
+  <rect x="470" y="128" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="149" text-anchor="middle" font-size="9" fill="var(--ink)">ingestion-queue-2</text>
+  <rect x="470" y="170" width="220" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="580" y="189" text-anchor="middle" font-size="8.5" fill="var(--faint)">…up to SHARD_COUNT-1</text>
+  <line x1="394" y1="116" x2="468" y2="61" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="119" x2="468" y2="103" stroke="var(--faint)" stroke-width="1.4"/><line x1="394" y1="122" x2="468" y2="145" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="216" text-anchor="middle" font-size="9" fill="var(--faint)">same projectId-eventBodyId → same hash → same shard: create &amp; update always in one queue, processed in order</text>
+</svg>
+<div class="figcap"><b>Shard without scattering an entity</b>: the hash is over <code>projectId-eventBodyId</code>, so all events of one entity (create/update) <strong>necessarily land on the same shard</strong> — spreading load across Redis nodes while keeping a record's multiple reports ordered on one worker. Source: <code>redis/ingestionQueue.ts:38-52</code>, <code>redis/sharding.ts:9</code>.</div>
+</div>
+
+<p>Choosing <code>projectId-eventBodyId</code> as the shard key — rather than a random number — is deliberate: random sharding would <strong>scatter</strong>
+one record's create and update across different shards, forcing cross-queue coordination at merge time, complex and prone to disorder. Using the entity
+id as the shard key makes <strong>"same entity, same shard"</strong> hold naturally — the same idea as Lesson 8 leading the ordering key with
+<code>project_id</code> and Lesson 13 using <code>body.id</code> as the merge key: <strong>keep related data physically together</strong>.</p>
+""")
+
+_EN14.append(r"""
+<h2>Primary vs secondary: don't let a noisy tenant block everyone</h2>
+<p>All projects sharing one primary queue has a hazard: one ultra-high-throughput project <strong>floods in a million events</strong>, packs the queue,
+and everyone else's events just wait. Langfuse's answer is <strong>secondary-queue isolation</strong>: before processing each job, the worker decides —
+should this project be <strong>redirected</strong> to the secondary queue? Two checks:</p>
+
+<table class="t">
+  <tr><th>check</th><th>trigger</th><th>meaning</th></tr>
+  <tr><td><b>env allowlist</b></td><td>project is in <code>LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS</code></td><td>a known high-throughput heavy hitter, <strong>statically</strong> isolated to the secondary</td></tr>
+  <tr><td><b>S3 slowdown flag</b></td><td><code>hasS3SlowdownFlag(projectId)</code> is true</td><td>this project just got an S3 SlowDown, <strong>dynamically</strong> redirected to relieve the primary</td></tr>
+  <tr><td><b>neither</b></td><td>—</td><td>stays on the primary, processed normally</td></tr>
+</table>
+
+<p>On either hit, the worker <code>add</code>s the job as-is to <code>SecondaryIngestionQueue</code> and <code>return</code>s, freeing the primary to serve
+others immediately. The secondary has its own shard count (<code>LANGFUSE_INGESTION_SECONDARY_QUEUE_SHARD_COUNT</code>) and its own workers, so spike and
+steady-state are <strong>physically isolated</strong>, neither dragging the other. OTel ingestion has the same primary/secondary pair (Lesson 18).</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>worker takes the next job</h4><p>Pulls <code>{ fileKey, eventBodyId, type, authCheck }</code> off one shard queue.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>decide secondary redirect</h4><p>Hit the env allowlist or the S3 slowdown flag → re-enqueue to the secondary and finish; else continue.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>read S3 by fileKey</h4><p>Fetch the event body (plus this entity's prior events, for Lesson 15's merge).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>hand to IngestionService</h4><p><code>mergeAndWrite</code> merges into one record (Lesson 15), then <code>ClickhouseWriter</code> batches the write (Lesson 17).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>retry on failure</h4><p>Jobs carry <code>attempts: 6</code> + exponential backoff (from 5s); <code>removeOnComplete</code> on success, kept on failure for debugging.</p></div></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why insist on queue + S3 — why not have the API write the DB directly?</strong> Because the combo buys both <strong>decoupling</strong> and
+  <strong>durability</strong>. Decoupling: web and worker each run at their own pace; if the worker dies or ClickHouse hiccups, events queue in Redis and
+  rest in S3, <strong>not one lost</strong>, digested once downstream recovers (Lesson 5's eventual consistency). Durability: S3 is the events' "real
+  ledger" — even if a queue job fails outright, the data can be replayed and rebuilt from S3. The cost is an extra hop (write S3 + enqueue + read S3)
+  and eventual-consistency latency, but in return you get a <strong>spike-absorbing, fault-tolerant, replayable</strong> ingestion pipeline — for a
+  system swallowing tens of billions of events a day, a bargain.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The queue is <strong>Redis + BullMQ</strong>, the handoff between web (fast lane) and worker (slow lane); the job carries only a <strong>pointer</strong> (<code>fileKey</code> etc.), the event body lives in <strong>S3</strong>.</li>
+    <li><strong>S3 is the real ledger</strong>: bodies land in <code>&lt;eventId&gt;.json</code>, read back for Lesson 15's merge and able to rebuild a lost job — light queue, saved memory, replayable.</li>
+    <li><strong>Sharding</strong>: under cluster the queue splits into <code>ingestion-queue-N</code>, shard chosen by SHA-256 modulo of <code>projectId-eventBodyId</code> — same entity always same shard, ordered and balanced.</li>
+    <li><strong>Primary / secondary</strong>: redirect high-throughput projects to the secondary by env allowlist (static) or S3 slowdown flag (dynamic), physically isolating them so one noisy tenant can't block everyone.</li>
+    <li><strong>Resilience</strong>: jobs use <code>attempts: 6</code> + exponential backoff; removed on success, kept on failure. Queue + S3 = spike absorption + fault tolerance + replayability.</li>
+  </ul>
+</div>
+""")
+LESSON_14 = {"zh": "\n".join(_ZH14), "en": "\n".join(_EN14)}
