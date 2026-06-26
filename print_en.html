@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 16 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 17 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -353,6 +353,7 @@ details[open] > summary { list-style: none; }
   <li>The ingestion queue</li>
   <li>IngestionService: the merge heart</li>
   <li>Token counting & cost</li>
+  <li>ClickhouseWriter: batched persistence</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -3925,6 +3926,203 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Trusted source first, estimation only as backup, the two strictly isolated' — this principle isn't only for tokens/cost. In your own systems, where do 'authoritative data from users/upstream' and 'local inference/estimates' coexist? How would you design their precedence and isolation to avoid the misjudgment of half-real, half-estimated data?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>ClickhouseWriter: batched persistence</h1>
+
+<p class="lead">
+Lesson 15's merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
+handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as Lesson 8 said, ClickHouse
+<strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates
+"high-frequency small writes" into "low-frequency large writes".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🚌 Analogy</div>
+  Think of <code>ClickhouseWriter</code> as a <strong>shuttle bus</strong>. Passengers (records) arrive one by one, but the driver <strong>doesn't depart
+  for each one</strong> — the fuel cost (write overhead) would be absurd. He waits until the <strong>bus is full</strong> (hits batchSize), <strong>or</strong>
+  the departure time arrives (the writeInterval timer fires), then <strong>takes the whole busload across in one trip</strong>. Whichever condition comes
+  first wins: at rush hour the bus fills fast and leaves on "full"; in a lull, few passengers, so it leaves on "time" so the last few don't wait forever.
+  And <strong>each route (each table) has its own bus</strong>: one for traces, one for observations, one for scores, each loading and departing
+  independently, never holding up the others.
+</div>
+
+
+<h2>The buffer: one queue per table, two departure conditions</h2>
+<p>Inside, <code>ClickhouseWriter</code> keeps <strong>an in-memory queue per table</strong> (traces / observations / scores / …). Lesson 15's
+<code>addToQueue</code> pushes the merged record into the matching queue; records <strong>wait in line to depart</strong>. Departure (flush) is triggered by
+<strong>two conditions</strong>, whichever comes first:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter keeps a per-table in-memory queue; records batch-INSERT into ClickHouse when hitting batchSize or when the writeInterval timer fires">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">ClickhouseWriter: batch up → bulk INSERT</text>
+  <rect x="14" y="60" width="120" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="74" y="80" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">IngestionService</text><text x="74" y="95" text-anchor="middle" font-size="7.5" fill="var(--muted)">Lesson 15</text><text x="74" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">addToQueue</text><text x="74" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">pushed one by one</text>
+  <rect x="170" y="48" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[traces] ▢▢▢▢</text><text x="265" y="84" text-anchor="middle" font-size="7.5" fill="var(--muted)">fills to batchSize…</text>
+  <rect x="170" y="104" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[observations] ▢▢▢</text><text x="265" y="140" text-anchor="middle" font-size="7.5" fill="var(--muted)">per-table independent</text>
+  <rect x="170" y="160" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[scores] ▢▢</text><text x="265" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">each departs on its own</text>
+  <rect x="398" y="78" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="473" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">flush trigger</text><text x="473" y="126" text-anchor="middle" font-size="8" fill="var(--accent-ink)">① queue ≥ batchSize</text><text x="473" y="144" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② writeInterval elapsed</text><text x="473" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">whichever first</text>
+  <rect x="584" y="88" width="122" height="84" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="645" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="645" y="136" text-anchor="middle" font-size="8" fill="var(--muted)">one INSERT</text><text x="645" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">whole batch</text>
+  <line x1="134" y1="120" x2="168" y2="80" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="125" x2="168" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="130" x2="168" y2="180" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="360" y1="125" x2="396" y2="125" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,125 387,121 387,129" fill="var(--accent)"/>
+  <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>A batching buffer</b>: one in-memory queue per table; <code>addToQueue</code> feeds it, hitting <code>batchSize</code> flushes that table immediately, or the timer fires <code>flushAll</code> every <code>writeInterval</code>. flush sends the whole batch in one <code>INSERT</code> (<code>JSONEachRow</code>). Source: <code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">two triggers</span></div>
+  <pre class="code"><span class="cm">// Trigger ①: on enqueue, flush this table once it has a full batch</span>
+<span class="fn">addToQueue</span>(tableName, data) {
+  <span class="kw">this</span>.queue[tableName].<span class="fn">push</span>({ createdAt: Date.now(), data });
+  <span class="kw">if</span> (<span class="kw">this</span>.queue[tableName].length &gt;= <span class="kw">this</span>.batchSize)
+    <span class="kw">this</span>.<span class="fn">flush</span>(tableName);          <span class="cm">// depart when full</span>
+}
+<span class="cm">// Trigger ②: a timer, flush all tables every writeInterval ms</span>
+<span class="fn">setInterval</span>(() =&gt; <span class="kw">this</span>.<span class="fn">flushAll</span>(), <span class="kw">this</span>.writeInterval);   <span class="cm">// depart on time</span>
+
+<span class="cm">// flush: take a batch from the queue, bulk INSERT (with backoff retry maxAttempts)</span>
+<span class="kw">const</span> items = entityQueue.<span class="fn">splice</span>(0, fullQueue ? all : <span class="kw">this</span>.batchSize);
+<span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
+</div>
+
+<p>Why does ClickHouse so dread "row-by-row writes"? Back to Lesson 8's storage mechanics: a MergeTree drops a new <strong>data part</strong> on disk for
+every <code>INSERT</code>, then relies on background <strong>merges</strong> to combine small parts into large ones. INSERT each record separately and you
+instantly spawn <strong>a flood of tiny parts</strong> — exploding disk metadata, background merges that never catch up, slowed queries (and even ClickHouse's
+"too many parts" guard rejecting writes). Batch ten thousand records into one INSERT and you create just <strong>one</strong> big part — easy to write,
+merge, and query. So this layer isn't an optional optimization; it's a <strong>precondition</strong> for a columnar store like ClickHouse to withstand
+high-frequency ingestion — without this buffer, even the best table design gets crushed by a deluge of small writes.</p>
+
+
+<h2>Two departure conditions, plus a graceful drain</h2>
+<p>"Full" and "on time" each serve a different load, and both are needed:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="at rush hour flush on batchSize when full, in a lull flush on writeInterval when due, on shutdown flushAll drains all queues">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Whichever first: balancing throughput and latency</text>
+  <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">rush hour</text>
+  <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ fills batchSize instantly</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① flush now (by size)</text>
+  <text x="448" y="81" font-size="8" fill="var(--muted)">low latency, full batches, max throughput</text>
+  <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">lull</text>
+  <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ only two in ages, never fills</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② flush on time</text>
+  <text x="448" y="141" font-size="8" fill="var(--muted)">flush every writeInterval, no waiting forever</text>
+  <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">on shutdown</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) drain</text>
+  <text x="448" y="183" font-size="8" fill="var(--muted)">clear timer + write out every queue, no loss</text>
+</svg>
+<div class="figcap"><b>Complementary conditions + graceful shutdown</b>: rush hour leans on <code>batchSize</code> for throughput, lulls on <code>writeInterval</code> to cap latency; <code>shutdown</code> first <code>clearInterval</code> then <code>flushAll(true)</code> writes out everything left in memory. <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</div>
+</div>
+
+<table class="t">
+  <tr><th>trigger</th><th>condition</th><th>what it solves</th></tr>
+  <tr><td><b>① by size (batchSize)</b></td><td>a table's queue length ≥ <code>batchSize</code></td><td>at high throughput, write full batches, maxing ClickHouse write efficiency</td></tr>
+  <tr><td><b>② by time (writeInterval)</b></td><td>the timer fires <code>flushAll</code> every <code>writeInterval</code> ms</td><td>at low throughput, caps latency so data doesn't linger in memory indefinitely</td></tr>
+  <tr><td><b>③ shutdown drain</b></td><td><code>shutdown()</code> calls <code>flushAll(true)</code></td><td>persist all buffers before the process exits, avoiding data loss</td></tr>
+</table>
+
+<p>The two parameters <code>batchSize</code> and <code>writeInterval</code> are really a pair of <strong>throughput / latency knobs</strong>: a bigger
+batchSize and longer interval mean larger batches and cheaper writes, but a longer delay from "computed" to "queryable" for each record; the reverse means
+lower latency but more fragmented writes. Langfuse makes them <strong>environment variables</strong> so you can tune them to your traffic and freshness
+needs without touching code.</p>
+
+<p>Unpack a merged record's journey through the writer, and it's exactly five steps:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>enqueue</h4><p><code>addToQueue(table, record)</code> pushes the record, with a <code>createdAt</code> timestamp, onto that table's queue tail.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>wait to depart</h4><p>The record waits in the in-memory queue. Meanwhile the system records <strong>how long it waited</strong> (a wait_time metric) to observe backlog.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>trigger flush</h4><p>This table hits <code>batchSize</code> (by size) or the timer fires (by time); <code>splice</code> takes up to a batch.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>bulk write</h4><p><code>writeToClickhouse</code> INSERTs the whole batch as <code>JSONEachRow</code> in one go; with <code>backOff</code> retry.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>success / retry</h4><p>On success the batch is done; retryable errors back off and retry, oversized batches split and requeue — sparing the rest of the batch.</p></div></div>
+</div>
+
+
+<h2>Why a singleton, and why dare to buffer in memory</h2>
+<p><code>ClickhouseWriter</code> is a <strong>singleton</strong> (private constructor + <code>getInstance</code>): one writer, one set of queues per worker
+process. That's crucial — only by converging to one place can scattered records from countless jobs <strong>actually batch up large</strong>; if each job
+wrote on its own, batches would never grow. Writes carry <strong>backoff retry</strong> (<code>maxAttempts</code>): retryable errors back off and retry,
+"string too long" errors <strong>split the batch</strong> and retry — chasing big batches without letting one bad record drag down the whole batch. This
+"<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
+every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 singleton + per-table queues</h4><p>One writer per process gathers all jobs' records into big batches; per-table queues let traces/observations/scores each fill and flush in parallel, never blocking each other.</p></div>
+  <div class="col"><h4>🛡️ bulk write + backoff retry</h4><p>One INSERT per whole batch (<code>JSONEachRow</code>); failures retry with <code>maxAttempts</code> backoff; oversized batches auto-split. "Fast" and "stable" together.</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
+  because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
+  until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
+  <strong>redelivered</strong>, re-reads events from S3, re-merges and re-writes — <strong>not a single record lost</strong>. Precisely because
+  <strong>durability is already backstopped by upstream S3 + the queue</strong>, this layer can <strong>safely trade volatile in-memory buffering for write
+  throughput</strong>. A classic layered-design insight: <strong>assign durability and efficiency to different layers, each taken to the extreme</strong> —
+  S3 owns "never lose", ClickhouseWriter owns "write fast", neither compromising for the other's goal.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>ClickhouseWriter</code> is a <strong>singleton</strong> that gathers high-frequency single records into <strong>big batches</strong> for one <code>INSERT</code> — because Lesson 8's ClickHouse prefers large batches and dreads row-by-row.</li>
+    <li><strong>One in-memory queue per table</strong> (traces/observations/scores…); <code>addToQueue</code> feeds it, <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</li>
+    <li><strong>Two flush triggers</strong>: ① queue ≥ <code>batchSize</code> (by size, for throughput) ② every <code>writeInterval</code> timer (by time, capping latency); whichever first.</li>
+    <li><code>shutdown</code> clears the timer then <code>flushAll(true)</code> <strong>drains</strong> all queues so nothing is lost on exit; writes carry backoff retry, oversized batches auto-split.</li>
+    <li>It <strong>dares to trade volatile memory buffering for throughput</strong> because <strong>durability is backstopped by upstream S3 + the queue</strong> (Lesson 14): crash → redeliver and recompute, nothing lost — layers each doing their job.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does ClickhouseWriter batch single records before writing, instead of IngestionService INSERTing each record as soon as it's computed?</div>
+  <ol class="opts">
+    <li>because ClickHouse's MergeTree drops a disk part per INSERT; row-by-row spawns a flood of tiny parts, background merges can't keep up, queries slow, even hitting the too-many-parts guard; one batch makes just one big part</li>
+    <li>because IngestionService can't access the database</li>
+    <li>because single writes lose data</li>
+    <li>because batching encrypts the data</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Lesson 8 noted ClickHouse prefers large batches. Each INSERT creates a MergeTree part; more tiny parts means heavier disk metadata and background merges. Translating high-frequency small writes into low-frequency large ones is a precondition for a columnar store to withstand high-frequency ingestion, not an optional optimization.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. What are ClickhouseWriter's two flush triggers, and why two rather than one?</div>
+  <ol class="opts">
+    <li>① daytime ② nighttime</li>
+    <li>only one: write when the queue is full</li>
+    <li>① memory full ② disk full</li>
+    <li>① a table's queue ≥ batchSize (by size) ② a timer fires flushAll every writeInterval (by time); whichever first — rush hour uses 'full' for throughput, lulls use 'on time' to cap latency; with only one, either latency runs away or batches never fill</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. batchSize alone: in a lull a batch never fills, so records linger in memory indefinitely with runaway latency. Timer alone: at peak far more than a batch floods in per interval, risking backlog. The two complement 'whichever first': high throughput writes full batches for efficiency, low throughput flushes on time to cap latency. On shutdown, flushAll(true) drains everything, losing nothing.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Records sit in an in-memory queue, so a worker crash loses that batch. Why does Langfuse dare to use such 'volatile' in-memory buffering?</div>
+  <ol class="opts">
+    <li>because losing some data is fine</li>
+    <li>because the worker never crashes</li>
+    <li>because durability is backstopped upstream: every event sits verbatim in S3, and the queue job isn't acked until the DB write succeeds; on crash the job is redelivered, re-reads from S3, re-merges and re-writes, losing nothing — so this layer can trade memory for throughput</li>
+    <li>because memory is more reliable than disk</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Classic layered wisdom: S3 (Lesson 14) owns 'never lose', ClickhouseWriter owns 'write fast', neither compromising for the other. Because the queue + S3 already guarantee durability and replayability, the writer can trade volatile memory buffering for throughput — a crash merely triggers a redeliver-and-recompute.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>ClickhouseWriter delegates durability to upstream S3 and focuses on efficiency, so it dares to trade volatile memory buffering for throughput. How would you apply this 'assign different quality goals to different layers, each taken to the extreme' approach in your own designs? If one layer must be both fast and never-lose, what extra complexity does that bring?</li>
   </ul>
 </div>
 </div>

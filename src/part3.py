@@ -1606,3 +1606,303 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
 </div>
 """)
 LESSON_16 = {"zh": "\n".join(_ZH16), "en": "\n".join(_EN16)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L17 · ClickhouseWriter：批量落盘 / ClickhouseWriter: batched persistence
+# ══════════════════════════════════════════════════════════════════════
+_ZH17 = []
+_EN17 = []
+
+_ZH17.append(r"""
+<p class="lead">
+第 15 课合并完，最后一步是 <code>clickHouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
+<code>ClickhouseWriter</code>：一个<strong>单例</strong>，把潮水般涌来的<strong>单条记录</strong>攒成<strong>少数几个大批次</strong>，再一次性 INSERT 进 ClickHouse。
+为什么非要攒？因为第 8 课说过，ClickHouse <strong>极度偏爱大批量写入</strong>、最怕逐条插入。这一层，就是把「高频小写」翻译成「低频大写」的<strong>缓冲带</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🚌 生活类比</div>
+  把 <code>ClickhouseWriter</code> 想成<strong>摆渡班车</strong>。乘客（记录）一个个到站，司机<strong>不会来一个就开一趟</strong>——那样油费（写入开销）高得离谱。
+  他等到<strong>车坐满了</strong>（达到 batchSize），<strong>或者</strong>发车时刻到了（writeInterval 定时器响），就<strong>一趟把整车人送过去</strong>。
+  两个条件<strong>谁先到就按谁发</strong>：高峰期车一会儿就满、靠「坐满」发车；低谷期人少，就靠「到点」发车，免得最后几个乘客干等太久。
+  而且<strong>每条线路（每张表）都有自己的一辆车</strong>：traces 一辆、observations 一辆、scores 一辆，各坐各的、各发各的，互不耽误。
+</div>
+""")
+
+# (L17 sections appended below)
+
+_ZH17.append(r"""
+<h2>缓冲带：每张表一个队列，两个发车条件</h2>
+<p><code>ClickhouseWriter</code> 内部为<strong>每张表各开一个内存队列</strong>（traces / observations / scores / …）。
+第 15 课的 <code>addToQueue</code> 把合并好的记录推进对应队列；记录在队列里<strong>排队等发车</strong>。发车（flush）由<strong>两个条件</strong>触发，谁先到算谁：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 为每张表开内存队列，记录达 batchSize 或 writeInterval 定时器触发时批量 INSERT 进 ClickHouse">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">ClickhouseWriter：攒批 → 批量 INSERT</text>
+  <rect x="14" y="60" width="120" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="74" y="80" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">IngestionService</text><text x="74" y="95" text-anchor="middle" font-size="7.5" fill="var(--muted)">第 15 课</text><text x="74" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">addToQueue</text><text x="74" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">一条条推进来</text>
+  <rect x="170" y="48" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[traces] ▢▢▢▢</text><text x="265" y="84" text-anchor="middle" font-size="7.5" fill="var(--muted)">攒到 batchSize…</text>
+  <rect x="170" y="104" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[observations] ▢▢▢</text><text x="265" y="140" text-anchor="middle" font-size="7.5" fill="var(--muted)">各表独立</text>
+  <rect x="170" y="160" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[scores] ▢▢</text><text x="265" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">各发各的</text>
+  <rect x="398" y="78" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="473" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">flush 触发</text><text x="473" y="126" text-anchor="middle" font-size="8" fill="var(--accent-ink)">① 队列 ≥ batchSize</text><text x="473" y="144" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② writeInterval 到点</text><text x="473" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">谁先到算谁</text>
+  <rect x="584" y="88" width="122" height="84" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="645" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="645" y="136" text-anchor="middle" font-size="8" fill="var(--muted)">一次 INSERT</text><text x="645" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">整批写入</text>
+  <line x1="134" y1="120" x2="168" y2="80" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="125" x2="168" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="130" x2="168" y2="180" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="360" y1="125" x2="396" y2="125" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,125 387,121 387,129" fill="var(--accent)"/>
+  <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>攒批缓冲带</b>：每张表一个内存队列；<code>addToQueue</code> 喂入，达 <code>batchSize</code> 立刻 flush 该表，或定时器每 <code>writeInterval</code> 触发 <code>flushAll</code> 刷所有表。flush 把整批一次 <code>INSERT</code>（<code>JSONEachRow</code>）。源码：<code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">两个触发</span></div>
+  <pre class="code"><span class="cm">// 触发①：入队时，本表攒够一批就立刻刷</span>
+<span class="fn">addToQueue</span>(tableName, data) {
+  <span class="kw">this</span>.queue[tableName].<span class="fn">push</span>({ createdAt: Date.now(), data });
+  <span class="kw">if</span> (<span class="kw">this</span>.queue[tableName].length &gt;= <span class="kw">this</span>.batchSize)
+    <span class="kw">this</span>.<span class="fn">flush</span>(tableName);          <span class="cm">// 坐满发车</span>
+}
+<span class="cm">// 触发②：定时器，每 writeInterval 毫秒刷所有表</span>
+<span class="fn">setInterval</span>(() =&gt; <span class="kw">this</span>.<span class="fn">flushAll</span>(), <span class="kw">this</span>.writeInterval);   <span class="cm">// 到点发车</span>
+
+<span class="cm">// flush：从队列取一批，批量 INSERT（带退避重试 maxAttempts）</span>
+<span class="kw">const</span> items = entityQueue.<span class="fn">splice</span>(0, fullQueue ? all : <span class="kw">this</span>.batchSize);
+<span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
+</div>
+
+<p>为什么 ClickHouse 这么怕「逐条写」？回到第 8 课的存储机制：MergeTree 每收一次 <code>INSERT</code> 就在磁盘上落一个新的<strong>数据分片（part）</strong>，
+之后还要靠后台不断把小分片<strong>合并</strong>成大分片。如果你每条记录都单独 INSERT，瞬间会产生<strong>海量小分片</strong>——磁盘元数据爆炸、后台合并永远追不上、查询也被拖慢
+（甚至触发 ClickHouse 的「too many parts」保护而拒写）。把一万条记录攒成一次 INSERT，就只生成<strong>一个</strong>大分片，写入、合并、查询全都轻松。
+所以这一层不是可有可无的优化，而是让 ClickHouse 这种列式存储能扛住高频摄取的<strong>必要前提</strong>——没有这道缓冲带，再好的表设计也会被海量小写拖垮。</p>
+""")
+
+# (triggers + shutdown section below)
+
+_ZH17.append(r"""
+<h2>两个发车条件，外加一次优雅排空</h2>
+<p>「坐满」和「到点」这两个条件，分别照顾了两种负载，缺一不可：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="高峰期靠 batchSize 坐满即发，低谷期靠 writeInterval 到点即发，关机时 flushAll 排空所有队列">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">谁先到算谁：吞吐与延迟的平衡</text>
+  <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">高峰期</text>
+  <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ 瞬间坐满 batchSize</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① 立刻 flush（按量）</text>
+  <text x="448" y="81" font-size="8" fill="var(--muted)">延迟极低、批批都满，吞吐拉满</text>
+  <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">低谷期</text>
+  <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ 半天才两条，凑不满</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② 到点 flush（按时）</text>
+  <text x="448" y="141" font-size="8" fill="var(--muted)">每 writeInterval 一刷，不让数据干等</text>
+  <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">关机时</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) 排空</text>
+  <text x="448" y="183" font-size="8" fill="var(--muted)">清定时器 + 把所有队列一次写尽，不丢数据</text>
+</svg>
+<div class="figcap"><b>两条件互补 + 优雅关机</b>：高峰靠 <code>batchSize</code> 保吞吐，低谷靠 <code>writeInterval</code> 保延迟上限；<code>shutdown</code> 先 <code>clearInterval</code> 再 <code>flushAll(true)</code> 把内存里剩的全部写尽。<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</div>
+</div>
+
+<table class="t">
+  <tr><th>触发</th><th>条件</th><th>解决什么</th></tr>
+  <tr><td><b>① 按量（batchSize）</b></td><td>某表队列长度 ≥ <code>batchSize</code></td><td>高吞吐时批批写满，把 ClickHouse 的写入效率拉满</td></tr>
+  <tr><td><b>② 按时（writeInterval）</b></td><td>定时器每 <code>writeInterval</code> 毫秒触发 <code>flushAll</code></td><td>低吞吐时给延迟封顶，数据不会无限期滞留内存</td></tr>
+  <tr><td><b>③ 关机排空</b></td><td><code>shutdown()</code> 调 <code>flushAll(true)</code></td><td>进程退出前把缓冲全部落盘，避免丢数据</td></tr>
+</table>
+
+<p>这两个参数 <code>batchSize</code> 与 <code>writeInterval</code> 其实是一对<strong>吞吐 / 延迟旋钮</strong>：调大 batchSize、拉长 interval，批更大、写库更省，但单条记录从「算完」到「能被查到」的延迟变长；
+反之延迟低但写得更碎。Langfuse 把它们做成<strong>环境变量</strong>，让你按自己的流量与时效要求自由去拧，无需改代码。</p>
+
+<p>把一条合并好的记录在写入器里的旅程拆开，正好五步：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>入队</h4><p><code>addToQueue(table, record)</code> 把记录连同 <code>createdAt</code> 时间戳推进该表队列尾部。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>等发车</h4><p>记录在内存队列里排队。期间系统还会记录它<strong>等了多久</strong>（wait_time 指标），用来观测积压。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>触发 flush</h4><p>本表攒到 <code>batchSize</code>（按量）或定时器到点（按时），<code>splice</code> 取出最多一批。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>批量写入</h4><p><code>writeToClickhouse</code> 把整批以 <code>JSONEachRow</code> 一次 <code>INSERT</code>；带 <code>backOff</code> 退避重试。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>成功 / 重试</h4><p>成功则这批出队完成；可重试错误退避再试，超长批拆小重排队——尽量不连累整批。</p></div></div>
+</div>
+""")
+
+# (singleton + resilience + spark + key below)
+
+_ZH17.append(r"""
+<h2>为什么是单例，为什么敢用内存缓冲</h2>
+<p><code>ClickhouseWriter</code> 是<strong>单例</strong>（私有构造 + <code>getInstance</code>）：整个 worker 进程<strong>只有一个</strong>写入器、一组队列。这很关键——
+只有汇到一处，才能把来自无数任务的零散记录<strong>真正攒成大批</strong>；如果每个任务各写各的，批就永远攒不大。写入时还带<strong>退避重试</strong>（<code>maxAttempts</code>），
+遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和第 12 课摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 单例 + 按表队列</h4><p>一个进程一个 writer，把所有任务的记录汇聚成大批；按表分队列，让 traces/observations/scores 各自满批、并行刷，互不阻塞。</p></div>
+  <div class="col"><h4>🛡️ 批量写 + 退避重试</h4><p>一次 INSERT 写整批（<code>JSONEachRow</code>），失败按 <code>maxAttempts</code> 退避重试；超长批自动拆分。把「写得快」和「写得稳」一起拿下。</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>记录攒在内存队列里，万一 worker 突然崩了，这批不就丢了吗？</strong> 会丢——但这<strong>不要紧</strong>，因为真正的「账本」不在这里。回想第 14 课：
+  每个事件都<strong>原原本本躺在 S3</strong>，而队列任务在写库成功前<strong>不会被确认</strong>。于是 worker 半路崩溃，最多是这批合并结果没落盘，
+  对应的队列任务会<strong>重新投递</strong>、从 S3 重新读事件、重新合并重新写——<strong>数据一条不少</strong>。正因为<strong>持久性已经由上游的 S3 + 队列兜底</strong>，
+  这一层才敢<strong>放心地用易失的内存缓冲去换写入吞吐</strong>。这是一个典型的分层设计智慧：<strong>把持久和高效分给不同层，各自做到极致</strong>——
+  S3 负责「绝不丢」，ClickhouseWriter 负责「写得快」，谁也不必为对方的目标妥协。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><code>ClickhouseWriter</code> 是<strong>单例</strong>，把高频单条记录攒成<strong>大批</strong>再一次 <code>INSERT</code>——因为第 8 课 ClickHouse 偏爱大批量、最怕逐条。</li>
+    <li><strong>每张表一个内存队列</strong>（traces/observations/scores…），<code>addToQueue</code> 喂入，<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</li>
+    <li><strong>两个 flush 触发</strong>：① 队列 ≥ <code>batchSize</code>（按量，保吞吐）② 每 <code>writeInterval</code> 定时器（按时，封顶延迟）；谁先到算谁。</li>
+    <li><code>shutdown</code> 先清定时器、再 <code>flushAll(true)</code> <strong>排空</strong>所有队列，进程退出不丢数据；写入带退避重试、超长批自动拆分。</li>
+    <li>敢用<strong>易失内存缓冲换吞吐</strong>，是因为<strong>持久性由上游 S3 + 队列兜底</strong>（第 14 课）：崩了就重投重算，一条不丢——分层各司其职。</li>
+  </ul>
+</div>
+""")
+
+_EN17.append(r"""
+<p class="lead">
+Lesson 15's merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
+handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as Lesson 8 said, ClickHouse
+<strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates
+"high-frequency small writes" into "low-frequency large writes".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🚌 Analogy</div>
+  Think of <code>ClickhouseWriter</code> as a <strong>shuttle bus</strong>. Passengers (records) arrive one by one, but the driver <strong>doesn't depart
+  for each one</strong> — the fuel cost (write overhead) would be absurd. He waits until the <strong>bus is full</strong> (hits batchSize), <strong>or</strong>
+  the departure time arrives (the writeInterval timer fires), then <strong>takes the whole busload across in one trip</strong>. Whichever condition comes
+  first wins: at rush hour the bus fills fast and leaves on "full"; in a lull, few passengers, so it leaves on "time" so the last few don't wait forever.
+  And <strong>each route (each table) has its own bus</strong>: one for traces, one for observations, one for scores, each loading and departing
+  independently, never holding up the others.
+</div>
+""")
+
+_EN17.append(r"""
+<h2>The buffer: one queue per table, two departure conditions</h2>
+<p>Inside, <code>ClickhouseWriter</code> keeps <strong>an in-memory queue per table</strong> (traces / observations / scores / …). Lesson 15's
+<code>addToQueue</code> pushes the merged record into the matching queue; records <strong>wait in line to depart</strong>. Departure (flush) is triggered by
+<strong>two conditions</strong>, whichever comes first:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter keeps a per-table in-memory queue; records batch-INSERT into ClickHouse when hitting batchSize or when the writeInterval timer fires">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">ClickhouseWriter: batch up → bulk INSERT</text>
+  <rect x="14" y="60" width="120" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="74" y="80" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">IngestionService</text><text x="74" y="95" text-anchor="middle" font-size="7.5" fill="var(--muted)">Lesson 15</text><text x="74" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">addToQueue</text><text x="74" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">pushed one by one</text>
+  <rect x="170" y="48" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[traces] ▢▢▢▢</text><text x="265" y="84" text-anchor="middle" font-size="7.5" fill="var(--muted)">fills to batchSize…</text>
+  <rect x="170" y="104" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[observations] ▢▢▢</text><text x="265" y="140" text-anchor="middle" font-size="7.5" fill="var(--muted)">per-table independent</text>
+  <rect x="170" y="160" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[scores] ▢▢</text><text x="265" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">each departs on its own</text>
+  <rect x="398" y="78" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="473" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">flush trigger</text><text x="473" y="126" text-anchor="middle" font-size="8" fill="var(--accent-ink)">① queue ≥ batchSize</text><text x="473" y="144" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② writeInterval elapsed</text><text x="473" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">whichever first</text>
+  <rect x="584" y="88" width="122" height="84" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="645" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="645" y="136" text-anchor="middle" font-size="8" fill="var(--muted)">one INSERT</text><text x="645" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">whole batch</text>
+  <line x1="134" y1="120" x2="168" y2="80" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="125" x2="168" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="130" x2="168" y2="180" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="360" y1="125" x2="396" y2="125" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,125 387,121 387,129" fill="var(--accent)"/>
+  <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>A batching buffer</b>: one in-memory queue per table; <code>addToQueue</code> feeds it, hitting <code>batchSize</code> flushes that table immediately, or the timer fires <code>flushAll</code> every <code>writeInterval</code>. flush sends the whole batch in one <code>INSERT</code> (<code>JSONEachRow</code>). Source: <code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">two triggers</span></div>
+  <pre class="code"><span class="cm">// Trigger ①: on enqueue, flush this table once it has a full batch</span>
+<span class="fn">addToQueue</span>(tableName, data) {
+  <span class="kw">this</span>.queue[tableName].<span class="fn">push</span>({ createdAt: Date.now(), data });
+  <span class="kw">if</span> (<span class="kw">this</span>.queue[tableName].length &gt;= <span class="kw">this</span>.batchSize)
+    <span class="kw">this</span>.<span class="fn">flush</span>(tableName);          <span class="cm">// depart when full</span>
+}
+<span class="cm">// Trigger ②: a timer, flush all tables every writeInterval ms</span>
+<span class="fn">setInterval</span>(() =&gt; <span class="kw">this</span>.<span class="fn">flushAll</span>(), <span class="kw">this</span>.writeInterval);   <span class="cm">// depart on time</span>
+
+<span class="cm">// flush: take a batch from the queue, bulk INSERT (with backoff retry maxAttempts)</span>
+<span class="kw">const</span> items = entityQueue.<span class="fn">splice</span>(0, fullQueue ? all : <span class="kw">this</span>.batchSize);
+<span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
+</div>
+
+<p>Why does ClickHouse so dread "row-by-row writes"? Back to Lesson 8's storage mechanics: a MergeTree drops a new <strong>data part</strong> on disk for
+every <code>INSERT</code>, then relies on background <strong>merges</strong> to combine small parts into large ones. INSERT each record separately and you
+instantly spawn <strong>a flood of tiny parts</strong> — exploding disk metadata, background merges that never catch up, slowed queries (and even ClickHouse's
+"too many parts" guard rejecting writes). Batch ten thousand records into one INSERT and you create just <strong>one</strong> big part — easy to write,
+merge, and query. So this layer isn't an optional optimization; it's a <strong>precondition</strong> for a columnar store like ClickHouse to withstand
+high-frequency ingestion — without this buffer, even the best table design gets crushed by a deluge of small writes.</p>
+""")
+
+_EN17.append(r"""
+<h2>Two departure conditions, plus a graceful drain</h2>
+<p>"Full" and "on time" each serve a different load, and both are needed:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="at rush hour flush on batchSize when full, in a lull flush on writeInterval when due, on shutdown flushAll drains all queues">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Whichever first: balancing throughput and latency</text>
+  <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">rush hour</text>
+  <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ fills batchSize instantly</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① flush now (by size)</text>
+  <text x="448" y="81" font-size="8" fill="var(--muted)">low latency, full batches, max throughput</text>
+  <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">lull</text>
+  <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ only two in ages, never fills</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② flush on time</text>
+  <text x="448" y="141" font-size="8" fill="var(--muted)">flush every writeInterval, no waiting forever</text>
+  <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">on shutdown</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) drain</text>
+  <text x="448" y="183" font-size="8" fill="var(--muted)">clear timer + write out every queue, no loss</text>
+</svg>
+<div class="figcap"><b>Complementary conditions + graceful shutdown</b>: rush hour leans on <code>batchSize</code> for throughput, lulls on <code>writeInterval</code> to cap latency; <code>shutdown</code> first <code>clearInterval</code> then <code>flushAll(true)</code> writes out everything left in memory. <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</div>
+</div>
+
+<table class="t">
+  <tr><th>trigger</th><th>condition</th><th>what it solves</th></tr>
+  <tr><td><b>① by size (batchSize)</b></td><td>a table's queue length ≥ <code>batchSize</code></td><td>at high throughput, write full batches, maxing ClickHouse write efficiency</td></tr>
+  <tr><td><b>② by time (writeInterval)</b></td><td>the timer fires <code>flushAll</code> every <code>writeInterval</code> ms</td><td>at low throughput, caps latency so data doesn't linger in memory indefinitely</td></tr>
+  <tr><td><b>③ shutdown drain</b></td><td><code>shutdown()</code> calls <code>flushAll(true)</code></td><td>persist all buffers before the process exits, avoiding data loss</td></tr>
+</table>
+
+<p>The two parameters <code>batchSize</code> and <code>writeInterval</code> are really a pair of <strong>throughput / latency knobs</strong>: a bigger
+batchSize and longer interval mean larger batches and cheaper writes, but a longer delay from "computed" to "queryable" for each record; the reverse means
+lower latency but more fragmented writes. Langfuse makes them <strong>environment variables</strong> so you can tune them to your traffic and freshness
+needs without touching code.</p>
+
+<p>Unpack a merged record's journey through the writer, and it's exactly five steps:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>enqueue</h4><p><code>addToQueue(table, record)</code> pushes the record, with a <code>createdAt</code> timestamp, onto that table's queue tail.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>wait to depart</h4><p>The record waits in the in-memory queue. Meanwhile the system records <strong>how long it waited</strong> (a wait_time metric) to observe backlog.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>trigger flush</h4><p>This table hits <code>batchSize</code> (by size) or the timer fires (by time); <code>splice</code> takes up to a batch.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>bulk write</h4><p><code>writeToClickhouse</code> INSERTs the whole batch as <code>JSONEachRow</code> in one go; with <code>backOff</code> retry.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>success / retry</h4><p>On success the batch is done; retryable errors back off and retry, oversized batches split and requeue — sparing the rest of the batch.</p></div></div>
+</div>
+""")
+
+_EN17.append(r"""
+<h2>Why a singleton, and why dare to buffer in memory</h2>
+<p><code>ClickhouseWriter</code> is a <strong>singleton</strong> (private constructor + <code>getInstance</code>): one writer, one set of queues per worker
+process. That's crucial — only by converging to one place can scattered records from countless jobs <strong>actually batch up large</strong>; if each job
+wrote on its own, batches would never grow. Writes carry <strong>backoff retry</strong> (<code>maxAttempts</code>): retryable errors back off and retry,
+"string too long" errors <strong>split the batch</strong> and retry — chasing big batches without letting one bad record drag down the whole batch. This
+"<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
+every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 singleton + per-table queues</h4><p>One writer per process gathers all jobs' records into big batches; per-table queues let traces/observations/scores each fill and flush in parallel, never blocking each other.</p></div>
+  <div class="col"><h4>🛡️ bulk write + backoff retry</h4><p>One INSERT per whole batch (<code>JSONEachRow</code>); failures retry with <code>maxAttempts</code> backoff; oversized batches auto-split. "Fast" and "stable" together.</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
+  because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
+  until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
+  <strong>redelivered</strong>, re-reads events from S3, re-merges and re-writes — <strong>not a single record lost</strong>. Precisely because
+  <strong>durability is already backstopped by upstream S3 + the queue</strong>, this layer can <strong>safely trade volatile in-memory buffering for write
+  throughput</strong>. A classic layered-design insight: <strong>assign durability and efficiency to different layers, each taken to the extreme</strong> —
+  S3 owns "never lose", ClickhouseWriter owns "write fast", neither compromising for the other's goal.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>ClickhouseWriter</code> is a <strong>singleton</strong> that gathers high-frequency single records into <strong>big batches</strong> for one <code>INSERT</code> — because Lesson 8's ClickHouse prefers large batches and dreads row-by-row.</li>
+    <li><strong>One in-memory queue per table</strong> (traces/observations/scores…); <code>addToQueue</code> feeds it, <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</li>
+    <li><strong>Two flush triggers</strong>: ① queue ≥ <code>batchSize</code> (by size, for throughput) ② every <code>writeInterval</code> timer (by time, capping latency); whichever first.</li>
+    <li><code>shutdown</code> clears the timer then <code>flushAll(true)</code> <strong>drains</strong> all queues so nothing is lost on exit; writes carry backoff retry, oversized batches auto-split.</li>
+    <li>It <strong>dares to trade volatile memory buffering for throughput</strong> because <strong>durability is backstopped by upstream S3 + the queue</strong> (Lesson 14): crash → redeliver and recompute, nothing lost — layers each doing their job.</li>
+  </ul>
+</div>
+""")
+LESSON_17 = {"zh": "\n".join(_ZH17), "en": "\n".join(_EN17)}

@@ -81,6 +81,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("16-token-counting-cost.html", "Token 计数与成本", "Token counting & cost",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("17-clickhouse-writer.html", "ClickhouseWriter：批量落盘", "ClickhouseWriter: batched persistence",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -596,6 +598,8 @@ SUBTITLES = {
                                   "mergeAndWrite dispatch; two inputs (S3 events + CH record); mergeRecords left-fold; three don't-overwrite rules; event_ts stamp; enqueue not direct-write"),
     "16-token-counting-cost.html": ("provided 压倒 computed · findModel 正则匹配 · tokenizer 分词 · matchPricingTier · price×units · 项目价覆盖全局",
                                     "provided beats computed; findModel regex match; tokenizer counting; matchPricingTier; price×units; project price overrides global"),
+    "17-clickhouse-writer.html": ("单例批写器 · 每表内存队列 · batchSize/writeInterval 双触发 · 批量 INSERT · 优雅排空 · 内存换吞吐(S3 兜底)",
+                                  "singleton writer; per-table memory queues; batchSize/writeInterval triggers; bulk INSERT; graceful drain; memory-for-throughput (S3 backstop)"),
 }
 
 

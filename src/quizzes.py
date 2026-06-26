@@ -1165,6 +1165,76 @@ QUIZZES = {
             },
         ],
     },
+    "17-clickhouse-writer.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "ClickhouseWriter 为什么要把单条记录攒成大批再写，而不是 IngestionService 算完一条就直接 INSERT 一条？",
+                    "en": "Why does ClickhouseWriter batch single records before writing, instead of IngestionService INSERTing each record as soon as it's computed?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为 ClickHouse 的 MergeTree 每次 INSERT 都落一个磁盘分片(part)，逐条写会产生海量小分片、后台合并追不上、查询变慢甚至触发 too-many-parts 拒写；攒成一批只生成一个大分片",
+                        "en": "because ClickHouse's MergeTree drops a disk part per INSERT; row-by-row spawns a flood of tiny parts, background merges can't keep up, queries slow, even hitting the too-many-parts guard; one batch makes just one big part",
+                    },
+                    {"zh": "因为攒批能加密数据", "en": "because batching encrypts the data"},
+                    {"zh": "因为 IngestionService 不能访问数据库", "en": "because IngestionService can't access the database"},
+                    {"zh": "因为单条写会丢数据", "en": "because single writes lose data"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "第 8 课讲过 ClickHouse 偏爱大批量。MergeTree 每个 INSERT 生成一个数据分片，小分片越多、磁盘元数据和后台合并压力越大。把高频小写翻译成低频大写，是列式存储扛住高频摄取的必要前提，而非可有可无的优化。",
+                    "en": "Lesson 8 noted ClickHouse prefers large batches. Each INSERT creates a MergeTree part; more tiny parts means heavier disk metadata and background merges. Translating high-frequency small writes into low-frequency large ones is a precondition for a columnar store to withstand high-frequency ingestion, not an optional optimization.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "ClickhouseWriter 的两个 flush 触发条件是什么？为什么需要两个而不是一个？",
+                    "en": "What are ClickhouseWriter's two flush triggers, and why two rather than one?",
+                },
+                "opts": [
+                    {
+                        "zh": "① 某表队列 ≥ batchSize（按量）② 定时器每 writeInterval 触发 flushAll（按时）；谁先到算谁——高峰靠“坐满”保吞吐，低谷靠“到点”保延迟上限，缺一就会要么延迟失控、要么批永远凑不满",
+                        "en": "① a table's queue ≥ batchSize (by size) ② a timer fires flushAll every writeInterval (by time); whichever first — rush hour uses 'full' for throughput, lulls use 'on time' to cap latency; with only one, either latency runs away or batches never fill",
+                    },
+                    {"zh": "① 内存满 ② 磁盘满", "en": "① memory full ② disk full"},
+                    {"zh": "① 白天 ② 夜间", "en": "① daytime ② nighttime"},
+                    {"zh": "只有一个：队列满才写", "en": "only one: write when the queue is full"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "只靠 batchSize：低谷期凑不满一批，记录会无限期滞留内存、延迟失控。只靠定时器：高峰期一个 interval 内涌入远超一批，仍可能积压。两者“谁先到算谁”互补：高吞吐批批写满拉高效率，低吞吐到点即发封顶延迟。关机时再 flushAll(true) 排空，不丢数据。",
+                    "en": "batchSize alone: in a lull a batch never fills, so records linger in memory indefinitely with runaway latency. Timer alone: at peak far more than a batch floods in per interval, risking backlog. The two complement 'whichever first': high throughput writes full batches for efficiency, low throughput flushes on time to cap latency. On shutdown, flushAll(true) drains everything, losing nothing.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "记录攒在内存队列里，worker 崩溃这批就没了。Langfuse 为什么敢用这种“易失”的内存缓冲？",
+                    "en": "Records sit in an in-memory queue, so a worker crash loses that batch. Why does Langfuse dare to use such 'volatile' in-memory buffering?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为持久性由上游兜底：每个事件原原本本在 S3，队列任务写库成功前不会被确认；崩了任务会重投、从 S3 重读重合并重写，一条不丢——所以这层可放心用内存换吞吐",
+                        "en": "because durability is backstopped upstream: every event sits verbatim in S3, and the queue job isn't acked until the DB write succeeds; on crash the job is redelivered, re-reads from S3, re-merges and re-writes, losing nothing — so this layer can trade memory for throughput",
+                    },
+                    {"zh": "因为 worker 永远不会崩", "en": "because the worker never crashes"},
+                    {"zh": "因为内存比磁盘更可靠", "en": "because memory is more reliable than disk"},
+                    {"zh": "因为丢一点数据无所谓", "en": "because losing some data is fine"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是典型的分层智慧：S3（第 14 课）负责“绝不丢”，ClickhouseWriter 负责“写得快”，谁也不为对方妥协。因为队列 + S3 已经保证了持久性与可重放，写入器才敢用易失内存缓冲去换吞吐——崩溃只是触发一次重投重算。",
+                    "en": "Classic layered wisdom: S3 (Lesson 14) owns 'never lose', ClickhouseWriter owns 'write fast', neither compromising for the other. Because the queue + S3 already guarantee durability and replayability, the writer can trade volatile memory buffering for throughput — a crash merely triggers a redeliver-and-recompute.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "ClickhouseWriter 把“持久”交给上游 S3、自己专注“高效”，于是敢用易失内存缓冲换吞吐。这种“把不同的质量目标分给不同层、各自做到极致”的思路，你在自己设计系统时会怎么运用？如果某一层既要快又要绝不丢，会带来哪些额外复杂度？",
+                "en": "ClickhouseWriter delegates durability to upstream S3 and focuses on efficiency, so it dares to trade volatile memory buffering for throughput. How would you apply this 'assign different quality goals to different layers, each taken to the extreme' approach in your own designs? If one layer must be both fast and never-lose, what extra complexity does that bring?",
+            },
+        ],
+    },
 }
 
 

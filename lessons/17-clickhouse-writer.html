@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>17 · ClickhouseWriter：批量落盘 / ClickhouseWriter: batched persistence - Langfuse 图解教程</title>
+<meta name="description" content="第三部分 · 摄取链路｜ClickhouseWriter：批量落盘 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="17 · ClickhouseWriter：批量落盘 / ClickhouseWriter: batched persistence - Langfuse 图解教程">
+<meta property="og:description" content="第三部分 · 摄取链路｜ClickhouseWriter：批量落盘 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="17 · ClickhouseWriter：批量落盘 / ClickhouseWriter: batched persistence - Langfuse 图解教程">
+<meta name="twitter:description" content="第三部分 · 摄取链路｜ClickhouseWriter：批量落盘 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></span>
+    <span class="pill">17 / 17</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></div>
+    <h1><span class="lang-zh">ClickhouseWriter：批量落盘</span><span class="lang-en">ClickhouseWriter: batched persistence</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+第 15 课合并完，最后一步是 <code>clickHouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
+<code>ClickhouseWriter</code>：一个<strong>单例</strong>，把潮水般涌来的<strong>单条记录</strong>攒成<strong>少数几个大批次</strong>，再一次性 INSERT 进 ClickHouse。
+为什么非要攒？因为第 8 课说过，ClickHouse <strong>极度偏爱大批量写入</strong>、最怕逐条插入。这一层，就是把「高频小写」翻译成「低频大写」的<strong>缓冲带</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🚌 生活类比</div>
+  把 <code>ClickhouseWriter</code> 想成<strong>摆渡班车</strong>。乘客（记录）一个个到站，司机<strong>不会来一个就开一趟</strong>——那样油费（写入开销）高得离谱。
+  他等到<strong>车坐满了</strong>（达到 batchSize），<strong>或者</strong>发车时刻到了（writeInterval 定时器响），就<strong>一趟把整车人送过去</strong>。
+  两个条件<strong>谁先到就按谁发</strong>：高峰期车一会儿就满、靠「坐满」发车；低谷期人少，就靠「到点」发车，免得最后几个乘客干等太久。
+  而且<strong>每条线路（每张表）都有自己的一辆车</strong>：traces 一辆、observations 一辆、scores 一辆，各坐各的、各发各的，互不耽误。
+</div>
+
+
+<h2>缓冲带：每张表一个队列，两个发车条件</h2>
+<p><code>ClickhouseWriter</code> 内部为<strong>每张表各开一个内存队列</strong>（traces / observations / scores / …）。
+第 15 课的 <code>addToQueue</code> 把合并好的记录推进对应队列；记录在队列里<strong>排队等发车</strong>。发车（flush）由<strong>两个条件</strong>触发，谁先到算谁：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 为每张表开内存队列，记录达 batchSize 或 writeInterval 定时器触发时批量 INSERT 进 ClickHouse">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">ClickhouseWriter：攒批 → 批量 INSERT</text>
+  <rect x="14" y="60" width="120" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="74" y="80" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">IngestionService</text><text x="74" y="95" text-anchor="middle" font-size="7.5" fill="var(--muted)">第 15 课</text><text x="74" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">addToQueue</text><text x="74" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">一条条推进来</text>
+  <rect x="170" y="48" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[traces] ▢▢▢▢</text><text x="265" y="84" text-anchor="middle" font-size="7.5" fill="var(--muted)">攒到 batchSize…</text>
+  <rect x="170" y="104" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[observations] ▢▢▢</text><text x="265" y="140" text-anchor="middle" font-size="7.5" fill="var(--muted)">各表独立</text>
+  <rect x="170" y="160" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[scores] ▢▢</text><text x="265" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">各发各的</text>
+  <rect x="398" y="78" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="473" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">flush 触发</text><text x="473" y="126" text-anchor="middle" font-size="8" fill="var(--accent-ink)">① 队列 ≥ batchSize</text><text x="473" y="144" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② writeInterval 到点</text><text x="473" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">谁先到算谁</text>
+  <rect x="584" y="88" width="122" height="84" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="645" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="645" y="136" text-anchor="middle" font-size="8" fill="var(--muted)">一次 INSERT</text><text x="645" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">整批写入</text>
+  <line x1="134" y1="120" x2="168" y2="80" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="125" x2="168" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="130" x2="168" y2="180" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="360" y1="125" x2="396" y2="125" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,125 387,121 387,129" fill="var(--accent)"/>
+  <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>攒批缓冲带</b>：每张表一个内存队列；<code>addToQueue</code> 喂入，达 <code>batchSize</code> 立刻 flush 该表，或定时器每 <code>writeInterval</code> 触发 <code>flushAll</code> 刷所有表。flush 把整批一次 <code>INSERT</code>（<code>JSONEachRow</code>）。源码：<code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">两个触发</span></div>
+  <pre class="code"><span class="cm">// 触发①：入队时，本表攒够一批就立刻刷</span>
+<span class="fn">addToQueue</span>(tableName, data) {
+  <span class="kw">this</span>.queue[tableName].<span class="fn">push</span>({ createdAt: Date.now(), data });
+  <span class="kw">if</span> (<span class="kw">this</span>.queue[tableName].length &gt;= <span class="kw">this</span>.batchSize)
+    <span class="kw">this</span>.<span class="fn">flush</span>(tableName);          <span class="cm">// 坐满发车</span>
+}
+<span class="cm">// 触发②：定时器，每 writeInterval 毫秒刷所有表</span>
+<span class="fn">setInterval</span>(() =&gt; <span class="kw">this</span>.<span class="fn">flushAll</span>(), <span class="kw">this</span>.writeInterval);   <span class="cm">// 到点发车</span>
+
+<span class="cm">// flush：从队列取一批，批量 INSERT（带退避重试 maxAttempts）</span>
+<span class="kw">const</span> items = entityQueue.<span class="fn">splice</span>(0, fullQueue ? all : <span class="kw">this</span>.batchSize);
+<span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
+</div>
+
+<p>为什么 ClickHouse 这么怕「逐条写」？回到第 8 课的存储机制：MergeTree 每收一次 <code>INSERT</code> 就在磁盘上落一个新的<strong>数据分片（part）</strong>，
+之后还要靠后台不断把小分片<strong>合并</strong>成大分片。如果你每条记录都单独 INSERT，瞬间会产生<strong>海量小分片</strong>——磁盘元数据爆炸、后台合并永远追不上、查询也被拖慢
+（甚至触发 ClickHouse 的「too many parts」保护而拒写）。把一万条记录攒成一次 INSERT，就只生成<strong>一个</strong>大分片，写入、合并、查询全都轻松。
+所以这一层不是可有可无的优化，而是让 ClickHouse 这种列式存储能扛住高频摄取的<strong>必要前提</strong>——没有这道缓冲带，再好的表设计也会被海量小写拖垮。</p>
+
+
+<h2>两个发车条件，外加一次优雅排空</h2>
+<p>「坐满」和「到点」这两个条件，分别照顾了两种负载，缺一不可：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="高峰期靠 batchSize 坐满即发，低谷期靠 writeInterval 到点即发，关机时 flushAll 排空所有队列">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">谁先到算谁：吞吐与延迟的平衡</text>
+  <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">高峰期</text>
+  <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ 瞬间坐满 batchSize</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① 立刻 flush（按量）</text>
+  <text x="448" y="81" font-size="8" fill="var(--muted)">延迟极低、批批都满，吞吐拉满</text>
+  <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">低谷期</text>
+  <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ 半天才两条，凑不满</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② 到点 flush（按时）</text>
+  <text x="448" y="141" font-size="8" fill="var(--muted)">每 writeInterval 一刷，不让数据干等</text>
+  <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">关机时</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) 排空</text>
+  <text x="448" y="183" font-size="8" fill="var(--muted)">清定时器 + 把所有队列一次写尽，不丢数据</text>
+</svg>
+<div class="figcap"><b>两条件互补 + 优雅关机</b>：高峰靠 <code>batchSize</code> 保吞吐，低谷靠 <code>writeInterval</code> 保延迟上限；<code>shutdown</code> 先 <code>clearInterval</code> 再 <code>flushAll(true)</code> 把内存里剩的全部写尽。<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</div>
+</div>
+
+<table class="t">
+  <tr><th>触发</th><th>条件</th><th>解决什么</th></tr>
+  <tr><td><b>① 按量（batchSize）</b></td><td>某表队列长度 ≥ <code>batchSize</code></td><td>高吞吐时批批写满，把 ClickHouse 的写入效率拉满</td></tr>
+  <tr><td><b>② 按时（writeInterval）</b></td><td>定时器每 <code>writeInterval</code> 毫秒触发 <code>flushAll</code></td><td>低吞吐时给延迟封顶，数据不会无限期滞留内存</td></tr>
+  <tr><td><b>③ 关机排空</b></td><td><code>shutdown()</code> 调 <code>flushAll(true)</code></td><td>进程退出前把缓冲全部落盘，避免丢数据</td></tr>
+</table>
+
+<p>这两个参数 <code>batchSize</code> 与 <code>writeInterval</code> 其实是一对<strong>吞吐 / 延迟旋钮</strong>：调大 batchSize、拉长 interval，批更大、写库更省，但单条记录从「算完」到「能被查到」的延迟变长；
+反之延迟低但写得更碎。Langfuse 把它们做成<strong>环境变量</strong>，让你按自己的流量与时效要求自由去拧，无需改代码。</p>
+
+<p>把一条合并好的记录在写入器里的旅程拆开，正好五步：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>入队</h4><p><code>addToQueue(table, record)</code> 把记录连同 <code>createdAt</code> 时间戳推进该表队列尾部。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>等发车</h4><p>记录在内存队列里排队。期间系统还会记录它<strong>等了多久</strong>（wait_time 指标），用来观测积压。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>触发 flush</h4><p>本表攒到 <code>batchSize</code>（按量）或定时器到点（按时），<code>splice</code> 取出最多一批。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>批量写入</h4><p><code>writeToClickhouse</code> 把整批以 <code>JSONEachRow</code> 一次 <code>INSERT</code>；带 <code>backOff</code> 退避重试。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>成功 / 重试</h4><p>成功则这批出队完成；可重试错误退避再试，超长批拆小重排队——尽量不连累整批。</p></div></div>
+</div>
+
+
+<h2>为什么是单例，为什么敢用内存缓冲</h2>
+<p><code>ClickhouseWriter</code> 是<strong>单例</strong>（私有构造 + <code>getInstance</code>）：整个 worker 进程<strong>只有一个</strong>写入器、一组队列。这很关键——
+只有汇到一处，才能把来自无数任务的零散记录<strong>真正攒成大批</strong>；如果每个任务各写各的，批就永远攒不大。写入时还带<strong>退避重试</strong>（<code>maxAttempts</code>），
+遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和第 12 课摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 单例 + 按表队列</h4><p>一个进程一个 writer，把所有任务的记录汇聚成大批；按表分队列，让 traces/observations/scores 各自满批、并行刷，互不阻塞。</p></div>
+  <div class="col"><h4>🛡️ 批量写 + 退避重试</h4><p>一次 INSERT 写整批（<code>JSONEachRow</code>），失败按 <code>maxAttempts</code> 退避重试；超长批自动拆分。把「写得快」和「写得稳」一起拿下。</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>记录攒在内存队列里，万一 worker 突然崩了，这批不就丢了吗？</strong> 会丢——但这<strong>不要紧</strong>，因为真正的「账本」不在这里。回想第 14 课：
+  每个事件都<strong>原原本本躺在 S3</strong>，而队列任务在写库成功前<strong>不会被确认</strong>。于是 worker 半路崩溃，最多是这批合并结果没落盘，
+  对应的队列任务会<strong>重新投递</strong>、从 S3 重新读事件、重新合并重新写——<strong>数据一条不少</strong>。正因为<strong>持久性已经由上游的 S3 + 队列兜底</strong>，
+  这一层才敢<strong>放心地用易失的内存缓冲去换写入吞吐</strong>。这是一个典型的分层设计智慧：<strong>把持久和高效分给不同层，各自做到极致</strong>——
+  S3 负责「绝不丢」，ClickhouseWriter 负责「写得快」，谁也不必为对方的目标妥协。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><code>ClickhouseWriter</code> 是<strong>单例</strong>，把高频单条记录攒成<strong>大批</strong>再一次 <code>INSERT</code>——因为第 8 课 ClickHouse 偏爱大批量、最怕逐条。</li>
+    <li><strong>每张表一个内存队列</strong>（traces/observations/scores…），<code>addToQueue</code> 喂入，<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</li>
+    <li><strong>两个 flush 触发</strong>：① 队列 ≥ <code>batchSize</code>（按量，保吞吐）② 每 <code>writeInterval</code> 定时器（按时，封顶延迟）；谁先到算谁。</li>
+    <li><code>shutdown</code> 先清定时器、再 <code>flushAll(true)</code> <strong>排空</strong>所有队列，进程退出不丢数据；写入带退避重试、超长批自动拆分。</li>
+    <li>敢用<strong>易失内存缓冲换吞吐</strong>，是因为<strong>持久性由上游 S3 + 队列兜底</strong>（第 14 课）：崩了就重投重算，一条不丢——分层各司其职。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. ClickhouseWriter 为什么要把单条记录攒成大批再写，而不是 IngestionService 算完一条就直接 INSERT 一条？</div>
+  <ol class="opts">
+    <li>因为 ClickHouse 的 MergeTree 每次 INSERT 都落一个磁盘分片(part)，逐条写会产生海量小分片、后台合并追不上、查询变慢甚至触发 too-many-parts 拒写；攒成一批只生成一个大分片</li>
+    <li>因为 IngestionService 不能访问数据库</li>
+    <li>因为单条写会丢数据</li>
+    <li>因为攒批能加密数据</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。第 8 课讲过 ClickHouse 偏爱大批量。MergeTree 每个 INSERT 生成一个数据分片，小分片越多、磁盘元数据和后台合并压力越大。把高频小写翻译成低频大写，是列式存储扛住高频摄取的必要前提，而非可有可无的优化。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. ClickhouseWriter 的两个 flush 触发条件是什么？为什么需要两个而不是一个？</div>
+  <ol class="opts">
+    <li>① 白天 ② 夜间</li>
+    <li>只有一个：队列满才写</li>
+    <li>① 内存满 ② 磁盘满</li>
+    <li>① 某表队列 ≥ batchSize（按量）② 定时器每 writeInterval 触发 flushAll（按时）；谁先到算谁——高峰靠“坐满”保吞吐，低谷靠“到点”保延迟上限，缺一就会要么延迟失控、要么批永远凑不满</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。只靠 batchSize：低谷期凑不满一批，记录会无限期滞留内存、延迟失控。只靠定时器：高峰期一个 interval 内涌入远超一批，仍可能积压。两者“谁先到算谁”互补：高吞吐批批写满拉高效率，低吞吐到点即发封顶延迟。关机时再 flushAll(true) 排空，不丢数据。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 记录攒在内存队列里，worker 崩溃这批就没了。Langfuse 为什么敢用这种“易失”的内存缓冲？</div>
+  <ol class="opts">
+    <li>因为丢一点数据无所谓</li>
+    <li>因为 worker 永远不会崩</li>
+    <li>因为持久性由上游兜底：每个事件原原本本在 S3，队列任务写库成功前不会被确认；崩了任务会重投、从 S3 重读重合并重写，一条不丢——所以这层可放心用内存换吞吐</li>
+    <li>因为内存比磁盘更可靠</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。这是典型的分层智慧：S3（第 14 课）负责“绝不丢”，ClickhouseWriter 负责“写得快”，谁也不为对方妥协。因为队列 + S3 已经保证了持久性与可重放，写入器才敢用易失内存缓冲去换吞吐——崩溃只是触发一次重投重算。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>ClickhouseWriter 把“持久”交给上游 S3、自己专注“高效”，于是敢用易失内存缓冲换吞吐。这种“把不同的质量目标分给不同层、各自做到极致”的思路，你在自己设计系统时会怎么运用？如果某一层既要快又要绝不丢，会带来哪些额外复杂度？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Lesson 15's merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
+handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as Lesson 8 said, ClickHouse
+<strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates
+"high-frequency small writes" into "low-frequency large writes".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🚌 Analogy</div>
+  Think of <code>ClickhouseWriter</code> as a <strong>shuttle bus</strong>. Passengers (records) arrive one by one, but the driver <strong>doesn't depart
+  for each one</strong> — the fuel cost (write overhead) would be absurd. He waits until the <strong>bus is full</strong> (hits batchSize), <strong>or</strong>
+  the departure time arrives (the writeInterval timer fires), then <strong>takes the whole busload across in one trip</strong>. Whichever condition comes
+  first wins: at rush hour the bus fills fast and leaves on "full"; in a lull, few passengers, so it leaves on "time" so the last few don't wait forever.
+  And <strong>each route (each table) has its own bus</strong>: one for traces, one for observations, one for scores, each loading and departing
+  independently, never holding up the others.
+</div>
+
+
+<h2>The buffer: one queue per table, two departure conditions</h2>
+<p>Inside, <code>ClickhouseWriter</code> keeps <strong>an in-memory queue per table</strong> (traces / observations / scores / …). Lesson 15's
+<code>addToQueue</code> pushes the merged record into the matching queue; records <strong>wait in line to depart</strong>. Departure (flush) is triggered by
+<strong>two conditions</strong>, whichever comes first:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter keeps a per-table in-memory queue; records batch-INSERT into ClickHouse when hitting batchSize or when the writeInterval timer fires">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">ClickhouseWriter: batch up → bulk INSERT</text>
+  <rect x="14" y="60" width="120" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="74" y="80" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">IngestionService</text><text x="74" y="95" text-anchor="middle" font-size="7.5" fill="var(--muted)">Lesson 15</text><text x="74" y="120" text-anchor="middle" font-size="8" fill="var(--muted)">addToQueue</text><text x="74" y="134" text-anchor="middle" font-size="8" fill="var(--muted)">pushed one by one</text>
+  <rect x="170" y="48" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[traces] ▢▢▢▢</text><text x="265" y="84" text-anchor="middle" font-size="7.5" fill="var(--muted)">fills to batchSize…</text>
+  <rect x="170" y="104" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[observations] ▢▢▢</text><text x="265" y="140" text-anchor="middle" font-size="7.5" fill="var(--muted)">per-table independent</text>
+  <rect x="170" y="160" width="190" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="265" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">queue[scores] ▢▢</text><text x="265" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">each departs on its own</text>
+  <rect x="398" y="78" width="150" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="473" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">flush trigger</text><text x="473" y="126" text-anchor="middle" font-size="8" fill="var(--accent-ink)">① queue ≥ batchSize</text><text x="473" y="144" text-anchor="middle" font-size="8" fill="var(--accent-ink)">② writeInterval elapsed</text><text x="473" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">whichever first</text>
+  <rect x="584" y="88" width="122" height="84" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="645" y="116" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">ClickHouse</text><text x="645" y="136" text-anchor="middle" font-size="8" fill="var(--muted)">one INSERT</text><text x="645" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">whole batch</text>
+  <line x1="134" y1="120" x2="168" y2="80" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="125" x2="168" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="134" y1="130" x2="168" y2="180" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="360" y1="125" x2="396" y2="125" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,125 387,121 387,129" fill="var(--accent)"/>
+  <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>A batching buffer</b>: one in-memory queue per table; <code>addToQueue</code> feeds it, hitting <code>batchSize</code> flushes that table immediately, or the timer fires <code>flushAll</code> every <code>writeInterval</code>. flush sends the whole batch in one <code>INSERT</code> (<code>JSONEachRow</code>). Source: <code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">two triggers</span></div>
+  <pre class="code"><span class="cm">// Trigger ①: on enqueue, flush this table once it has a full batch</span>
+<span class="fn">addToQueue</span>(tableName, data) {
+  <span class="kw">this</span>.queue[tableName].<span class="fn">push</span>({ createdAt: Date.now(), data });
+  <span class="kw">if</span> (<span class="kw">this</span>.queue[tableName].length &gt;= <span class="kw">this</span>.batchSize)
+    <span class="kw">this</span>.<span class="fn">flush</span>(tableName);          <span class="cm">// depart when full</span>
+}
+<span class="cm">// Trigger ②: a timer, flush all tables every writeInterval ms</span>
+<span class="fn">setInterval</span>(() =&gt; <span class="kw">this</span>.<span class="fn">flushAll</span>(), <span class="kw">this</span>.writeInterval);   <span class="cm">// depart on time</span>
+
+<span class="cm">// flush: take a batch from the queue, bulk INSERT (with backoff retry maxAttempts)</span>
+<span class="kw">const</span> items = entityQueue.<span class="fn">splice</span>(0, fullQueue ? all : <span class="kw">this</span>.batchSize);
+<span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
+</div>
+
+<p>Why does ClickHouse so dread "row-by-row writes"? Back to Lesson 8's storage mechanics: a MergeTree drops a new <strong>data part</strong> on disk for
+every <code>INSERT</code>, then relies on background <strong>merges</strong> to combine small parts into large ones. INSERT each record separately and you
+instantly spawn <strong>a flood of tiny parts</strong> — exploding disk metadata, background merges that never catch up, slowed queries (and even ClickHouse's
+"too many parts" guard rejecting writes). Batch ten thousand records into one INSERT and you create just <strong>one</strong> big part — easy to write,
+merge, and query. So this layer isn't an optional optimization; it's a <strong>precondition</strong> for a columnar store like ClickHouse to withstand
+high-frequency ingestion — without this buffer, even the best table design gets crushed by a deluge of small writes.</p>
+
+
+<h2>Two departure conditions, plus a graceful drain</h2>
+<p>"Full" and "on time" each serve a different load, and both are needed:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="at rush hour flush on batchSize when full, in a lull flush on writeInterval when due, on shutdown flushAll drains all queues">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Whichever first: balancing throughput and latency</text>
+  <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">rush hour</text>
+  <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ fills batchSize instantly</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① flush now (by size)</text>
+  <text x="448" y="81" font-size="8" fill="var(--muted)">low latency, full batches, max throughput</text>
+  <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">lull</text>
+  <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ only two in ages, never fills</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② flush on time</text>
+  <text x="448" y="141" font-size="8" fill="var(--muted)">flush every writeInterval, no waiting forever</text>
+  <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">on shutdown</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) drain</text>
+  <text x="448" y="183" font-size="8" fill="var(--muted)">clear timer + write out every queue, no loss</text>
+</svg>
+<div class="figcap"><b>Complementary conditions + graceful shutdown</b>: rush hour leans on <code>batchSize</code> for throughput, lulls on <code>writeInterval</code> to cap latency; <code>shutdown</code> first <code>clearInterval</code> then <code>flushAll(true)</code> writes out everything left in memory. <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</div>
+</div>
+
+<table class="t">
+  <tr><th>trigger</th><th>condition</th><th>what it solves</th></tr>
+  <tr><td><b>① by size (batchSize)</b></td><td>a table's queue length ≥ <code>batchSize</code></td><td>at high throughput, write full batches, maxing ClickHouse write efficiency</td></tr>
+  <tr><td><b>② by time (writeInterval)</b></td><td>the timer fires <code>flushAll</code> every <code>writeInterval</code> ms</td><td>at low throughput, caps latency so data doesn't linger in memory indefinitely</td></tr>
+  <tr><td><b>③ shutdown drain</b></td><td><code>shutdown()</code> calls <code>flushAll(true)</code></td><td>persist all buffers before the process exits, avoiding data loss</td></tr>
+</table>
+
+<p>The two parameters <code>batchSize</code> and <code>writeInterval</code> are really a pair of <strong>throughput / latency knobs</strong>: a bigger
+batchSize and longer interval mean larger batches and cheaper writes, but a longer delay from "computed" to "queryable" for each record; the reverse means
+lower latency but more fragmented writes. Langfuse makes them <strong>environment variables</strong> so you can tune them to your traffic and freshness
+needs without touching code.</p>
+
+<p>Unpack a merged record's journey through the writer, and it's exactly five steps:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>enqueue</h4><p><code>addToQueue(table, record)</code> pushes the record, with a <code>createdAt</code> timestamp, onto that table's queue tail.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>wait to depart</h4><p>The record waits in the in-memory queue. Meanwhile the system records <strong>how long it waited</strong> (a wait_time metric) to observe backlog.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>trigger flush</h4><p>This table hits <code>batchSize</code> (by size) or the timer fires (by time); <code>splice</code> takes up to a batch.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>bulk write</h4><p><code>writeToClickhouse</code> INSERTs the whole batch as <code>JSONEachRow</code> in one go; with <code>backOff</code> retry.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>success / retry</h4><p>On success the batch is done; retryable errors back off and retry, oversized batches split and requeue — sparing the rest of the batch.</p></div></div>
+</div>
+
+
+<h2>Why a singleton, and why dare to buffer in memory</h2>
+<p><code>ClickhouseWriter</code> is a <strong>singleton</strong> (private constructor + <code>getInstance</code>): one writer, one set of queues per worker
+process. That's crucial — only by converging to one place can scattered records from countless jobs <strong>actually batch up large</strong>; if each job
+wrote on its own, batches would never grow. Writes carry <strong>backoff retry</strong> (<code>maxAttempts</code>): retryable errors back off and retry,
+"string too long" errors <strong>split the batch</strong> and retry — chasing big batches without letting one bad record drag down the whole batch. This
+"<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
+every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 singleton + per-table queues</h4><p>One writer per process gathers all jobs' records into big batches; per-table queues let traces/observations/scores each fill and flush in parallel, never blocking each other.</p></div>
+  <div class="col"><h4>🛡️ bulk write + backoff retry</h4><p>One INSERT per whole batch (<code>JSONEachRow</code>); failures retry with <code>maxAttempts</code> backoff; oversized batches auto-split. "Fast" and "stable" together.</p></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
+  because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
+  until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
+  <strong>redelivered</strong>, re-reads events from S3, re-merges and re-writes — <strong>not a single record lost</strong>. Precisely because
+  <strong>durability is already backstopped by upstream S3 + the queue</strong>, this layer can <strong>safely trade volatile in-memory buffering for write
+  throughput</strong>. A classic layered-design insight: <strong>assign durability and efficiency to different layers, each taken to the extreme</strong> —
+  S3 owns "never lose", ClickhouseWriter owns "write fast", neither compromising for the other's goal.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>ClickhouseWriter</code> is a <strong>singleton</strong> that gathers high-frequency single records into <strong>big batches</strong> for one <code>INSERT</code> — because Lesson 8's ClickHouse prefers large batches and dreads row-by-row.</li>
+    <li><strong>One in-memory queue per table</strong> (traces/observations/scores…); <code>addToQueue</code> feeds it, <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</li>
+    <li><strong>Two flush triggers</strong>: ① queue ≥ <code>batchSize</code> (by size, for throughput) ② every <code>writeInterval</code> timer (by time, capping latency); whichever first.</li>
+    <li><code>shutdown</code> clears the timer then <code>flushAll(true)</code> <strong>drains</strong> all queues so nothing is lost on exit; writes carry backoff retry, oversized batches auto-split.</li>
+    <li>It <strong>dares to trade volatile memory buffering for throughput</strong> because <strong>durability is backstopped by upstream S3 + the queue</strong> (Lesson 14): crash → redeliver and recompute, nothing lost — layers each doing their job.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does ClickhouseWriter batch single records before writing, instead of IngestionService INSERTing each record as soon as it's computed?</div>
+  <ol class="opts">
+    <li>because ClickHouse's MergeTree drops a disk part per INSERT; row-by-row spawns a flood of tiny parts, background merges can't keep up, queries slow, even hitting the too-many-parts guard; one batch makes just one big part</li>
+    <li>because IngestionService can't access the database</li>
+    <li>because single writes lose data</li>
+    <li>because batching encrypts the data</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Lesson 8 noted ClickHouse prefers large batches. Each INSERT creates a MergeTree part; more tiny parts means heavier disk metadata and background merges. Translating high-frequency small writes into low-frequency large ones is a precondition for a columnar store to withstand high-frequency ingestion, not an optional optimization.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. What are ClickhouseWriter's two flush triggers, and why two rather than one?</div>
+  <ol class="opts">
+    <li>① daytime ② nighttime</li>
+    <li>only one: write when the queue is full</li>
+    <li>① memory full ② disk full</li>
+    <li>① a table's queue ≥ batchSize (by size) ② a timer fires flushAll every writeInterval (by time); whichever first — rush hour uses 'full' for throughput, lulls use 'on time' to cap latency; with only one, either latency runs away or batches never fill</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. batchSize alone: in a lull a batch never fills, so records linger in memory indefinitely with runaway latency. Timer alone: at peak far more than a batch floods in per interval, risking backlog. The two complement 'whichever first': high throughput writes full batches for efficiency, low throughput flushes on time to cap latency. On shutdown, flushAll(true) drains everything, losing nothing.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Records sit in an in-memory queue, so a worker crash loses that batch. Why does Langfuse dare to use such 'volatile' in-memory buffering?</div>
+  <ol class="opts">
+    <li>because losing some data is fine</li>
+    <li>because the worker never crashes</li>
+    <li>because durability is backstopped upstream: every event sits verbatim in S3, and the queue job isn't acked until the DB write succeeds; on crash the job is redelivered, re-reads from S3, re-merges and re-writes, losing nothing — so this layer can trade memory for throughput</li>
+    <li>because memory is more reliable than disk</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Classic layered wisdom: S3 (Lesson 14) owns 'never lose', ClickhouseWriter owns 'write fast', neither compromising for the other. Because the queue + S3 already guarantee durability and replayability, the writer can trade volatile memory buffering for throughput — a crash merely triggers a redeliver-and-recompute.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>ClickhouseWriter delegates durability to upstream S3 and focuses on efficiency, so it dares to trade volatile memory buffering for throughput. How would you apply this 'assign different quality goals to different layers, each taken to the extreme' approach in your own designs? If one layer must be both fast and never-lose, what extra complexity does that bring?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="16-token-counting-cost.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">Token 计数与成本</span><span class="lang-en">Token counting &amp; cost</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>
