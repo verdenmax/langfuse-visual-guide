@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 15 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 16 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -352,6 +352,7 @@ details[open] > summary { list-style: none; }
   <li>Event types & merge semantics</li>
   <li>The ingestion queue</li>
   <li>IngestionService: the merge heart</li>
+  <li>Token counting & cost</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -3730,6 +3731,200 @@ columnar store; Lesson 17 shows how the writer batches per table and flushes on 
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>IngestionService splits 'merge' from 'persist', and assigns 'immediate correctness' to the write side and 'eventual uniqueness' to the storage side. Have you seen this 'one goal, two layers each owning a stretch, meshed by a version stamp' defense-in-depth elsewhere? How do you weigh its benefits against the added complexity?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Token counting & cost</h1>
+
+<p class="lead">
+At step 6 of Lesson 15's merge we said in passing: "compute tokens & cost". This lesson unfolds that step. The core is a principle running through all
+of Langfuse — <strong>provided beats computed</strong>: the usage / cost you (or the LLM provider) report are <strong>always trusted first</strong>; only
+when you report <strong>nothing</strong> does Langfuse roll up its sleeves: <strong>count tokens with a tokenizer</strong>, <strong>price it from a rate
+card</strong>. This is the origin of Lesson 3's two field sets <code>provided_*</code> and <code>usage_details</code>, and the reason Lesson 8's
+<code>provided_*</code> Map columns exist.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📞 Analogy</div>
+  Think of a <strong>phone bill</strong>. If the carrier already <strong>itemized</strong> it (how many minutes you used, the charge for each), the system
+  just <strong>files it as is</strong> — that's provided. But if all you have is a pile of <strong>call logs</strong> with no amounts, the system must do it
+  itself: first <strong>count the call durations</strong> (tokenize, count tokens), then pull up this plan's <strong>rate card</strong> (model prices) and
+  <strong>compute what's owed</strong> — that's computed. Note: the moment the carrier gives even one amount, the system <strong>trusts its bill
+  wholesale</strong>, never mixing "its own estimate" with "the carrier's figure" — mixing the two scrambles the books.
+</div>
+
+
+<h2>getGenerationUsage: a four-step pipeline</h2>
+<p>Once the observation is merged, <code>getGenerationUsage</code> takes over, threading "model → tokens → price → cost" into one pipeline. Each step's
+input may come from your reported <code>provided_*</code>, or be backfilled by the system:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="getGenerationUsage four steps: findModel regex-matches the model, getUsageUnits takes or counts tokens, matchPricingTier picks the tier, calculateUsageCosts computes cost">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">getGenerationUsage: model → tokens → price → cost</text>
+  <rect x="16" y="62" width="160" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="96" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① findModel</text><text x="96" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">provided_model_name</text><text x="96" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">~ match_pattern regex</text>
+  <rect x="192" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="272" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">② getUsageUnits</text><text x="272" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">use provided if any</text><text x="272" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">else tokenize-count</text>
+  <rect x="368" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="448" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ matchPricingTier</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">pick tier by usage</text><text x="448" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">unit price per usage type</text>
+  <rect x="544" y="62" width="162" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="625" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">④ calculateUsageCosts</text><text x="625" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">use provided cost if any</text><text x="625" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">else price×units</text>
+  <line x1="176" y1="94" x2="190" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="190,94 182,90 182,98" fill="var(--faint)"/>
+  <line x1="352" y1="94" x2="366" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="366,94 358,90 358,98" fill="var(--faint)"/>
+  <line x1="528" y1="94" x2="542" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="542,94 534,90 534,98" fill="var(--faint)"/>
+  <rect x="160" y="160" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="1.5"/><text x="360" y="178" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">outputs: usage_details · cost_details · total_cost</text><text x="360" y="192" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ internal_model_id · pricing tier id/name</text>
+  <line x1="360" y1="126" x2="360" y2="158" stroke="var(--faint)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="360,158 356,150 364,150" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>A four-step pipeline</b>: <code>findModel</code> regex-matches the model name to a price → <code>getUsageUnits</code> takes/counts tokens → <code>matchPricingTier</code> picks the tier → <code>calculateUsageCosts</code> computes the cost. The outputs land in the observation's <code>usage_details</code>/<code>cost_details</code>. Source: <code>IngestionService/index.ts:1057-1143</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts</span><span class="ln">getGenerationUsage</span></div>
+  <pre class="code"><span class="cm">// ① model match: regex-match provided_model_name against the models table</span>
+<span class="kw">const</span> { model, pricingTiers } = provided_model_name
+  ? <span class="kw">await</span> <span class="fn">findModel</span>({ projectId, model: provided_model_name })
+  : { model: <span class="kw">null</span>, pricingTiers: [] };
+
+<span class="cm">// ② take/count tokens; ③ pick tier; ④ compute cost</span>
+<span class="kw">const</span> usage = <span class="kw">await</span> <span class="fn">getUsageUnits</span>(observationRecord, model);
+<span class="kw">const</span> tier  = <span class="fn">matchPricingTier</span>(pricingTiers, usage.usage_details);
+<span class="kw">const</span> cost  = IngestionService.<span class="fn">calculateUsageCosts</span>(tier.prices, obs, usage.usage_details);
+
+<span class="kw">return</span> { ...usage, ...cost, internal_model_id: model?.id, /* tier */ };</pre>
+</div>
+
+
+<h2>provided beats computed: two forks</h2>
+<p>Tokens and cost each have a "provided or computed" fork, with identical rules: <strong>if you gave it, use yours; only if you didn't does the system
+compute</strong>. But "the system computes" has <strong>preconditions</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="provided and computed forks: if the user provided usage/cost use it directly, otherwise tokenize-count and price when conditions are met">
+<text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">tokens / cost: provided first, computed as backup</text>
+<rect x="280" y="40" width="160" height="42" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">Did you report it?</text><text x="360" y="74" text-anchor="middle" font-size="7.5" fill="var(--muted)">provided_usage / provided_cost</text>
+<rect x="40" y="118" width="290" height="96" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">✅ given → use directly (provided)</text><text x="185" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">usage: take your token counts as-is</text><text x="185" y="174" text-anchor="middle" font-size="8" fill="var(--accent-ink)">cost: any one point given → all yours</text><text x="185" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">never mixed with system estimate</text>
+<rect x="390" y="118" width="290" height="96" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="535" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">🤖 not given → system computes</text><text x="535" y="156" text-anchor="middle" font-size="8" fill="var(--muted)">precond: model matched AND level≠ERROR</text><text x="535" y="172" text-anchor="middle" font-size="8" fill="var(--muted)">tokens: count via model.tokenizerId</text><text x="535" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">cost: Σ price[usageType] × units</text>
+<line x1="320" y1="78" x2="200" y2="116" stroke="var(--accent)" stroke-width="1.6"/><polygon points="200,116 205,107 210,116" fill="var(--accent)"/><text x="238" y="104" text-anchor="middle" font-size="8" fill="var(--accent-ink)">yes</text>
+<line x1="400" y1="78" x2="520" y2="116" stroke="var(--blue)" stroke-width="1.6"/><polygon points="520,116 510,116 515,107" fill="var(--blue)"/><text x="482" y="104" text-anchor="middle" font-size="8" fill="var(--ink)">no</text>
+<text x="360" y="232" text-anchor="middle" font-size="8.5" fill="var(--faint)">estimation is a backup, never overrides your reported real values — trusted source first</text>
+</svg>
+<div class="figcap"><b>Estimation backstops, never overrides</b>: provided always wins; computed happens only when all three hold — model matched + non-ERROR + you provided nothing. Source: <code>getUsageUnits</code> (index.ts:1145+, tokenization condition) and <code>calculateUsageCosts</code> ("any provided cost point disables computation").</div>
+</div>
+
+<table class="t">
+<tr><th>dimension</th><th>provided (you reported)</th><th>computed (system, only if you didn't)</th></tr>
+<tr><td><b>token usage</b></td><td>take <code>provided_usage_details</code> as-is</td><td>if model matched + level≠ERROR, tokenize-count input/output via <code>tokenizerId</code></td></tr>
+<tr><td><b>cost</b></td><td>any cost point given → use <code>provided_cost_details</code> wholesale, compute nothing else</td><td>per usage type: <code>price × units</code>, summed to <code>total_cost</code></td></tr>
+<tr><td><b>why</b></td><td>more trustworthy source (LLM APIs often return exact token counts)</td><td>a reasonable estimate absent a source; never mixed with provided</td></tr>
+</table>
+
+<p>In real instrumentation, the two forks map to two very common integration styles:</p>
+
+<div class="cols">
+<div class="col"><h4>🅰️ Official SDK: provided</h4><p>You use the official OpenAI / Anthropic SDK; the response body carries <code>usage</code> (exact prompt/completion token counts). The SDK reports it as-is and Langfuse <strong>takes it whole</strong> — accurate, and no tokenization cost. The ideal case.</p></div>
+<div class="col"><h4>🅱️ Raw HTTP / homegrown: computed</h4><p>You hit a model over raw HTTP, or via a gateway that doesn't return usage, so there's no token count. As long as the model name matches and it isn't ERROR, Langfuse <strong>tokenizes and prices it for you</strong>, so you still get usage and cost.</p></div>
+</div>
+
+<p>A concrete number: a <code>gpt-4o</code> call, the computed path counts input 1,000 tokens, output 500; the rate card prices this model at $2.5/1M input,
+$10/1M output, giving <code>cost_details = { input: 0.0025, output: 0.005, total: 0.0075 }</code>. If your SDK already reported
+<code>usage = {input:1000, output:500}</code>, step ② skips tokenization and uses those directly; if you also reported <code>cost</code>, step ④ skips
+even the multiplication and trusts your cost entirely. <strong>Compute as little as possible, trust you whenever possible.</strong></p>
+
+<p>Step ③ <code>matchPricingTier</code> is a newer fine-grained capability: a model can have several <strong>pricing tiers</strong>, each with a set of
+<strong>conditions</strong> — sum the usage matching some pattern and compare to a threshold (<code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>…, multiple
+conditions AND-ed). So "over 128k tokens → long-context higher price" or "cached tokens → discounted price" — <strong>usage-volume tiered pricing</strong> —
+can be expressed precisely. The matched tier provides per-usage-type unit prices for step ④. Match no tier, and it falls back to the model's base price —
+tiers just add flexibility on top of "one flat price".</p>
+
+
+<h2>Model matching: one regex to the price</h2>
+<p>The computed path begins by mapping your reported <strong>model-name string</strong> (e.g. <code>gpt-4o-2024-08-06</code>) to a <strong>price
+record</strong>. <code>findModel</code> does this on Postgres's <code>models</code> table, via a single regex match:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">how it matches</span><span class="name">model ~ match_pattern</span></div><div class="ld">Each model row carries a <strong>regex</strong> <code>match_pattern</code>; Postgres's <code>~</code> operator tests your model name against it. The regex allows case-insensitivity, an optional provider prefix, and other flexible forms.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">who wins</span><span class="name">project model &gt; global</span></div><div class="ld"><code>WHERE project_id = ? OR project_id IS NULL</code>, then <code>ORDER BY project_id</code> — your <strong>custom model prices override the built-in ones</strong>, handy for overriding default pricing or adding your own models.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">which one</span><span class="name">latest start_date</span></div><div class="ld"><code>ORDER BY start_date DESC</code> + <code>LIMIT 1</code>: prices change over time, so matching takes the one with the <strong>most recent effective date</strong> — historical data priced at its time, new data at the new price.</div></div>
+</div>
+
+<p>Beyond price, a matched model row has a key field <code>tokenizer_id</code> — it decides <strong>which tokenizer</strong> counts tokens when computing
+(different model families tokenize differently). Tokenization itself lives in <code>worker/src/features/tokenisation</code>, even running in a
+<strong>separate worker thread</strong> (<code>tokenCountAsync</code>) so large-text tokenization doesn't block the main flow; on failure it falls back to
+synchronous <code>tokenCount</code>. This too is the write-side origin of Lesson 8's split between <code>provided_*</code> and computed columns: provided
+goes into <code>provided_usage_details</code>, the computed into <code>usage_details</code>, never polluting each other.</p>
+
+<p>Look at one real built-in rule (Langfuse ships ~150+ model prices): <code>gpt-4o</code>'s <code>match_pattern</code> is
+<code>(?i)^(openai/)?(gpt-4o)$</code> — case-insensitive, with or without the <code>openai/</code> prefix, matching <code>gpt-4o</code> exactly. Dated
+versions (like <code>gpt-4o-2024-05-13</code>) have their <strong>own separate price rows</strong>, since pricing can differ by release date. This "regex +
+built-in rate card" lets Langfuse recognize mainstream models out of the box, and you can add your own rows in <code>models</code> to override or extend —
+the regex gives flexibility, <code>project_id</code> precedence gives override rights, <code>start_date</code> gives a time dimension. Together they make a
+<strong>living pricing system</strong> that evolves with the model market.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why so adamant that "provided beats computed" — rather than averaging the two, or taking the larger?</strong> Because it's a stance on
+  <strong>data trustworthiness</strong>. The token count an LLM provider returns in its response is the <strong>authoritative basis for billing</strong> — it
+  knows how it tokenized, far more accurately than Langfuse estimating from outside with a generic tokenizer. The system's job is to <strong>record
+  faithfully</strong>, not to "correct" an authoritative source with its own estimate. So the rule is unambiguous: <strong>if provided, use it verbatim;
+  even for cost, "give one point and all of it is yours"</strong>, never mixing in estimates — because a half-real, half-estimated bill is more dangerous
+  than a pure estimate (you'd mistake it for exact). Computed appears only in an <strong>information vacuum</strong> (you gave nothing), as a
+  <strong>reasonable backstop</strong>. Trust first, estimate as backup, keep the two isolated — this principle pervades every corner of usage and cost.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>getGenerationUsage</code> in four steps: <code>findModel</code> (match model/price) → <code>getUsageUnits</code> (take/count tokens) → <code>matchPricingTier</code> (pick tier) → <code>calculateUsageCosts</code> (compute cost).</li>
+    <li><strong>Provided beats computed</strong>: report usage/cost and it's used as-is; for <strong>cost, any one provided point means all yours</strong>, never mixed with estimates.</li>
+    <li>Computed has preconditions: <strong>model matched + level≠ERROR + you provided nothing</strong>, then tokenize-count input/output via <code>tokenizerId</code>.</li>
+    <li><code>findModel</code>: Postgres <code>~ match_pattern</code> regex; <strong>project models override global</strong>, latest <code>start_date</code> wins — history at old price, new data at new.</li>
+    <li>Tokenization in <code>worker/src/features/tokenisation</code>, optionally on a separate thread (<code>tokenCountAsync</code>); results land in Lesson 8's <code>provided_*</code> vs <code>usage_details</code> columns, never polluting each other.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Your SDK reported usage={input:1000, output:500} and cost={total: 0.01}. How does Langfuse handle the token counts and cost?</div>
+  <ol class="opts">
+    <li>averages your reported values with the system's estimate</li>
+    <li>uses yours directly: tokens skip tokenization and use your 1000/500; since you gave at least one cost point, it uses your 0.01 wholesale and doesn't even consult the rate card — provided beats computed</li>
+    <li>ignores your values and computes everything itself</li>
+    <li>re-tokenizes to verify your counts, then recomputes cost from the rate card</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Provided beats computed runs through all of Langfuse. getUsageUnits uses provided_usage directly when present; calculateUsageCosts, seeing 'any cost point given', uses provided wholesale and computes nothing else. The system never mixes estimates with your real reported values, since a half-real, half-estimated bill is more dangerous.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. You called a model over raw HTTP with no usage in the event. When will Langfuse tokenize-count for you?</div>
+  <ol class="opts">
+    <li>only when level=ERROR</li>
+    <li>all three hold: the model name regex-matches a model row, the observation isn't ERROR, and you provided no usage — then it counts input/output tokens using that model's tokenizerId</li>
+    <li>only on the paid plan</li>
+    <li>always, unconditionally</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Computed is a precondition-gated backstop: a matched model (so it knows which tokenizer and price), non-ERROR (no point counting a failed generation), and no provided usage. Missing any one, no tokenization. It counts via model.tokenizerId, in worker/src/features/tokenisation, optionally on a separate thread to avoid blocking.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. When findModel matches a model name to a price, if a project customized gpt-4o's price while a built-in gpt-4o also exists, which is used?</div>
+  <ol class="opts">
+    <li>the project's custom one: the SQL is project_id = ? OR project_id IS NULL, then ORDER BY project_id so project rows rank before global (NULL); among those it also takes the latest start_date</li>
+    <li>adds the two prices together</li>
+    <li>picks one at random</li>
+    <li>the built-in; the customization is ignored</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. findModel matches via Postgres regex ~ match_pattern, the WHERE takes both project and global (project_id IS NULL) models, ORDER BY project_id prioritizes custom, start_date DESC takes the latest effective price, LIMIT 1. So projects can override defaults or add own models; history is priced at its time, new data at the new price.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Trusted source first, estimation only as backup, the two strictly isolated' — this principle isn't only for tokens/cost. In your own systems, where do 'authoritative data from users/upstream' and 'local inference/estimates' coexist? How would you design their precedence and isolation to avoid the misjudgment of half-real, half-estimated data?</li>
   </ul>
 </div>
 </div>

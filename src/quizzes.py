@@ -1095,6 +1095,76 @@ QUIZZES = {
             },
         ],
     },
+    "16-token-counting-cost.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "你的 SDK 上报了 usage={input:1000, output:500}，也报了 cost={total: 0.01}。Langfuse 会怎么处理 token 数和成本？",
+                    "en": "Your SDK reported usage={input:1000, output:500} and cost={total: 0.01}. How does Langfuse handle the token counts and cost?",
+                },
+                "opts": [
+                    {
+                        "zh": "都直接采用你报的：token 跳过分词、用你的 1000/500；成本因为你给了至少一项，全用你的 0.01，连价目表都不查——provided 压倒 computed",
+                        "en": "uses yours directly: tokens skip tokenization and use your 1000/500; since you gave at least one cost point, it uses your 0.01 wholesale and doesn't even consult the rate card — provided beats computed",
+                    },
+                    {"zh": "重新分词验证你的 token 数，再按价目表重算成本", "en": "re-tokenizes to verify your counts, then recomputes cost from the rate card"},
+                    {"zh": "把你报的和系统估算的取平均", "en": "averages your reported values with the system's estimate"},
+                    {"zh": "忽略你报的，一律自己算", "en": "ignores your values and computes everything itself"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "provided 压倒 computed 是贯穿 Langfuse 的原则。getUsageUnits 见有 provided_usage 就直接用；calculateUsageCosts 见“给了任一 cost 点”就全用 provided、不再算别的。系统从不把估算和你报的真实值混用，因为半真半估的账更危险。",
+                    "en": "Provided beats computed runs through all of Langfuse. getUsageUnits uses provided_usage directly when present; calculateUsageCosts, seeing 'any cost point given', uses provided wholesale and computes nothing else. The system never mixes estimates with your real reported values, since a half-real, half-estimated bill is more dangerous.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "你用裸 HTTP 调了一个模型，埋点里没有任何 usage。什么情况下 Langfuse 会替你分词数 token？",
+                    "en": "You called a model over raw HTTP with no usage in the event. When will Langfuse tokenize-count for you?",
+                },
+                "opts": [
+                    {
+                        "zh": "三条同时满足：模型名能正则匹配到一条 model 记录、observation 不是 ERROR、且你没提供 usage——这时用该模型的 tokenizerId 对 input/output 分词计数",
+                        "en": "all three hold: the model name regex-matches a model row, the observation isn't ERROR, and you provided no usage — then it counts input/output tokens using that model's tokenizerId",
+                    },
+                    {"zh": "任何时候都会无条件分词", "en": "always, unconditionally"},
+                    {"zh": "只有付费版才会分词", "en": "only on the paid plan"},
+                    {"zh": "只有当 level=ERROR 时才分词", "en": "only when level=ERROR"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "computed 是有前提的兜底：匹配到模型（才知道用哪种 tokenizer、什么价）、非 ERROR（错误生成没必要算）、且无 provided。三者缺一就不分词。分词用 model.tokenizerId，在 worker/src/features/tokenisation 里、可走独立线程以免阻塞。",
+                    "en": "Computed is a precondition-gated backstop: a matched model (so it knows which tokenizer and price), non-ERROR (no point counting a failed generation), and no provided usage. Missing any one, no tokenization. It counts via model.tokenizerId, in worker/src/features/tokenisation, optionally on a separate thread to avoid blocking.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "findModel 把模型名匹配到价目时，如果一个项目自定义了 gpt-4o 的价格，同时内置也有 gpt-4o，会用哪条？",
+                    "en": "When findModel matches a model name to a price, if a project customized gpt-4o's price while a built-in gpt-4o also exists, which is used?",
+                },
+                "opts": [
+                    {
+                        "zh": "用项目自定义的：SQL 是 project_id = ? OR project_id IS NULL，再 ORDER BY project_id，项目模型排在全局(NULL)前面；同名下还按 start_date 最新取一条",
+                        "en": "the project's custom one: the SQL is project_id = ? OR project_id IS NULL, then ORDER BY project_id so project rows rank before global (NULL); among those it also takes the latest start_date",
+                    },
+                    {"zh": "用内置的，自定义会被忽略", "en": "the built-in; the customization is ignored"},
+                    {"zh": "随机选一条", "en": "picks one at random"},
+                    {"zh": "两条价格相加", "en": "adds the two prices together"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "findModel 用 Postgres 正则 ~ match_pattern 匹配，WHERE 同时取项目模型与全局(project_id IS NULL)，ORDER BY project_id 让自定义优先、start_date DESC 取最新生效价、LIMIT 1。于是项目能覆盖默认定价或加自有模型，历史数据按当时价、新数据按新价。",
+                    "en": "findModel matches via Postgres regex ~ match_pattern, the WHERE takes both project and global (project_id IS NULL) models, ORDER BY project_id prioritizes custom, start_date DESC takes the latest effective price, LIMIT 1. So projects can override defaults or add own models; history is priced at its time, new data at the new price.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“可信来源优先、估算只做兜底、两者严格隔离”——这条原则不止用于 token/成本。想想你自己的系统里，有没有“用户/上游给的权威数据”和“本地推断/估算”并存的场景？你会怎么设计它们的优先级与隔离，避免半真半估造成的误判？",
+                "en": "'Trusted source first, estimation only as backup, the two strictly isolated' — this principle isn't only for tokens/cost. In your own systems, where do 'authoritative data from users/upstream' and 'local inference/estimates' coexist? How would you design their precedence and isolation to avoid the misjudgment of half-real, half-estimated data?",
+            },
+        ],
+    },
 }
 
 

@@ -79,6 +79,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("15-ingestion-service.html", "IngestionService：合并的心脏", "IngestionService: the merge heart",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("16-token-counting-cost.html", "Token 计数与成本", "Token counting & cost",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -592,6 +594,8 @@ SUBTITLES = {
                                 "Redis+BullMQ; queue holds fileKey pointer; S3 stores body; sharding; primary/secondary; retry backoff"),
     "15-ingestion-service.html": ("mergeAndWrite 分派 · 双输入(S3 事件+CH 记录) · mergeRecords 左折叠 · 三条不覆盖规则 · event_ts 版本戳 · 只入队不直写",
                                   "mergeAndWrite dispatch; two inputs (S3 events + CH record); mergeRecords left-fold; three don't-overwrite rules; event_ts stamp; enqueue not direct-write"),
+    "16-token-counting-cost.html": ("provided 压倒 computed · findModel 正则匹配 · tokenizer 分词 · matchPricingTier · price×units · 项目价覆盖全局",
+                                    "provided beats computed; findModel regex match; tokenizer counting; matchPricingTier; price×units; project price overrides global"),
 }
 
 

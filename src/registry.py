@@ -26,4 +26,5 @@ CONTENT = {
     "13-event-types-merge.html": part3.LESSON_13,
     "14-ingestion-queue.html": part3.LESSON_14,
     "15-ingestion-service.html": part3.LESSON_15,
+    "16-token-counting-cost.html": part3.LESSON_16,
 }

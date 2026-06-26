@@ -1312,3 +1312,297 @@ columnar store; Lesson 17 shows how the writer batches per table and flushes on 
 </div>
 """)
 LESSON_15 = {"zh": "\n".join(_ZH15), "en": "\n".join(_EN15)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L16 · Token 计数与成本 / Token counting & cost
+# ══════════════════════════════════════════════════════════════════════
+_ZH16 = []
+_EN16 = []
+
+_ZH16.append(r"""
+<p class="lead">
+第 15 课合并到第 6 步时一句带过：「算 token 与成本」。这一课就把那一步摊开。核心是一条贯穿 Langfuse 的原则——<strong>provided 压倒 computed</strong>：
+你（或 LLM 提供商）报上来的 usage / cost <strong>一律优先采信</strong>；只有你<strong>什么都没报</strong>时，Langfuse 才亲自动手：用<strong>分词器数 token</strong>、
+按<strong>价目表算钱</strong>。这正是第 3 课 <code>provided_*</code> 与 <code>usage_details</code> 两套字段的来历，也是第 8 课那些 <code>provided_*</code> Map 列存在的理由。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📞 生活类比</div>
+  把它想成<strong>话费账单</strong>。如果运营商已经把账单<strong>逐项列好</strong>（你这月打了多少分钟、各花多少钱），系统直接<strong>照单归档</strong>——这就是 provided。
+  可如果你手里只有一堆<strong>通话记录</strong>、没有金额，系统就得自己来：先<strong>数通话时长</strong>（分词、数 token），再翻出这个套餐的<strong>资费表</strong>（模型价格）
+  <strong>算出应付多少</strong>——这就是 computed。注意：只要运营商给了哪怕一项金额，系统就<strong>全盘采信它的账单</strong>，绝不把「自己估的」和「运营商给的」掺着用——
+  两套数字混在一起，账就乱了。
+</div>
+""")
+
+# (L16 sections appended below)
+
+_ZH16.append(r"""
+<h2>getGenerationUsage：四步流水线</h2>
+<p>合并出 observation 后，<code>getGenerationUsage</code> 接手，把「模型 → token → 价格 → 成本」串成一条流水线。每一步的输入都可能来自你上报的 <code>provided_*</code>，
+也可能由系统补算：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="getGenerationUsage 四步：findModel 正则匹配模型、getUsageUnits 取或算 token、matchPricingTier 选价目、calculateUsageCosts 算成本">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">getGenerationUsage：模型 → token → 价格 → 成本</text>
+  <rect x="16" y="62" width="160" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="96" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① findModel</text><text x="96" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">provided_model_name</text><text x="96" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">~ match_pattern 正则</text>
+  <rect x="192" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="272" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">② getUsageUnits</text><text x="272" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">有 provided 就用</text><text x="272" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">否则分词数 token</text>
+  <rect x="368" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="448" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ matchPricingTier</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">按 usage 选价目层</text><text x="448" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">每种用量一个单价</text>
+  <rect x="544" y="62" width="162" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="625" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">④ calculateUsageCosts</text><text x="625" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">有 provided cost 就用</text><text x="625" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">否则 price×units</text>
+  <line x1="176" y1="94" x2="190" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="190,94 182,90 182,98" fill="var(--faint)"/>
+  <line x1="352" y1="94" x2="366" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="366,94 358,90 358,98" fill="var(--faint)"/>
+  <line x1="528" y1="94" x2="542" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="542,94 534,90 534,98" fill="var(--faint)"/>
+  <rect x="160" y="160" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="1.5"/><text x="360" y="178" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">产物：usage_details · cost_details · total_cost</text><text x="360" y="192" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ internal_model_id · 价目层 id/名</text>
+  <line x1="360" y1="126" x2="360" y2="158" stroke="var(--faint)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="360,158 356,150 364,150" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>一条四步流水线</b>：<code>findModel</code> 用正则把模型名匹配到价目 → <code>getUsageUnits</code> 取/算 token → <code>matchPricingTier</code> 选价目层 → <code>calculateUsageCosts</code> 算钱。产物写进 observation 的 <code>usage_details</code>/<code>cost_details</code>。源码：<code>IngestionService/index.ts:1057-1143</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts</span><span class="ln">getGenerationUsage</span></div>
+  <pre class="code"><span class="cm">// ① 模型匹配：拿 provided_model_name 去 models 表正则匹配</span>
+<span class="kw">const</span> { model, pricingTiers } = provided_model_name
+  ? <span class="kw">await</span> <span class="fn">findModel</span>({ projectId, model: provided_model_name })
+  : { model: <span class="kw">null</span>, pricingTiers: [] };
+
+<span class="cm">// ② 取/算 token；③ 选价目层；④ 算成本</span>
+<span class="kw">const</span> usage = <span class="kw">await</span> <span class="fn">getUsageUnits</span>(observationRecord, model);
+<span class="kw">const</span> tier  = <span class="fn">matchPricingTier</span>(pricingTiers, usage.usage_details);
+<span class="kw">const</span> cost  = IngestionService.<span class="fn">calculateUsageCosts</span>(tier.prices, obs, usage.usage_details);
+
+<span class="kw">return</span> { ...usage, ...cost, internal_model_id: model?.id, /* 价目层 */ };</pre>
+</div>
+""")
+
+# (provided vs computed section below)
+
+_ZH16.append(r"""
+<h2>provided 压倒 computed：两条岔路</h2>
+<p>token 和成本各有一条「provided 还是 computed」的岔路，规则一模一样：<strong>你给了，就用你的；你没给，系统才算</strong>。但「系统才算」是有<strong>前提</strong>的。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="provided 与 computed 两条岔路：用户提供 usage/cost 则直接采用，否则在满足条件时分词计数并按价目计算">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">token / 成本：provided 优先，computed 兜底</text>
+  <rect x="280" y="40" width="160" height="42" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">你上报了吗？</text><text x="360" y="74" text-anchor="middle" font-size="7.5" fill="var(--muted)">provided_usage / provided_cost</text>
+  <rect x="40" y="118" width="290" height="96" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">✅ 给了 → 直接采用（provided）</text><text x="185" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">usage：原样收下你的 token 数</text><text x="185" y="174" text-anchor="middle" font-size="8" fill="var(--accent-ink)">cost：只要给了任一项，全用你的</text><text x="185" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">绝不和系统估算掺用</text>
+  <rect x="390" y="118" width="290" height="96" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="535" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">🤖 没给 → 系统补算（computed）</text><text x="535" y="156" text-anchor="middle" font-size="8" fill="var(--muted)">前提：匹配到模型 且 level≠ERROR</text><text x="535" y="172" text-anchor="middle" font-size="8" fill="var(--muted)">token：用 model.tokenizerId 分词计数</text><text x="535" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">cost：Σ 价格[用量类型] × 数量</text>
+  <line x1="320" y1="78" x2="200" y2="116" stroke="var(--accent)" stroke-width="1.6"/><polygon points="200,116 205,107 210,116" fill="var(--accent)"/><text x="238" y="104" text-anchor="middle" font-size="8" fill="var(--accent-ink)">是</text>
+  <line x1="400" y1="78" x2="520" y2="116" stroke="var(--blue)" stroke-width="1.6"/><polygon points="520,116 510,116 515,107" fill="var(--blue)"/><text x="482" y="104" text-anchor="middle" font-size="8" fill="var(--ink)">否</text>
+  <text x="360" y="232" text-anchor="middle" font-size="8.5" fill="var(--faint)">估算只是兜底，永远不会覆盖你上报的真实值——可信来源优先</text>
+</svg>
+<div class="figcap"><b>估算是兜底，不是覆盖</b>：provided 永远优先；computed 只在「匹配到模型 + 非 ERROR + 你没提供」三条同时满足时才发生。源码：<code>getUsageUnits</code>（index.ts:1145+，分词条件）与 <code>calculateUsageCosts</code>（「给了任一 cost 点就不再算」）。</div>
+</div>
+
+<table class="t">
+  <tr><th>维度</th><th>provided（你上报）</th><th>computed（系统补算，仅当你没给）</th></tr>
+  <tr><td><b>token 用量</b></td><td>原样采用 <code>provided_usage_details</code></td><td>匹配到模型 + level≠ERROR 时，用 <code>tokenizerId</code> 对 input/output 分词计数</td></tr>
+  <tr><td><b>成本</b></td><td>给了任一 cost 点 → 全用 <code>provided_cost_details</code>，不再算别的</td><td>对每种用量：<code>价格 × 数量</code>，加总为 <code>total_cost</code></td></tr>
+  <tr><td><b>为什么这样</b></td><td>来源更可信（LLM API 常返回精确 token 数）</td><td>无来源时的合理估计，不能与 provided 混用</td></tr>
+</table>
+
+<p>落到真实埋点里，这两条岔路对应两种很常见的接入方式：</p>
+
+<div class="cols">
+  <div class="col"><h4>🅰️ 官方 SDK：走 provided</h4><p>你用 OpenAI / Anthropic 官方 SDK，响应体里自带 <code>usage</code>（精确的 prompt/completion token 数）。SDK 把它原样上报，Langfuse <strong>照单全收</strong>——既准确又省去分词开销。这是最理想的情况。</p></div>
+  <div class="col"><h4>🅱️ 裸 HTTP / 自建：走 computed</h4><p>你直接拼 HTTP 调一个模型、或用了不返回 usage 的网关，埋点里没有 token 数。只要模型名能匹配上、且不是 ERROR，Langfuse 就<strong>替你分词数 token、按价目算钱</strong>，让你照样有用量和成本可看。</p></div>
+</div>
+
+<p>举个具体的数：一次 <code>gpt-4o</code> 调用，computed 路径数出 input 1,000 token、output 500 token；价目表里这个模型 input 单价 $2.5/百万、output $10/百万，
+于是 <code>cost_details = { input: 0.0025, output: 0.005, total: 0.0075 }</code>。如果你的 SDK 本就报了 <code>usage = {input:1000, output:500}</code>，
+第②步就跳过分词、直接用这两个数；如果你连 <code>cost</code> 也报了，第④步连乘法都省了，整条成本直接采信你的。<strong>能少算就少算，能信你就信你</strong>。</p>
+
+<p>第③步 <code>matchPricingTier</code> 是较新的精细化能力：一个模型可以有多个<strong>价目层</strong>，每层带一组<strong>条件</strong>——把 usage 里匹配某模式的用量<strong>求和</strong>、
+和阈值比较（<code>&gt;</code>、<code>&gt;=</code>、<code>&lt;</code> 等，多条件 AND）。于是「超过 128k token 走长上下文高价」「缓存 token 走折扣价」这类<strong>按量分层定价</strong>就能精确表达。
+选中的层提供每种用量类型的单价，第④步再据此算钱。没有命中任何层，就退回模型的基础价格——分层只是在「一价到底」之上多了一层灵活度。</p>
+""")
+
+# (model matching + spark + key below)
+
+_ZH16.append(r"""
+<h2>模型匹配：一条正则找到价目</h2>
+<p>computed 这条路的起点，是把你上报的<strong>模型名字符串</strong>（如 <code>gpt-4o-2024-08-06</code>）对应到一条<strong>价目记录</strong>。这事由 <code>findModel</code> 在
+Postgres 的 <code>models</code> 表上完成，靠的是一句正则匹配：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">怎么匹配</span><span class="name">model ~ match_pattern</span></div><div class="ld">每条 model 记录带一个<strong>正则</strong> <code>match_pattern</code>；用 Postgres 的 <code>~</code> 运算符拿你的模型名去套。正则允许大小写不敏感、可选的提供商前缀等灵活写法。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">谁优先</span><span class="name">项目模型 &gt; 全局模型</span></div><div class="ld"><code>WHERE project_id = ? OR project_id IS NULL</code>，再 <code>ORDER BY project_id</code>——你<strong>自定义的模型价格盖过内置的</strong>，方便覆盖默认定价或加自有模型。</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">取哪条</span><span class="name">start_date 最新</span></div><div class="ld"><code>ORDER BY start_date DESC</code> + <code>LIMIT 1</code>：价格会随时间调整，匹配时取<strong>生效日期最近</strong>的那一条，于是历史数据按当时价、新数据按新价。</div></div>
+</div>
+
+<p>匹配上的 model 记录里，除了价格，还有一个关键字段 <code>tokenizer_id</code>——它决定了 computed 时<strong>用哪种分词器</strong>数 token（不同模型家族分词规则不同）。
+分词本身在 <code>worker/src/features/tokenisation</code> 里，甚至放进<strong>独立 worker 线程</strong>跑（<code>tokenCountAsync</code>），免得大文本分词阻塞主流程；失败再退回同步 <code>tokenCount</code>。
+这又是第 8 课 <code>provided_*</code> 与计算列分离的写入侧来源：provided 进 <code>provided_usage_details</code>，算出来的进 <code>usage_details</code>，互不污染。</p>
+
+<p>看一条真实的内置规则（Langfuse 自带约 150+ 个模型价格）：<code>gpt-4o</code> 的 <code>match_pattern</code> 是 <code>(?i)^(openai/)?(gpt-4o)$</code>——
+大小写不敏感、可带可不带 <code>openai/</code> 前缀，精确匹配 <code>gpt-4o</code>。而带日期的版本（如 <code>gpt-4o-2024-05-13</code>）有<strong>各自独立的价格行</strong>，
+因为不同发布日的定价可能不同。这套「正则 + 内置价目表」让 Langfuse 开箱即认得主流模型，你也能在 <code>models</code> 表里加自己的行覆盖或扩展——
+正则给了灵活度，<code>project_id</code> 优先级给了覆盖权，<code>start_date</code> 给了时间维度。三者合起来，就是一套能跟着模型市场演进的<strong>活的定价系统</strong>。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么铁了心「provided 压倒 computed」，而不是两者求平均、或谁更大用谁？</strong> 因为这是一个关于<strong>数据可信度</strong>的立场。LLM 提供商在响应里返回的 token 数，
+  是<strong>计费的权威依据</strong>——它知道自己怎么切的 token，比 Langfuse 在外面用通用分词器估的准得多。系统的本分是<strong>如实记录</strong>，而不是用自己的估算去「纠正」权威来源。
+  于是规则被设计得毫不含糊：<strong>有 provided 就一字不改地用，连成本都「给了一项就全用你的」</strong>，绝不把估算掺进去——因为半真半估的账，比纯估算更危险（你会误以为它精确）。
+  computed 只在<strong>信息真空</strong>（你啥也没给）时登场，当一个<strong>合理的兜底</strong>。可信优先、估算兜底、两者隔离——这条原则贯穿 usage 与 cost 的每一个角落。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><code>getGenerationUsage</code> 四步：<code>findModel</code>（匹配模型/价格）→ <code>getUsageUnits</code>（取/算 token）→ <code>matchPricingTier</code>（选价目层）→ <code>calculateUsageCosts</code>（算钱）。</li>
+    <li><strong>provided 压倒 computed</strong>：你上报了 usage/cost 就原样用；<strong>成本只要给了任一项就全用你的</strong>，绝不与估算混用。</li>
+    <li>computed 有前提：<strong>匹配到模型 + level≠ERROR + 你没提供</strong>，才用 <code>tokenizerId</code> 对 input/output 分词计数。</li>
+    <li><code>findModel</code>：Postgres <code>~ match_pattern</code> 正则匹配；<strong>项目模型盖过全局</strong>，<code>start_date</code> 最新者胜——历史按旧价、新数据按新价。</li>
+    <li>分词在 <code>worker/src/features/tokenisation</code>，可走独立线程（<code>tokenCountAsync</code>）；结果分别落第 8 课的 <code>provided_*</code> 与 <code>usage_details</code> 列，互不污染。</li>
+  </ul>
+</div>
+""")
+
+_EN16.append(r"""
+<p class="lead">
+At step 6 of Lesson 15's merge we said in passing: "compute tokens & cost". This lesson unfolds that step. The core is a principle running through all
+of Langfuse — <strong>provided beats computed</strong>: the usage / cost you (or the LLM provider) report are <strong>always trusted first</strong>; only
+when you report <strong>nothing</strong> does Langfuse roll up its sleeves: <strong>count tokens with a tokenizer</strong>, <strong>price it from a rate
+card</strong>. This is the origin of Lesson 3's two field sets <code>provided_*</code> and <code>usage_details</code>, and the reason Lesson 8's
+<code>provided_*</code> Map columns exist.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📞 Analogy</div>
+  Think of a <strong>phone bill</strong>. If the carrier already <strong>itemized</strong> it (how many minutes you used, the charge for each), the system
+  just <strong>files it as is</strong> — that's provided. But if all you have is a pile of <strong>call logs</strong> with no amounts, the system must do it
+  itself: first <strong>count the call durations</strong> (tokenize, count tokens), then pull up this plan's <strong>rate card</strong> (model prices) and
+  <strong>compute what's owed</strong> — that's computed. Note: the moment the carrier gives even one amount, the system <strong>trusts its bill
+  wholesale</strong>, never mixing "its own estimate" with "the carrier's figure" — mixing the two scrambles the books.
+</div>
+""")
+
+_EN16.append(r"""
+<h2>getGenerationUsage: a four-step pipeline</h2>
+<p>Once the observation is merged, <code>getGenerationUsage</code> takes over, threading "model → tokens → price → cost" into one pipeline. Each step's
+input may come from your reported <code>provided_*</code>, or be backfilled by the system:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="getGenerationUsage four steps: findModel regex-matches the model, getUsageUnits takes or counts tokens, matchPricingTier picks the tier, calculateUsageCosts computes cost">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">getGenerationUsage: model → tokens → price → cost</text>
+  <rect x="16" y="62" width="160" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="96" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① findModel</text><text x="96" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">provided_model_name</text><text x="96" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">~ match_pattern regex</text>
+  <rect x="192" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="272" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">② getUsageUnits</text><text x="272" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">use provided if any</text><text x="272" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">else tokenize-count</text>
+  <rect x="368" y="62" width="160" height="64" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="448" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ matchPricingTier</text><text x="448" y="100" text-anchor="middle" font-size="7.5" fill="var(--muted)">pick tier by usage</text><text x="448" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">unit price per usage type</text>
+  <rect x="544" y="62" width="162" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="625" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">④ calculateUsageCosts</text><text x="625" y="100" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">use provided cost if any</text><text x="625" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">else price×units</text>
+  <line x1="176" y1="94" x2="190" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="190,94 182,90 182,98" fill="var(--faint)"/>
+  <line x1="352" y1="94" x2="366" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="366,94 358,90 358,98" fill="var(--faint)"/>
+  <line x1="528" y1="94" x2="542" y2="94" stroke="var(--faint)" stroke-width="1.6"/><polygon points="542,94 534,90 534,98" fill="var(--faint)"/>
+  <rect x="160" y="160" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="1.5"/><text x="360" y="178" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">outputs: usage_details · cost_details · total_cost</text><text x="360" y="192" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ internal_model_id · pricing tier id/name</text>
+  <line x1="360" y1="126" x2="360" y2="158" stroke="var(--faint)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="360,158 356,150 364,150" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>A four-step pipeline</b>: <code>findModel</code> regex-matches the model name to a price → <code>getUsageUnits</code> takes/counts tokens → <code>matchPricingTier</code> picks the tier → <code>calculateUsageCosts</code> computes the cost. The outputs land in the observation's <code>usage_details</code>/<code>cost_details</code>. Source: <code>IngestionService/index.ts:1057-1143</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts</span><span class="ln">getGenerationUsage</span></div>
+  <pre class="code"><span class="cm">// ① model match: regex-match provided_model_name against the models table</span>
+<span class="kw">const</span> { model, pricingTiers } = provided_model_name
+  ? <span class="kw">await</span> <span class="fn">findModel</span>({ projectId, model: provided_model_name })
+  : { model: <span class="kw">null</span>, pricingTiers: [] };
+
+<span class="cm">// ② take/count tokens; ③ pick tier; ④ compute cost</span>
+<span class="kw">const</span> usage = <span class="kw">await</span> <span class="fn">getUsageUnits</span>(observationRecord, model);
+<span class="kw">const</span> tier  = <span class="fn">matchPricingTier</span>(pricingTiers, usage.usage_details);
+<span class="kw">const</span> cost  = IngestionService.<span class="fn">calculateUsageCosts</span>(tier.prices, obs, usage.usage_details);
+
+<span class="kw">return</span> { ...usage, ...cost, internal_model_id: model?.id, /* tier */ };</pre>
+</div>
+""")
+
+_EN16.append(r"""
+<h2>provided beats computed: two forks</h2>
+<p>Tokens and cost each have a "provided or computed" fork, with identical rules: <strong>if you gave it, use yours; only if you didn't does the system
+compute</strong>. But "the system computes" has <strong>preconditions</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="provided and computed forks: if the user provided usage/cost use it directly, otherwise tokenize-count and price when conditions are met">
+<text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">tokens / cost: provided first, computed as backup</text>
+<rect x="280" y="40" width="160" height="42" rx="10" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">Did you report it?</text><text x="360" y="74" text-anchor="middle" font-size="7.5" fill="var(--muted)">provided_usage / provided_cost</text>
+<rect x="40" y="118" width="290" height="96" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="185" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">✅ given → use directly (provided)</text><text x="185" y="158" text-anchor="middle" font-size="8" fill="var(--accent-ink)">usage: take your token counts as-is</text><text x="185" y="174" text-anchor="middle" font-size="8" fill="var(--accent-ink)">cost: any one point given → all yours</text><text x="185" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">never mixed with system estimate</text>
+<rect x="390" y="118" width="290" height="96" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="535" y="138" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">🤖 not given → system computes</text><text x="535" y="156" text-anchor="middle" font-size="8" fill="var(--muted)">precond: model matched AND level≠ERROR</text><text x="535" y="172" text-anchor="middle" font-size="8" fill="var(--muted)">tokens: count via model.tokenizerId</text><text x="535" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">cost: Σ price[usageType] × units</text>
+<line x1="320" y1="78" x2="200" y2="116" stroke="var(--accent)" stroke-width="1.6"/><polygon points="200,116 205,107 210,116" fill="var(--accent)"/><text x="238" y="104" text-anchor="middle" font-size="8" fill="var(--accent-ink)">yes</text>
+<line x1="400" y1="78" x2="520" y2="116" stroke="var(--blue)" stroke-width="1.6"/><polygon points="520,116 510,116 515,107" fill="var(--blue)"/><text x="482" y="104" text-anchor="middle" font-size="8" fill="var(--ink)">no</text>
+<text x="360" y="232" text-anchor="middle" font-size="8.5" fill="var(--faint)">estimation is a backup, never overrides your reported real values — trusted source first</text>
+</svg>
+<div class="figcap"><b>Estimation backstops, never overrides</b>: provided always wins; computed happens only when all three hold — model matched + non-ERROR + you provided nothing. Source: <code>getUsageUnits</code> (index.ts:1145+, tokenization condition) and <code>calculateUsageCosts</code> ("any provided cost point disables computation").</div>
+</div>
+
+<table class="t">
+<tr><th>dimension</th><th>provided (you reported)</th><th>computed (system, only if you didn't)</th></tr>
+<tr><td><b>token usage</b></td><td>take <code>provided_usage_details</code> as-is</td><td>if model matched + level≠ERROR, tokenize-count input/output via <code>tokenizerId</code></td></tr>
+<tr><td><b>cost</b></td><td>any cost point given → use <code>provided_cost_details</code> wholesale, compute nothing else</td><td>per usage type: <code>price × units</code>, summed to <code>total_cost</code></td></tr>
+<tr><td><b>why</b></td><td>more trustworthy source (LLM APIs often return exact token counts)</td><td>a reasonable estimate absent a source; never mixed with provided</td></tr>
+</table>
+
+<p>In real instrumentation, the two forks map to two very common integration styles:</p>
+
+<div class="cols">
+<div class="col"><h4>🅰️ Official SDK: provided</h4><p>You use the official OpenAI / Anthropic SDK; the response body carries <code>usage</code> (exact prompt/completion token counts). The SDK reports it as-is and Langfuse <strong>takes it whole</strong> — accurate, and no tokenization cost. The ideal case.</p></div>
+<div class="col"><h4>🅱️ Raw HTTP / homegrown: computed</h4><p>You hit a model over raw HTTP, or via a gateway that doesn't return usage, so there's no token count. As long as the model name matches and it isn't ERROR, Langfuse <strong>tokenizes and prices it for you</strong>, so you still get usage and cost.</p></div>
+</div>
+
+<p>A concrete number: a <code>gpt-4o</code> call, the computed path counts input 1,000 tokens, output 500; the rate card prices this model at $2.5/1M input,
+$10/1M output, giving <code>cost_details = { input: 0.0025, output: 0.005, total: 0.0075 }</code>. If your SDK already reported
+<code>usage = {input:1000, output:500}</code>, step ② skips tokenization and uses those directly; if you also reported <code>cost</code>, step ④ skips
+even the multiplication and trusts your cost entirely. <strong>Compute as little as possible, trust you whenever possible.</strong></p>
+
+<p>Step ③ <code>matchPricingTier</code> is a newer fine-grained capability: a model can have several <strong>pricing tiers</strong>, each with a set of
+<strong>conditions</strong> — sum the usage matching some pattern and compare to a threshold (<code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>…, multiple
+conditions AND-ed). So "over 128k tokens → long-context higher price" or "cached tokens → discounted price" — <strong>usage-volume tiered pricing</strong> —
+can be expressed precisely. The matched tier provides per-usage-type unit prices for step ④. Match no tier, and it falls back to the model's base price —
+tiers just add flexibility on top of "one flat price".</p>
+""")
+
+_EN16.append(r"""
+<h2>Model matching: one regex to the price</h2>
+<p>The computed path begins by mapping your reported <strong>model-name string</strong> (e.g. <code>gpt-4o-2024-08-06</code>) to a <strong>price
+record</strong>. <code>findModel</code> does this on Postgres's <code>models</code> table, via a single regex match:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">how it matches</span><span class="name">model ~ match_pattern</span></div><div class="ld">Each model row carries a <strong>regex</strong> <code>match_pattern</code>; Postgres's <code>~</code> operator tests your model name against it. The regex allows case-insensitivity, an optional provider prefix, and other flexible forms.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">who wins</span><span class="name">project model &gt; global</span></div><div class="ld"><code>WHERE project_id = ? OR project_id IS NULL</code>, then <code>ORDER BY project_id</code> — your <strong>custom model prices override the built-in ones</strong>, handy for overriding default pricing or adding your own models.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">which one</span><span class="name">latest start_date</span></div><div class="ld"><code>ORDER BY start_date DESC</code> + <code>LIMIT 1</code>: prices change over time, so matching takes the one with the <strong>most recent effective date</strong> — historical data priced at its time, new data at the new price.</div></div>
+</div>
+
+<p>Beyond price, a matched model row has a key field <code>tokenizer_id</code> — it decides <strong>which tokenizer</strong> counts tokens when computing
+(different model families tokenize differently). Tokenization itself lives in <code>worker/src/features/tokenisation</code>, even running in a
+<strong>separate worker thread</strong> (<code>tokenCountAsync</code>) so large-text tokenization doesn't block the main flow; on failure it falls back to
+synchronous <code>tokenCount</code>. This too is the write-side origin of Lesson 8's split between <code>provided_*</code> and computed columns: provided
+goes into <code>provided_usage_details</code>, the computed into <code>usage_details</code>, never polluting each other.</p>
+
+<p>Look at one real built-in rule (Langfuse ships ~150+ model prices): <code>gpt-4o</code>'s <code>match_pattern</code> is
+<code>(?i)^(openai/)?(gpt-4o)$</code> — case-insensitive, with or without the <code>openai/</code> prefix, matching <code>gpt-4o</code> exactly. Dated
+versions (like <code>gpt-4o-2024-05-13</code>) have their <strong>own separate price rows</strong>, since pricing can differ by release date. This "regex +
+built-in rate card" lets Langfuse recognize mainstream models out of the box, and you can add your own rows in <code>models</code> to override or extend —
+the regex gives flexibility, <code>project_id</code> precedence gives override rights, <code>start_date</code> gives a time dimension. Together they make a
+<strong>living pricing system</strong> that evolves with the model market.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why so adamant that "provided beats computed" — rather than averaging the two, or taking the larger?</strong> Because it's a stance on
+  <strong>data trustworthiness</strong>. The token count an LLM provider returns in its response is the <strong>authoritative basis for billing</strong> — it
+  knows how it tokenized, far more accurately than Langfuse estimating from outside with a generic tokenizer. The system's job is to <strong>record
+  faithfully</strong>, not to "correct" an authoritative source with its own estimate. So the rule is unambiguous: <strong>if provided, use it verbatim;
+  even for cost, "give one point and all of it is yours"</strong>, never mixing in estimates — because a half-real, half-estimated bill is more dangerous
+  than a pure estimate (you'd mistake it for exact). Computed appears only in an <strong>information vacuum</strong> (you gave nothing), as a
+  <strong>reasonable backstop</strong>. Trust first, estimate as backup, keep the two isolated — this principle pervades every corner of usage and cost.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>getGenerationUsage</code> in four steps: <code>findModel</code> (match model/price) → <code>getUsageUnits</code> (take/count tokens) → <code>matchPricingTier</code> (pick tier) → <code>calculateUsageCosts</code> (compute cost).</li>
+    <li><strong>Provided beats computed</strong>: report usage/cost and it's used as-is; for <strong>cost, any one provided point means all yours</strong>, never mixed with estimates.</li>
+    <li>Computed has preconditions: <strong>model matched + level≠ERROR + you provided nothing</strong>, then tokenize-count input/output via <code>tokenizerId</code>.</li>
+    <li><code>findModel</code>: Postgres <code>~ match_pattern</code> regex; <strong>project models override global</strong>, latest <code>start_date</code> wins — history at old price, new data at new.</li>
+    <li>Tokenization in <code>worker/src/features/tokenisation</code>, optionally on a separate thread (<code>tokenCountAsync</code>); results land in Lesson 8's <code>provided_*</code> vs <code>usage_details</code> columns, never polluting each other.</li>
+  </ul>
+</div>
+""")
+LESSON_16 = {"zh": "\n".join(_ZH16), "en": "\n".join(_EN16)}
