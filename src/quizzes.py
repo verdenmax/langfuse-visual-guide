@@ -1375,6 +1375,76 @@ QUIZZES = {
             },
         ],
     },
+    "20-web-app-architecture.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 web 应用为什么并存三种 API 风格（tRPC、公共 REST、App-Router/SSE），而不是统一成一种？",
+                    "en": "Why does Langfuse's web app run three API styles (tRPC, public REST, App-Router/SSE) rather than unifying into one?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为对内和对外是两类需求：UI 要类型安全、改得快（tRPC，前后端共享类型）；SDK 要契约稳定、带版本（REST + Fern）；少数流式/webhook 要原始 Request 语义（App-Router）。硬统一会牺牲其一",
+                        "en": "because internal and external are two needs: the UI wants type-safety and fast change (tRPC, shared types front-to-back); SDKs want a stable, versioned contract (REST + Fern); a few streaming/webhook cases need raw Request semantics (App-Router). Forcing unity sacrifices one of them",
+                    },
+                    {"zh": "因为开发者忘了删旧代码", "en": "because developers forgot to delete old code"},
+                    {"zh": "因为三种 API 各自更快", "en": "because each API is individually faster"},
+                    {"zh": "因为 Next.js 强制要求三种都用", "en": "because Next.js mandates all three"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "核心边界是“对内求类型安全与迭代速度、对外求契约稳定与版本可控”。UI 和后端同仓同队，tRPC 把类型贯穿、重构即时报错；SDK 面向外部用户，接口发布后不能随意改，需 REST+版本+Fern。同一批数据、两种对外姿态——按受众分而治之，比强求统一更合适。",
+                    "en": "The core boundary: internally seek type-safety and iteration speed, externally seek a stable, versioned contract. UI and backend share one repo/team, so tRPC threads types and errors instantly on refactor; the SDK faces external users where published interfaces can't change freely, needing REST+versions+Fern. Same data, two external postures — dividing by audience fits better than forced uniformity.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 几乎全用老的 Pages Router，App Router 下只有 4 个文件。这说明了什么？",
+                    "en": "Langfuse uses the old Pages Router for almost everything, with only 4 files under App Router. What does this show?",
+                },
+                "opts": [
+                    {
+                        "zh": "务实的取舍：Pages Router + tRPC 是 App Router 成熟前就立的稳固根基，贸然迁移收益小风险大；App Router 只保留给需要原始 Request/流式/webhook 这类 Pages Router 不擅长的语义",
+                        "en": "a pragmatic choice: Pages Router + tRPC is a solid foundation laid before App Router matured, so a rash migration is low-reward/high-risk; App Router is kept only for raw Request/streaming/webhook semantics Pages Router handles awkwardly",
+                    },
+                    {"zh": "代码库已经过时、无人维护", "en": "the codebase is outdated and unmaintained"},
+                    {"zh": "App Router 完全不能用", "en": "App Router is completely unusable"},
+                    {"zh": "团队不知道 App Router 存在", "en": "the team doesn't know App Router exists"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "架构选择服务于团队现实而非追新。tRPC 让前后端共享类型，是全栈团队快速迭代的关键；迁移成本高、收益小。App Router 的 4 个文件（layout + stripe-webhook/chatCompletion/in-app-agent）正是那些需要原始 Request、流式或 webhook 语义的特例——合适比统一更重要。",
+                    "en": "Architecture serves team reality, not novelty. tRPC's shared types are key to fast full-stack iteration; migration is costly and low-reward. App Router's 4 files (layout + stripe-webhook/chatCompletion/in-app-agent) are exactly the cases needing raw Request, streaming, or webhook semantics — fit matters more than uniformity.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 web/src 用 features/ 按“功能”切分（约 80 个纵向模块），而不是按“技术层”（全部页面/全部组件/全部接口各一目录）。这样组织的主要好处是？",
+                    "en": "Langfuse's web/src cuts by 'feature' under features/ (~80 vertical modules) rather than by 'technical layer' (all pages/all components/all APIs each in one dir). The main benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "每个功能是自包含的竖切片，把它的组件、状态、server 逻辑收在一处；读懂或改一个功能主要只看一个目录，功能之间边界清晰、不易牵连",
+                        "en": "each feature is a self-contained vertical slice gathering its components, state, and server logic in one place; to understand or change a feature you mostly read one directory, with clear boundaries that don't entangle",
+                    },
+                    {"zh": "让目录数量更少", "en": "to have fewer directories"},
+                    {"zh": "强制所有功能共享代码", "en": "to force all features to share code"},
+                    {"zh": "让构建更快", "en": "to make builds faster"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "按功能切分（vertical slice）让一个功能的全部代码聚在 features/<功能>/ 一处，避免在 pages/components/api 三四个目录间来回跳。修改局部化、边界清晰，是大型前端可维护性的关键——这也是为什么后面每课几乎都能指向一个 features/ 子目录。",
+                    "en": "By-feature (vertical-slice) organization gathers a feature's whole code under features/<feature>/, avoiding hops across pages/components/api. Localized changes and clear boundaries are key to large-frontend maintainability — which is why nearly every later lesson points at a features/ subfolder.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“对内类型安全、对外契约稳定”——同一批数据用两种 API 姿态对待。你做过的系统里，内部调用和对外接口是混在一起还是分开的？如果分开，你会怎么划界？tRPC 这种“前后端共享类型”的收益，在什么规模/团队结构下最划算？",
+                "en": "'Internal type-safety, external stable contract' — the same data treated with two API postures. In systems you've built, are internal calls and external interfaces mixed or separated? If separated, how would you draw the line? At what scale/team structure does tRPC's 'shared types front-to-back' pay off most?",
+            },
+        ],
+    },
 }
 
 

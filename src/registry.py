@@ -8,6 +8,7 @@ Grows one Part module per milestone (part1 .. part11). M0 ships only L01.
 import part1
 import part2
 import part3
+import part4
 
 # Filename -> {"zh": ..., "en": ...}. Keep keys in sync with shell.PAGES.
 CONTENT = {
@@ -30,4 +31,5 @@ CONTENT = {
     "17-clickhouse-writer.html": part3.LESSON_17,
     "18-opentelemetry-ingestion.html": part3.LESSON_18,
     "19-media-blob-storage.html": part3.LESSON_19,
+    "20-web-app-architecture.html": part4.LESSON_20,
 }

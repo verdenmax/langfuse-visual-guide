@@ -87,6 +87,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("19-media-blob-storage.html", "媒体与 blob 存储", "Media & blob storage",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("20-web-app-architecture.html", "web 应用架构", "The web app architecture",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -608,6 +610,8 @@ SUBTITLES = {
                                         "OTLP endpoint; protobuf/JSON; universal adapter; priority keys gen_ai/ai/llm; maps to native events; adapt-at-edge unify-at-core"),
     "19-media-blob-storage.html": ("大二进制不进 ClickHouse · @@@langfuseMedia@@@ 引用 · presigned 直传 S3 · sha256 内容寻址去重 · blob_storage_file_log 台账",
                                    "big binaries stay out of ClickHouse; @@@langfuseMedia@@@ reference; presigned direct S3 upload; sha256 content-addressed dedup; blob_storage_file_log ledger"),
+    "20-web-app-architecture.html": ("Next.js · Pages Router 为主 · 三种 API(tRPC/REST/App-Router) · features 纵向切片 · 对内类型安全对外契约稳定",
+                                     "Next.js; mostly Pages Router; three APIs (tRPC/REST/App-Router); features vertical slices; internal type-safety vs external stable contract"),
 }
 
 

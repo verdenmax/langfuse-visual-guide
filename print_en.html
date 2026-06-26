@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 19 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 20 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -356,6 +356,7 @@ details[open] > summary { list-style: none; }
   <li>ClickhouseWriter: batched persistence</li>
   <li>OpenTelemetry ingestion</li>
   <li>Media & blob storage</li>
+  <li>The web app architecture</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -4517,6 +4518,187 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Let each kind of data live in the storage that fits it best, linked by a small reference' — is there a similar scenario in systems you've built (large files, logs, thumbnails)? How would you decide 'what goes in the main DB vs object/external storage', and where to draw that line? What could content-addressed dedup save you?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The web app architecture</h1>
+
+<p class="lead">
+The first three parts followed the <strong>write</strong> direction: how data comes in, where it's stored, how it's merged and persisted. From this part on
+we trace <strong>reads</strong> in reverse — how the UI and SDKs <strong>query data back out</strong>. First stop: the web app's <strong>skeleton</strong>.
+Langfuse's frontend is a <strong>Next.js</strong> app, with the vast majority of pages on the <strong>veteran Pages Router</strong>, running <strong>three API
+styles</strong> in parallel: tRPC for its own UI, a public REST API for SDKs, and a handful of App-Router handlers for streaming/webhooks. Grasp this "door
+map" and the next seven lessons won't get you lost.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏢 Analogy</div>
+  Think of the web app as a <strong>building</strong> (Next.js) with <strong>three doors</strong> for three kinds of visitors: a <strong>staff
+  entrance</strong> (tRPC — only for its own UI, type-safe, direct internal access), a <strong>public reception</strong> (REST <code>/api/public</code> —
+  for external SDKs, stable, versioned), and a <strong>special loading dock</strong> (App-Router / SSE handlers — for special cargo needing streaming
+  pushes or webhook callbacks). All three doors lead into the same building, the same data, but <strong>each serves its own crowd</strong>: staff skip
+  reception, external visitors can't use the staff entrance. Sort out these three doors and you've sorted out every Langfuse external interface.
+</div>
+
+
+<h2>One building, three doors</h2>
+<p>The big picture first. <code>web/</code> is a Next.js app; under <code>web/src</code> sit a few big areas: <code>features/</code> (vertical, by-feature
+modules, ~80 of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
+routes), plus a small <code>app/</code> (App Router). And the external interfaces are exactly the three doors from the intro:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (~80)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (Lesson 24) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (Lesson 21); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">routing</span></div><div class="ld"><code>pages/</code> is the trunk (UI pages + API routes), <code>app/</code> is just 4 files for special semantics. Plus <code>hooks/</code>, <code>ee/</code> (enterprise), etc.</div></div>
+</div>
+
+<p>Pause on <code>features/</code>'s organizing philosophy: it's cut <strong>by "feature", not by "technical layer"</strong>. A traditional layout might dump all
+pages in <code>pages/</code>, all components in <code>components/</code>, all endpoints in <code>api/</code> — finding one feature's code means hopping across
+three or four directories. Langfuse inverts this: each feature (say search-bar, batch-exports) is a <strong>self-contained vertical slice</strong> gathering its
+frontend components, state hooks, server logic, even a README under one <code>features/&lt;feature&gt;/</code>. The payoff: to understand or change a feature you
+<strong>mostly read just one directory</strong>; boundaries between features are clear, so they don't entangle. That's why nearly every later lesson can point
+precisely at a <code>features/</code> subfolder.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, App-Router/SSE for streaming and webhooks">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
+  <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
+  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
+  <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
+  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
+  <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
+</svg>
+<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>App-Router/SSE</b> (<code>app/api/**</code>, 4 files + the streaming endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
+  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~64 routers</span>
+web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (Lesson 21)</span>
+
+<span class="cm">// ② public REST: the stable interface for SDKs, by resource + version folder</span>
+web/src/pages/api/public/traces/index.ts
+web/src/pages/api/public/v2/scores/…    <span class="cm">// folder = version (Lesson 27)</span>
+
+<span class="cm">// ③ App Router: only 4 files, for endpoints needing raw Request/streaming/webhook</span>
+web/src/app/api/billing/stripe-webhook/route.ts
+web/src/app/api/chatCompletion/route.ts
+web/src/app/api/in-app-agent/route.ts
+web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE streaming dashboards</span></pre>
+</div>
+
+
+<h2>Why it's almost all Pages Router</h2>
+<p>You may notice a contrast: even though Next.js shipped the App Router long ago, Langfuse <strong>uses the old Pages Router for almost everything</strong> —
+the App Router has all of <strong>4 files</strong>. This isn't being behind the times; it's a <strong>pragmatic</strong> choice.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Pages Router carries nearly all UI and APIs; App Router is just 4 files for raw Request, streaming, and webhook semantics">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Pages Router trunk · App Router only for special cases</text>
+  <rect x="30" y="44" width="420" height="130" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">Pages Router (trunk · 99%)</text>
+  <rect x="48" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="141" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">UI pages</text><text x="141" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/project/[projectId]/…</text>
+  <rect x="246" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="339" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API routes</text><text x="339" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/api/** (tRPC + REST)</text>
+  <text x="240" y="140" text-anchor="middle" font-size="8" fill="var(--accent-ink)">UI uses tRPC + React Query, types flow from backend to component</text>
+  <text x="240" y="158" text-anchor="middle" font-size="8" fill="var(--muted)">a mature, long-settled path the team standardized on</text>
+  <rect x="466" y="44" width="224" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="578" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">App Router (4 files only)</text><text x="578" y="88" text-anchor="middle" font-size="7.5" fill="var(--muted)">layout.tsx (root layout)</text><text x="578" y="104" text-anchor="middle" font-size="7.5" fill="var(--muted)">stripe-webhook/route.ts</text><text x="578" y="120" text-anchor="middle" font-size="7.5" fill="var(--muted)">chatCompletion/route.ts</text><text x="578" y="136" text-anchor="middle" font-size="7.5" fill="var(--muted)">in-app-agent/route.ts</text><text x="578" y="158" text-anchor="middle" font-size="8" fill="var(--blue)">only for "raw Request / streaming / webhook"</text>
+</svg>
+<div class="figcap"><b>Pragmatic, not behind</b>: Pages Router carries nearly all UI and APIs (tRPC + REST); App Router keeps just 4 files, for endpoints needing <strong>raw <code>Request</code>, streaming responses, webhook callbacks</strong> — semantics Pages Router handles awkwardly. Source: <code>web/src/app/</code> (layout + 3 route.ts).</div>
+</div>
+
+<table class="t">
+  <tr><th>this door</th><th>for whom</th><th>where</th><th>why</th></tr>
+  <tr><td><b>tRPC</b></td><td>own UI (React)</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>types flow backend → frontend, change one spot and the whole chain errors; internal API needn't be externally stable</td></tr>
+  <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (Lesson 27)</td></tr>
+  <tr><td><b>App-Router / SSE</b></td><td>webhook sources · streaming dashboards</td><td><code>app/api/**</code> + streaming endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics Pages Router handles awkwardly</td></tr>
+</table>
+
+<p>Behind this split is a clear boundary: <strong>internally, seek "type-safe, fast to change"; externally, seek "stable contract, controlled versions"</strong>.
+The UI and backend are one team, one repo, so tRPC threads types end to end — the compiler errors instantly on refactors; whereas the SDK faces countless external
+users, where a published interface can't change freely, so REST + version numbers + the Fern contract enforce strict stability. <strong>Same data, two external
+postures</strong> — the internal API can evolve daily, the external contract must stay stable for years; forcing them into one API style would only hobble each
+other. This is the master plan of Part 4's read path.</p>
+
+<p>A preview of the whole read path: whichever door you enter, a "query data" request roughly takes these steps. The next seven lessons dive into each stop:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>entry (tRPC or REST)</h4><p>The UI fires a tRPC call, the SDK a REST request; each entry first does <strong>auth</strong>, confirming you can read this project (Lessons 21, 27).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>filter &amp; query build</h4><p>The UI's <code>FilterState</code> (or SDK query params) is <strong>compiled into parameterized SQL</strong>, with the mandatory project_id and time window (Lesson 23).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>repository executes</h4><p>Through a unified ClickHouse executor: OTel span, query tags, backoff retry on failure, resource errors turned into friendly messages (Lesson 22).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>read-model shaping</h4><p>Lists use a "compact rows + lazy metrics" dual query; details fetch the "whole observation tree" — different read models per scenario (Lessons 24, 25).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>return + frontend render</h4><p>Results return to the UI, where the table system renders them <strong>fast and shareably</strong> with URL state, column presets, row selection (Lesson 24).</p></div></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why not chase the trend and migrate fully to App Router, or just use REST as the one API?</strong> Because <strong>architecture choices should serve
+  team reality, not novelty</strong>. Langfuse laid a solid foundation on Pages Router + tRPC before the App Router matured — tRPC lets front and back
+  <strong>share one type system</strong>, the key to this full-stack team iterating fast; a rash migration is low-reward, high-risk. As for the API: internal and
+  external are <strong>two utterly different needs</strong>. Internal (UI) wants "change one spot, instant type-check across the chain" — tRPC fits perfectly;
+  external (SDK) wants "the integration I wrote two years ago still runs today" — which demands a stable contract and explicit versions. Force the two into one
+  API and you sacrifice either internal velocity or external stability. Langfuse's answer is <strong>don't force unity; divide and conquer by audience</strong> —
+  with App Router catching the few special semantics. <strong>Fit matters more than uniformity.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Langfuse's frontend is a <strong>Next.js app</strong>, <strong>mostly Pages Router</strong>; App Router is just 4 files for raw Request/streaming/webhook.</li>
+    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), App-Router/SSE (streaming/webhook).</li>
+    <li><code>web/src</code> layers: <code>features/</code> (~80 vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
+    <li>Core boundary: <strong>internally seek type-safety and iteration speed (tRPC), externally seek contract stability and version control (REST + Fern)</strong> — same data, two external postures.</li>
+    <li>This is Part 4's read-path overview; the next seven lessons drill into the tRPC backbone, repository layer, filtering, tables, detail, sessions, and the public REST API.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse's web app run three API styles (tRPC, public REST, App-Router/SSE) rather than unifying into one?</div>
+  <ol class="opts">
+    <li>because developers forgot to delete old code</li>
+    <li>because internal and external are two needs: the UI wants type-safety and fast change (tRPC, shared types front-to-back); SDKs want a stable, versioned contract (REST + Fern); a few streaming/webhook cases need raw Request semantics (App-Router). Forcing unity sacrifices one of them</li>
+    <li>because Next.js mandates all three</li>
+    <li>because each API is individually faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The core boundary: internally seek type-safety and iteration speed, externally seek a stable, versioned contract. UI and backend share one repo/team, so tRPC threads types and errors instantly on refactor; the SDK faces external users where published interfaces can't change freely, needing REST+versions+Fern. Same data, two external postures — dividing by audience fits better than forced uniformity.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse uses the old Pages Router for almost everything, with only 4 files under App Router. What does this show?</div>
+  <ol class="opts">
+    <li>a pragmatic choice: Pages Router + tRPC is a solid foundation laid before App Router matured, so a rash migration is low-reward/high-risk; App Router is kept only for raw Request/streaming/webhook semantics Pages Router handles awkwardly</li>
+    <li>the codebase is outdated and unmaintained</li>
+    <li>the team doesn't know App Router exists</li>
+    <li>App Router is completely unusable</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Architecture serves team reality, not novelty. tRPC's shared types are key to fast full-stack iteration; migration is costly and low-reward. App Router's 4 files (layout + stripe-webhook/chatCompletion/in-app-agent) are exactly the cases needing raw Request, streaming, or webhook semantics — fit matters more than uniformity.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse's web/src cuts by 'feature' under features/ (~80 vertical modules) rather than by 'technical layer' (all pages/all components/all APIs each in one dir). The main benefit?</div>
+  <ol class="opts">
+    <li>each feature is a self-contained vertical slice gathering its components, state, and server logic in one place; to understand or change a feature you mostly read one directory, with clear boundaries that don't entangle</li>
+    <li>to force all features to share code</li>
+    <li>to have fewer directories</li>
+    <li>to make builds faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. By-feature (vertical-slice) organization gathers a feature's whole code under features/<feature>/, avoiding hops across pages/components/api. Localized changes and clear boundaries are key to large-frontend maintainability — which is why nearly every later lesson points at a features/ subfolder.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Internal type-safety, external stable contract' — the same data treated with two API postures. In systems you've built, are internal calls and external interfaces mixed or separated? If separated, how would you draw the line? At what scale/team structure does tRPC's 'shared types front-to-back' pay off most?</li>
   </ul>
 </div>
 </div>
