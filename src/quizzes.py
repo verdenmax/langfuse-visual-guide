@@ -605,6 +605,76 @@ QUIZZES = {
             },
         ],
     },
+    "09-postgres-metadata-schema.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 为什么把配置/元数据（org/project/user、API key、prompt、定价…）放 Postgres，而不是和遥测一起放 ClickHouse？",
+                    "en": "Why does Langfuse keep config/metadata (org/project/user, API keys, prompts, pricing…) in Postgres rather than in ClickHouse with telemetry?",
+                },
+                "opts": [
+                    {
+                        "zh": "配置要外键关系、事务、强一致（创建即可用），是关系型 Postgres 的强项；ClickHouse 弱事务、最终一致、不擅长频繁改单条，放配置是错配",
+                        "en": "Config needs foreign keys, transactions and strong consistency (instantly usable) — relational Postgres's strength; ClickHouse has weak transactions, eventual consistency and dislikes frequent single-row edits, so config there is a mismatch",
+                    },
+                    {"zh": "因为 ClickHouse 容量太小", "en": "Because ClickHouse is too small"},
+                    {"zh": "因为 Postgres 查询更慢，适合不常用的数据", "en": "Because Postgres is slower, fit for rarely-used data"},
+                    {"zh": "纯粹历史原因，没有道理", "en": "Pure history, no reason"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "配置是 OLTP：量小、要精确单条读写、要强一致、有外键关系。这正是 Postgres 的主场；ClickHouse 适合海量追加+聚合（OLAP）。按职责分库，各做擅长的事——这是第 7 课的延续。",
+                    "en": "Config is OLTP: small, precise single-row, strongly consistent, with foreign keys — Postgres's turf; ClickHouse fits massive append + aggregation (OLAP). Split by responsibility, each at its best — a continuation of L07.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么说 Project 是控制面的“枢纽”，以及它为什么是多租户的“数据边界”？",
+                    "en": "Why is Project the 'hub' of the control plane, and why is it the multi-tenant 'data boundary'?",
+                },
+                "opts": [
+                    {
+                        "zh": "Project 字段不多但挂着几十条 1:N 关系，几乎一切（key/成员/prompt/数据集/仪表盘/集成…）都属于某个 project；一把 API key 属于某 project，查询也被限定在该 project 内",
+                        "en": "Project has few fields but dozens of 1:N relations; almost everything (keys/members/prompts/datasets/dashboards/integrations…) belongs to a project; an API key belongs to a project and queries are scoped to it",
+                    },
+                    {"zh": "因为 Project 表行数最多", "en": "Because the Project table has the most rows"},
+                    {"zh": "因为 Project 存了所有 trace", "en": "Because Project stores all traces"},
+                    {"zh": "因为它没有任何关系", "en": "Because it has no relations"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "几乎所有控制面对象都 1:N 挂在 project 下，所以它是中心；又因为 key、数据都按 project 划分，project 成了天然的隔离边界（也对应 ClickHouse 排序键以 project_id 打头）。多租户下一课展开。",
+                    "en": "Almost all control-plane objects hang 1:N off a project, making it the center; and since keys and data are scoped by project, project is the natural isolation boundary (matching ClickHouse's project_id-first ordering key). Multi-tenancy next lesson.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "schema.prisma 里为什么还有 LegacyPrismaTrace/Observation/Score？API key 又是怎么存的？",
+                    "en": "Why are there still LegacyPrismaTrace/Observation/Score in schema.prisma? And how are API keys stored?",
+                },
+                "opts": [
+                    {
+                        "zh": "Legacy 是早期把遥测存在 Postgres 的历史残留，分析数据已迁到 ClickHouse，仅为兼容/迁移保留；API key 的密钥只存哈希、不存明文",
+                        "en": "Legacy models are historical remnants of storing telemetry in Postgres; analytical data moved to ClickHouse, kept only for compat/migration; API key secrets are stored hashed, never plaintext",
+                    },
+                    {"zh": "Legacy 是主力表；API key 明文存储", "en": "Legacy are the primary tables; API keys are stored in plaintext"},
+                    {"zh": "Legacy 用于备份 ClickHouse；API key 不存储", "en": "Legacy back up ClickHouse; API keys aren't stored"},
+                    {"zh": "两者都已从代码删除", "en": "Both have been removed from the code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "带 Legacy 前缀=老路：遥测早已迁 ClickHouse（第 7、8 课的存在理由），这些只为兼容/迁移留着。API key 只存 hashedSecretKey 等哈希，即使库泄露也拿不到可用 key——安全细节，第 49/53 课展开。",
+                    "en": "Legacy prefix = old way: telemetry long moved to ClickHouse (the reason for L07/L08); these remain for compat/migration. API keys store only hashedSecretKey etc., so a DB leak yields no usable key — a security detail expanded in L49/L53.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Langfuse 把“配置”和“数据”分到两个库。如果你自己的系统也有“少而关键的配置”+“海量的事件”，你会怎么划分？跨库读配置的代价你打算怎么压（提示：缓存）？",
+                "en": "Langfuse splits 'config' and 'data' into two databases. If your system also had 'small critical config' + 'massive events', how would you divide them? How would you tame the cross-store config-read cost (hint: caching)?",
+            },
+        ],
+    },
 }
 
 

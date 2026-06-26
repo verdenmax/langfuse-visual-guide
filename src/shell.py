@@ -65,6 +65,8 @@ PAGES = [
      "第二部分 · 前置基础", "Part 2 · Foundations"),
     ("08-clickhouse-wide-events.html", "ClickHouse 与宽事件表", "ClickHouse & the wide-event tables",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("09-postgres-metadata-schema.html", "元数据 schema（Postgres/Prisma）", "The metadata schema (Postgres)",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -564,6 +566,8 @@ SUBTITLES = {
                                         "four stores: PG config; CH wide events; Redis queue/cache; S3 source-of-truth; OLTP vs OLAP"),
     "08-clickhouse-wide-events.html": ("ReplacingMergeTree · 排序键 project_id 打头 · 月分区 · ZSTD/Map/bloom · 少扫才是关键",
                                        "ReplacingMergeTree; ordering key project_id-first; monthly partitions; ZSTD/Map/bloom; scan-less"),
+    "09-postgres-metadata-schema.html": ("控制面 vs 数据面 · Project 枢纽 · 模型分组 · Legacy 残留 · API key 哈希",
+                                         "control plane vs data plane; Project hub; model groups; Legacy remnants; hashed API keys"),
 }
 
 

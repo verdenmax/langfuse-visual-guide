@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 8 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 9 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -345,6 +345,7 @@ details[open] > summary { list-style: none; }
   <li>给 LLM 应用埋点</li>
   <li>双存储架构</li>
   <li>ClickHouse 与宽事件表</li>
+  <li>元数据 schema（Postgres/Prisma）</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -2120,6 +2121,197 @@ ORDER BY (project_id, <span class="kw">type</span>, <span class="fn">toDate</spa
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>ReplacingMergeTree 把“改”变成“追加 + 后台覆盖”。如果你自己的系统也常常“同一条记录被多次更新”，这种“只追加、读时取最新”的思路能怎么帮你？它的代价你能接受吗？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>元数据 schema（Postgres/Prisma）</h1>
+
+<p class="lead">
+前两课的主角是 ClickHouse（海量遥测）。这一课换到另一半：<strong>Postgres</strong>。如果说 ClickHouse 存的是「<strong>发生了什么</strong>」（trace/observation/score），
+那 Postgres 存的就是「<strong>这套平台是怎么配置的</strong>」——谁是你的组织和项目、谁有权限、有哪些 API key、定义了哪些 prompt、配了哪些评估规则、各模型怎么定价。
+这一面叫<strong>控制面（control plane）</strong>，数据量不大却<strong>事关全局</strong>。它的形状全写在 <code>packages/shared/prisma/schema.prisma</code> 里。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把两套存储想成一家公司的两类系统：<strong>Postgres</strong> 是<strong>行政/人事系统</strong>——记录谁是员工、分在哪个部门、有什么权限、签了哪些规章。
+  数据不多，但要求<strong>准确、可改、立刻生效</strong>（新员工入职，权限马上得能用）。<strong>ClickHouse</strong> 则是<strong>业务流水账</strong>——海量交易记录，
+  平时只往里追加，事后拿来按月按品类统计。  <strong>你不会把规章制度记到流水账里，也不会把每笔交易塞进人事档案</strong>——两类数据，两套系统，各得其所。这一课就专门看「人事系统」这一半：它存了什么、为什么这么存。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Postgres 存控制面（配置/元数据），ClickHouse 存数据面（遥测洪流），两者分工">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">控制面（Postgres）vs 数据面（ClickHouse）</text>
+  <rect x="30" y="40" width="320" height="190" rx="12" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="190" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">Postgres · 控制面</text>
+  <text x="190" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">少而关键 · 强一致 · 频繁精确读写</text>
+  <rect x="48" y="92" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="111" text-anchor="middle" font-size="9.5" fill="var(--ink)">org / project / user</text>
+  <rect x="197" y="92" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="111" text-anchor="middle" font-size="9.5" fill="var(--ink)">API key · 权限</text>
+  <rect x="48" y="130" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="149" text-anchor="middle" font-size="9.5" fill="var(--ink)">prompt 定义</text>
+  <rect x="197" y="130" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="149" text-anchor="middle" font-size="9.5" fill="var(--ink)">eval / 数据集 配置</text>
+  <rect x="48" y="168" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="187" text-anchor="middle" font-size="9.5" fill="var(--ink)">模型定价</text>
+  <rect x="197" y="168" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="187" text-anchor="middle" font-size="9.5" fill="var(--ink)">集成 · 审计日志</text>
+  <text x="190" y="218" text-anchor="middle" font-size="9" fill="var(--blue)">「这套平台怎么配置」</text>
+  <rect x="390" y="40" width="300" height="190" rx="12" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+  <text x="540" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)">ClickHouse · 数据面</text>
+  <text x="540" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">海量 · 追加 · 按维度聚合</text>
+  <rect x="410" y="100" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="121" text-anchor="middle" font-size="10" fill="var(--ink)">traces（宽事件）</text>
+  <rect x="410" y="140" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="161" text-anchor="middle" font-size="10" fill="var(--ink)">observations（宽事件）</text>
+  <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores（宽事件）</text>
+</svg>
+<div class="figcap"><b>两面分工</b>：<b>Postgres</b> 存「平台怎么配置」——组织/项目/用户、API key、prompt、eval/数据集配置、定价、集成、审计；<b>ClickHouse</b> 存「实际发生了什么」——三张宽事件表。这正是第 3 课「领域形状 vs 物理存储」的宏观版：一个管控制、一个管数据。</div>
+</div>
+
+<h2>Postgres 里装的是「控制面」</h2>
+<p>打开 <code>schema.prisma</code>，你会看到几十个模型。它们可以按用途归成几组（都用 <code>@@map</code> 映射成 snake_case 表名、用 cuid 做主键）：</p>
+
+<table class="t">
+  <tr><th>分组</th><th>主要模型</th><th>管什么</th></tr>
+  <tr><td><b>身份与租户</b></td><td class="mono">Organization · Project · User · *Membership · Role · ApiKey</td><td>谁是组织/项目、谁有什么权限、用哪把 key</td></tr>
+  <tr><td><b>Prompt</b></td><td class="mono">Prompt · PromptDependency · PromptProtectedLabels</td><td>prompt 的版本化定义与依赖</td></tr>
+  <tr><td><b>数据集 / 评估</b></td><td class="mono">Dataset · DatasetItem · DatasetRuns · DatasetRunItems · ScoreConfig · EvalTemplate · JobConfiguration · JobExecution</td><td>测试集、评分配置、评估任务的<strong>定义与编排</strong></td></tr>
+  <tr><td><b>模型与计费</b></td><td class="mono">Model · Price · PricingTier</td><td>模型定价表（成本计算的依据，第 16 课）</td></tr>
+  <tr><td><b>集成与运维</b></td><td class="mono">*Integration · BatchExport · BatchAction · Media · AuditLog · BackgroundMigration</td><td>对外集成、导出、媒体、审计、后台迁移</td></tr>
+</table>
+
+<p>看出规律了吗？这些全是<strong>「配置」和「定义」</strong>，而不是「海量发生的事」。它们数量级在<strong>千到百万</strong>之间，要被<strong>频繁精确地读写单条</strong>
+（创建一个项目、改一个 prompt、查一把 key 是否有效），还要<strong>强一致</strong>——这正是关系型数据库 Postgres 的拿手好戏。</p>
+
+<div class="cols">
+  <div class="col"><h4>✅ 配置放 Postgres</h4><p>要外键关系（project → 它的 prompt/key/配置）、要事务（一次改多张表要么全成要么全败）、要「改完立刻可读」。这些都是关系型数据库的强项。</p></div>
+  <div class="col"><h4>❌ 配置不放 ClickHouse</h4><p>ClickHouse 弱事务、最终一致，且不擅长频繁改单条。把「创建项目立刻可用」交给它，会出现刚建好却查不到的尴尬。配置类数据放它纯属错配。</p></div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">第一层</span><span class="name">身份与租户</span></div><div class="ld">Organization / Project / User / Membership / Role / ApiKey——决定「谁、在哪个项目、有什么权限」。是其它一切的前提。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">第二层</span><span class="name">功能配置</span></div><div class="ld">Prompt、Dataset、ScoreConfig、EvalTemplate/JobConfiguration、Model/Price——各功能的「定义与编排」，都挂在 project 下。</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">第三层</span><span class="name">集成与运维</span></div><div class="ld">各种 *Integration、BatchExport/Action、Media、AuditLog、BackgroundMigration——对外连接与平台自身的运维记录。</div></div>
+</div>
+
+
+<h2>Project 是枢纽</h2>
+<p>在这几十个模型里，<code>Project</code> 是当之无愧的<strong>中心</strong>。打开它的定义你会发现，它字段不多（id、orgId、name、deletedAt 软删、retentionDays…），
+但<strong>挂着几十条关系</strong>——几乎所有其它东西都从属于某个 project：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Organization 包含 Project，Project 作为枢纽连接 API key、成员、数据集、prompt、配置、仪表盘、自动化、集成等">
+  <rect x="285" y="20" width="150" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Organization</text><text x="360" y="52" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">计费 · 成员</text>
+  <rect x="290" y="125" width="140" height="48" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="360" y="146" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">Project</text><text x="360" y="162" text-anchor="middle" font-size="8.5" fill="var(--muted)">数据边界 · 枢纽</text>
+  <line x1="360" y1="60" x2="360" y2="123" stroke="var(--faint)" stroke-width="1.8"/><polygon points="360,123 355,113 365,113" fill="var(--faint)"/>
+  <text x="375" y="95" font-size="8.5" fill="var(--faint)">1 : N</text>
+  <g font-size="9" fill="var(--ink)" text-anchor="middle">
+    <rect x="20" y="100" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="118">API key</text>
+    <rect x="20" y="148" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="166">成员/权限</text>
+    <rect x="20" y="196" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="214">prompt</text>
+    <rect x="160" y="232" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="215" y="250">数据集/eval</text>
+    <rect x="300" y="248" width="120" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="360" y="266">模型/定价</text>
+    <rect x="450" y="232" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="505" y="250">仪表盘</text>
+    <rect x="590" y="196" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="214">自动化/监控</text>
+    <rect x="590" y="148" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="166">集成</text>
+    <rect x="590" y="100" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="118">媒体/导出</text>
+  </g>
+  <g stroke="var(--line)" stroke-width="1.3">
+    <line x1="290" y1="150" x2="130" y2="114"/><line x1="290" y1="152" x2="130" y2="162"/><line x1="295" y1="165" x2="130" y2="206"/>
+    <line x1="320" y1="173" x2="240" y2="232"/><line x1="360" y1="173" x2="360" y2="246"/><line x1="400" y1="173" x2="490" y2="232"/>
+    <line x1="430" y1="165" x2="590" y2="206"/><line x1="430" y1="152" x2="590" y2="162"/><line x1="430" y1="150" x2="590" y2="114"/>
+  </g>
+</svg>
+<div class="figcap"><b>Project 是控制面的中心</b>：Organization 之下，几乎一切（API key、成员、prompt、数据集/eval、模型/定价、仪表盘、自动化/监控、集成、媒体/导出）都<b>1:N 地挂在某个 project 上</b>。所以 <b>project 是天然的「数据边界」</b>——一把 API key 属于某个 project，你查的所有数据也都被限定在它所属的 project 里（多租户，下一课展开）。</div>
+</div>
+
+<p>「project 是枢纽」还带来两个很实在的后果。其一是<strong>级联</strong>：删掉一个 project，它名下的 key、prompt、数据集、配置会跟着被清理（schema 里很多关系标了 <code>onDelete: Cascade</code>），
+这让「删一个项目」变成一个干净的操作，而不是到处留下孤儿数据。其二是<strong>边界即权限</strong>：因为一切都挂在 project 下，鉴权只要回答「你属不属于这个 project」就够了——
+这也是下一课多租户、以及第 21 课 tRPC 中间件 <code>protectedProjectProcedure</code> 的工作基础。记住这张「以 project 为中心」的图，后面很多看似分散的功能，其实都挂在它上面。</p>
+
+<h2>为什么 Postgres 里还有 trace 表？</h2>
+<p>翻 <code>schema.prisma</code> 时你可能会困惑：怎么还有 <code>LegacyPrismaTrace</code>、<code>LegacyPrismaObservation</code>、<code>LegacyPrismaScore</code>？
+不是说遥测都在 ClickHouse 吗？答案在名字里——<strong>Legacy（遗留）</strong>。这是 Langfuse 早期把 trace/observation/score 存在 Postgres 的<strong>历史残留</strong>；
+后来为了应对规模，分析数据整体<strong>迁到了 ClickHouse</strong>（这正是第 7、8 课的存在理由）。这些 legacy 模型留着主要是<strong>兼容与迁移</strong>用，不再是热路径。
+看到带 <code>Legacy</code> 前缀的，就知道「这是老路，别照着学」。</p>
+
+<h2>API key 与权限（预览）</h2>
+<p>身份这组里，<code>ApiKey</code> 有个值得现在就记住的安全细节：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma</span><span class="ln">model ApiKey</span></div>
+  <pre class="code">publicKey            <span class="cm">// 公钥，明文</span>
+hashedSecretKey      <span class="cm">// 密钥的哈希（不存明文！）</span>
+fastHashedSecretKey  <span class="cm">// 快速校验用的哈希</span>
+displaySecretKey     <span class="cm">// 只用于 UI 展示的脱敏片段</span>
+scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pre>
+</div>
+
+<p>注意：<strong>密钥本身从不以明文存库</strong>，只存哈希——这样即使数据库泄露，攻击者也拿不到可用的 key。权限则用 <code>Role</code> 枚举表达：
+<code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>，配合组织级与项目级的 membership 决定「谁能在哪个项目做什么」。这套鉴权与权限会在第 49、53 课展开，
+这里你只需建立印象：<strong>控制面不仅存「配置」，也存「谁能碰这些配置」。</strong></p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>把「控制面」和「数据面」分到两个数据库，最大的好处是什么？</strong> 是让两者能<strong>各自按自己的规律演进与伸缩</strong>。控制面数据量小、改动要强一致，
+  适合一台（或主从）Postgres 稳稳扛住；数据面是洪流，要水平扩展的 ClickHouse 集群。如果硬塞进一个库，要么委屈了配置的强一致，要么拖垮了遥测的吞吐。
+  代价是：一次操作有时要<strong>跨两个库</strong>（比如摄取时要回 Postgres 查模型定价、查 prompt 关联）——但这种「读配置、写数据」的跨库协作是<strong>可控且高频缓存</strong>的，
+  远比「让一个库同时做好 OLTP 和 OLAP」现实。<strong>按职责分库，让每个库只做自己最擅长的事。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>Postgres = 控制面</strong>：存「平台怎么配置」——org/project/user、API key、prompt、eval/数据集配置、模型定价、集成、审计。定义在 <code>schema.prisma</code>。</li>
+    <li><strong>Project 是枢纽</strong>：字段不多但挂着几十条关系，几乎一切都 1:N 属于某个 project——它是天然的<strong>数据边界</strong>（多租户基础）。</li>
+    <li><strong>LegacyPrismaTrace/Observation/Score 是历史残留</strong>：分析数据早已迁到 ClickHouse，这些只为兼容/迁移而留。</li>
+    <li><strong>API key 存哈希、不存明文</strong>；权限用 <code>Role</code>（OWNER/ADMIN/MEMBER/VIEWER/NONE）+ 组织/项目 membership（第 49、53 课）。</li>
+    <li>控制面 vs 数据面，是第 3 课「领域形状 vs 物理存储」的宏观版：<strong>按职责分库</strong>，各做擅长的事。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 为什么把配置/元数据（org/project/user、API key、prompt、定价…）放 Postgres，而不是和遥测一起放 ClickHouse？</div>
+  <ol class="opts">
+    <li>因为 Postgres 查询更慢，适合不常用的数据</li>
+    <li>纯粹历史原因，没有道理</li>
+    <li>配置要外键关系、事务、强一致（创建即可用），是关系型 Postgres 的强项；ClickHouse 弱事务、最终一致、不擅长频繁改单条，放配置是错配</li>
+    <li>因为 ClickHouse 容量太小</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。配置是 OLTP：量小、要精确单条读写、要强一致、有外键关系。这正是 Postgres 的主场；ClickHouse 适合海量追加+聚合（OLAP）。按职责分库，各做擅长的事——这是第 7 课的延续。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 为什么说 Project 是控制面的“枢纽”，以及它为什么是多租户的“数据边界”？</div>
+  <ol class="opts">
+    <li>因为 Project 存了所有 trace</li>
+    <li>因为它没有任何关系</li>
+    <li>因为 Project 表行数最多</li>
+    <li>Project 字段不多但挂着几十条 1:N 关系，几乎一切（key/成员/prompt/数据集/仪表盘/集成…）都属于某个 project；一把 API key 属于某 project，查询也被限定在该 project 内</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。几乎所有控制面对象都 1:N 挂在 project 下，所以它是中心；又因为 key、数据都按 project 划分，project 成了天然的隔离边界（也对应 ClickHouse 排序键以 project_id 打头）。多租户下一课展开。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. schema.prisma 里为什么还有 LegacyPrismaTrace/Observation/Score？API key 又是怎么存的？</div>
+  <ol class="opts">
+    <li>Legacy 用于备份 ClickHouse；API key 不存储</li>
+    <li>Legacy 是主力表；API key 明文存储</li>
+    <li>两者都已从代码删除</li>
+    <li>Legacy 是早期把遥测存在 Postgres 的历史残留，分析数据已迁到 ClickHouse，仅为兼容/迁移保留；API key 的密钥只存哈希、不存明文</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。带 Legacy 前缀=老路：遥测早已迁 ClickHouse（第 7、8 课的存在理由），这些只为兼容/迁移留着。API key 只存 hashedSecretKey 等哈希，即使库泄露也拿不到可用 key——安全细节，第 49/53 课展开。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>Langfuse 把“配置”和“数据”分到两个库。如果你自己的系统也有“少而关键的配置”+“海量的事件”，你会怎么划分？跨库读配置的代价你打算怎么压（提示：缓存）？</li>
   </ul>
 </div>
 </div>

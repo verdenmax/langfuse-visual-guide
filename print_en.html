@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 8 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 9 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -345,6 +345,7 @@ details[open] > summary { list-style: none; }
   <li>Instrumenting an LLM app</li>
   <li>The dual-store architecture</li>
   <li>ClickHouse & the wide-event tables</li>
+  <li>The metadata schema (Postgres)</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -2287,6 +2288,213 @@ isolation = ordering-key prefix" idea:</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>ReplacingMergeTree turns 'edit' into 'append + background overwrite'. If your own system also 'updates the same record many times', how could this 'append-only, read-the-latest' idea help you? Can you accept its cost?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The metadata schema (Postgres)</h1>
+
+<p class="lead">
+The last two lessons starred ClickHouse (massive telemetry). This one switches to the other half: <strong>Postgres</strong>. If ClickHouse
+stores "<strong>what happened</strong>" (trace/observation/score), Postgres stores "<strong>how the platform is configured</strong>" — who
+your orgs and projects are, who has access, which API keys exist, which prompts are defined, which eval rules are set, how each model is
+priced. This side is the <strong>control plane</strong> — small in volume yet <strong>global in importance</strong>. Its shape is all in
+<code>packages/shared/prisma/schema.prisma</code>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of the two stores as a company's two systems: <strong>Postgres</strong> is the <strong>HR/admin system</strong> — who's an
+  employee, in which department, with what permissions, under which policies. Not much data, but it must be <strong>accurate, editable,
+  instantly effective</strong> (a new hire's permissions must work right away). <strong>ClickHouse</strong> is the <strong>transaction
+  ledger</strong> — mountains of records, append-only, used later for monthly/category stats. <strong>You wouldn't write policies into the
+  ledger, nor stuff every transaction into HR files</strong> — two kinds of data, two systems, each in its place.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Postgres holds the control plane (config/metadata), ClickHouse holds the data plane (telemetry flood)">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">control plane (Postgres) vs data plane (ClickHouse)</text>
+  <rect x="30" y="40" width="320" height="190" rx="12" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="190" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">Postgres · control plane</text>
+  <text x="190" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">small but critical · consistent · precise read/write</text>
+  <rect x="48" y="92" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="111" text-anchor="middle" font-size="9.5" fill="var(--ink)">org / project / user</text>
+  <rect x="197" y="92" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="111" text-anchor="middle" font-size="9.5" fill="var(--ink)">API key · permissions</text>
+  <rect x="48" y="130" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="149" text-anchor="middle" font-size="9.5" fill="var(--ink)">prompt definitions</text>
+  <rect x="197" y="130" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="149" text-anchor="middle" font-size="9.5" fill="var(--ink)">eval / dataset config</text>
+  <rect x="48" y="168" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="115" y="187" text-anchor="middle" font-size="9.5" fill="var(--ink)">model pricing</text>
+  <rect x="197" y="168" width="135" height="30" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="264" y="187" text-anchor="middle" font-size="9.5" fill="var(--ink)">integrations · audit</text>
+  <text x="190" y="218" text-anchor="middle" font-size="9" fill="var(--blue)">"how the platform is configured"</text>
+  <rect x="390" y="40" width="300" height="190" rx="12" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+  <text x="540" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)">ClickHouse · data plane</text>
+  <text x="540" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">huge · append · dimensional aggregation</text>
+  <rect x="410" y="100" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="121" text-anchor="middle" font-size="10" fill="var(--ink)">traces (wide events)</text>
+  <rect x="410" y="140" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="161" text-anchor="middle" font-size="10" fill="var(--ink)">observations (wide events)</text>
+  <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores (wide events)</text>
+</svg>
+<div class="figcap"><b>Two halves</b>: <b>Postgres</b> stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, pricing, integrations, audit; <b>ClickHouse</b> stores "what actually happened" — three wide-event tables. This is the macro version of Lesson 3's "domain shape vs physical storage": one governs control, one governs data.</div>
+</div>
+
+<h2>Postgres holds the "control plane"</h2>
+<p>Open <code>schema.prisma</code> and you'll see dozens of models. They group by purpose (all map to snake_case tables via
+<code>@@map</code>, with cuid primary keys):</p>
+
+<table class="t">
+  <tr><th>Group</th><th>Main models</th><th>Governs</th></tr>
+  <tr><td><b>Identity & tenancy</b></td><td class="mono">Organization · Project · User · *Membership · Role · ApiKey</td><td>who the org/project is, who has what permission, which key</td></tr>
+  <tr><td><b>Prompt</b></td><td class="mono">Prompt · PromptDependency · PromptProtectedLabels</td><td>versioned prompt definitions and dependencies</td></tr>
+  <tr><td><b>Datasets / eval</b></td><td class="mono">Dataset · DatasetItem · DatasetRuns · DatasetRunItems · ScoreConfig · EvalTemplate · JobConfiguration · JobExecution</td><td>the <strong>definition & orchestration</strong> of test sets, score configs, eval jobs</td></tr>
+  <tr><td><b>Models & billing</b></td><td class="mono">Model · Price · PricingTier</td><td>model pricing tables (basis for cost computation, L16)</td></tr>
+  <tr><td><b>Integrations & ops</b></td><td class="mono">*Integration · BatchExport · BatchAction · Media · AuditLog · BackgroundMigration</td><td>outbound integrations, exports, media, audit, background migrations</td></tr>
+</table>
+
+<p>See the pattern? These are all <strong>"config" and "definition"</strong>, not "mountains of events". They number in the
+<strong>thousands to millions</strong>, are <strong>read/written precisely and often one at a time</strong> (create a project, edit a
+prompt, check a key's validity), and need <strong>strong consistency</strong> — exactly the relational database Postgres's forte.</p>
+
+<div class="cols">
+  <div class="col"><h4>✅ Config in Postgres</h4><p>You want foreign keys (project → its prompts/keys/config), transactions (a multi-table change all-or-nothing), and "readable right after writing". All relational-DB strengths.</p></div>
+  <div class="col"><h4>❌ Config not in ClickHouse</h4><p>ClickHouse has weak transactions, eventual consistency, and dislikes frequent single-row edits. Put "create-project-instantly-usable" there and you'd get the awkward "just created but can't find it". Config there is a mismatch.</p></div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">tier 1</span><span class="name">identity & tenancy</span></div><div class="ld">Organization / Project / User / Membership / Role / ApiKey — decide "who, in which project, with what permission". The prerequisite for everything else.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">tier 2</span><span class="name">feature config</span></div><div class="ld">Prompt, Dataset, ScoreConfig, EvalTemplate/JobConfiguration, Model/Price — each feature's "definition & orchestration", all hung under a project.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">tier 3</span><span class="name">integrations & ops</span></div><div class="ld">the *Integration models, BatchExport/Action, Media, AuditLog, BackgroundMigration — outbound connections and the platform's own ops records.</div></div>
+</div>
+
+
+<h2>Project is the hub</h2>
+<p>Among these dozens of models, <code>Project</code> is the undeniable <strong>center</strong>. Open its definition and you'll find few
+fields (id, orgId, name, deletedAt soft-delete, retentionDays…) but <strong>dozens of relations</strong> — almost everything else belongs
+to some project:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Organization contains Project; Project is the hub linking API keys, members, datasets, prompts, configs, dashboards, automations, integrations">
+  <rect x="285" y="20" width="150" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="38" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Organization</text><text x="360" y="52" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">billing · members</text>
+  <rect x="290" y="125" width="140" height="48" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="360" y="146" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">Project</text><text x="360" y="162" text-anchor="middle" font-size="8.5" fill="var(--muted)">data boundary · hub</text>
+  <line x1="360" y1="60" x2="360" y2="123" stroke="var(--faint)" stroke-width="1.8"/><polygon points="360,123 355,113 365,113" fill="var(--faint)"/>
+  <text x="377" y="95" font-size="8.5" fill="var(--faint)">1 : N</text>
+  <g font-size="9" fill="var(--ink)" text-anchor="middle">
+    <rect x="20" y="100" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="118">API key</text>
+    <rect x="20" y="148" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="166">members/roles</text>
+    <rect x="20" y="196" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="75" y="214">prompts</text>
+    <rect x="160" y="232" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="215" y="250">datasets/eval</text>
+    <rect x="300" y="248" width="120" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="360" y="266">models/pricing</text>
+    <rect x="450" y="232" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="505" y="250">dashboards</text>
+    <rect x="590" y="196" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="214">automation</text>
+    <rect x="590" y="148" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="166">integrations</text>
+    <rect x="590" y="100" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/><text x="645" y="118">media/export</text>
+  </g>
+  <g stroke="var(--line)" stroke-width="1.3">
+    <line x1="290" y1="150" x2="130" y2="114"/><line x1="290" y1="152" x2="130" y2="162"/><line x1="295" y1="165" x2="130" y2="206"/>
+    <line x1="320" y1="173" x2="240" y2="232"/><line x1="360" y1="173" x2="360" y2="246"/><line x1="400" y1="173" x2="490" y2="232"/>
+    <line x1="430" y1="165" x2="590" y2="206"/><line x1="430" y1="152" x2="590" y2="162"/><line x1="430" y1="150" x2="590" y2="114"/>
+  </g>
+</svg>
+<div class="figcap"><b>Project is the center of the control plane</b>: under Organization, almost everything (API keys, members, prompts, datasets/eval, models/pricing, dashboards, automation, integrations, media/export) hangs off some project <b>1:N</b>. So <b>project is the natural "data boundary"</b> — an API key belongs to a project, and all the data you query is scoped to its project (multi-tenancy, next lesson).</div>
+</div>
+
+<p>"Project is the hub" has two very real consequences. One is <strong>cascade</strong>: delete a project and its keys, prompts, datasets and
+config are cleaned up with it (many relations are marked <code>onDelete: Cascade</code>), making "delete a project" a clean operation rather
+than leaving orphan data everywhere. The other is <strong>boundary equals permission</strong>: because everything hangs under a project,
+authorization only needs to answer "do you belong to this project" — the basis for the next lesson's multi-tenancy and for L21's tRPC
+middleware <code>protectedProjectProcedure</code>. Remember this "project-centric" picture and many seemingly-scattered features later turn
+out to hang off it.</p>
+
+<h2>Why are there trace tables in Postgres?</h2>
+<p>Browsing <code>schema.prisma</code> you may be puzzled: why are there <code>LegacyPrismaTrace</code>, <code>LegacyPrismaObservation</code>,
+<code>LegacyPrismaScore</code>? Isn't telemetry all in ClickHouse? The answer is in the name — <strong>Legacy</strong>. This is a
+<strong>historical remnant</strong> of Langfuse's early days storing trace/observation/score in Postgres; later, to handle scale, the
+analytical data <strong>moved to ClickHouse</strong> (the very reason for Lessons 7 and 8). These legacy models remain mainly for
+<strong>compatibility and migration</strong> — no longer the hot path. See a <code>Legacy</code> prefix and you know "that's the old way,
+don't copy it".</p>
+
+<h2>API keys & permissions (preview)</h2>
+<p>In the identity group, <code>ApiKey</code> has a security detail worth remembering now:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma</span><span class="ln">model ApiKey</span></div>
+  <pre class="code">publicKey            <span class="cm">// public key, plaintext</span>
+hashedSecretKey      <span class="cm">// hash of the secret (no plaintext!)</span>
+fastHashedSecretKey  <span class="cm">// a hash for fast verification</span>
+displaySecretKey     <span class="cm">// a masked fragment, UI display only</span>
+scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pre>
+</div>
+
+<p>Note: <strong>the secret is never stored in plaintext</strong>, only hashed — so even a DB leak yields no usable key. Permissions use the
+<code>Role</code> enum: <code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>, combined with org-level and project-level memberships to decide
+"who can do what in which project". Auth and permissions get their own lessons (L49, L53); for now just register the impression:
+<strong>the control plane stores not only "config" but "who may touch that config".</strong></p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>What's the biggest payoff of splitting "control plane" and "data plane" into two databases?</strong> Letting each
+  <strong>evolve and scale by its own rules</strong>. The control plane is small and needs strong consistency — fine for a single (or
+  primary/replica) Postgres; the data plane is a flood needing a horizontally-scalable ClickHouse cluster. Force them into one store and
+  you either shortchange config consistency or crush telemetry throughput. The cost: some operations span <strong>two stores</strong> (e.g.
+  ingestion reads model pricing and prompt links back from Postgres) — but this "read config, write data" cross-store collaboration is
+  <strong>controllable and heavily cached</strong>, far more realistic than "making one store great at both OLTP and OLAP". <strong>Split
+  by responsibility; let each store do only what it's best at.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Postgres = control plane</strong>: stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, model pricing, integrations, audit. Defined in <code>schema.prisma</code>.</li>
+    <li><strong>Project is the hub</strong>: few fields but dozens of relations; almost everything belongs 1:N to a project — the natural <strong>data boundary</strong> (multi-tenancy basis).</li>
+    <li><strong>LegacyPrismaTrace/Observation/Score are historical remnants</strong>: analytical data long moved to ClickHouse; these remain only for compatibility/migration.</li>
+    <li><strong>API keys are stored hashed, never plaintext</strong>; permissions use <code>Role</code> (OWNER/ADMIN/MEMBER/VIEWER/NONE) + org/project memberships (L49, L53).</li>
+    <li>Control plane vs data plane is the macro version of Lesson 3's "domain shape vs physical storage": <strong>split by responsibility</strong>, each doing what it's best at.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse keep config/metadata (org/project/user, API keys, prompts, pricing…) in Postgres rather than in ClickHouse with telemetry?</div>
+  <ol class="opts">
+    <li>Because Postgres is slower, fit for rarely-used data</li>
+    <li>Pure history, no reason</li>
+    <li>Config needs foreign keys, transactions and strong consistency (instantly usable) — relational Postgres's strength; ClickHouse has weak transactions, eventual consistency and dislikes frequent single-row edits, so config there is a mismatch</li>
+    <li>Because ClickHouse is too small</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Config is OLTP: small, precise single-row, strongly consistent, with foreign keys — Postgres's turf; ClickHouse fits massive append + aggregation (OLAP). Split by responsibility, each at its best — a continuation of L07.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why is Project the 'hub' of the control plane, and why is it the multi-tenant 'data boundary'?</div>
+  <ol class="opts">
+    <li>Because Project stores all traces</li>
+    <li>Because it has no relations</li>
+    <li>Because the Project table has the most rows</li>
+    <li>Project has few fields but dozens of 1:N relations; almost everything (keys/members/prompts/datasets/dashboards/integrations…) belongs to a project; an API key belongs to a project and queries are scoped to it</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Almost all control-plane objects hang 1:N off a project, making it the center; and since keys and data are scoped by project, project is the natural isolation boundary (matching ClickHouse's project_id-first ordering key). Multi-tenancy next lesson.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why are there still LegacyPrismaTrace/Observation/Score in schema.prisma? And how are API keys stored?</div>
+  <ol class="opts">
+    <li>Legacy back up ClickHouse; API keys aren't stored</li>
+    <li>Legacy are the primary tables; API keys are stored in plaintext</li>
+    <li>Both have been removed from the code</li>
+    <li>Legacy models are historical remnants of storing telemetry in Postgres; analytical data moved to ClickHouse, kept only for compat/migration; API key secrets are stored hashed, never plaintext</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Legacy prefix = old way: telemetry long moved to ClickHouse (the reason for L07/L08); these remain for compat/migration. API keys store only hashedSecretKey etc., so a DB leak yields no usable key — a security detail expanded in L49/L53.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Langfuse splits 'config' and 'data' into two databases. If your system also had 'small critical config' + 'massive events', how would you divide them? How would you tame the cross-store config-read cost (hint: caching)?</li>
   </ul>
 </div>
 </div>
