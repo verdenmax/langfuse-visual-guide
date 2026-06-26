@@ -10,4 +10,5 @@ import part1
 # Filename -> {"zh": ..., "en": ...}. Keep keys in sync with shell.PAGES.
 CONTENT = {
     "01-what-is-langfuse.html": part1.LESSON_01,
+    "02-observability-2-and-wide-events.html": part1.LESSON_02,
 }

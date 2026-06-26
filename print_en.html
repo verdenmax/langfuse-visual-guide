@@ -334,10 +334,11 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 1 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 2 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
+  <li>Observability 2.0 & wide events</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -699,6 +700,256 @@ ten paragraphs of explanation.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>If you were adding 'observability' to your own LLM app, which three kinds of data would you record on each observation first, and why would those three help you debug later?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Observability 2.0 & wide events</h1>
+
+<p class="lead">
+Last lesson called Langfuse's "design soul" <strong>wide events / Observability 2.0</strong>. This lesson makes the slogan
+concrete — it is <strong>not</strong> marketing; it's a <strong>first principle</strong> written into
+<code>.agents/ARCHITECTURE_PRINCIPLES.md</code> that constrains every storage and query decision in Langfuse. Grasp it and
+the later questions — "why ClickHouse", "why immutable events", "why lists read only narrow fields" — answer themselves. This
+lesson is the guide's <strong>foundation lesson</strong>: not about one module but about a <strong>way of seeing</strong> that the
+fifty-odd later lessons build on.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Classic "Observability 1.0" is like a hospital splitting your check-up across <strong>three disconnected departments</strong>:
+  one records only <strong>numbers</strong> (blood pressure, heart rate — metrics), one writes only <strong>text</strong> (the
+  doctor's notes — logs), one draws only the <strong>route</strong> (register, then blood draw — traces). To understand "why I
+  feel unwell" you must <strong>reconcile across all three yourself</strong>. "Observability 2.0" flips it: each visit writes one
+  <strong>complete medical record</strong> — numbers, description and process <strong>on a single sheet</strong>. That single
+  sheet is the <strong>wide event</strong>. The benefit is obvious: a different doctor, or you revisiting later, can reconstruct the
+  whole picture from that <strong>one sheet</strong> — no re-digging three departments to line up the timeline.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Left: Observability 1.0 stores metrics, logs, traces separately needing later reassembly; right: 2.0 one wide event sliced any way">
+  <text x="170" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--red)">Observability 1.0 · three split pillars</text>
+  <rect x="40" y="40" width="160" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="120" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">metrics</text>
+  <text x="120" y="76" text-anchor="middle" font-size="9.5" fill="var(--muted)">pre-aggregated · lose detail</text>
+  <rect x="40" y="92" width="160" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="120" y="112" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">logs</text>
+  <text x="120" y="128" text-anchor="middle" font-size="9.5" fill="var(--muted)">scattered text · hard to aggregate</text>
+  <rect x="40" y="144" width="160" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="120" y="164" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">traces</text>
+  <text x="120" y="180" text-anchor="middle" font-size="9.5" fill="var(--muted)">structured · no business attrs</text>
+  <text x="120" y="214" text-anchor="middle" font-size="11" fill="var(--red)">🧩 reassemble by hand later</text>
+  <text x="350" y="120" text-anchor="middle" font-size="18" font-weight="800" fill="var(--faint)">vs</text>
+  <text x="545" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Observability 2.0 · one wide event</text>
+  <rect x="404" y="50" width="282" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="545" y="74" text-anchor="middle" font-size="10" fill="var(--accent-ink)">model · tokens · cost · latency · user · tag · env …</text>
+  <text x="545" y="104" text-anchor="middle" font-size="9.5" fill="var(--muted)">numbers + structure + business fields, one row</text>
+  <line x1="460" y1="120" x2="430" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="430,158 432,147 439,153" fill="var(--accent)"/>
+  <line x1="545" y1="120" x2="545" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="545,158 540,148 550,148" fill="var(--accent)"/>
+  <line x1="630" y1="120" x2="660" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="660,158 651,153 658,147" fill="var(--accent)"/>
+  <rect x="404" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="450" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by user</text>
+  <rect x="500" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="546" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by model</text>
+  <rect x="596" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="642" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by time</text>
+  <text x="545" y="226" text-anchor="middle" font-size="11" fill="var(--accent-ink)">✅ same wide table, new query = new view</text>
+</svg>
+<div class="figcap"><b>1.0 vs 2.0</b>: the classic three pillars <b>fragment</b> information, forcing manual reassembly before any cross-dimension question; a wide event puts the numbers, structure and business fields of one step <b>on a single row</b>, so "drill down" and "aggregate" are just different queries over one wide table. This is exactly what <code>ARCHITECTURE_PRINCIPLES.md</code> means by "<b>prefer wide, richly attributed events over fragmented metrics, logs, and trace records that require later reconstruction</b>".</div>
+</div>
+
+<h2>The trouble with Observability 1.0</h2>
+<p>The classic "metrics + logs + traces" combo (often called <strong>Observability 1.0</strong>) is fine piece by piece; the
+problem is that the <strong>three are separate</strong>:</p>
+<ul>
+  <li><strong>Metrics</strong> are <strong>pre-aggregated</strong> numbers — "average latency", "requests per minute". Cheap, but
+  you must decide <strong>before shipping</strong> which dimensions to aggregate; ask later for "the latency of <strong>this
+  user</strong> on <strong>this model</strong> in <strong>this window</strong>" and without that pre-aggregation you're stuck.</li>
+  <li><strong>Logs</strong> are text lines — all the detail is there but they're <strong>hard to aggregate and correlate</strong>:
+  computing "median tokens grouped by model" over free text is painful.</li>
+  <li><strong>Traces</strong> show call structure (who called whom, how long) but <strong>usually carry no business
+  attributes</strong> — they know "an LLM was called" but not "who the user was or which prompt version".</li>
+</ul>
+<p>So to triage a cross-dimension problem you end up <strong>reconciling across three systems</strong>. Langfuse's very first
+architecture principle targets exactly this — <strong>treat the observation as the primary analytical unit</strong>, with the
+trace as a <strong>correlation handle</strong> (verbatim: <em>"Model observations as the primary analytical unit. A trace is a
+correlation handle that links related observations, not the only useful entry point."</em>).</p>
+
+<p>A concrete contrast. Someone complains that "<strong>answers get slow at peak hours</strong>" and you want to know "<strong>is a
+particular model slow for particular users</strong>". In 1.0: metrics give you one "global average latency" curve that can't tell
+which model or which users; logs have the individual records but tens of thousands of text lines won't quickly group-by-model and
+compute percentiles; traces show per-call duration but never recorded the <code>user</code> and <code>model</code> business fields.
+All three are "related", yet <strong>none can answer directly</strong> — you end up exporting data and scripting the join yourself.
+In 2.0: every observation already carries <code>model</code>, <code>userId</code> and <code>latency</code>, so the question
+collapses to one ordinary query — "group by model + userId, look at p95 of latency". <strong>Same question: 1.0 stitches across
+three systems for ages; 2.0 just changes the query.</strong></p>
+
+
+<h2>Wide events: put everything on one row</h2>
+<p>The "Observability 2.0" fix is direct: <strong>don't reassemble later — don't split it when you write</strong>. Cram <strong>all
+the high-cardinality context</strong> of one step (which model, how many tokens, how much money, how long, which user, which tags,
+what environment…) <strong>into one record</strong> — that record is a Langfuse <strong>observation</strong>. It's both a "trace
+node" (with <code>parentObservationId</code> to rebuild the call tree), a bag of aggregatable numbers
+(<code>usageDetails</code> / <code>costDetails</code> / <code>latency</code>), and a carrier of arbitrary business fields
+(<code>metadata</code> / <code>tags</code> / <code>userId</code>). Everything the three pillars do separately, one wide event does
+together.</p>
+
+<p>You might ask: why not split these fields into <strong>several normalized tables</strong> with foreign keys — isn't that
+"cleaner"? Because <strong>JOINs at query time are a hidden hot-path cost</strong>. Observability data is enormous (an active project
+can write hundreds of millions of observations a day); if every "cost by model" had to JOIN the observation table with a "models"
+table and a "usage" table, the scan-and-join cost explodes with volume. Langfuse's principle is to <strong>denormalize
+carefully</strong>: inline the fields commonly used to filter and aggregate <strong>directly onto the observation row</strong>, so
+"by model / by user / by time" become <strong>plain column predicates</strong> instead of JOINs. That's the other meaning of
+"wide" — not just many fields, but <strong>deliberately keeping together what belongs together</strong>, trading a little storage
+redundancy for not joining at query time.</p>
+
+<div class="cols">
+  <div class="col">
+    <h4>😕 1.0: split then stitch</h4>
+    <p>Metrics, logs and traces live apart; a cross-dimension question means three queries plus manual reconciliation. <strong>What you can ask is locked by field design before you ship.</strong></p>
+  </div>
+  <div class="col">
+    <h4>😀 2.0: one row holds it</h4>
+    <p>One observation carries numbers, structure and business fields at once. <strong>Slice, group and filter are all queries over one wide table</strong>; ask anything later. Cost: wider rows, more storage.</p>
+  </div>
+</div>
+
+<h2>How the principles thread through Langfuse</h2>
+<p>Every line in <code>ARCHITECTURE_PRINCIPLES.md</code> has an engineering landing spot in a later lesson. Below: "principle → what it buys → where".</p>
+
+<table class="t">
+  <tr><th>Architecture principle (gist)</th><th>What it buys</th><th>Lesson</th></tr>
+  <tr><td>observation = primary unit; trace = correlation handle</td><td>any step is independently queryable</td><td>L03</td></tr>
+  <tr><td>prefer wide, richly-attributed events over fragmented pillars</td><td>drill-down & aggregation unify into one wide table</td><td>L08</td></tr>
+  <tr><td>preserve high-cardinality context for unknown unknowns</td><td>ask questions you didn't foresee</td><td>this</td></tr>
+  <tr><td>favor immutable / append-oriented records</td><td>no read-time dedup cost; ReplacingMergeTree</td><td>L08</td></tr>
+  <tr><td>denormalize carefully to kill hot-path JOINs</td><td>common filters become column predicates</td><td>L08·22</td></tr>
+  <tr><td>design around columnar access (narrow fields, time bounds, ordering, pruning)</td><td>ms scans/aggregations even on big tables</td><td>L08·23</td></tr>
+  <tr><td>compact list/dashboard views; read big payloads only on detail</td><td>fast lists, full detail, no mutual drag</td><td>L24</td></tr>
+  <tr><td>scale-aware API contracts: time windows, token pagination</td><td>avoid accidental full-history scans</td><td>L27</td></tr>
+  <tr><td>treat cost & operational simplicity as constraints</td><td>don't casually add DBs/queues/MVs</td><td>L53</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  Wide events aren't free: wider rows, more data written, and you need smart writes + compression. Langfuse's trade is
+  <strong>a little storage and write complexity for the freedom to ask anything later</strong>. It tames the cost three ways:
+  <strong>columnar storage</strong> (read only the columns you query), <strong>ZSTD compression</strong> (big input/output fields
+  shrink hard), <strong>deferred reads</strong> (lists read narrow fields; big fields only on the detail page). Those three are the
+  subject of lessons 8 and 24.
+</div>
+
+<h2>Why it's worth it: unknown unknowns</h2>
+<p>The biggest payoff of wide events is answering questions you <strong>didn't think to ask</strong> up front. Pre-aggregated
+metrics answer only <strong>known questions</strong> (you see only the dimensions of dashboards you built); keep the
+high-cardinality context on the row and a new question is just a <strong>new query</strong> — no re-instrumenting, no waiting for
+the next deploy.</p>
+
+<p>This matters especially for a <strong>platform</strong>. Langfuse serves thousands of projects and <strong>cannot</strong> know in
+advance which dimensions each team cares about — one wants "cost by prompt version", another "total latency of a user's multi-turn
+<code>session</code>", another to slice by custom <code>metadata</code> tags. The pre-aggregation route would force the platform to
+predefine a metric per need — never-ending and rigid. Wide events let Langfuse demote "<strong>define a new view</strong>" from
+"<strong>change instrumentation + redeploy</strong>" to "<strong>write a new query</strong>": dashboards, custom metrics and filters
+(lessons 23, 40) are all just different queries over the same wide table. That's why "preserve high-cardinality context" isn't a
+nicety — it's the <strong>foundation of the platform's extensibility</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Pre-aggregated metrics answer only known questions; wide events answer new questions thought of later">
+  <rect x="30" y="48" width="300" height="160" rx="12" fill="var(--red-soft)" stroke="var(--red)"/>
+  <text x="180" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--red)">Pre-aggregated: only "known questions"</text>
+  <rect x="54" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="90" text-anchor="middle" font-size="10" fill="var(--ink)">✅ average latency? (you built this chart)</text>
+  <rect x="54" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="128" text-anchor="middle" font-size="10" fill="var(--ink)">✅ requests/min? (you built this chart)</text>
+  <rect x="54" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--red)" stroke-dasharray="4 3"/><text x="180" y="166" text-anchor="middle" font-size="10" fill="var(--red)">❌ why is user X slow on model Y?</text><text x="180" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">dimension not pre-aggregated → can't</text>
+  <rect x="390" y="48" width="300" height="160" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="540" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">Wide events: also "new questions"</text>
+  <rect x="414" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="90" text-anchor="middle" font-size="10" fill="var(--ink)">✅ avg latency? aggregate the latency col</text>
+  <rect x="414" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="128" text-anchor="middle" font-size="10" fill="var(--ink)">✅ user X + model Y slow? add two filters</text>
+  <rect x="414" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--accent)"/><text x="540" y="166" text-anchor="middle" font-size="10" fill="var(--accent-ink)">✅ any slice thought of later</text><text x="540" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">row still has the context → just re-query</text>
+</svg>
+<div class="figcap"><b>Known vs unknown</b>: pre-aggregation fixes "what you can ask" at ship time; wide events keep the high-cardinality context on the row, so facing <b>unknown unknowns</b> — the questions you never thought to ask — you just write a new query. That's the root reason Langfuse keeps rows wide.</div>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Observability 1.0</strong> = metrics + logs + traces, <strong>three split pillars</strong>; cross-dimension questions need manual reassembly, and what you can ask is locked by field design.</li>
+    <li><strong>Observability 2.0 / wide events</strong> = put numbers, structure and business fields of one step <strong>on one observation</strong>; drill-down and aggregation unify into "query one wide table".</li>
+    <li>This is a <strong>first principle</strong> in <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>, mapping line-by-line to later storage/query design.</li>
+    <li>The cost is wider rows and more storage, balanced by <strong>columnar storage + ZSTD compression + deferred reads</strong> (L08·24).</li>
+    <li>Core payoff: answering <strong>unknown unknowns</strong> — questions thought of after the fact, never pre-aggregated.</li>
+  </ul>
+</div>
+
+
+<h2>Ten principles, four themes</h2>
+<p>The nine-to-ten principles look scattered but revolve around <strong>four themes</strong> — layered, and matching the four big
+blocks of this guide. Grouping them beats memorizing them one by one:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">data model</span><span class="name">observation-first · high cardinality</span></div>
+    <div class="ld">Get "what to record" right first: observation as the primary unit, keep high-cardinality context. Get this wrong and no amount of fast storage saves you.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">storage</span><span class="name">wide · immutable · denormalized · columnar</span></div>
+    <div class="ld">Then "how to store": wide events, append-only immutability (ReplacingMergeTree), careful denormalization, ordering keys & partitions designed for columnar access.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">query</span><span class="name">compact lists · big fields on detail only</span></div>
+    <div class="ld">Then "how to read": lists/dashboards on compact query-optimized representations; big input/output fetched only on a single detail page.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">contract & cost</span><span class="name">scale-aware API · lean ops</span></div>
+    <div class="ld">Finally "outward/ops": APIs force time windows and token pagination to avoid full scans; treat extra DBs, queues and materialized views as real operational cost.</div></div>
+</div>
+
+<p>These four groups are also the spine of this guide: <strong>data model</strong> is Part 1 (here), <strong>storage</strong> is Part 2,
+the <strong>write and read paths</strong> are Parts 3–4, and <strong>contract & cost</strong> show up in the public API (L27) and
+operations (L53). In other words, the "design philosophy" you're reading now is the <strong>outline</strong> of the fifty-odd
+lessons ahead.</p>
+
+<p>One easily-missed but crucial principle: <strong>preserve near-real-time debugging</strong> (verbatim: <em>"Preserve real-time or
+near-real-time debugging workflows. Batch processing can help, but it should not make fresh production behavior invisible."</em>).
+This is why Langfuse's ingestion, though <strong>async</strong>, keeps processing lag to <strong>seconds</strong> — observability that
+"can't see what just happened" loses half its value. This recurs across the ingestion path in lessons 14–17.</p>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What is the most essential difference between Observability 1.0 (metrics+logs+traces) and 2.0 (wide events)?</div>
+  <ol class="opts">
+    <li>2.0 requires exactly one observation per trace</li>
+    <li>1.0 is faster because the data is wider</li>
+    <li>2.0 stops storing any numeric metrics</li>
+    <li>1.0 splits info across three separate systems and needs manual reassembly for cross-dimension questions; 2.0 puts numbers/structure/business fields of one step on one row, so drill-down and aggregation are both queries over one wide table</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The point isn't whether you use metrics, but whether things are separated. 1.0's three pillars live apart, forcing reconciliation across systems; 2.0 keeps high-cardinality context on the row, so a new question is just a new query. That's principles one and two in ARCHITECTURE_PRINCIPLES.md.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why can wide events answer 'unknown unknowns' while pre-aggregated metrics cannot?</div>
+  <ol class="opts">
+    <li>Because wide events use a more expensive database</li>
+    <li>Because wide events automatically guess your questions</li>
+    <li>Pre-aggregation fixes dimensions before shipping, answering only charts you built; wide events keep the full high-cardinality row, so any slice thought of later is just a new query — no re-instrumenting or redeploy</li>
+    <li>Because pre-aggregated metrics don't support a time dimension</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. 'Unknown unknowns' are questions you didn't foresee. Pre-aggregation locks 'what you can ask' at ship time; wide events keep the context on the row, demoting 'define a new view' from 're-instrument + redeploy' to 'write a new query' — the foundation of platform extensibility.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why does Langfuse <strong>inline</strong> model, usageDetails, costDetails onto the observation row instead of splitting into normalized tables with foreign keys?</div>
+  <ol class="opts">
+    <li>Because foreign keys are illegal in any database</li>
+    <li>To kill hot-path JOINs: observability data is huge, so joining for common filters/aggregations would explode in cost; inlining turns 'by model/user/time' into plain column predicates</li>
+    <li>Because ClickHouse doesn't support multiple tables</li>
+    <li>Purely to use more disk</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. This is the 'denormalize carefully' principle: trade a little storage redundancy for not joining at query time. At hundreds-of-millions-of-rows scale, inlining the fields used to filter/aggregate so hot queries become column predicates is key to making wide events fast (expanded in L08).</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Imagine you run an internal LLM gateway and your boss asks 'which department, on which model, spent the most last week'. If you only had a traditional 'average cost' metric, where would you get stuck? How does a wide event make this easy?</li>
   </ul>
 </div>
 </div>

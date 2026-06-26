@@ -51,6 +51,8 @@ def head_meta(title, description, og_type="website"):
 PAGES = [
     ("01-what-is-langfuse.html", "Langfuse 是什么", "What is Langfuse",
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
+    ("02-observability-2-and-wide-events.html", "可观测性 2.0 与宽事件", "Observability 2.0 & wide events",
+     "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
 ]
 
 
@@ -536,6 +538,8 @@ def page(filename, content, home_href="../index.html"):
 SUBTITLES = {
     "01-what-is-langfuse.html": ("LLM 可观测性 · trace/observation/score · 为何要这样一套平台",
                                  "LLM observability; trace/observation/score; why a platform like this"),
+    "02-observability-2-and-wide-events.html": ("可观测性 1.0 的困境 · 宽事件 · 十条原则 · unknown unknowns",
+                                                "the 1.0 trouble; wide events; the principles; unknown unknowns"),
 }
 
 

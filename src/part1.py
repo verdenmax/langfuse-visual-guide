@@ -638,3 +638,392 @@ ten paragraphs of explanation.</p>
 # (more sections appended below, before the LESSON_01 assembly)
 
 LESSON_01 = {"zh": "\n".join(_ZH), "en": "\n".join(_EN)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L02 · 可观测性 2.0 与宽事件 / Observability 2.0 & wide events
+# ══════════════════════════════════════════════════════════════════════
+_ZH2 = []
+_EN2 = []
+
+_ZH2.append(r"""
+<p class="lead">
+上一课说 Langfuse 的「设计灵魂」是<strong>宽事件 / 可观测性 2.0</strong>。这一课把这句口号讲透——它<strong>不是</strong>营销词，
+而是写在 <code>.agents/ARCHITECTURE_PRINCIPLES.md</code> 里、约束着 Langfuse 每一处存储与查询设计的<strong>第一性原则</strong>。
+理解了它，后面「为什么用 ClickHouse」「为什么事件不可变」「为什么列表只读窄字段」这些问题，答案都会自己浮现。
+可以说，这一课是整份指南的<strong>地基课</strong>：它不讲某个具体模块，而讲一种<strong>看问题的方式</strong>，后面五十多课都建在它之上。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  传统「可观测性 1.0」像医院把你的体检拆成<strong>三个互不相通的科室</strong>：一个只记<strong>数字</strong>（血压、心率——指标 metrics），
+  一个只写<strong>文字</strong>（医生手记——日志 logs），一个只画<strong>就诊路线</strong>（你今天先挂号再抽血——链路 traces）。
+  想搞清「为什么这次不舒服」，你得自己<strong>跨三个科室对账</strong>。「可观测性 2.0」反过来：每看一次病，就写一份
+  <strong>完整病历</strong>——数字、描述、过程<strong>全在一张纸上</strong>。这张「完整病历」，就是<strong>宽事件（wide event）</strong>。
+  好处显而易见：换个医生、换个时间回看，都能从这<strong>一张纸</strong>上还原全部情况，而不必再去三个科室翻档案对时间线。
+</div>
+""")
+
+_EN2.append(r"""
+<p class="lead">
+Last lesson called Langfuse's "design soul" <strong>wide events / Observability 2.0</strong>. This lesson makes the slogan
+concrete — it is <strong>not</strong> marketing; it's a <strong>first principle</strong> written into
+<code>.agents/ARCHITECTURE_PRINCIPLES.md</code> that constrains every storage and query decision in Langfuse. Grasp it and
+the later questions — "why ClickHouse", "why immutable events", "why lists read only narrow fields" — answer themselves. This
+lesson is the guide's <strong>foundation lesson</strong>: not about one module but about a <strong>way of seeing</strong> that the
+fifty-odd later lessons build on.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Classic "Observability 1.0" is like a hospital splitting your check-up across <strong>three disconnected departments</strong>:
+  one records only <strong>numbers</strong> (blood pressure, heart rate — metrics), one writes only <strong>text</strong> (the
+  doctor's notes — logs), one draws only the <strong>route</strong> (register, then blood draw — traces). To understand "why I
+  feel unwell" you must <strong>reconcile across all three yourself</strong>. "Observability 2.0" flips it: each visit writes one
+  <strong>complete medical record</strong> — numbers, description and process <strong>on a single sheet</strong>. That single
+  sheet is the <strong>wide event</strong>. The benefit is obvious: a different doctor, or you revisiting later, can reconstruct the
+  whole picture from that <strong>one sheet</strong> — no re-digging three departments to line up the timeline.
+</div>
+""")
+
+_ZH2.append(r"""
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="左侧可观测性 1.0 把指标日志链路三件套分开存需要事后拼接，右侧 2.0 用一条宽事件可任意切片">
+  <text x="170" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--red)">可观测性 1.0 · 三件套分离</text>
+  <rect x="40" y="40" width="160" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="120" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">指标 metrics</text>
+  <text x="120" y="76" text-anchor="middle" font-size="9.5" fill="var(--muted)">预聚合数字 · 丢细节</text>
+  <rect x="40" y="92" width="160" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="120" y="112" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">日志 logs</text>
+  <text x="120" y="128" text-anchor="middle" font-size="9.5" fill="var(--muted)">零散文本 · 难聚合</text>
+  <rect x="40" y="144" width="160" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="120" y="164" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">链路 traces</text>
+  <text x="120" y="180" text-anchor="middle" font-size="9.5" fill="var(--muted)">有结构 · 缺业务属性</text>
+  <text x="120" y="214" text-anchor="middle" font-size="11" fill="var(--red)">🧩 事后还要人肉拼接</text>
+  <text x="120" y="232" text-anchor="middle" font-size="9.5" fill="var(--faint)">（reassemble later）</text>
+  <text x="350" y="120" text-anchor="middle" font-size="18" font-weight="800" fill="var(--faint)">vs</text>
+  <text x="545" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">可观测性 2.0 · 一条宽事件</text>
+  <rect x="404" y="50" width="282" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="545" y="74" text-anchor="middle" font-size="10" fill="var(--accent-ink)">model · tokens · cost · latency · user · tag · env …</text>
+  <text x="545" y="104" text-anchor="middle" font-size="9.5" fill="var(--muted)">一行里同时有「数字 + 结构 + 业务字段」</text>
+  <line x1="460" y1="120" x2="430" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="430,158 432,147 439,153" fill="var(--accent)"/>
+  <line x1="545" y1="120" x2="545" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="545,158 540,148 550,148" fill="var(--accent)"/>
+  <line x1="630" y1="120" x2="660" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="660,158 651,153 658,147" fill="var(--accent)"/>
+  <rect x="404" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="450" y="181" text-anchor="middle" font-size="9.5" fill="var(--ink)">按用户切片</text>
+  <rect x="500" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="546" y="181" text-anchor="middle" font-size="9.5" fill="var(--ink)">按模型聚合</text>
+  <rect x="596" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="642" y="181" text-anchor="middle" font-size="9.5" fill="var(--ink)">按时间下钻</text>
+  <text x="545" y="226" text-anchor="middle" font-size="11" fill="var(--accent-ink)">✅ 同一张宽表，换个查询就是新视角</text>
+</svg>
+<div class="figcap"><b>1.0 vs 2.0</b>：传统三件套把信息<b>拆散</b>，回答跨维度问题前先得人肉拼接；宽事件把一步操作的数字、结构、业务字段<b>放进同一行</b>，「下钻」和「聚合」只是对同一张宽表的不同查询。这正是 <code>ARCHITECTURE_PRINCIPLES.md</code> 说的「<b>偏好宽而属性丰富的事件，而非需要事后重建的零散指标/日志/链路</b>」。</div>
+</div>
+
+<h2>可观测性 1.0 的困境</h2>
+<p>「指标 + 日志 + 链路」这套经典组合（业内常称<strong>可观测性 1.0</strong>）每一件单看都没错，问题出在<strong>三者分离</strong>：</p>
+<ul>
+  <li><strong>指标（metrics）</strong>是<strong>预先聚合</strong>的数字，比如「平均延迟」「每分钟请求数」。省空间，但你<strong>上线前</strong>就得决定聚合哪些维度——
+  事后想问「<strong>某个用户</strong>用<strong>某个模型</strong>在<strong>某段时间</strong>的延迟」，没预聚合就抓瞎。</li>
+  <li><strong>日志（logs）</strong>是一行行文本，细节都在，但<strong>难以聚合与关联</strong>：你很难对一堆自由文本做「按模型分组求 token 中位数」。</li>
+  <li><strong>链路（traces）</strong>能看清调用结构（谁调了谁、各花多久），却<strong>往往不带业务属性</strong>——它知道「调了 LLM」，但不知道「这次的 user 是谁、prompt 是哪版」。</li>
+</ul>
+<p>于是真要排查一个跨维度的问题，你得在三套系统之间<strong>来回对账</strong>。Langfuse 的架构原则第一条就是冲着这个来的——
+<strong>把 observation 当作主分析单元</strong>，trace 只是<strong>关联句柄</strong>（原文：<em>"Model observations as the primary
+analytical unit. A trace is a correlation handle that links related observations, not the only useful entry point."</em>）。</p>
+
+<p>举个具体的对比。线上有人投诉「<strong>晚高峰回答变慢</strong>」，你想知道「<strong>是不是某个模型在某些用户上特别慢</strong>」。
+在 1.0 里：指标只有「全局平均延迟」这一条曲线，看不出是哪个模型、哪批用户；日志里能翻到单条记录，但几万行文本没法快速按模型分组算分位数；
+链路能看单次调用的耗时，却没记 user 和 model 这些业务字段。三套都「沾边」，但<strong>没有一套能直接回答</strong>，你只能导出数据自己写脚本拼。
+在 2.0 里：每条 observation 都同时带着 <code>model</code>、<code>userId</code>、<code>latency</code>，于是这个问题退化成一句普通查询——
+「按 model + userId 分组、看 latency 的 p95」。<strong>同一个问题，1.0 要跨三系统拼半天，2.0 改个查询就答了。</strong></p>
+""")
+
+_EN2.append(r"""
+<div class="fig">
+<svg viewBox="0 0 720 300" role="img" aria-label="Left: Observability 1.0 stores metrics, logs, traces separately needing later reassembly; right: 2.0 one wide event sliced any way">
+  <text x="170" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--red)">Observability 1.0 · three split pillars</text>
+  <rect x="40" y="40" width="160" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="120" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">metrics</text>
+  <text x="120" y="76" text-anchor="middle" font-size="9.5" fill="var(--muted)">pre-aggregated · lose detail</text>
+  <rect x="40" y="92" width="160" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="120" y="112" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">logs</text>
+  <text x="120" y="128" text-anchor="middle" font-size="9.5" fill="var(--muted)">scattered text · hard to aggregate</text>
+  <rect x="40" y="144" width="160" height="44" rx="9" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="120" y="164" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">traces</text>
+  <text x="120" y="180" text-anchor="middle" font-size="9.5" fill="var(--muted)">structured · no business attrs</text>
+  <text x="120" y="214" text-anchor="middle" font-size="11" fill="var(--red)">🧩 reassemble by hand later</text>
+  <text x="350" y="120" text-anchor="middle" font-size="18" font-weight="800" fill="var(--faint)">vs</text>
+  <text x="545" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Observability 2.0 · one wide event</text>
+  <rect x="404" y="50" width="282" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="545" y="74" text-anchor="middle" font-size="10" fill="var(--accent-ink)">model · tokens · cost · latency · user · tag · env …</text>
+  <text x="545" y="104" text-anchor="middle" font-size="9.5" fill="var(--muted)">numbers + structure + business fields, one row</text>
+  <line x1="460" y1="120" x2="430" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="430,158 432,147 439,153" fill="var(--accent)"/>
+  <line x1="545" y1="120" x2="545" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="545,158 540,148 550,148" fill="var(--accent)"/>
+  <line x1="630" y1="120" x2="660" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="660,158 651,153 658,147" fill="var(--accent)"/>
+  <rect x="404" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="450" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by user</text>
+  <rect x="500" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="546" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by model</text>
+  <rect x="596" y="160" width="92" height="34" rx="8" fill="var(--panel)" stroke="var(--line)"/><text x="642" y="181" text-anchor="middle" font-size="9" fill="var(--ink)">by time</text>
+  <text x="545" y="226" text-anchor="middle" font-size="11" fill="var(--accent-ink)">✅ same wide table, new query = new view</text>
+</svg>
+<div class="figcap"><b>1.0 vs 2.0</b>: the classic three pillars <b>fragment</b> information, forcing manual reassembly before any cross-dimension question; a wide event puts the numbers, structure and business fields of one step <b>on a single row</b>, so "drill down" and "aggregate" are just different queries over one wide table. This is exactly what <code>ARCHITECTURE_PRINCIPLES.md</code> means by "<b>prefer wide, richly attributed events over fragmented metrics, logs, and trace records that require later reconstruction</b>".</div>
+</div>
+
+<h2>The trouble with Observability 1.0</h2>
+<p>The classic "metrics + logs + traces" combo (often called <strong>Observability 1.0</strong>) is fine piece by piece; the
+problem is that the <strong>three are separate</strong>:</p>
+<ul>
+  <li><strong>Metrics</strong> are <strong>pre-aggregated</strong> numbers — "average latency", "requests per minute". Cheap, but
+  you must decide <strong>before shipping</strong> which dimensions to aggregate; ask later for "the latency of <strong>this
+  user</strong> on <strong>this model</strong> in <strong>this window</strong>" and without that pre-aggregation you're stuck.</li>
+  <li><strong>Logs</strong> are text lines — all the detail is there but they're <strong>hard to aggregate and correlate</strong>:
+  computing "median tokens grouped by model" over free text is painful.</li>
+  <li><strong>Traces</strong> show call structure (who called whom, how long) but <strong>usually carry no business
+  attributes</strong> — they know "an LLM was called" but not "who the user was or which prompt version".</li>
+</ul>
+<p>So to triage a cross-dimension problem you end up <strong>reconciling across three systems</strong>. Langfuse's very first
+architecture principle targets exactly this — <strong>treat the observation as the primary analytical unit</strong>, with the
+trace as a <strong>correlation handle</strong> (verbatim: <em>"Model observations as the primary analytical unit. A trace is a
+correlation handle that links related observations, not the only useful entry point."</em>).</p>
+
+<p>A concrete contrast. Someone complains that "<strong>answers get slow at peak hours</strong>" and you want to know "<strong>is a
+particular model slow for particular users</strong>". In 1.0: metrics give you one "global average latency" curve that can't tell
+which model or which users; logs have the individual records but tens of thousands of text lines won't quickly group-by-model and
+compute percentiles; traces show per-call duration but never recorded the <code>user</code> and <code>model</code> business fields.
+All three are "related", yet <strong>none can answer directly</strong> — you end up exporting data and scripting the join yourself.
+In 2.0: every observation already carries <code>model</code>, <code>userId</code> and <code>latency</code>, so the question
+collapses to one ordinary query — "group by model + userId, look at p95 of latency". <strong>Same question: 1.0 stitches across
+three systems for ages; 2.0 just changes the query.</strong></p>
+""")
+
+_ZH2.append(r"""
+<h2>宽事件：把一切放进一行</h2>
+<p>「可观测性 2.0」的解法很直接：<strong>不要事后拼接，写的时候就别拆开</strong>。把一步操作的<strong>所有高基数上下文</strong>
+（哪个模型、多少 token、多少钱、多久、哪个用户、哪些标签、什么环境……）<strong>原样塞进同一条记录</strong>——这条记录就是
+Langfuse 里的 <strong>observation</strong>。它既是「链路节点」（有 <code>parentObservationId</code> 能拼出调用树），
+又自带可聚合的数字（<code>usageDetails</code> / <code>costDetails</code> / <code>latency</code>），还携带任意业务字段
+（<code>metadata</code> / <code>tags</code> / <code>userId</code>）。三件套想分开做的事，一条宽事件全包了。</p>
+
+<p>你可能会问：那为什么不把这些字段<strong>拆成多张规整的表</strong>、用外键关联，岂不是更「干净」？答案是——<strong>查询时的 JOIN 是热路径上的隐藏成本</strong>。
+可观测数据量极大（一个活跃项目一天可能上亿条 observation），如果每次「按模型看成本」都要把 observation 表和一张「模型表」「用量表」JOIN 起来，
+扫描与连接的代价会随数据量爆炸。Langfuse 的原则是<strong>谨慎反范式化</strong>（denormalize carefully）：把常用来过滤、聚合的字段<strong>直接内联</strong>到
+observation 行上，让「按模型 / 按用户 / 按时间」这些高频查询变成<strong>直接的列谓词</strong>，而不是 JOIN。这就是「宽」的另一层含义——
+不只是字段多，更是<strong>有意把该放在一起的放在一起</strong>，用一点存储冗余换查询时不必连表。</p>
+
+<div class="cols">
+  <div class="col">
+    <h4>😕 1.0：先拆再拼</h4>
+    <p>指标、日志、链路各存一处；问一个跨维度问题，要在三套系统里查三次再人肉对账。<strong>能问什么，上线前就被字段设计锁死了。</strong></p>
+  </div>
+  <div class="col">
+    <h4>😀 2.0：一行装下</h4>
+    <p>一条 observation 同时有数字、结构、业务字段。<strong>切片、分组、过滤都是对同一张宽表的查询</strong>，事后想问什么都行。代价：行更宽、存得更多。</p>
+  </div>
+</div>
+
+<h2>这套原则如何贯穿 Langfuse</h2>
+<p><code>ARCHITECTURE_PRINCIPLES.md</code> 里的每一条，都能在后面的课里找到对应的工程落点。下表是「原则 → 它换来什么 → 哪一课展开」：</p>
+
+<table class="t">
+  <tr><th>架构原则（原文要义）</th><th>它换来什么</th><th>对应</th></tr>
+  <tr><td>observation 为主分析单元，trace 是关联句柄</td><td>任何一步都能独立查询，不必从 trace 进入</td><td>第 3 课</td></tr>
+  <tr><td>偏好宽而属性丰富的事件，而非零散三件套</td><td>下钻与聚合统一成「查同一张宽表」</td><td>第 8 课</td></tr>
+  <tr><td>保留高基数上下文，应对 unknown unknowns</td><td>事后能问上线时没想到的问题</td><td>本课</td></tr>
+  <tr><td>偏好不可变 / 追加式事件记录</td><td>避免读时去重的隐藏开销；用 ReplacingMergeTree</td><td>第 8 课</td></tr>
+  <tr><td>谨慎反范式化，消除热路径 JOIN</td><td>常用过滤变成直接的列谓词</td><td>第 8 · 22 课</td></tr>
+  <tr><td>围绕列式访问设计（窄字段、时间窗口、排序键、剪枝）</td><td>大表上也能毫秒级扫描聚合</td><td>第 8 · 23 课</td></tr>
+  <tr><td>列表/仪表盘用紧凑表示，详情页才读大字段</td><td>列表快、详情全，互不拖累</td><td>第 24 课</td></tr>
+  <tr><td>API 契约要「规模感知」：强制时间窗口、token 分页</td><td>防止一不小心扫全表历史</td><td>第 27 课</td></tr>
+  <tr><td>把成本与运维简单性当作架构约束</td><td>不轻易加库/队列/物化视图</td><td>第 53 课</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  宽事件不是免费的：行更宽、写入数据更多、还得有聪明的写入与压缩。Langfuse 的取舍是——<strong>用一点存储与写入复杂度，换「事后任意提问」的自由</strong>。
+  它靠三招把代价压下来：<strong>列式存储</strong>（只读你查的列）、<strong>ZSTD 压缩</strong>（input/output 大字段压到很小）、
+  <strong>延迟读取</strong>（列表只读窄字段，大字段只在详情页拉）。这三招正是后面第 8、24 课的主题。
+</div>
+
+<h2>为什么值得：unknown unknowns</h2>
+<p>宽事件最大的价值，是回答你<strong>当初没想到要问</strong>的问题。预先聚合的指标只能回答<strong>已知问题</strong>（你建了哪张仪表盘就只能看哪个维度）；
+而把高基数上下文整行留下，新问题来了，<strong>换个查询</strong>就能答，不必改埋点、不必等下次上线。</p>
+
+<p>这一点对一个<strong>平台</strong>尤其关键。Langfuse 要给成千上万个项目用，它<strong>不可能</strong>预先知道每个团队会关心什么维度——
+有人想看「按 prompt 版本对比成本」，有人想看「按 session 看用户多轮对话的总延迟」，有人想按自定义 <code>metadata</code> 标签切分。
+如果走预聚合的老路，平台就得为每种需求预先建一张指标——这既做不完、也僵化。宽事件让 Langfuse 把「<strong>定义新视图</strong>」这件事，
+从「<strong>改埋点 + 重新上线</strong>」降级成「<strong>写一条新查询</strong>」：仪表盘、自定义指标、过滤器（第 23、40 课）本质上都是在同一张宽表上换查询。
+这就是为什么「保留高基数上下文」不是锦上添花，而是整个平台<strong>可扩展性的地基</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="预聚合指标只能回答已知问题，宽事件能回答事后才想到的新问题">
+  <rect x="30" y="48" width="300" height="160" rx="12" fill="var(--red-soft)" stroke="var(--red)"/>
+  <text x="180" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--red)">预聚合指标：只能问「已知问题」</text>
+  <rect x="54" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="90" text-anchor="middle" font-size="10.5" fill="var(--ink)">✅ 平均延迟是多少？（建过这张图）</text>
+  <rect x="54" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="128" text-anchor="middle" font-size="10.5" fill="var(--ink)">✅ 每分钟请求数？（建过这张图）</text>
+  <rect x="54" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--red)" stroke-dasharray="4 3"/><text x="180" y="166" text-anchor="middle" font-size="10.5" fill="var(--red)">❌ 用户 X 在模型 Y 上为何变慢？</text><text x="180" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">没预聚合这个维度 → 答不了</text>
+  <rect x="390" y="48" width="300" height="160" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="540" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">宽事件：还能问「新问题」</text>
+  <rect x="414" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="90" text-anchor="middle" font-size="10.5" fill="var(--ink)">✅ 平均延迟？聚合 latency 列</text>
+  <rect x="414" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="128" text-anchor="middle" font-size="10.5" fill="var(--ink)">✅ 用户 X + 模型 Y 的慢？加两个过滤</text>
+  <rect x="414" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--accent)"/><text x="540" y="166" text-anchor="middle" font-size="10.5" fill="var(--accent-ink)">✅ 任何事后才想到的切法</text><text x="540" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">高基数整行还在 → 换个查询即可</text>
+</svg>
+<div class="figcap"><b>已知 vs 未知</b>：预聚合把「能问什么」在上线时就固定了；宽事件把高基数上下文整行留存，于是面对「<b>unknown unknowns</b>」——那些你当初根本没想到要问的问题——只需换一个查询。这就是 Langfuse 宁可让行更宽、也要保留上下文的根本理由。</div>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>可观测性 1.0</strong> = 指标 + 日志 + 链路<strong>三件套分离</strong>，跨维度问题要人肉拼接，能问什么被字段设计锁死。</li>
+    <li><strong>可观测性 2.0 / 宽事件</strong> = 把一步操作的数字、结构、业务字段<strong>放进同一条 observation</strong>；下钻与聚合统一成「查同一张宽表」。</li>
+    <li>这是写在 <code>.agents/ARCHITECTURE_PRINCIPLES.md</code> 的<strong>第一性原则</strong>，逐条对应后面的存储与查询设计。</li>
+    <li>代价是行更宽、存得更多，靠<strong>列存 + ZSTD 压缩 + 延迟读取</strong>三招平衡（第 8 · 24 课）。</li>
+    <li>核心收益：能回答 <strong>unknown unknowns</strong>——事后才想到、没预先聚合的问题。</li>
+  </ul>
+</div>
+""")
+
+_EN2.append(r"""
+<h2>Wide events: put everything on one row</h2>
+<p>The "Observability 2.0" fix is direct: <strong>don't reassemble later — don't split it when you write</strong>. Cram <strong>all
+the high-cardinality context</strong> of one step (which model, how many tokens, how much money, how long, which user, which tags,
+what environment…) <strong>into one record</strong> — that record is a Langfuse <strong>observation</strong>. It's both a "trace
+node" (with <code>parentObservationId</code> to rebuild the call tree), a bag of aggregatable numbers
+(<code>usageDetails</code> / <code>costDetails</code> / <code>latency</code>), and a carrier of arbitrary business fields
+(<code>metadata</code> / <code>tags</code> / <code>userId</code>). Everything the three pillars do separately, one wide event does
+together.</p>
+
+<p>You might ask: why not split these fields into <strong>several normalized tables</strong> with foreign keys — isn't that
+"cleaner"? Because <strong>JOINs at query time are a hidden hot-path cost</strong>. Observability data is enormous (an active project
+can write hundreds of millions of observations a day); if every "cost by model" had to JOIN the observation table with a "models"
+table and a "usage" table, the scan-and-join cost explodes with volume. Langfuse's principle is to <strong>denormalize
+carefully</strong>: inline the fields commonly used to filter and aggregate <strong>directly onto the observation row</strong>, so
+"by model / by user / by time" become <strong>plain column predicates</strong> instead of JOINs. That's the other meaning of
+"wide" — not just many fields, but <strong>deliberately keeping together what belongs together</strong>, trading a little storage
+redundancy for not joining at query time.</p>
+
+<div class="cols">
+  <div class="col">
+    <h4>😕 1.0: split then stitch</h4>
+    <p>Metrics, logs and traces live apart; a cross-dimension question means three queries plus manual reconciliation. <strong>What you can ask is locked by field design before you ship.</strong></p>
+  </div>
+  <div class="col">
+    <h4>😀 2.0: one row holds it</h4>
+    <p>One observation carries numbers, structure and business fields at once. <strong>Slice, group and filter are all queries over one wide table</strong>; ask anything later. Cost: wider rows, more storage.</p>
+  </div>
+</div>
+
+<h2>How the principles thread through Langfuse</h2>
+<p>Every line in <code>ARCHITECTURE_PRINCIPLES.md</code> has an engineering landing spot in a later lesson. Below: "principle → what it buys → where".</p>
+
+<table class="t">
+  <tr><th>Architecture principle (gist)</th><th>What it buys</th><th>Lesson</th></tr>
+  <tr><td>observation = primary unit; trace = correlation handle</td><td>any step is independently queryable</td><td>L03</td></tr>
+  <tr><td>prefer wide, richly-attributed events over fragmented pillars</td><td>drill-down & aggregation unify into one wide table</td><td>L08</td></tr>
+  <tr><td>preserve high-cardinality context for unknown unknowns</td><td>ask questions you didn't foresee</td><td>this</td></tr>
+  <tr><td>favor immutable / append-oriented records</td><td>no read-time dedup cost; ReplacingMergeTree</td><td>L08</td></tr>
+  <tr><td>denormalize carefully to kill hot-path JOINs</td><td>common filters become column predicates</td><td>L08·22</td></tr>
+  <tr><td>design around columnar access (narrow fields, time bounds, ordering, pruning)</td><td>ms scans/aggregations even on big tables</td><td>L08·23</td></tr>
+  <tr><td>compact list/dashboard views; read big payloads only on detail</td><td>fast lists, full detail, no mutual drag</td><td>L24</td></tr>
+  <tr><td>scale-aware API contracts: time windows, token pagination</td><td>avoid accidental full-history scans</td><td>L27</td></tr>
+  <tr><td>treat cost & operational simplicity as constraints</td><td>don't casually add DBs/queues/MVs</td><td>L53</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  Wide events aren't free: wider rows, more data written, and you need smart writes + compression. Langfuse's trade is
+  <strong>a little storage and write complexity for the freedom to ask anything later</strong>. It tames the cost three ways:
+  <strong>columnar storage</strong> (read only the columns you query), <strong>ZSTD compression</strong> (big input/output fields
+  shrink hard), <strong>deferred reads</strong> (lists read narrow fields; big fields only on the detail page). Those three are the
+  subject of lessons 8 and 24.
+</div>
+
+<h2>Why it's worth it: unknown unknowns</h2>
+<p>The biggest payoff of wide events is answering questions you <strong>didn't think to ask</strong> up front. Pre-aggregated
+metrics answer only <strong>known questions</strong> (you see only the dimensions of dashboards you built); keep the
+high-cardinality context on the row and a new question is just a <strong>new query</strong> — no re-instrumenting, no waiting for
+the next deploy.</p>
+
+<p>This matters especially for a <strong>platform</strong>. Langfuse serves thousands of projects and <strong>cannot</strong> know in
+advance which dimensions each team cares about — one wants "cost by prompt version", another "total latency of a user's multi-turn
+<code>session</code>", another to slice by custom <code>metadata</code> tags. The pre-aggregation route would force the platform to
+predefine a metric per need — never-ending and rigid. Wide events let Langfuse demote "<strong>define a new view</strong>" from
+"<strong>change instrumentation + redeploy</strong>" to "<strong>write a new query</strong>": dashboards, custom metrics and filters
+(lessons 23, 40) are all just different queries over the same wide table. That's why "preserve high-cardinality context" isn't a
+nicety — it's the <strong>foundation of the platform's extensibility</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Pre-aggregated metrics answer only known questions; wide events answer new questions thought of later">
+  <rect x="30" y="48" width="300" height="160" rx="12" fill="var(--red-soft)" stroke="var(--red)"/>
+  <text x="180" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--red)">Pre-aggregated: only "known questions"</text>
+  <rect x="54" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="90" text-anchor="middle" font-size="10" fill="var(--ink)">✅ average latency? (you built this chart)</text>
+  <rect x="54" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="180" y="128" text-anchor="middle" font-size="10" fill="var(--ink)">✅ requests/min? (you built this chart)</text>
+  <rect x="54" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--red)" stroke-dasharray="4 3"/><text x="180" y="166" text-anchor="middle" font-size="10" fill="var(--red)">❌ why is user X slow on model Y?</text><text x="180" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">dimension not pre-aggregated → can't</text>
+  <rect x="390" y="48" width="300" height="160" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="540" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">Wide events: also "new questions"</text>
+  <rect x="414" y="70" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="90" text-anchor="middle" font-size="10" fill="var(--ink)">✅ avg latency? aggregate the latency col</text>
+  <rect x="414" y="108" width="252" height="30" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="128" text-anchor="middle" font-size="10" fill="var(--ink)">✅ user X + model Y slow? add two filters</text>
+  <rect x="414" y="146" width="252" height="46" rx="7" fill="var(--panel)" stroke="var(--accent)"/><text x="540" y="166" text-anchor="middle" font-size="10" fill="var(--accent-ink)">✅ any slice thought of later</text><text x="540" y="182" text-anchor="middle" font-size="9" fill="var(--faint)">row still has the context → just re-query</text>
+</svg>
+<div class="figcap"><b>Known vs unknown</b>: pre-aggregation fixes "what you can ask" at ship time; wide events keep the high-cardinality context on the row, so facing <b>unknown unknowns</b> — the questions you never thought to ask — you just write a new query. That's the root reason Langfuse keeps rows wide.</div>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Observability 1.0</strong> = metrics + logs + traces, <strong>three split pillars</strong>; cross-dimension questions need manual reassembly, and what you can ask is locked by field design.</li>
+    <li><strong>Observability 2.0 / wide events</strong> = put numbers, structure and business fields of one step <strong>on one observation</strong>; drill-down and aggregation unify into "query one wide table".</li>
+    <li>This is a <strong>first principle</strong> in <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>, mapping line-by-line to later storage/query design.</li>
+    <li>The cost is wider rows and more storage, balanced by <strong>columnar storage + ZSTD compression + deferred reads</strong> (L08·24).</li>
+    <li>Core payoff: answering <strong>unknown unknowns</strong> — questions thought of after the fact, never pre-aggregated.</li>
+  </ul>
+</div>
+""")
+
+_ZH2.append(r"""
+<h2>十条原则，四个主题</h2>
+<p>九到十条原则乍看零散，其实围着<strong>四个主题</strong>转——它们层层递进，正好对应这份指南后面四大块内容。把它们分组记，比逐条背更有用：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">数据模型</span><span class="name">observation 为主 · 高基数</span></div>
+    <div class="ld">先把「记什么」定对：以 observation 为主分析单元、保留高基数上下文。记错了，后面再快的存储也救不回来。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">存储</span><span class="name">宽 · 不可变 · 反范式 · 列式</span></div>
+    <div class="ld">再把「怎么存」定对：宽事件、追加不可变（ReplacingMergeTree）、谨慎反范式化、围绕列式访问设计排序键与分区。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">查询</span><span class="name">紧凑列表 · 详情才读大字段</span></div>
+    <div class="ld">然后把「怎么读」定对：列表/仪表盘用紧凑的查询优化表示，大块 input/output 只在单条详情页才拉取。</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">契约与成本</span><span class="name">规模感知 API · 运维从简</span></div>
+    <div class="ld">最后把「对外/对运维」定对：API 强制时间窗口与 token 分页，避免扫全表；把额外的库、队列、物化视图的运维负担当成真实成本来权衡。</div></div>
+</div>
+
+<p>这四组也正是本指南的主线：<strong>数据模型</strong>是第一部分（本部分），<strong>存储</strong>是第二部分，<strong>写入与查询</strong>两条链路是第三、四部分，
+<strong>契约与成本</strong>则散落在公共 API（第 27 课）与运维（第 53 课）。换句话说，你现在读的这份「设计哲学」，就是后面五十多课的<strong>提纲</strong>。</p>
+
+<p>还有一条容易被忽略但很关键的原则：<strong>保留近实时的调试体验</strong>（原文：<em>"Preserve real-time or near-real-time debugging
+workflows. Batch processing can help, but it should not make fresh production behavior invisible."</em>）。这解释了为什么 Langfuse
+的摄取虽是<strong>异步</strong>的，却要把处理延迟压到<strong>秒级</strong>——可观测性如果「看不到刚刚发生的事」，就失去了一半意义。这条会在第 14–17 课的摄取链路里反复出现。</p>
+""")
+
+_EN2.append(r"""
+<h2>Ten principles, four themes</h2>
+<p>The nine-to-ten principles look scattered but revolve around <strong>four themes</strong> — layered, and matching the four big
+blocks of this guide. Grouping them beats memorizing them one by one:</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">data model</span><span class="name">observation-first · high cardinality</span></div>
+    <div class="ld">Get "what to record" right first: observation as the primary unit, keep high-cardinality context. Get this wrong and no amount of fast storage saves you.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">storage</span><span class="name">wide · immutable · denormalized · columnar</span></div>
+    <div class="ld">Then "how to store": wide events, append-only immutability (ReplacingMergeTree), careful denormalization, ordering keys & partitions designed for columnar access.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">query</span><span class="name">compact lists · big fields on detail only</span></div>
+    <div class="ld">Then "how to read": lists/dashboards on compact query-optimized representations; big input/output fetched only on a single detail page.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">contract & cost</span><span class="name">scale-aware API · lean ops</span></div>
+    <div class="ld">Finally "outward/ops": APIs force time windows and token pagination to avoid full scans; treat extra DBs, queues and materialized views as real operational cost.</div></div>
+</div>
+
+<p>These four groups are also the spine of this guide: <strong>data model</strong> is Part 1 (here), <strong>storage</strong> is Part 2,
+the <strong>write and read paths</strong> are Parts 3–4, and <strong>contract & cost</strong> show up in the public API (L27) and
+operations (L53). In other words, the "design philosophy" you're reading now is the <strong>outline</strong> of the fifty-odd
+lessons ahead.</p>
+
+<p>One easily-missed but crucial principle: <strong>preserve near-real-time debugging</strong> (verbatim: <em>"Preserve real-time or
+near-real-time debugging workflows. Batch processing can help, but it should not make fresh production behavior invisible."</em>).
+This is why Langfuse's ingestion, though <strong>async</strong>, keeps processing lag to <strong>seconds</strong> — observability that
+"can't see what just happened" loses half its value. This recurs across the ingestion path in lessons 14–17.</p>
+""")
+
+LESSON_02 = {"zh": "\n".join(_ZH2), "en": "\n".join(_EN2)}
