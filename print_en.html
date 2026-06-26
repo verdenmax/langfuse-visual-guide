@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 39 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 40 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -376,6 +376,7 @@ details[open] > summary { list-style: none; }
   <li>Prompt management</li>
   <li>Prompt serving & caching</li>
   <li>Playground & LLM connections</li>
+  <li>Dashboards & widgets</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8270,6 +8271,182 @@ This lesson covers them, focusing on an unavoidable security topic: a provider's
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>By the end of Part 7, the whole 'developer workflow' loop closes: try in the Playground → version → experiment-compare → label release → observe/evaluate/alert. Reviewing this loop, how does it strikingly resemble the familiar 'software development lifecycle' (write code→test→CI→release→monitor), and which links are unique due to LLMs' 'non-determinism'? If you rolled out this prompt-engineering process to a team, which step would be hardest to adopt, and why?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Dashboards & widgets</h1>
+
+<p class="lead">
+The first seven parts let you <strong>see one thing clearly</strong>—one trace, one score, one experiment. But operating an LLM app, you more often ask <strong>global</strong> questions: did cost rise this week? which model is slowest? how is average helpfulness trending? is the error rate creeping up? These answers hide in the <strong>aggregation</strong> of thousands of records—rolling them into charts is the <strong>dashboard</strong> and its building block, the <strong>widget</strong>.
+This lesson covers their data model, focusing on a design that will echo repeatedly: a widget declares "<strong>what to compute</strong>" as a <code>view + dimensions + metrics + filters</code> <strong>query shape</strong>—and this shape is the very one Lesson 33's monitor reuses, and the one the next lesson's query engine compiles to SQL. <strong>Drawing a chart, watching a metric, running an aggregation—behind them is the same declaration.</strong>
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dashboard is like a car's cockpit <strong>instrument panel</strong>: a board with a row of <strong>gauges</strong> (widgets)—fuel gauge, tachometer, speedometer, temperature light. Each gauge cares about one thing: <strong>which quantity to read, and how to draw it</strong> (needle? number? bar?); it <strong>doesn't care</strong> how that number was actually gathered from the engine or tank.
+  You can freely <strong>add, remove, rearrange</strong> these gauges into the layout that suits you. And what truly decides "what this gauge <strong>measures, grouped by what</strong>" is a <strong>declaration</strong> ("measure: average speed; group by: per minute"), not circuitry welded into the gauge. So the same "what to measure" declaration can drive both this needle gauge and the "blinks when over-speeding" warning light next to it (Lesson 33's monitor)—<strong>measurement and display are two separate things.</strong>
+</div>
+
+
+<h2>A dashboard = a layout + a row of widgets</h2>
+<p>The data model has two layers. <strong>Dashboard</strong> is "the board": a name, a description, a <code>definition</code> (JSON layout deciding which widgets go where and how big), plus a set of board-level <code>filters</code> (global filters applied to <strong>all</strong> widgets, e.g. "only production"). <strong>DashboardWidget</strong> is "a gauge": each widget is a saved <strong>query + chart</strong>. A dashboard holds a row of widgets, composing the panorama you want.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Dashboard layout: a Dashboard has a definition layout and global filters, with multiple DashboardWidgets on the board—a line chart, bar chart, big number, pie—each a query+chart; the global filter applies to all widgets at once">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one Dashboard board, a row of widgets, global filter over the whole board</text>
+  <rect x="30" y="36" width="660" height="30" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Dashboard: definition (layout) + global filters (on all widgets, e.g. "env=production")</text>
+  <rect x="40" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="140" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · cost trend</text><polyline points="60,138 90,128 120,132 150,118 180,122 210,110" fill="none" stroke="var(--accent)" stroke-width="1.6"/><text x="140" y="120" text-anchor="middle" font-size="6.4" fill="var(--muted)">line time-series</text>
+  <rect x="260" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · calls per model</text><rect x="290" y="124" width="14" height="18" fill="var(--accent)"/><rect x="312" y="116" width="14" height="26" fill="var(--accent)"/><rect x="334" y="130" width="14" height="12" fill="var(--accent)"/><rect x="356" y="120" width="14" height="22" fill="var(--accent)"/><text x="410" y="135" text-anchor="middle" font-size="6.4" fill="var(--muted)">bar</text>
+  <rect x="480" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · total cost</text><text x="580" y="134" text-anchor="middle" font-size="15" font-weight="800" fill="var(--accent-ink)">$1,284</text>
+  <rect x="40" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="140" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · avg helpfulness</text><polyline points="60,214 90,206 120,210 150,200 180,196 210,190" fill="none" stroke="var(--teal)" stroke-width="1.6"/><text x="140" y="198" text-anchor="middle" font-size="6.4" fill="var(--muted)">line time-series</text>
+  <rect x="260" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · score distribution</text><circle cx="360" cy="200" r="16" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="60 40"/><text x="410" y="203" text-anchor="middle" font-size="6.4" fill="var(--muted)">pie</text>
+  <rect x="480" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · latency histogram</text><rect x="510" y="206" width="10" height="12" fill="var(--teal)"/><rect x="524" y="198" width="10" height="20" fill="var(--teal)"/><rect x="538" y="202" width="10" height="16" fill="var(--teal)"/><rect x="552" y="210" width="10" height="8" fill="var(--teal)"/><text x="620" y="210" text-anchor="middle" font-size="6.4" fill="var(--muted)">histogram</text>
+</svg>
+<div class="figcap"><b>Two-layer structure</b>: <code>schema.prisma:1494</code> Dashboard has a <code>definition</code> (layout JSON) and board-level <code>filters</code>; <code>:1536</code> DashboardWidget is one "query+chart". Multiple widgets on a board each show one angle, the board filter converging all at once—"globally scope first, then each shows its own metric".</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">board</span><span class="name">Dashboard</span></div><div class="ld">A canvas: <code>definition</code> is a JSON layout (which widgets, what grid cells), <code>filters</code> are board-level global filters. projectId is optional—Langfuse ships a set of "managed dashboards" ready out of the box. You arrange it freely like desktop widgets.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">gauge</span><span class="name">DashboardWidget</span></div><div class="ld">A gauge = a <strong>declarative query</strong> (<code>view</code> what data + <code>dimensions</code> group by what + <code>metrics</code> compute what + <code>filters</code>) <strong>plus</strong> a <strong>chart presentation</strong> (<code>chartType</code> + <code>chartConfig</code>). The query defines "what to compute", the chart defines "how to draw"—detailed next.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">reuse</span><span class="name">one metric, many consumers</span></div><div class="ld">The widget's query shape isn't dashboard-private: Lesson 33's monitor directly <strong>reuses</strong> it (the source comment "mirrors DashboardWidget"), and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One "what to compute" is shared by charting, alerting, and aggregation.</div></div>
+</div>
+
+
+<h2>A widget = a declarative query + a chart presentation</h2>
+<p>Unpack a widget and it clearly splits in two: the <strong>query</strong> (what to compute) and the <strong>chart</strong> (how to draw). The query half is a quartet: <code>view</code> (data source: TRACES / OBSERVATIONS / SCORES_NUMERIC / SCORES_CATEGORICAL), <code>dimensions</code> (group-by axes, e.g. "by model", "by day"), <code>metrics</code> (aggregations, e.g. "count", "sum cost", "average score"), <code>filters</code>. The chart half is <code>chartType</code> (line/bar/pie/number/histogram/pivot…) + <code>chartConfig</code>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="A widget's two halves: the left query declaration view+dimensions+metrics+filters decides what to compute, the right chartType+chartConfig decides how to draw; the same query can switch chart presentations">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one widget: left "what to compute" + right "how to draw"</text>
+  <rect x="30" y="40" width="320" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="190" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">query (declare: what to compute)</text><rect x="46" y="72" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="87" text-anchor="middle" font-size="7" fill="var(--ink)">view: OBSERVATIONS</text><rect x="46" y="98" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="113" text-anchor="middle" font-size="7" fill="var(--ink)">dimensions: [model] (group by model)</text><rect x="46" y="124" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="139" text-anchor="middle" font-size="7" fill="var(--ink)">metrics: [sum(totalCost)]</text><rect x="46" y="150" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="165" text-anchor="middle" font-size="7" fill="var(--ink)">filters: [env=production]</text>
+  <rect x="400" y="40" width="290" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="545" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">chart (present: how to draw)</text><text x="545" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">chartType: BAR / LINE / PIE / NUMBER …</text><rect x="430" y="120" width="20" height="40" fill="var(--accent)"/><rect x="460" y="100" width="20" height="60" fill="var(--accent)"/><rect x="490" y="132" width="20" height="28" fill="var(--accent)"/><rect x="520" y="112" width="20" height="48" fill="var(--accent)"/><text x="620" y="135" text-anchor="middle" font-size="6.6" fill="var(--muted)">same query</text><text x="620" y="147" text-anchor="middle" font-size="6.6" fill="var(--muted)">swap the chart</text>
+  <line x1="350" y1="110" x2="398" y2="110" stroke="var(--accent)" stroke-width="1.6"/><polygon points="398,110 389,106 389,114" fill="var(--accent)"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">query and chart decoupled: swap a chartType without touching the query, swap a metric without touching the drawing—each evolves independently</text>
+</svg>
+<div class="figcap"><b>declarative query + presentation, cleanly split</b>: <code>schema.prisma:1536</code> DashboardWidget models <code>view</code>/<code>dimensions</code>/<code>metrics</code>/<code>filters</code> (what to compute) separately from <code>chartType</code>/<code>chartConfig</code> (how to draw). <code>view</code> from <code>DashboardWidgetViews</code> (4 values), <code>chartType</code> from <code>DashboardWidgetChartType</code> (9 charts).</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>quartet (query)</th><th>meaning</th><th>example</th></tr></thead>
+  <tbody>
+    <tr><td><code>view</code></td><td>data source</td><td>TRACES / OBSERVATIONS / SCORES_NUMERIC / SCORES_CATEGORICAL</td></tr>
+    <tr><td><code>dimensions</code></td><td>group-by axes (GROUP BY)</td><td>by model, by day, by name…</td></tr>
+    <tr><td><code>metrics</code></td><td>aggregations</td><td>count, sum(totalCost), avg(value), p95(latency)</td></tr>
+    <tr><td><code>filters</code></td><td>filter conditions</td><td>env=production, name=chat, time window</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma:1516-1560</span><span class="ln">widget model + two enums</span></div>
+  <pre class="code"><span class="kw">enum</span> DashboardWidgetViews { TRACES  OBSERVATIONS  SCORES_NUMERIC  SCORES_CATEGORICAL }
+<span class="kw">enum</span> DashboardWidgetChartType { LINE_TIME_SERIES  BAR_TIME_SERIES  HORIZONTAL_BAR
+  VERTICAL_BAR  PIE  NUMBER  HISTOGRAM  PIVOT_TABLE  … }   <span class="cm">// 9 chart types</span>
+<span class="kw">model</span> DashboardWidget {
+  view       DashboardWidgetViews   <span class="cm">// what data</span>
+  dimensions Json   <span class="cm">// group by what (GROUP BY axes)</span>
+  metrics    Json   <span class="cm">// compute what (aggregations)</span>
+  filters    Json   <span class="cm">// filter</span>
+  chartType   DashboardWidgetChartType   <span class="cm">// how to draw</span>
+  chartConfig Json                       <span class="cm">// chart details</span>
+}</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>chart type (selection)</th><th>good at expressing</th><th>typical use</th></tr></thead>
+  <tbody>
+    <tr><td>LINE / AREA / BAR_TIME_SERIES</td><td><b>trend</b> over time</td><td>cost trend, daily call volume, score changes</td></tr>
+    <tr><td>HORIZONTAL / VERTICAL_BAR</td><td><b>comparison</b> across categories</td><td>calls per model, spend ranking by user</td></tr>
+    <tr><td>NUMBER</td><td>a single <b>key value</b></td><td>this month's total cost, total trace count (KPI number)</td></tr>
+    <tr><td>PIE</td><td><b>composition</b> of a whole</td><td>cost share per model, score categorical distribution</td></tr>
+    <tr><td>HISTOGRAM</td><td><b>distribution</b> of a value</td><td>latency distribution, token-count distribution</td></tr>
+    <tr><td>PIVOT_TABLE</td><td>multi-dimensional <b>cross-tab</b></td><td>model × environment cost matrix</td></tr>
+  </tbody>
+</table>
+<p>The same query, with a different chartType, is a different view: trend → time-series, magnitude → bar, composition → pie, distribution → histogram. <strong>Data stays, the angle changes on demand</strong>—exactly the exploratory freedom query/presentation separation brings.</p>
+
+
+<h2>One query shape, three reuses</h2>
+<p>The widget's <code>view + dimensions + metrics + filters</code> declaration—the neat part isn't that it can draw charts, it's that it's <strong>not only for drawing charts</strong>. The same declaration is shared by three places: the dashboard <strong>draws it as a chart</strong>, Lesson 33's monitor <strong>periodically computes it and compares to thresholds</strong>, and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One proof hides in the enums: the monitor's <code>MonitorView</code> is exactly <code>DashboardWidgetViews</code> <strong>minus TRACES</strong> (the source comment literally says "mirrors DashboardWidget, minus TRACES").</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="One query shape, three reuses: the same view+dimensions+metrics+filters declaration is used by the dashboard to draw charts, by Lesson 33's monitor to periodically compare thresholds, and by Lesson 41's query engine to compile ClickHouse SQL">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one "what to compute" declaration, fed to three consumers</text>
+  <rect x="250" y="40" width="220" height="50" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">query shape (declaration)</text><text x="360" y="78" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">view + dimensions + metrics + filters</text>
+  <rect x="40" y="130" width="190" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="135" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">dashboard (this lesson)</text><text x="135" y="167" text-anchor="middle" font-size="6.6" fill="var(--muted)">draw as a chart (pull: you look)</text>
+  <rect x="265" y="130" width="190" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">monitor (Lesson 33)</text><text x="360" y="167" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">periodic threshold (push: it calls)</text>
+  <rect x="490" y="130" width="190" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="585" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">query engine (Lesson 41)</text><text x="585" y="167" text-anchor="middle" font-size="6.6" fill="var(--muted)">compile to ClickHouse SQL</text>
+  <line x1="320" y1="90" x2="160" y2="128" stroke="var(--blue)" stroke-width="1.4"/><polygon points="160,128 169,124 165,120" fill="var(--blue)"/>
+  <line x1="360" y1="90" x2="360" y2="128" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,128 356,119 364,119" fill="var(--accent)"/>
+  <line x1="400" y1="90" x2="560" y2="128" stroke="var(--teal)" stroke-width="1.4"/><polygon points="560,128 551,120 555,124" fill="var(--teal)"/>
+  <text x="360" y="116" text-anchor="middle" font-size="7" fill="var(--faint)">MonitorView = DashboardWidgetViews minus TRACES (source comment: mirrors DashboardWidget, minus TRACES)</text>
+</svg>
+<div class="figcap"><b>declare once, reuse everywhere</b>: any curve you can draw on a dashboard can become a monitor alert in one click (Lesson 33), and is compiled to SQL by the same query engine (Lesson 41). <b>Pull</b> (you look at a dashboard) and <b>push</b> (a monitor calls you) share one metric definition—the very reason Lesson 33 can "reuse DashboardWidget".</div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does a widget declare "what to compute" and "how to draw" separately rather than just write code that "draws some chart"?</strong> Because these are two <strong>orthogonal</strong> dimensions, and forcing them together limits both. Splitting them, you instantly get triple freedom: the same query <strong>swaps a chartType</strong> to go from line to bar (great for exploring data); the same chart <strong>swaps a metric</strong> to go from cost to latency; and crucially, that pure "what to compute" declaration, <strong>untainted by any presentation logic</strong>, can be borrowed verbatim by the monitor and the query engine. <strong>The power of declarative is that it describes "intent" not "steps"</strong>—intent can be realized by arbitrarily many executors in different ways. Same belief as Lesson 23's FilterState and Lesson 21's tRPC contract: lift "what you want" out of "how to do it", and the room for reuse and evolution opens up.<br><br>
+  <strong>Why is this query shape worth sharing across three places rather than each writing its own?</strong> Because "a metric" as a product concept should be <strong>unified</strong>. If the dashboard's "average helpfulness" and the monitor's "average helpfulness" are two separate implementations, they will eventually <strong>compute different numbers</strong>—definition drift is a slow poison for data products. Having three places share one declaration and one query engine nails down "this metric has exactly one algorithm company-wide". What you see on the chart, what alerts are based on, and what the API returns are <strong>always the same number</strong>. Consistency isn't maintained by discipline but <strong>guaranteed at the root by architecture</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Dashboards see the global</strong>: aggregate thousands of records into charts, answering "did cost rise", "which model is slow", "score trends"—adding the "see the whole" the first seven parts' "see one" lacked.</li>
+    <li><strong>Two-layer model</strong>: <code>Dashboard</code> (<code>definition</code> layout + board-level <code>filters</code>) holds a row of <code>DashboardWidget</code>s; each widget is a saved "query + chart".</li>
+    <li><strong>A widget = declarative query + chart</strong>: the query quartet <code>view</code> (source) + <code>dimensions</code> (group) + <code>metrics</code> (aggregate) + <code>filters</code>; presentation is <code>chartType</code> (9 charts) + <code>chartConfig</code>. What to compute and how to draw, cleanly split.</li>
+    <li><strong>Query/presentation decoupled</strong>: swap the chart without the query, swap the metric without the drawing; a pure "what to compute" declaration can be reused verbatim—declarative describes intent not steps.</li>
+    <li><strong>One query shape, three reuses</strong>: dashboard charts, Lesson 33 monitor thresholds, Lesson 41 engine SQL share one declaration (<code>MonitorView</code> = <code>DashboardWidgetViews</code> minus TRACES). One algorithm per metric company-wide; pull and push always the same number.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's DashboardWidget models view+dimensions+metrics+filters (query) separately from chartType+chartConfig (chart). The biggest benefit of this 'query/presentation separation' is?</div>
+  <ol class="opts">
+    <li>makes charts render faster</li>
+    <li>auto-selects the best chart</li>
+    <li>query and chart are orthogonal and evolve freely: same query swaps chartType to change the chart, same chart swaps metric to change the quantity; crucially the pure 'what to compute' declaration, untainted by presentation, can be reused verbatim by the monitor/query engine</li>
+    <li>reduces the number of DB tables</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Query (what to compute) and chart (how to draw) are two orthogonal dimensions; tight coupling limits both. Split: same query swaps chartType from line to bar, same chart swaps metric from cost to latency; crucially that pure 'what to compute' declaration, untainted by presentation, can be borrowed verbatim by Lesson 33's monitor and Lesson 41's query engine. Declarative describes intent not steps—same belief as Lesson 23's FilterState and Lesson 21's tRPC contract.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Lesson 33's monitor source comment says it 'mirrors DashboardWidget, minus TRACES', and MonitorView is exactly DashboardWidgetViews minus TRACES. What design intent does this reuse reveal?</div>
+  <ol class="opts">
+    <li>to save storage</li>
+    <li>TRACES data can't be monitored</li>
+    <li>the monitor is a subset feature of dashboards</li>
+    <li>a metric has exactly one algorithm company-wide: dashboard charts, monitor thresholds, and the query engine's SQL share one query shape, so what you see on the chart, what alerts on, and what the API returns are always the same number—consistency guaranteed at the root by architecture, not discipline</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. If the dashboard's and the monitor's 'average helpfulness' were separate implementations, they'd eventually compute different numbers—definition drift is a slow poison for data products. Having three places share one view+dimensions+metrics+filters declaration and one query engine nails down 'this metric has one algorithm company-wide'. Pull (chart) and push (alert) are always the same number. Consistency is guaranteed by architecture, not maintained by discipline.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. A DashboardWidget's view field comes from the DashboardWidgetViews enum. What are its four values?</div>
+  <ol class="opts">
+    <li>SUM, AVG, COUNT, MAX</li>
+    <li>LINE, BAR, PIE, NUMBER</li>
+    <li>DAY, WEEK, MONTH, YEAR</li>
+    <li>TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL—i.e. a widget can aggregate one of these four data sources: traces, observations, numeric scores, or categorical scores</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. DashboardWidgetViews = { TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL }, deciding which data source a widget aggregates. LINE/BAR/PIE/NUMBER belong to a different enum, DashboardWidgetChartType (how to draw, 9 types). view governs 'what data', chartType 'what chart'—exactly the query/presentation split. The monitor's MonitorView is this minus TRACES.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'One query shape, three reuses' is Langfuse's core move for guaranteeing metric-definition consistency. Recall data products you've built or used: have you hit 'the same metric computes different numbers on different pages/reports/alerts' definition drift? If you designed a mechanism to cure it, how would you? How would you weigh the costs of declarative-query + unified-engine (limited flexibility, the engine must support all needs)?</li>
   </ul>
 </div>
 </div>

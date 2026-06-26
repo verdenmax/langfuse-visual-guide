@@ -2775,6 +2775,76 @@ QUIZZES = {
             },
         ],
     },
+    "40-dashboards-and-widgets.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 DashboardWidget 把 view+dimensions+metrics+filters（查询）和 chartType+chartConfig（图表）分开建模。这种「查询/呈现分离」最大的好处是？",
+                    "en": "Langfuse's DashboardWidget models view+dimensions+metrics+filters (query) separately from chartType+chartConfig (chart). The biggest benefit of this 'query/presentation separation' is?",
+                },
+                "opts": [
+                    {
+                        "zh": "查询与图表正交、各自自由演化：同查询换 chartType 即换图、同图换 metric 即换量；更关键的是纯粹的「算什么」声明不掺展示逻辑，才能被监控器/查询引擎原样复用",
+                        "en": "query and chart are orthogonal and evolve freely: same query swaps chartType to change the chart, same chart swaps metric to change the quantity; crucially the pure 'what to compute' declaration, untainted by presentation, can be reused verbatim by the monitor/query engine",
+                    },
+                    {"zh": "让图表渲染更快", "en": "makes charts render faster"},
+                    {"zh": "减少数据库表数量", "en": "reduces the number of DB tables"},
+                    {"zh": "自动选择最优图表", "en": "auto-selects the best chart"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "查询(算什么)与图表(怎么画)是两个正交维度，强耦合两头受限。分开后：同查询换 chartType 从折线变柱状、同图换 metric 从看成本变看延迟；更关键的是那份纯粹「算什么」声明不掺展示逻辑，才能被第33课监控器、第41课查询引擎原样借走。声明式描述意图而非步骤——和第23课 FilterState、第21课 tRPC 契约同一种信念。",
+                    "en": "Query (what to compute) and chart (how to draw) are two orthogonal dimensions; tight coupling limits both. Split: same query swaps chartType from line to bar, same chart swaps metric from cost to latency; crucially that pure 'what to compute' declaration, untainted by presentation, can be borrowed verbatim by Lesson 33's monitor and Lesson 41's query engine. Declarative describes intent not steps—same belief as Lesson 23's FilterState and Lesson 21's tRPC contract.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "第 33 课的监控器源码注释说它「mirrors DashboardWidget, minus TRACES」，且 MonitorView 恰好是 DashboardWidgetViews 去掉 TRACES。这个复用透露了什么设计意图？",
+                    "en": "Lesson 33's monitor source comment says it 'mirrors DashboardWidget, minus TRACES', and MonitorView is exactly DashboardWidgetViews minus TRACES. What design intent does this reuse reveal?",
+                },
+                "opts": [
+                    {
+                        "zh": "「指标」全公司只有一种算法：仪表盘画图、监控比阈值、查询引擎编 SQL 共享同一份查询形状，于是图上看到的、告警依据的、API 取到的永远是同一个数——一致性靠架构从根上保证而非靠纪律",
+                        "en": "a metric has exactly one algorithm company-wide: dashboard charts, monitor thresholds, and the query engine's SQL share one query shape, so what you see on the chart, what alerts on, and what the API returns are always the same number—consistency guaranteed at the root by architecture, not discipline",
+                    },
+                    {"zh": "监控器是仪表盘的子集功能", "en": "the monitor is a subset feature of dashboards"},
+                    {"zh": "TRACES 数据不能被监控", "en": "TRACES data can't be monitored"},
+                    {"zh": "为了节省存储", "en": "to save storage"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若仪表盘的「平均有用性」和监控器的「平均有用性」各写一套实现，迟早算出不同的数——口径漂移是数据产品的慢性毒药。让三处共享同一份 view+dimensions+metrics+filters 声明、同一个查询引擎，等于钉死「这个指标全公司只有一种算法」。pull(看图)与 push(告警)永远同一个数。一致性靠架构保证，不靠纪律维持。",
+                    "en": "If the dashboard's and the monitor's 'average helpfulness' were separate implementations, they'd eventually compute different numbers—definition drift is a slow poison for data products. Having three places share one view+dimensions+metrics+filters declaration and one query engine nails down 'this metric has one algorithm company-wide'. Pull (chart) and push (alert) are always the same number. Consistency is guaranteed by architecture, not maintained by discipline.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "DashboardWidget 的 view 字段取自 DashboardWidgetViews 枚举。它有哪四个值？",
+                    "en": "A DashboardWidget's view field comes from the DashboardWidgetViews enum. What are its four values?",
+                },
+                "opts": [
+                    {
+                        "zh": "TRACES、OBSERVATIONS、SCORES_NUMERIC、SCORES_CATEGORICAL——即一个 widget 能聚合 trace、观测、数值分或分类分这四种数据源之一",
+                        "en": "TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL—i.e. a widget can aggregate one of these four data sources: traces, observations, numeric scores, or categorical scores",
+                    },
+                    {"zh": "LINE、BAR、PIE、NUMBER", "en": "LINE, BAR, PIE, NUMBER"},
+                    {"zh": "DAY、WEEK、MONTH、YEAR", "en": "DAY, WEEK, MONTH, YEAR"},
+                    {"zh": "SUM、AVG、COUNT、MAX", "en": "SUM, AVG, COUNT, MAX"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "DashboardWidgetViews = { TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL }，决定 widget 聚合哪种数据源。LINE/BAR/PIE/NUMBER 那些是另一个枚举 DashboardWidgetChartType（怎么画，9 种）。view 管「看什么数据」、chartType 管「画成什么图」——正是查询与呈现分离的体现。监控器的 MonitorView 则是这个去掉 TRACES。",
+                    "en": "DashboardWidgetViews = { TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL }, deciding which data source a widget aggregates. LINE/BAR/PIE/NUMBER belong to a different enum, DashboardWidgetChartType (how to draw, 9 types). view governs 'what data', chartType 'what chart'—exactly the query/presentation split. The monitor's MonitorView is this minus TRACES.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「一份查询形状，三处复用」是 Langfuse 保证指标口径一致的核心招式。回想你做过或用过的数据产品：是否遇到过「同一个指标在不同页面/报表/告警里算出不同数」的口径漂移？如果让你设计一套机制根治它，你会怎么做？声明式查询 + 统一引擎的代价（灵活性受限、引擎要支持所有需求）你怎么权衡？",
+                "en": "'One query shape, three reuses' is Langfuse's core move for guaranteeing metric-definition consistency. Recall data products you've built or used: have you hit 'the same metric computes different numbers on different pages/reports/alerts' definition drift? If you designed a mechanism to cure it, how would you? How would you weigh the costs of declarative-query + unified-engine (limited flexibility, the engine must support all needs)?",
+            },
+        ],
+    },
 }
 
 

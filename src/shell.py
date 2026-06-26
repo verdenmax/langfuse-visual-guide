@@ -127,6 +127,8 @@ PAGES = [
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
     ("39-playground-llm-connections.html", "Playground 与 LLM 连接", "Playground & LLM connections",
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
+    ("40-dashboards-and-widgets.html", "仪表盘与 widget 系统", "Dashboards & widgets",
+     "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
 ]
 
 
@@ -688,6 +690,8 @@ SUBTITLES = {
                                        "production fetches a prompt on every LLM call so it must be fast; PromptService uses a Redis read-through (hit returns / miss falls back and backfills SET EX ttl); resolves dependencies into a self-contained product at serving time (depth cap + seen cycle check); epoch invalidation: the cache key embeds a project-scoped epoch token, a change just rotates the token without deleting keys, old keys orphaned and expire by TTL (O(1), never misses)"),
     "39-playground-llm-connections.html": ("Playground=同一引擎的交互式前台，复用 fetchLLMCompletion(评估第29课/实验第36课同一核心) · LlmApiKeys.secretKey 用 AES-256-GCM 认证加密存密文+displaySecretKey 脱敏展示+adapter 抽象 provider · authTag 防篡改、随机 IV、即用即解 · LlmSchema/LlmTool 可复用积木 · Part7 收束开发者工作流闭环",
                                            "the Playground = the same engine's interactive front desk, reusing fetchLLMCompletion (same core as eval L29/experiment L36); LlmApiKeys.secretKey stores ciphertext via AES-256-GCM authenticated encryption + displaySecretKey masked display + adapter abstracts the provider; authTag anti-tamper, random IV, decrypt-on-use; LlmSchema/LlmTool reusable blocks; Part 7 seals the developer-workflow loop"),
+    "40-dashboards-and-widgets.html": ("仪表盘看全局聚合 · Dashboard(definition 布局+板级 filters)装一排 DashboardWidget · widget=声明式查询(view+dimensions+metrics+filters)+图表(chartType 9种) · 查询与呈现解耦 · 一份查询形状三处复用(仪表盘画图/第33课监控比阈值/第41课引擎编SQL)，MonitorView=DashboardWidgetViews 去掉 TRACES",
+                                       "dashboards see global aggregation; a Dashboard (definition layout + board-level filters) holds a row of DashboardWidgets; a widget = a declarative query (view+dimensions+metrics+filters) + a chart (chartType, 9 types); query/presentation decoupled; one query shape reused three ways (dashboard charts/L33 monitor thresholds/L41 engine SQL), MonitorView = DashboardWidgetViews minus TRACES"),
 }
 
 

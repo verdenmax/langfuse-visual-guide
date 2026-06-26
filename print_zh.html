@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 39 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 40 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -376,6 +376,7 @@ details[open] > summary { list-style: none; }
   <li>Prompt 管理</li>
   <li>Prompt 服务与缓存</li>
   <li>Playground 与 LLM 连接</li>
+  <li>仪表盘与 widget 系统</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -7840,6 +7841,182 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>Part 7 到此，整条「开发者工作流」闭环合拢：Playground 试 → 版本化 → 实验对比 → label 发布 → 观测/评估/告警。回顾这条闭环，它和你熟悉的「软件开发生命周期」（写代码→测试→CI→发布→监控）有哪些惊人相似、又有哪些因为 LLM 的「不确定性」而独有的环节？如果让你给团队推广这套 prompt 工程流程，最难落地的是哪一步，为什么？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>仪表盘与 widget 系统</h1>
+
+<p class="lead">
+前七部分让你能<strong>看清单条</strong>——一条 trace、一个 score、一次实验。但运营一个 LLM 应用，你更常问的是<strong>全局</strong>的问题：这周成本涨了没？哪个模型最慢？平均有用性的走势如何？错误率有没有抬头？这些答案藏在成千上万条数据的<strong>聚合</strong>里——把它们汇成一张张图，就是<strong>仪表盘（dashboard）</strong>和它的积木 <strong>widget（图件）</strong>。
+这一课讲它们的数据模型，重点是一个会反复回响的设计：一个 widget 把「<strong>要算什么</strong>」声明成 <code>view + dimensions + metrics + filters</code> 这样一套<strong>查询形状</strong>——而这套形状，正是第 33 课监控器复用的、也是下一课查询引擎要编译成 SQL 的。<strong>画一张图、盯一个指标、跑一个聚合，背后是同一种声明。</strong>
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  仪表盘就像汽车驾驶舱的那块<strong>仪表板</strong>：一块板上摆着一排<strong>表</strong>（widget）——油量表、转速表、时速表、水温灯。每块表只管一件事：<strong>读哪个量、画成什么样</strong>（指针？数字？柱状？），它<strong>不关心</strong>这个数到底是怎么从引擎、油箱里采集上来的。
+  你能自由地往板上<strong>增删、挪动</strong>这些表，拼出最适合你的那套布局。而真正决定「这块表<strong>测什么、按什么分组</strong>」的，是一张<strong>声明</strong>（「测：平均时速；按：每分钟分组」），而不是焊死在表里的电路。于是同一份「测什么」的声明，既能驱动这块指针表，也能驱动旁边那盏「超速就亮」的警示灯（第 33 课监控）——<strong>测量与展示，是分开的两件事。</strong>
+</div>
+
+
+<h2>仪表盘 = 一块布局 + 一排 widget</h2>
+<p>数据模型分两层。<strong>Dashboard</strong> 是「一块板」：有名字、描述，一个 <code>definition</code>（JSON 布局，决定哪些 widget、各摆哪、多大），外加一组板级 <code>filters</code>（套在<strong>所有</strong> widget 上的全局过滤，比如「只看 production 环境」）。<strong>DashboardWidget</strong> 才是「一块表」：每个 widget 是一份保存好的<strong>查询 + 图表</strong>。一个 dashboard 装一排 widget，拼成你要的全景。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="仪表盘布局：一个 Dashboard 含 definition 布局和全局 filters，板上摆着多个 DashboardWidget——折线图、柱状图、大数字、饼图，各自是一份查询+图表；全局 filter 同时套在所有 widget 上">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一块 Dashboard 板，摆一排 widget，全局 filter 套全板</text>
+  <rect x="30" y="36" width="660" height="30" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Dashboard：definition（布局）+ 全局 filters（套在所有 widget 上，如「env=production」）</text>
+  <rect x="40" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="140" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · 成本走势</text><polyline points="60,138 90,128 120,132 150,118 180,122 210,110" fill="none" stroke="var(--accent)" stroke-width="1.6"/><text x="140" y="120" text-anchor="middle" font-size="6.4" fill="var(--muted)">折线时序</text>
+  <rect x="260" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · 各模型调用量</text><rect x="290" y="124" width="14" height="18" fill="var(--accent)"/><rect x="312" y="116" width="14" height="26" fill="var(--accent)"/><rect x="334" y="130" width="14" height="12" fill="var(--accent)"/><rect x="356" y="120" width="14" height="22" fill="var(--accent)"/><text x="410" y="135" text-anchor="middle" font-size="6.4" fill="var(--muted)">柱状</text>
+  <rect x="480" y="84" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · 总成本</text><text x="580" y="134" text-anchor="middle" font-size="15" font-weight="800" fill="var(--accent-ink)">$1,284</text>
+  <rect x="40" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="140" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · 平均有用性</text><polyline points="60,214 90,206 120,210 150,200 180,196 210,190" fill="none" stroke="var(--teal)" stroke-width="1.6"/><text x="140" y="198" text-anchor="middle" font-size="6.4" fill="var(--muted)">折线时序</text>
+  <rect x="260" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · score 分布</text><circle cx="360" cy="200" r="16" fill="none" stroke="var(--accent)" stroke-width="6" stroke-dasharray="60 40"/><text x="410" y="203" text-anchor="middle" font-size="6.4" fill="var(--muted)">饼图</text>
+  <rect x="480" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · 延迟直方</text><rect x="510" y="206" width="10" height="12" fill="var(--teal)"/><rect x="524" y="198" width="10" height="20" fill="var(--teal)"/><rect x="538" y="202" width="10" height="16" fill="var(--teal)"/><rect x="552" y="210" width="10" height="8" fill="var(--teal)"/><text x="620" y="210" text-anchor="middle" font-size="6.4" fill="var(--muted)">直方图</text>
+</svg>
+<div class="figcap"><b>两层结构</b>：<code>schema.prisma:1494</code> Dashboard 有 <code>definition</code>（布局 JSON）与板级 <code>filters</code>；<code>:1536</code> DashboardWidget 是单块「查询+图表」。一个板上的多个 widget 各看一个角度，板级 filter 同时收敛全部——「先全局圈定范围，再各看各的指标」。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">板</span><span class="name">Dashboard</span></div><div class="ld">一块画布：<code>definition</code> 是 JSON 布局（哪些 widget、各占什么格子），<code>filters</code> 是板级全局过滤。projectId 可空——Langfuse 还内置了一批「托管仪表盘」开箱即用。你能像摆桌面小组件一样自由编排。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">表</span><span class="name">DashboardWidget</span></div><div class="ld">一块表 = 一份<strong>声明式查询</strong>（<code>view</code> 看什么数据 + <code>dimensions</code> 按什么分组 + <code>metrics</code> 算什么 + <code>filters</code>）<strong>加</strong>一种<strong>图表呈现</strong>（<code>chartType</code> + <code>chartConfig</code>）。查询定义「算什么」，图表定义「怎么画」——下一节细看。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">复用</span><span class="name">同一份指标，多处消费</span></div><div class="ld">widget 的查询形状不是仪表盘私有的：第 33 课的监控器直接<strong>复用</strong>它（注释原文「mirrors DashboardWidget」），下一课的查询引擎负责把它<strong>编译成 ClickHouse SQL</strong>。一份「算什么」，画图、告警、聚合三处共享。</div></div>
+</div>
+
+
+<h2>widget = 声明式查询 + 图表呈现</h2>
+<p>拆开一个 widget，它清清楚楚分成两半：<strong>查询</strong>（要算什么）和<strong>图表</strong>（怎么画）。查询那半是四件套：<code>view</code>（数据源：TRACES / OBSERVATIONS / SCORES_NUMERIC / SCORES_CATEGORICAL）、<code>dimensions</code>（分组轴，如「按模型」「按天」）、<code>metrics</code>（聚合量，如「计数」「成本求和」「分数求平均」）、<code>filters</code>（过滤）。图表那半是 <code>chartType</code>（折线/柱状/饼/大数字/直方/透视表…）+ <code>chartConfig</code>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="widget 的两半：左边查询声明 view+dimensions+metrics+filters 决定算什么，右边 chartType+chartConfig 决定怎么画；同一份查询可换不同图表呈现">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一个 widget：左半「算什么」+ 右半「怎么画」</text>
+  <rect x="30" y="40" width="320" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="190" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">查询（声明：算什么）</text><rect x="46" y="72" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="87" text-anchor="middle" font-size="7" fill="var(--ink)">view: OBSERVATIONS（看观测）</text><rect x="46" y="98" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="113" text-anchor="middle" font-size="7" fill="var(--ink)">dimensions: [model]（按模型分组）</text><rect x="46" y="124" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="139" text-anchor="middle" font-size="7" fill="var(--ink)">metrics: [sum(totalCost)]（成本求和）</text><rect x="46" y="150" width="288" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="190" y="165" text-anchor="middle" font-size="7" fill="var(--ink)">filters: [env=production]</text>
+  <rect x="400" y="40" width="290" height="140" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="545" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">图表（呈现：怎么画）</text><text x="545" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">chartType: BAR / LINE / PIE / NUMBER …</text><rect x="430" y="120" width="20" height="40" fill="var(--accent)"/><rect x="460" y="100" width="20" height="60" fill="var(--accent)"/><rect x="490" y="132" width="20" height="28" fill="var(--accent)"/><rect x="520" y="112" width="20" height="48" fill="var(--accent)"/><text x="620" y="135" text-anchor="middle" font-size="6.6" fill="var(--muted)">同一查询</text><text x="620" y="147" text-anchor="middle" font-size="6.6" fill="var(--muted)">可换图表</text>
+  <line x1="350" y1="110" x2="398" y2="110" stroke="var(--accent)" stroke-width="1.6"/><polygon points="398,110 389,106 389,114" fill="var(--accent)"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">查询与图表解耦：换一种 chartType 不动查询，换一个 metric 不动画法——各自独立演化</text>
+</svg>
+<div class="figcap"><b>声明式查询 + 呈现，干净分家</b>：<code>schema.prisma:1536</code> DashboardWidget 把 <code>view</code>/<code>dimensions</code>/<code>metrics</code>/<code>filters</code>（算什么）与 <code>chartType</code>/<code>chartConfig</code>（怎么画）分别建模。<code>view</code> 取自 <code>DashboardWidgetViews</code>（4 值），<code>chartType</code> 取自 <code>DashboardWidgetChartType</code>（9 种图）。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>四件套（查询）</th><th>含义</th><th>例子</th></tr></thead>
+  <tbody>
+    <tr><td><code>view</code></td><td>数据源</td><td>TRACES / OBSERVATIONS / SCORES_NUMERIC / SCORES_CATEGORICAL</td></tr>
+    <tr><td><code>dimensions</code></td><td>分组轴（GROUP BY）</td><td>按 model、按 day、按 name……</td></tr>
+    <tr><td><code>metrics</code></td><td>聚合量</td><td>count、sum(totalCost)、avg(value)、p95(latency)</td></tr>
+    <tr><td><code>filters</code></td><td>过滤条件</td><td>env=production、name=chat、时间窗</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma:1516-1560</span><span class="ln">widget 模型 + 两个枚举</span></div>
+  <pre class="code"><span class="kw">enum</span> DashboardWidgetViews { TRACES  OBSERVATIONS  SCORES_NUMERIC  SCORES_CATEGORICAL }
+<span class="kw">enum</span> DashboardWidgetChartType { LINE_TIME_SERIES  BAR_TIME_SERIES  HORIZONTAL_BAR
+  VERTICAL_BAR  PIE  NUMBER  HISTOGRAM  PIVOT_TABLE  … }   <span class="cm">// 9 种图表</span>
+<span class="kw">model</span> DashboardWidget {
+  view       DashboardWidgetViews   <span class="cm">// 看什么数据</span>
+  dimensions Json   <span class="cm">// 按什么分组（GROUP BY 轴）</span>
+  metrics    Json   <span class="cm">// 算什么（聚合）</span>
+  filters    Json   <span class="cm">// 过滤</span>
+  chartType   DashboardWidgetChartType   <span class="cm">// 怎么画</span>
+  chartConfig Json                       <span class="cm">// 图表细节</span>
+}</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>图表类型（节选）</th><th>适合表达</th><th>典型用途</th></tr></thead>
+  <tbody>
+    <tr><td>LINE / AREA / BAR_TIME_SERIES</td><td>随时间的<b>趋势</b></td><td>成本走势、每日调用量、分数变化</td></tr>
+    <tr><td>HORIZONTAL / VERTICAL_BAR</td><td>类别间<b>对比</b></td><td>各模型调用量、各用户花费排名</td></tr>
+    <tr><td>NUMBER</td><td>单个<b>关键值</b></td><td>本月总成本、总 trace 数（KPI 大数字）</td></tr>
+    <tr><td>PIE</td><td>整体的<b>构成</b></td><td>各模型成本占比、score 分类分布</td></tr>
+    <tr><td>HISTOGRAM</td><td>数值的<b>分布</b></td><td>延迟分布、token 数分布</td></tr>
+    <tr><td>PIVOT_TABLE</td><td>多维<b>交叉</b></td><td>模型 × 环境 的成本矩阵</td></tr>
+  </tbody>
+</table>
+<p>同一份查询，选不同 chartType 就是不同的看法：想看趋势用时序、想比大小用柱状、想看构成用饼、想看分布用直方。<strong>数据不变，视角随需而换</strong>——这正是查询/呈现分离给探索带来的自由。</p>
+
+
+<h2>一份查询形状，三处复用</h2>
+<p>widget 这套 <code>view + dimensions + metrics + filters</code> 的声明，最妙的不是它能画图，而是它<strong>不只用来画图</strong>。同一套声明被三个地方共享：仪表盘拿它<strong>画成图表</strong>、第 33 课的监控器拿它<strong>定时算并比阈值</strong>、下一课的查询引擎拿它<strong>编译成 ClickHouse SQL</strong>。一个例证就藏在枚举里：监控器的 <code>MonitorView</code> 恰好是 <code>DashboardWidgetViews</code> <strong>去掉 TRACES</strong>（源码注释原文「mirrors DashboardWidget, minus TRACES」）。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="一份查询形状三处复用：同一套 view+dimensions+metrics+filters 声明，被仪表盘用来画图表、被第33课监控器用来定时比阈值、被第41课查询引擎用来编译成 ClickHouse SQL">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">同一份「算什么」声明，喂给三个消费者</text>
+  <rect x="250" y="40" width="220" height="50" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">查询形状（声明）</text><text x="360" y="78" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">view + dimensions + metrics + filters</text>
+  <rect x="40" y="130" width="190" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="135" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">仪表盘（本课）</text><text x="135" y="167" text-anchor="middle" font-size="6.6" fill="var(--muted)">画成图表（pull：你来看）</text>
+  <rect x="265" y="130" width="190" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">监控器（第33课）</text><text x="360" y="167" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">定时比阈值（push：它来喊）</text>
+  <rect x="490" y="130" width="190" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="585" y="150" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">查询引擎（第41课）</text><text x="585" y="167" text-anchor="middle" font-size="6.6" fill="var(--muted)">编译成 ClickHouse SQL</text>
+  <line x1="320" y1="90" x2="160" y2="128" stroke="var(--blue)" stroke-width="1.4"/><polygon points="160,128 169,124 165,120" fill="var(--blue)"/>
+  <line x1="360" y1="90" x2="360" y2="128" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,128 356,119 364,119" fill="var(--accent)"/>
+  <line x1="400" y1="90" x2="560" y2="128" stroke="var(--teal)" stroke-width="1.4"/><polygon points="560,128 551,120 555,124" fill="var(--teal)"/>
+  <text x="360" y="116" text-anchor="middle" font-size="7" fill="var(--faint)">MonitorView = DashboardWidgetViews 去掉 TRACES（源码注释 mirrors DashboardWidget, minus TRACES）</text>
+</svg>
+<div class="figcap"><b>声明一次，处处复用</b>：能在仪表盘上画出的任何曲线，都能一键变成一个监控告警（第 33 课），也都由同一个查询引擎（第 41 课）落成 SQL。<b>pull</b>（仪表盘你来看）与 <b>push</b>（监控它来喊）共享同一个指标定义——这正是第 33 课能「复用 DashboardWidget」的根因。</div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 widget 要把「算什么」和「怎么画」分开声明，而不是直接写死一段「画某张图」的代码？</strong> 因为这是两个<strong>正交</strong>的维度，强行耦合只会两头受限。把它们分开，你立刻得到三重自由：同一份查询<strong>换个 chartType</strong> 就从折线变柱状（探索数据时极有用）；同一种图表<strong>换个 metric</strong> 就从看成本变看延迟；更关键的是，那份纯粹的「算什么」声明，因为<strong>不掺任何展示逻辑</strong>，才能被监控器、查询引擎原样借走。<strong>声明式的威力，正在于它描述「意图」而非「步骤」</strong>——意图可以被任意多个执行者以不同方式实现。这和第 23 课 FilterState、第 21 课 tRPC 契约是同一种信念：把「想要什么」从「怎么做到」里剥离，复用与演进的空间就此打开。<br><br>
+  <strong>为什么这套查询形状值得被三处共用，而不是各写各的？</strong> 因为「指标」这个概念在产品里本就该<strong>统一</strong>。如果仪表盘上的「平均有用性」和监控器里的「平均有用性」是两段独立实现，它们迟早会<strong>算出不同的数</strong>——口径漂移是数据产品的慢性毒药。让三处共享同一份声明、同一个查询引擎，等于钉死了「这个指标全公司只有一种算法」。你在图上看到的、和告警依据的、和 API 取到的，<strong>永远是同一个数</strong>。一致性不是靠纪律维持，而是靠架构<strong>从根上保证</strong>。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>仪表盘看全局</strong>：把成千上万条数据聚合成图，回答「成本涨没」「哪个模型慢」「分数走势」这类全局问题——补上前七部分「看单条」之外的「看整体」。</li>
+    <li><strong>两层模型</strong>：<code>Dashboard</code>（<code>definition</code> 布局 + 板级 <code>filters</code>）装一排 <code>DashboardWidget</code>；每个 widget 是一份保存好的「查询 + 图表」。</li>
+    <li><strong>widget = 声明式查询 + 图表</strong>：查询四件套 <code>view</code>（数据源）+ <code>dimensions</code>（分组）+ <code>metrics</code>（聚合）+ <code>filters</code>；呈现是 <code>chartType</code>（9 种图）+ <code>chartConfig</code>。算什么与怎么画，干净分家。</li>
+    <li><strong>查询/呈现解耦</strong>：换图不动查询、换指标不动画法；纯粹的「算什么」声明才能被原样复用——声明式描述意图而非步骤。</li>
+    <li><strong>一份查询形状三处复用</strong>：仪表盘画图、第 33 课监控比阈值、第 41 课引擎编译 SQL，共享同一声明（<code>MonitorView</code> = <code>DashboardWidgetViews</code> 去掉 TRACES）。指标全公司一种算法，pull 与 push 永远同一个数。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 DashboardWidget 把 view+dimensions+metrics+filters（查询）和 chartType+chartConfig（图表）分开建模。这种「查询/呈现分离」最大的好处是？</div>
+  <ol class="opts">
+    <li>让图表渲染更快</li>
+    <li>自动选择最优图表</li>
+    <li>查询与图表正交、各自自由演化：同查询换 chartType 即换图、同图换 metric 即换量；更关键的是纯粹的「算什么」声明不掺展示逻辑，才能被监控器/查询引擎原样复用</li>
+    <li>减少数据库表数量</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。查询(算什么)与图表(怎么画)是两个正交维度，强耦合两头受限。分开后：同查询换 chartType 从折线变柱状、同图换 metric 从看成本变看延迟；更关键的是那份纯粹「算什么」声明不掺展示逻辑，才能被第33课监控器、第41课查询引擎原样借走。声明式描述意图而非步骤——和第23课 FilterState、第21课 tRPC 契约同一种信念。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 第 33 课的监控器源码注释说它「mirrors DashboardWidget, minus TRACES」，且 MonitorView 恰好是 DashboardWidgetViews 去掉 TRACES。这个复用透露了什么设计意图？</div>
+  <ol class="opts">
+    <li>为了节省存储</li>
+    <li>TRACES 数据不能被监控</li>
+    <li>监控器是仪表盘的子集功能</li>
+    <li>「指标」全公司只有一种算法：仪表盘画图、监控比阈值、查询引擎编 SQL 共享同一份查询形状，于是图上看到的、告警依据的、API 取到的永远是同一个数——一致性靠架构从根上保证而非靠纪律</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若仪表盘的「平均有用性」和监控器的「平均有用性」各写一套实现，迟早算出不同的数——口径漂移是数据产品的慢性毒药。让三处共享同一份 view+dimensions+metrics+filters 声明、同一个查询引擎，等于钉死「这个指标全公司只有一种算法」。pull(看图)与 push(告警)永远同一个数。一致性靠架构保证，不靠纪律维持。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. DashboardWidget 的 view 字段取自 DashboardWidgetViews 枚举。它有哪四个值？</div>
+  <ol class="opts">
+    <li>SUM、AVG、COUNT、MAX</li>
+    <li>LINE、BAR、PIE、NUMBER</li>
+    <li>DAY、WEEK、MONTH、YEAR</li>
+    <li>TRACES、OBSERVATIONS、SCORES_NUMERIC、SCORES_CATEGORICAL——即一个 widget 能聚合 trace、观测、数值分或分类分这四种数据源之一</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。DashboardWidgetViews = { TRACES, OBSERVATIONS, SCORES_NUMERIC, SCORES_CATEGORICAL }，决定 widget 聚合哪种数据源。LINE/BAR/PIE/NUMBER 那些是另一个枚举 DashboardWidgetChartType（怎么画，9 种）。view 管「看什么数据」、chartType 管「画成什么图」——正是查询与呈现分离的体现。监控器的 MonitorView 则是这个去掉 TRACES。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「一份查询形状，三处复用」是 Langfuse 保证指标口径一致的核心招式。回想你做过或用过的数据产品：是否遇到过「同一个指标在不同页面/报表/告警里算出不同数」的口径漂移？如果让你设计一套机制根治它，你会怎么做？声明式查询 + 统一引擎的代价（灵活性受限、引擎要支持所有需求）你怎么权衡？</li>
   </ul>
 </div>
 </div>
