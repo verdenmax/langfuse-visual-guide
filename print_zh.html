@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 32 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 33 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -369,6 +369,7 @@ details[open] > summary { list-style: none; }
   <li>eval 执行流水线</li>
   <li>代码 eval</li>
   <li>人工标注</li>
+  <li>监控器与告警</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -6548,6 +6549,213 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>Part 5 走到这里，三种 score 来源（API/EVAL/ANNOTATION）全部汇入同一张 scores 表、同一套 config。回头看这条主线：为什么 Langfuse 不为「AI 评的分」和「人评的分」分别建表，而是执意让它们同表同尺？这种「统一数据模型」的设计，在可信度、可维护性、未来扩展上分别带来了什么？你能想到它的代价或局限吗？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>监控器与告警</h1>
+
+<p class="lead">
+Part 5 让你能给质量<strong>打分</strong>了——但分数躺在库里，你不可能一直盯着看。这一课讲 Part 5 的收尾，也是让评估<strong>真正起作用</strong>的最后一环：<strong>监控器（monitor）</strong>。它是「主动」的那一半——按固定节奏盯着某个指标或分数，一旦<strong>越过你设的线</strong>，就主动发出告警。一句话：把质量监测从「<strong>你去拉</strong>」（看仪表盘）变成「<strong>它来推</strong>」（异常即告警）。
+我们会看到一个优雅的复用：<strong>monitor 本质上是一个「会自己盯着自己」的仪表盘组件</strong>；一台把指标值映射成 OK/WARNING/ALERT 的<strong>严重度状态机</strong>；以及一条「<strong>只在状态变化时才告警</strong>、并把投递解耦出去」的链路。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  仪表盘（第 40 课）像一份<strong>体检报告</strong>：你主动去翻，才知道指标如何。监控器则像一只<strong>可穿戴心率警报器</strong>：它<strong>自己盯着</strong>，平时不吭声，一旦心率冲出安全区间就<strong>主动报警</strong>——你不必时时盯屏。
+  你给它设三样东西：<strong>正常的边界</strong>（阈值，如「错误率别超 5%」）、<strong>多久测一次</strong>（cadence，如每 5 分钟）、<strong>看最近多久的数据</strong>（window，如过去 1 小时）。它每到点就量一次、和边界比一比，得出一个<strong>严重度</strong>（正常 / 警告 / 告警）。
+  贴心的是：它只在<strong>状态发生变化</strong>时响一声（从「正常」变「告警」才推送），而不是每 5 分钟都吵你一遍；要是异常一直不好，你还能设「<strong>每隔一阵再提醒一次</strong>」（renotify）。报警铃本身也不直接接到某一个设备——而是发到一个<strong>统一的通知中枢</strong>，再由它转给短信、Slack 或值班系统。
+</div>
+
+
+<h2>一台会自己盯着自己的仪表盘组件</h2>
+<p>monitor 最妙的设计，是它<strong>直接复用了仪表盘的查询形状</strong>。源码注释写得明明白白：Monitor 的查询字段「mirrors DashboardWidget」——同样的 <code>view</code>（看 observation 还是 score）、<code>filters</code>（过滤哪些数据）、<code>metric</code>（算什么指标）。区别只在于：仪表盘组件等你<strong>打开页面</strong>才算一次；monitor 则由一个<strong>调度器</strong>按 <code>cadenceMs</code> 反复地算、并把结果拿去<strong>比阈值</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="监控流水线：调度器每到 nextRunAt 就把到期的 monitor 入队；处理器用与仪表盘相同的 view/filters/metric 在最近 windowMs 窗口算出一个指标值；computeSeverity 按 operator 比 alert/warning 阈值得出严重度；只有严重度变化才发告警到 WebhookQueue 再转投递">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">监控流水线：定时算指标 → 比阈值 → 变化才告警</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① 调度器</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt 到期</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim 后入队 MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② 处理器算指标</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">（= 仪表盘组件的查询）</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">在最近 windowMs 窗口</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; 阈值</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ 状态机</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">严重度变了吗？</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">变了才 emit 告警</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → 自动化</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">解耦投递：Slack / webhook（第 44 课）</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">仅当 emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">仪表盘组件「等你看」；monitor 多了①调度 + ③④阈值与状态机——于是它「自己看，异常才喊你」</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">同一套查询机制，pull（仪表盘）与 push（监控）两种姿态</text>
+</svg>
+<div class="figcap"><b>monitor = 自带调度与阈值的仪表盘组件</b>。<code>schema.prisma:1752</code> 的 Monitor 把 <code>view/filters/metric</code>（注释原文 <i>mirrors DashboardWidget</i>）和 <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code> 装在一起。worker 端 <code>monitorQueue.ts</code> 的 <code>MonitorProcessor.process</code> 跑②③④，越线才发⑤。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">看什么</span><span class="name">view / filters / metric</span></div><div class="ld">和仪表盘组件同款的查询三件套：<code>view</code> 决定盯 OBSERVATIONS 还是 SCORES_NUMERIC / SCORES_CATEGORICAL（<strong>能直接监控 Part 5 算出的分数</strong>），<code>filters</code> 圈定范围，<code>metric</code> 定义算什么（如平均分、错误率、P95 延迟）。一个 monitor 就是「一条仪表盘曲线 + 一条警戒线」。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">怎么测</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> 是<strong>看最近多久</strong>的数据（滑动窗口，如过去 1 小时），<code>cadenceMs</code> 是<strong>多久测一次</strong>（如每 5 分钟）。两者解耦：你可以每 5 分钟、回看 1 小时——窗口给平滑、节奏给及时。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">何时响</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code>（GT/GTE/LT/LTE/EQ/NEQ）+ <code>alertThreshold</code>（必填）+ <code>warningThreshold</code>（选填两档）决定指标值落进哪个<strong>严重度</strong>。再由状态机决定<strong>这次要不要真的发告警</strong>（下两节细讲）。</div></div>
+</div>
+
+
+<h2>严重度状态机：从指标值到 OK / WARNING / ALERT</h2>
+<p>算出指标值后，<code>computeSeverity</code> 把它映射成一个<strong>严重度</strong>。逻辑很干净：先看值在不在（处理「没数据」），再按 operator 依次比<strong>告警线、警告线</strong>——撞上告警线就 ALERT，撞上警告线就 WARNING，都没撞就 OK。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="严重度状态机：指标值为空时按 noData 模式处理为 NO_DATA、补零或沿用上次；非空时若满足告警阈值则 ALERT、满足警告阈值则 WARNING、否则 OK；另有用户手动的 PAUSED 与初始 UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity 六态（computeSeverity + 状态机）</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">指标值 value？</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">先判空</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.2" fill="var(--muted)">按 noData 模式：补零/沿用/标无数据</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="610" y="78" font-size="6.4" fill="var(--muted)">用户暂停</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">初始/未知</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="150" y="98" font-size="6.2" fill="var(--muted)">空</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">撞告警线</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="226" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">撞警告线</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="220" y="140" text-anchor="middle" font-size="6.2" fill="var(--teal)">都没撞</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">三个「生命周期态」NO_DATA/PAUSED/UNKNOWN + 三个「比阈值得到的态」ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>六态严重度</b>：<code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code>（<code>schema.prisma:1736</code>）。<code>computeSeverity</code> 先按 <code>noData</code> 模式处理空值，再按 operator 比 alert / warning 阈值。先比 ALERT 后比 WARNING——<strong>就高不就低</strong>，确保最严重的状态优先。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>配置项</th><th>取值</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>怎么比：错误率用 GT「超过」，成功率用 LT「低于」</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>两条线（警告可选）</td><td>两档预警：先黄牌后红牌，给你缓冲</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>没数据时怎么办：补 0 再判 / 沿用上次 / 标「无数据」/ 还为无数据告警</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">值 → 严重度</span></div>
+  <pre class="code"><span class="cm">// 空值：按 monitor 的 noData 模式决定</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// 当作 0 继续比</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// 沿用上次</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// 标记无数据</span>
+}
+<span class="cm">// 非空：先比告警线、再比警告线——就高不就低</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, …（六种 operator）</span></pre>
+</div>
+
+<p>把抽象配置落到真实场景，三个典型 monitor 长这样——注意前两个直接盯着 Part 5 算出的<strong>分数</strong>：</p>
+<div class="cols">
+  <div class="col"><h4>有用性均分掉了</h4><p><code>view=SCORES_NUMERIC</code>，metric=「有用性」平均分，<code>operator=LT</code>，warning 0.75 / alert 0.70。窗口 1 小时、每 5 分钟测。<strong>质量回归的第一道哨兵。</strong></p></div>
+  <div class="col"><h4>毒性通过率不达标</h4><p><code>view=SCORES_NUMERIC</code>（布尔分的通过率），metric=「无毒」占比，<code>operator=LT</code>，alert 0.95。安全红线一破即告警。</p></div>
+  <div class="col"><h4>错误率飙升</h4><p><code>view=OBSERVATIONS</code>，metric=错误占比，<code>operator=GT</code>，alert 5%。不依赖 score，直接盯第 13 课的 observation 状态——上游一抖就知道。</p></div>
+</div>
+
+
+<h2>只在变化时告警，且把投递解耦出去</h2>
+<p>算出严重度，<strong>不等于</strong>就要发告警。如果每 5 分钟算一次、每次都因为「还在 ALERT」而推一条，你的 Slack 会被刷爆。<code>applyStateMachine</code> 解决这个：它对比<strong>上一次和这一次的严重度</strong>，原则上<strong>只在状态发生变化时才发</strong>（OK→ALERT 发、ALERT→ALERT 不发）；若异常持续，再按 <code>renotify</code> 策略<strong>隔一阵补一次</strong>。而且，被暂停（PAUSED）的 monitor 直接跳过——不覆盖用户意图。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="状态机决定是否发告警：上次 OK 这次 ALERT 则发；上次 ALERT 这次仍 ALERT 默认不发、除非 renotify 周期到；恢复为 OK 也发一条；告警统一发到 WebhookQueue，再由自动化转投递到 Slack 或 webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">变化才 emit · 投递走统一队列</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">上次 OK → 这次 ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">变化 → 发！</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → 仍 ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">默认不发（防刷屏）</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">持续异常 + renotify 到点</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">补一次提醒</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit 决策</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED 直接跳过</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue（统一通知中枢）</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor 只管发布，不管怎么投</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">「变化才发」防刷屏 + 「统一队列再分发」让 monitor 不必认识每种投递渠道（第 44 课自动化）</text>
+</svg>
+<div class="figcap"><b>两层克制</b>：<code>applyStateMachine</code>（<code>processor/applyStateMachine.ts</code>）按「严重度是否变化 + renotify」决定 <code>emit</code>，PAUSED 不覆盖用户意图；真要发时，<code>monitorQueue.ts</code> 只把告警<b>发布到 WebhookQueue</b>，由自动化系统（Trigger→Action）决定投到 Slack 还是 webhook。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">是否发 + 怎么发</span></div>
+  <pre class="code"><span class="cm">// 是否发：暂停跳过；否则按「严重度变化 + renotify」决定 emit</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// 不覆盖用户意图</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// 变化或到点才 true</span>
+
+<span class="cm">// 怎么发：monitor 不直接发 Slack，只发布到 WebhookQueue（解耦投递）</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// 算指标→定severity→（必要时）发布</span></pre>
+</div>
+
+<p>这条链路把 Part 5 推到了终点：从第 28 课「一个 score 长什么样」，到 29–32 课「四种方式生产 score」，再到这一课「<strong>盯着这些分数/指标，越线就主动喊人</strong>」。评估终于<strong>闭环成行动</strong>——你不再只是<strong>能</strong>看到质量，而是质量一掉，系统就<strong>替你</strong>看到、并立刻通知你。而「发布到 WebhookQueue、由自动化转投递」这一步，正好接上 Part 7 的自动化与集成（第 44 课）——监控只是众多「会触发自动化的事件源」之一。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 monitor 要复用仪表盘的查询形状，而不是自成一套？</strong> 因为「监控的指标」和「仪表盘看的指标」<strong>本来就是同一个东西</strong>——平均分、错误率、P95 延迟。让 Monitor 的 <code>view/filters/metric</code> 直接 mirror DashboardWidget，意味着：你在仪表盘上画得出的任何曲线，都能<strong>一键变成一个会自己盯着的告警</strong>；底层那套 ClickHouse 查询机制只写一遍、两处复用。<strong>pull 与 push 共享同一个指标定义</strong>，这是少有的「既省代码又顺直觉」的设计。<br><br>
+  <strong>为什么只在「状态变化」时告警，而不是每次越线都发？</strong> 因为<strong>告警疲劳</strong>是监控系统的头号杀手。如果错误率持续高，每 5 分钟一条「还在告警」，工程师很快就会把整个频道静音——于是真正的新问题也被淹没。「变化才发 + renotify 周期补发」让每条告警都<strong>携带信息量</strong>（状态真的变了），既不漏报、又不刷屏。severity 做成<strong>状态机</strong>而非每次重算的瞬时值，正是为了能问出「<strong>和上次比变了吗</strong>」这个关键问题。<br><br>
+  <strong>为什么告警不直接发 Slack，而要先发布到 WebhookQueue？</strong> 又是那个贯穿全书的信念——<strong>解耦</strong>。monitor 的职责是「判断要不要告警」，<strong>不该</strong>关心「告警怎么送到人手里」（Slack？webhook？邮件？值班系统？）。把告警发布到统一队列，再由自动化系统（第 44 课的 Trigger→Action）决定投递渠道，于是：投递方式可独立演进、可重试、可对接任意新渠道，而 monitor 一行不改。<strong>判断与投递分离</strong>，和第 30 课「创建与执行分离」、第 12 课「一个入口多个生产者」是同一种架构品味。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>monitor = 主动的评估</strong>：把质量监测从「你去拉仪表盘」变成「它来推告警」。按 <code>cadenceMs</code> 定时在最近 <code>windowMs</code> 窗口算指标，越线即告警。</li>
+    <li><strong>复用仪表盘查询形状</strong>：<code>view/filters/metric</code> 注释原文「mirrors DashboardWidget」——能画成曲线的指标就能变成告警；<code>view</code> 含 SCORES_NUMERIC/CATEGORICAL，<strong>可直接监控 Part 5 算出的分数</strong>。</li>
+    <li><strong>严重度状态机</strong>：<code>computeSeverity</code> 按 operator（GT/GTE/LT/LTE/EQ/NEQ）先比告警线、再比警告线，得 OK/WARNING/ALERT；空值按 <code>noData</code> 模式处理（补零/沿用/标无数据）；另有 PAUSED/UNKNOWN 生命周期态。</li>
+    <li><strong>只在变化时告警</strong>：<code>applyStateMachine</code> 比上次与这次的严重度，原则上<strong>变化才发</strong>，持续异常按 <code>renotify</code> 补发，PAUSED 不覆盖——根治告警疲劳。</li>
+    <li><strong>解耦投递</strong>：monitor 只把告警发布到 <code>WebhookQueue</code>，由自动化（第 44 课 Trigger→Action）转投 Slack / webhook。判断与投递分离，呼应第 30 课「创建/执行分离」。</li>
+    <li><strong>Part 5 闭环</strong>：从「score 的模型」（28）→「四种生产 score 的方式」（29–32）→「盯着 score/指标主动告警」（33）。评估从「能看见质量」升级为「质量一掉就被通知」——真正成为行动。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 monitor（监控器）和 dashboard（仪表盘）有什么本质关系？</div>
+  <ol class="opts">
+    <li>monitor 复用仪表盘组件的查询形状（view/filters/metric，源码注释 mirrors DashboardWidget），区别在于它由调度器定时算、并拿去比阈值——pull（你看）变 push（它喊）</li>
+    <li>dashboard 是 monitor 的告警历史</li>
+    <li>monitor 是 dashboard 的只读快照</li>
+    <li>两者用完全不同的查询引擎</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。Monitor 的 view/filters/metric 直接 mirror DashboardWidget——能在仪表盘画出的曲线，都能一键变成会自己盯着的告警，底层 ClickHouse 查询机制只写一遍。区别只在 monitor 多了①调度（按 cadenceMs 定时）+③④阈值与状态机。pull 与 push 共享同一个指标定义，既省代码又顺直觉。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 一个 monitor 持续处于 ALERT 状态。它每 5 分钟算一次，但并不会每 5 分钟都发一条告警。这种克制由什么实现，解决什么问题？</div>
+  <ol class="opts">
+    <li>applyStateMachine：原则上只在严重度「变化」时 emit（OK→ALERT 发、ALERT→ALERT 不发），持续异常按 renotify 周期补发——根治告警疲劳</li>
+    <li>每次都发，靠 Slack 自己去重</li>
+    <li>随机丢弃一部分告警</li>
+    <li>只在工作时间发</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。告警疲劳是监控系统头号杀手：持续 ALERT 每 5 分钟一条，工程师会把频道静音，真问题也被淹没。applyStateMachine 对比 prev/next 严重度，severityChanged 才考虑 emit，并按 renotify 决定是否补发；PAUSED 直接跳过不覆盖用户意图。把 severity 做成状态机而非瞬时值，正是为了能问「和上次比变了吗」。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. monitor 判定要告警后，并不直接调 Slack API，而是把告警发布到 WebhookQueue，再由自动化系统转投递。为什么这样设计？</div>
+  <ol class="opts">
+    <li>判断与投递分离（解耦）：monitor 只管「要不要告警」，不必认识每种投递渠道；投递方式可独立演进/重试/接新渠道，monitor 一行不改——呼应第30课创建/执行分离</li>
+    <li>Slack 不支持直接调用</li>
+    <li>为了把告警存档</li>
+    <li>WebhookQueue 比直接调 Slack 快</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。monitor 的职责是判断是否越线告警，不该耦合「告警怎么送到人手里」（Slack/webhook/邮件/值班）。发布到统一 WebhookQueue，由自动化（第44课 Trigger→Action）决定渠道，于是投递可独立演进、可重试、可接任意新渠道，monitor 不变。这与第30课创建/执行分离、第12课一个入口多生产者，是同一种「解耦」品味。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>Part 5 到此完整：score 模型（28）→ 四种生产 score 的方式（29–32）→ 主动监控告警（33）。回顾整个第五部分，Langfuse 让「评估」从一个静态的「能打分、能查」系统，变成一个动态的「能自动评、能主动告警、还能用人工分校准 AI」的闭环。如果让你为自己的 LLM 应用设计一套评估体系，你会怎么组合这五种能力（人工/LLM裁判/代码/监控）？哪些质量信号你会持续监控并告警，为什么？</li>
   </ul>
 </div>
 </div>

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 32 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 33 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -369,6 +369,7 @@ details[open] > summary { list-style: none; }
   <li>The eval execution pipeline</li>
   <li>Code-based evaluation</li>
   <li>Human annotation</li>
+  <li>Monitors & alerting</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -6978,6 +6979,213 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>By this point in Part 5, all three score sources (API/EVAL/ANNOTATION) flow into one scores table, one set of configs. Looking back at this through-line: why does Langfuse refuse to build separate tables for 'AI-judged' and 'human-judged' scores, insisting on one table and one ruler? What does this 'unified data model' buy in trust, maintainability, and future extension? Can you think of its costs or limits?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Monitors & alerting</h1>
+
+<p class="lead">
+Part 5 let you <strong>score</strong> quality—but scores sit in a database, and you can't watch them forever. This lesson caps Part 5 and adds the last link that makes evaluation <strong>actually act</strong>: the <strong>monitor</strong>. It's the "active" half—watching a metric or score on a fixed cadence, and when it <strong>crosses a line you set</strong>, raising an alert on its own. In one phrase: turn quality monitoring from "<strong>you pull</strong>" (look at a dashboard) into "<strong>it pushes</strong>" (alert on anomaly).
+We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget that watches itself</strong>; a <strong>severity state machine</strong> mapping a metric value into OK/WARNING/ALERT; and a path that "<strong>only alerts on a state change</strong> and decouples delivery away".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dashboard (Lesson 40) is like a <strong>checkup report</strong>: you flip it open to learn how things are. A monitor is like a <strong>wearable heart-rate alarm</strong>: it <strong>watches on its own</strong>, stays quiet, and the moment your rate leaves the safe zone it <strong>sounds an alert</strong>—you needn't stare at a screen.
+  You set it three things: the <strong>normal boundary</strong> (threshold, e.g. "error rate under 5%"), <strong>how often to measure</strong> (cadence, e.g. every 5 minutes), and <strong>how far back to look</strong> (window, e.g. the past hour). At each tick it measures once, compares against the boundary, and yields a <strong>severity</strong> (OK / warning / alert).
+  The thoughtful bit: it only beeps when the <strong>state changes</strong> (it pushes when "OK" becomes "alert"), not every 5 minutes; and if the anomaly persists, you can set it to "<strong>remind again every so often</strong>" (renotify). The alarm bell itself isn't wired to one device either—it goes to a <strong>unified notification hub</strong>, which forwards to SMS, Slack, or an on-call system.
+</div>
+
+
+<h2>A dashboard widget that watches itself</h2>
+<p>The neatest part of a monitor is that it <strong>directly reuses the dashboard's query shape</strong>. The source comment says it plainly: a Monitor's query fields "mirror DashboardWidget"—the same <code>view</code> (observations or scores), <code>filters</code> (which data), <code>metric</code> (what to compute). The only difference: a dashboard widget computes once when you <strong>open the page</strong>; a monitor is computed repeatedly by a <strong>scheduler</strong> per <code>cadenceMs</code> and the result is taken to <strong>compare against a threshold</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="The monitor pipeline: a scheduler enqueues due monitors at nextRunAt; the processor computes a metric value over the recent windowMs using the same view/filters/metric as a dashboard; computeSeverity compares it to the alert/warning thresholds by operator to yield a severity; only a severity change emits an alert to the WebhookQueue for delivery">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">monitor pipeline: scheduled metric → threshold → alert only on change</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① scheduler</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt due</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim → enqueue MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② processor computes</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">(= a dashboard widget's query)</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">over the recent windowMs</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; threshold</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ state machine</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">did severity change?</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">emit only if so</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → automation</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">decoupled delivery: Slack / webhook (Lesson 44)</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">only if emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">a dashboard widget "waits for you to look"; a monitor adds ① scheduling + ③④ thresholds and state machine—so it "looks itself, calls you only on anomaly"</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">one query mechanism, two postures: pull (dashboard) and push (monitor)</text>
+</svg>
+<div class="figcap"><b>monitor = a dashboard widget with built-in scheduling and thresholds</b>. <code>schema.prisma:1752</code>'s Monitor packs <code>view/filters/metric</code> (the comment literally says <i>mirrors DashboardWidget</i>) together with <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code>. On the worker, <code>monitorQueue.ts</code>'s <code>MonitorProcessor.process</code> runs ②③④ and only emits ⑤ when a line is crossed.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">view / filters / metric</span></div><div class="ld">The same query trio as a dashboard widget: <code>view</code> decides whether to watch OBSERVATIONS or SCORES_NUMERIC / SCORES_CATEGORICAL (<strong>so it can directly monitor the scores Part 5 produced</strong>), <code>filters</code> scope the data, <code>metric</code> defines what to compute (avg score, error rate, P95 latency). A monitor is "one dashboard curve + one alarm line".</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">how</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> is <strong>how far back</strong> to look (a sliding window, e.g. the past hour); <code>cadenceMs</code> is <strong>how often</strong> to measure (e.g. every 5 minutes). The two are decoupled: you can measure every 5 minutes looking back 1 hour—the window gives smoothing, the cadence gives timeliness.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">when</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code> (GT/GTE/LT/LTE/EQ/NEQ) + <code>alertThreshold</code> (required) + <code>warningThreshold</code> (optional two-tier) decide which <strong>severity</strong> the value falls into. The state machine then decides <strong>whether to actually send an alert this time</strong> (next two sections).</div></div>
+</div>
+
+
+<h2>The severity state machine: from a value to OK / WARNING / ALERT</h2>
+<p>Once the metric value is computed, <code>computeSeverity</code> maps it to a <strong>severity</strong>. The logic is clean: first check whether the value exists (handle "no data"), then compare by operator against the <strong>alert line, then the warning line</strong>—hit the alert line → ALERT, hit the warning line → WARNING, neither → OK.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Severity state machine: a null value is handled per noData mode as NO_DATA, zero-substituted, or carried over; a present value yields ALERT if it meets the alert threshold, WARNING if it meets the warning threshold, otherwise OK; plus user-set PAUSED and initial UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity, six states (computeSeverity + state machine)</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">metric value?</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">check null first</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.0" fill="var(--muted)">per noData mode: zero/carry-over/flag</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="605" y="78" font-size="6.4" fill="var(--muted)">user-paused</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">initial</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="142" y="98" font-size="6.2" fill="var(--muted)">null</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meets alert</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="225" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">meets warning</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="221" y="142" text-anchor="middle" font-size="6.2" fill="var(--teal)">neither</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">three "lifecycle" states NO_DATA/PAUSED/UNKNOWN + three "threshold-derived" states ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>Six-state severity</b>: <code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code> (<code>schema.prisma:1736</code>). <code>computeSeverity</code> first handles null per the <code>noData</code> mode, then compares the alert / warning thresholds by operator. Alert is checked before warning—<strong>highest wins</strong>, ensuring the most severe state takes priority.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>config</th><th>values</th><th>role</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>how to compare: error rate uses GT "exceeds", success rate uses LT "falls below"</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>two lines (warning optional)</td><td>two-tier warning: yellow card then red card, giving you a buffer</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>what to do with no data: treat as 0 / carry over last / flag "no data" / even alert for no data</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">value → severity</span></div>
+  <pre class="code"><span class="cm">// null value: decide per the monitor's noData mode</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// treat as 0 and continue</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// carry over last</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// flag no data</span>
+}
+<span class="cm">// present value: check alert line first, then warning line — highest wins</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, … (six operators)</span></pre>
+</div>
+
+<p>Grounding the abstract config in real scenarios, three typical monitors look like this—note the first two watch the <strong>scores</strong> Part 5 produced:</p>
+<div class="cols">
+  <div class="col"><h4>helpfulness average dropped</h4><p><code>view=SCORES_NUMERIC</code>, metric=avg "helpfulness", <code>operator=LT</code>, warning 0.75 / alert 0.70. Window 1 hour, measured every 5 minutes. <strong>The first sentinel for quality regression.</strong></p></div>
+  <div class="col"><h4>toxicity pass-rate below target</h4><p><code>view=SCORES_NUMERIC</code> (a boolean score's pass-rate), metric=share "non-toxic", <code>operator=LT</code>, alert 0.95. A safety red line alerts the moment it's crossed.</p></div>
+  <div class="col"><h4>error rate spiking</h4><p><code>view=OBSERVATIONS</code>, metric=share of errors, <code>operator=GT</code>, alert 5%. No score needed—watches Lesson 13's observation status directly, so an upstream wobble shows immediately.</p></div>
+</div>
+
+
+<h2>Alert only on change, and decouple delivery away</h2>
+<p>Computing a severity does <strong>not</strong> mean an alert must fire. If you compute every 5 minutes and push each time because it's "still ALERT", your Slack drowns. <code>applyStateMachine</code> fixes this: it compares <strong>the previous and current severity</strong> and, as a rule, <strong>only emits on a state change</strong> (OK→ALERT emits, ALERT→ALERT doesn't); if the anomaly persists, it tops up per the <code>renotify</code> policy. And a PAUSED monitor is skipped outright—not overwriting user intent.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="The state machine decides whether to alert: previous OK now ALERT emits; previous ALERT still ALERT by default doesn't, unless the renotify period elapses; recovery to OK also emits; alerts all go to the WebhookQueue, which automation forwards to Slack or webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">emit only on change · delivery via one queue</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">prev OK → now ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">change → emit!</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → still ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">default no emit (anti-spam)</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">persists + renotify due</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">top up a reminder</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit decision</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED skipped</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue (one notification hub)</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor only publishes, not how to deliver</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">"emit only on change" prevents spam + "one queue then fan out" frees the monitor from knowing each delivery channel (Lesson 44 automation)</text>
+</svg>
+<div class="figcap"><b>Two layers of restraint</b>: <code>applyStateMachine</code> (<code>processor/applyStateMachine.ts</code>) decides <code>emit</code> by "did severity change + renotify", and PAUSED doesn't overwrite user intent; when it does fire, <code>monitorQueue.ts</code> only <b>publishes the alert to the WebhookQueue</b>, leaving the automation system (Trigger→Action) to decide Slack vs webhook.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">whether to send + how</span></div>
+  <pre class="code"><span class="cm">// whether: skip if paused; else decide emit by "severity change + renotify"</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// don't overwrite user intent</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// true only on change or due</span>
+
+<span class="cm">// how: a monitor doesn't send Slack directly, only publishes to WebhookQueue (decoupled)</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// compute→severity→(if needed) publish</span></pre>
+</div>
+
+<p>This path pushes Part 5 to its finish: from Lesson 28's "what a score looks like", through Lessons 29–32's "four ways to produce a score", to this lesson's "<strong>watch those scores/metrics and call someone the moment a line is crossed</strong>". Evaluation finally <strong>closes the loop into action</strong>—you no longer merely <strong>can</strong> see quality; the moment quality drops, the system sees it <strong>for you</strong> and notifies you at once. And the "publish to WebhookQueue, let automation deliver" step dovetails into Part 7's automation and integrations (Lesson 44)—monitoring is just one of many "event sources that can trigger automation".</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why reuse the dashboard's query shape instead of inventing one?</strong> Because "a monitored metric" and "a dashboarded metric" are <strong>the same thing</strong>—avg score, error rate, P95 latency. Having Monitor's <code>view/filters/metric</code> directly mirror DashboardWidget means: any curve you can draw on a dashboard can <strong>become a self-watching alert in one click</strong>; the underlying ClickHouse query machinery is written once, reused twice. <strong>Pull and push share one metric definition</strong>—a rare "saves code and matches intuition" design.<br><br>
+  <strong>Why alert only on a "state change" rather than every time a line is crossed?</strong> Because <strong>alert fatigue</strong> is a monitoring system's number-one killer. If error rate stays high and "still alerting" pings every 5 minutes, engineers soon mute the whole channel—and real new problems get buried. "Emit on change + renotify top-ups" makes every alert <strong>carry information</strong> (the state really changed), neither missing nor spamming. Making severity a <strong>state machine</strong> rather than a per-tick instantaneous value is precisely so it can ask the key question: "<strong>did it change from last time</strong>".<br><br>
+  <strong>Why not send Slack directly, but publish to the WebhookQueue first?</strong> Again the belief that runs through this whole guide—<strong>decoupling</strong>. A monitor's job is "decide whether to alert"; it <strong>shouldn't</strong> care "how the alert reaches a human" (Slack? webhook? email? on-call?). Publishing alerts to one queue, with the automation system (Lesson 44's Trigger→Action) deciding the channel, means delivery can evolve independently, be retried, and connect to any new channel—while the monitor changes not a line. <strong>Decision separate from delivery</strong>, the same architectural taste as Lesson 30's "creation separate from execution" and Lesson 12's "one entry, many producers".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A monitor = active evaluation</strong>: turn quality monitoring from "you pull a dashboard" into "it pushes an alert". It computes a metric over the recent <code>windowMs</code> per <code>cadenceMs</code>, alerting when a line is crossed.</li>
+    <li><strong>Reuses the dashboard query shape</strong>: <code>view/filters/metric</code> (the comment literally says "mirrors DashboardWidget")—any chartable metric can become an alert; <code>view</code> includes SCORES_NUMERIC/CATEGORICAL, so it can <strong>directly monitor the scores Part 5 produced</strong>.</li>
+    <li><strong>Severity state machine</strong>: <code>computeSeverity</code> compares the alert line then the warning line by operator (GT/GTE/LT/LTE/EQ/NEQ), yielding OK/WARNING/ALERT; null is handled per <code>noData</code> mode (zero/carry-over/flag); plus PAUSED/UNKNOWN lifecycle states.</li>
+    <li><strong>Alert only on change</strong>: <code>applyStateMachine</code> compares previous and current severity, as a rule <strong>emitting only on change</strong>, topping up persistent anomalies per <code>renotify</code>, never overwriting PAUSED—curing alert fatigue.</li>
+    <li><strong>Decoupled delivery</strong>: a monitor only publishes alerts to the <code>WebhookQueue</code>, with automation (Lesson 44's Trigger→Action) forwarding to Slack / webhook. Decision separate from delivery, echoing Lesson 30's "creation/execution split".</li>
+    <li><strong>Part 5 closes the loop</strong>: from "the score model" (28) → "four ways to produce a score" (29–32) → "watch scores/metrics and alert actively" (33). Evaluation graduates from "can see quality" to "gets notified the moment quality drops"—truly becoming action.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What is the essential relationship between a Langfuse monitor and a dashboard?</div>
+  <ol class="opts">
+    <li>a monitor reuses the dashboard widget's query shape (view/filters/metric, the source comment says mirrors DashboardWidget), differing in that a scheduler computes it on a cadence and compares against thresholds — pull (you look) becomes push (it calls you)</li>
+    <li>a dashboard is a monitor's alert history</li>
+    <li>a monitor is a read-only snapshot of a dashboard</li>
+    <li>they use entirely different query engines</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Monitor's view/filters/metric directly mirror DashboardWidget—any curve you can draw on a dashboard becomes a self-watching alert in one click, with the ClickHouse query machinery written once. The difference is only that a monitor adds ① scheduling (per cadenceMs) + ③④ thresholds and a state machine. Pull and push share one metric definition: saves code and matches intuition.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. A monitor stays in ALERT. It computes every 5 minutes but does not send an alert every 5 minutes. What implements this restraint, and what problem does it solve?</div>
+  <ol class="opts">
+    <li>applyStateMachine: as a rule emit only on a severity 'change' (OK→ALERT sends, ALERT→ALERT doesn't), topping up persistent anomalies per the renotify period — curing alert fatigue</li>
+    <li>it sends every time, relying on Slack to dedupe</li>
+    <li>it randomly drops some alerts</li>
+    <li>it only sends during work hours</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Alert fatigue is a monitoring system's top killer: a persistent ALERT pinging every 5 minutes makes engineers mute the channel and bury real issues. applyStateMachine compares prev/next severity, considering emit only when severityChanged, and tops up per renotify; PAUSED is skipped to not overwrite user intent. Making severity a state machine rather than an instantaneous value is exactly to ask 'did it change from last time'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. After deciding to alert, a monitor doesn't call the Slack API directly but publishes the alert to the WebhookQueue, with the automation system forwarding it. Why this design?</div>
+  <ol class="opts">
+    <li>decision separate from delivery (decoupling): the monitor only decides 'whether to alert' and needn't know each delivery channel; delivery can evolve/retry/add channels independently with the monitor unchanged — echoing Lesson 30's create/execute split</li>
+    <li>Slack can't be called directly</li>
+    <li>to archive the alerts</li>
+    <li>the WebhookQueue is faster than calling Slack directly</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A monitor's job is deciding whether a line is crossed, not coupling to 'how the alert reaches a human' (Slack/webhook/email/on-call). Publishing to one WebhookQueue, with automation (Lesson 44's Trigger→Action) choosing the channel, lets delivery evolve/retry/add channels independently while the monitor stays put. Same decoupling taste as Lesson 30's create/execute split and Lesson 12's one-entry-many-producers.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Part 5 is now complete: the score model (28) → four ways to produce scores (29–32) → active monitoring and alerting (33). Reviewing the whole part, Langfuse turns 'evaluation' from a static 'can score, can query' system into a dynamic closed loop that 'auto-evaluates, alerts actively, and calibrates AI with human scores'. If you designed an evaluation system for your own LLM app, how would you combine these five capabilities (human/LLM-judge/code/monitoring)? Which quality signals would you continuously monitor and alert on, and why?</li>
   </ul>
 </div>
 </div>

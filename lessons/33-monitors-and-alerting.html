@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>33 · 监控器与告警 / Monitors &amp; alerting - Langfuse 图解教程</title>
+<meta name="description" content="第五部分 · 评估与评分｜监控器与告警 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="33 · 监控器与告警 / Monitors &amp; alerting - Langfuse 图解教程">
+<meta property="og:description" content="第五部分 · 评估与评分｜监控器与告警 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="33 · 监控器与告警 / Monitors &amp; alerting - Langfuse 图解教程">
+<meta name="twitter:description" content="第五部分 · 评估与评分｜监控器与告警 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第五部分 · 评估与评分</span><span class="lang-en">Part 5 · Evaluation &amp; Scoring</span></span>
+    <span class="pill">33 / 33</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第五部分 · 评估与评分</span><span class="lang-en">Part 5 · Evaluation &amp; Scoring</span></div>
+    <h1><span class="lang-zh">监控器与告警</span><span class="lang-en">Monitors &amp; alerting</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+Part 5 让你能给质量<strong>打分</strong>了——但分数躺在库里，你不可能一直盯着看。这一课讲 Part 5 的收尾，也是让评估<strong>真正起作用</strong>的最后一环：<strong>监控器（monitor）</strong>。它是「主动」的那一半——按固定节奏盯着某个指标或分数，一旦<strong>越过你设的线</strong>，就主动发出告警。一句话：把质量监测从「<strong>你去拉</strong>」（看仪表盘）变成「<strong>它来推</strong>」（异常即告警）。
+我们会看到一个优雅的复用：<strong>monitor 本质上是一个「会自己盯着自己」的仪表盘组件</strong>；一台把指标值映射成 OK/WARNING/ALERT 的<strong>严重度状态机</strong>；以及一条「<strong>只在状态变化时才告警</strong>、并把投递解耦出去」的链路。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  仪表盘（第 40 课）像一份<strong>体检报告</strong>：你主动去翻，才知道指标如何。监控器则像一只<strong>可穿戴心率警报器</strong>：它<strong>自己盯着</strong>，平时不吭声，一旦心率冲出安全区间就<strong>主动报警</strong>——你不必时时盯屏。
+  你给它设三样东西：<strong>正常的边界</strong>（阈值，如「错误率别超 5%」）、<strong>多久测一次</strong>（cadence，如每 5 分钟）、<strong>看最近多久的数据</strong>（window，如过去 1 小时）。它每到点就量一次、和边界比一比，得出一个<strong>严重度</strong>（正常 / 警告 / 告警）。
+  贴心的是：它只在<strong>状态发生变化</strong>时响一声（从「正常」变「告警」才推送），而不是每 5 分钟都吵你一遍；要是异常一直不好，你还能设「<strong>每隔一阵再提醒一次</strong>」（renotify）。报警铃本身也不直接接到某一个设备——而是发到一个<strong>统一的通知中枢</strong>，再由它转给短信、Slack 或值班系统。
+</div>
+
+
+<h2>一台会自己盯着自己的仪表盘组件</h2>
+<p>monitor 最妙的设计，是它<strong>直接复用了仪表盘的查询形状</strong>。源码注释写得明明白白：Monitor 的查询字段「mirrors DashboardWidget」——同样的 <code>view</code>（看 observation 还是 score）、<code>filters</code>（过滤哪些数据）、<code>metric</code>（算什么指标）。区别只在于：仪表盘组件等你<strong>打开页面</strong>才算一次；monitor 则由一个<strong>调度器</strong>按 <code>cadenceMs</code> 反复地算、并把结果拿去<strong>比阈值</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="监控流水线：调度器每到 nextRunAt 就把到期的 monitor 入队；处理器用与仪表盘相同的 view/filters/metric 在最近 windowMs 窗口算出一个指标值；computeSeverity 按 operator 比 alert/warning 阈值得出严重度；只有严重度变化才发告警到 WebhookQueue 再转投递">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">监控流水线：定时算指标 → 比阈值 → 变化才告警</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① 调度器</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt 到期</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim 后入队 MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② 处理器算指标</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">（= 仪表盘组件的查询）</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">在最近 windowMs 窗口</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; 阈值</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ 状态机</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">严重度变了吗？</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">变了才 emit 告警</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → 自动化</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">解耦投递：Slack / webhook（第 44 课）</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">仅当 emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">仪表盘组件「等你看」；monitor 多了①调度 + ③④阈值与状态机——于是它「自己看，异常才喊你」</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">同一套查询机制，pull（仪表盘）与 push（监控）两种姿态</text>
+</svg>
+<div class="figcap"><b>monitor = 自带调度与阈值的仪表盘组件</b>。<code>schema.prisma:1752</code> 的 Monitor 把 <code>view/filters/metric</code>（注释原文 <i>mirrors DashboardWidget</i>）和 <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code> 装在一起。worker 端 <code>monitorQueue.ts</code> 的 <code>MonitorProcessor.process</code> 跑②③④，越线才发⑤。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">看什么</span><span class="name">view / filters / metric</span></div><div class="ld">和仪表盘组件同款的查询三件套：<code>view</code> 决定盯 OBSERVATIONS 还是 SCORES_NUMERIC / SCORES_CATEGORICAL（<strong>能直接监控 Part 5 算出的分数</strong>），<code>filters</code> 圈定范围，<code>metric</code> 定义算什么（如平均分、错误率、P95 延迟）。一个 monitor 就是「一条仪表盘曲线 + 一条警戒线」。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">怎么测</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> 是<strong>看最近多久</strong>的数据（滑动窗口，如过去 1 小时），<code>cadenceMs</code> 是<strong>多久测一次</strong>（如每 5 分钟）。两者解耦：你可以每 5 分钟、回看 1 小时——窗口给平滑、节奏给及时。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">何时响</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code>（GT/GTE/LT/LTE/EQ/NEQ）+ <code>alertThreshold</code>（必填）+ <code>warningThreshold</code>（选填两档）决定指标值落进哪个<strong>严重度</strong>。再由状态机决定<strong>这次要不要真的发告警</strong>（下两节细讲）。</div></div>
+</div>
+
+
+<h2>严重度状态机：从指标值到 OK / WARNING / ALERT</h2>
+<p>算出指标值后，<code>computeSeverity</code> 把它映射成一个<strong>严重度</strong>。逻辑很干净：先看值在不在（处理「没数据」），再按 operator 依次比<strong>告警线、警告线</strong>——撞上告警线就 ALERT，撞上警告线就 WARNING，都没撞就 OK。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="严重度状态机：指标值为空时按 noData 模式处理为 NO_DATA、补零或沿用上次；非空时若满足告警阈值则 ALERT、满足警告阈值则 WARNING、否则 OK；另有用户手动的 PAUSED 与初始 UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity 六态（computeSeverity + 状态机）</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">指标值 value？</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">先判空</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.2" fill="var(--muted)">按 noData 模式：补零/沿用/标无数据</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="610" y="78" font-size="6.4" fill="var(--muted)">用户暂停</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">初始/未知</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="150" y="98" font-size="6.2" fill="var(--muted)">空</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">撞告警线</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="226" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">撞警告线</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="220" y="140" text-anchor="middle" font-size="6.2" fill="var(--teal)">都没撞</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">三个「生命周期态」NO_DATA/PAUSED/UNKNOWN + 三个「比阈值得到的态」ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>六态严重度</b>：<code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code>（<code>schema.prisma:1736</code>）。<code>computeSeverity</code> 先按 <code>noData</code> 模式处理空值，再按 operator 比 alert / warning 阈值。先比 ALERT 后比 WARNING——<strong>就高不就低</strong>，确保最严重的状态优先。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>配置项</th><th>取值</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>怎么比：错误率用 GT「超过」，成功率用 LT「低于」</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>两条线（警告可选）</td><td>两档预警：先黄牌后红牌，给你缓冲</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>没数据时怎么办：补 0 再判 / 沿用上次 / 标「无数据」/ 还为无数据告警</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">值 → 严重度</span></div>
+  <pre class="code"><span class="cm">// 空值：按 monitor 的 noData 模式决定</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// 当作 0 继续比</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// 沿用上次</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// 标记无数据</span>
+}
+<span class="cm">// 非空：先比告警线、再比警告线——就高不就低</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, …（六种 operator）</span></pre>
+</div>
+
+<p>把抽象配置落到真实场景，三个典型 monitor 长这样——注意前两个直接盯着 Part 5 算出的<strong>分数</strong>：</p>
+<div class="cols">
+  <div class="col"><h4>有用性均分掉了</h4><p><code>view=SCORES_NUMERIC</code>，metric=「有用性」平均分，<code>operator=LT</code>，warning 0.75 / alert 0.70。窗口 1 小时、每 5 分钟测。<strong>质量回归的第一道哨兵。</strong></p></div>
+  <div class="col"><h4>毒性通过率不达标</h4><p><code>view=SCORES_NUMERIC</code>（布尔分的通过率），metric=「无毒」占比，<code>operator=LT</code>，alert 0.95。安全红线一破即告警。</p></div>
+  <div class="col"><h4>错误率飙升</h4><p><code>view=OBSERVATIONS</code>，metric=错误占比，<code>operator=GT</code>，alert 5%。不依赖 score，直接盯第 13 课的 observation 状态——上游一抖就知道。</p></div>
+</div>
+
+
+<h2>只在变化时告警，且把投递解耦出去</h2>
+<p>算出严重度，<strong>不等于</strong>就要发告警。如果每 5 分钟算一次、每次都因为「还在 ALERT」而推一条，你的 Slack 会被刷爆。<code>applyStateMachine</code> 解决这个：它对比<strong>上一次和这一次的严重度</strong>，原则上<strong>只在状态发生变化时才发</strong>（OK→ALERT 发、ALERT→ALERT 不发）；若异常持续，再按 <code>renotify</code> 策略<strong>隔一阵补一次</strong>。而且，被暂停（PAUSED）的 monitor 直接跳过——不覆盖用户意图。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="状态机决定是否发告警：上次 OK 这次 ALERT 则发；上次 ALERT 这次仍 ALERT 默认不发、除非 renotify 周期到；恢复为 OK 也发一条；告警统一发到 WebhookQueue，再由自动化转投递到 Slack 或 webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">变化才 emit · 投递走统一队列</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">上次 OK → 这次 ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">变化 → 发！</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → 仍 ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">默认不发（防刷屏）</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">持续异常 + renotify 到点</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">补一次提醒</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit 决策</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED 直接跳过</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue（统一通知中枢）</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor 只管发布，不管怎么投</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">「变化才发」防刷屏 + 「统一队列再分发」让 monitor 不必认识每种投递渠道（第 44 课自动化）</text>
+</svg>
+<div class="figcap"><b>两层克制</b>：<code>applyStateMachine</code>（<code>processor/applyStateMachine.ts</code>）按「严重度是否变化 + renotify」决定 <code>emit</code>，PAUSED 不覆盖用户意图；真要发时，<code>monitorQueue.ts</code> 只把告警<b>发布到 WebhookQueue</b>，由自动化系统（Trigger→Action）决定投到 Slack 还是 webhook。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">是否发 + 怎么发</span></div>
+  <pre class="code"><span class="cm">// 是否发：暂停跳过；否则按「严重度变化 + renotify」决定 emit</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// 不覆盖用户意图</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// 变化或到点才 true</span>
+
+<span class="cm">// 怎么发：monitor 不直接发 Slack，只发布到 WebhookQueue（解耦投递）</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// 算指标→定severity→（必要时）发布</span></pre>
+</div>
+
+<p>这条链路把 Part 5 推到了终点：从第 28 课「一个 score 长什么样」，到 29–32 课「四种方式生产 score」，再到这一课「<strong>盯着这些分数/指标，越线就主动喊人</strong>」。评估终于<strong>闭环成行动</strong>——你不再只是<strong>能</strong>看到质量，而是质量一掉，系统就<strong>替你</strong>看到、并立刻通知你。而「发布到 WebhookQueue、由自动化转投递」这一步，正好接上 Part 7 的自动化与集成（第 44 课）——监控只是众多「会触发自动化的事件源」之一。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 monitor 要复用仪表盘的查询形状，而不是自成一套？</strong> 因为「监控的指标」和「仪表盘看的指标」<strong>本来就是同一个东西</strong>——平均分、错误率、P95 延迟。让 Monitor 的 <code>view/filters/metric</code> 直接 mirror DashboardWidget，意味着：你在仪表盘上画得出的任何曲线，都能<strong>一键变成一个会自己盯着的告警</strong>；底层那套 ClickHouse 查询机制只写一遍、两处复用。<strong>pull 与 push 共享同一个指标定义</strong>，这是少有的「既省代码又顺直觉」的设计。<br><br>
+  <strong>为什么只在「状态变化」时告警，而不是每次越线都发？</strong> 因为<strong>告警疲劳</strong>是监控系统的头号杀手。如果错误率持续高，每 5 分钟一条「还在告警」，工程师很快就会把整个频道静音——于是真正的新问题也被淹没。「变化才发 + renotify 周期补发」让每条告警都<strong>携带信息量</strong>（状态真的变了），既不漏报、又不刷屏。severity 做成<strong>状态机</strong>而非每次重算的瞬时值，正是为了能问出「<strong>和上次比变了吗</strong>」这个关键问题。<br><br>
+  <strong>为什么告警不直接发 Slack，而要先发布到 WebhookQueue？</strong> 又是那个贯穿全书的信念——<strong>解耦</strong>。monitor 的职责是「判断要不要告警」，<strong>不该</strong>关心「告警怎么送到人手里」（Slack？webhook？邮件？值班系统？）。把告警发布到统一队列，再由自动化系统（第 44 课的 Trigger→Action）决定投递渠道，于是：投递方式可独立演进、可重试、可对接任意新渠道，而 monitor 一行不改。<strong>判断与投递分离</strong>，和第 30 课「创建与执行分离」、第 12 课「一个入口多个生产者」是同一种架构品味。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>monitor = 主动的评估</strong>：把质量监测从「你去拉仪表盘」变成「它来推告警」。按 <code>cadenceMs</code> 定时在最近 <code>windowMs</code> 窗口算指标，越线即告警。</li>
+    <li><strong>复用仪表盘查询形状</strong>：<code>view/filters/metric</code> 注释原文「mirrors DashboardWidget」——能画成曲线的指标就能变成告警；<code>view</code> 含 SCORES_NUMERIC/CATEGORICAL，<strong>可直接监控 Part 5 算出的分数</strong>。</li>
+    <li><strong>严重度状态机</strong>：<code>computeSeverity</code> 按 operator（GT/GTE/LT/LTE/EQ/NEQ）先比告警线、再比警告线，得 OK/WARNING/ALERT；空值按 <code>noData</code> 模式处理（补零/沿用/标无数据）；另有 PAUSED/UNKNOWN 生命周期态。</li>
+    <li><strong>只在变化时告警</strong>：<code>applyStateMachine</code> 比上次与这次的严重度，原则上<strong>变化才发</strong>，持续异常按 <code>renotify</code> 补发，PAUSED 不覆盖——根治告警疲劳。</li>
+    <li><strong>解耦投递</strong>：monitor 只把告警发布到 <code>WebhookQueue</code>，由自动化（第 44 课 Trigger→Action）转投 Slack / webhook。判断与投递分离，呼应第 30 课「创建/执行分离」。</li>
+    <li><strong>Part 5 闭环</strong>：从「score 的模型」（28）→「四种生产 score 的方式」（29–32）→「盯着 score/指标主动告警」（33）。评估从「能看见质量」升级为「质量一掉就被通知」——真正成为行动。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 monitor（监控器）和 dashboard（仪表盘）有什么本质关系？</div>
+  <ol class="opts">
+    <li>monitor 复用仪表盘组件的查询形状（view/filters/metric，源码注释 mirrors DashboardWidget），区别在于它由调度器定时算、并拿去比阈值——pull（你看）变 push（它喊）</li>
+    <li>dashboard 是 monitor 的告警历史</li>
+    <li>monitor 是 dashboard 的只读快照</li>
+    <li>两者用完全不同的查询引擎</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。Monitor 的 view/filters/metric 直接 mirror DashboardWidget——能在仪表盘画出的曲线，都能一键变成会自己盯着的告警，底层 ClickHouse 查询机制只写一遍。区别只在 monitor 多了①调度（按 cadenceMs 定时）+③④阈值与状态机。pull 与 push 共享同一个指标定义，既省代码又顺直觉。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 一个 monitor 持续处于 ALERT 状态。它每 5 分钟算一次，但并不会每 5 分钟都发一条告警。这种克制由什么实现，解决什么问题？</div>
+  <ol class="opts">
+    <li>applyStateMachine：原则上只在严重度「变化」时 emit（OK→ALERT 发、ALERT→ALERT 不发），持续异常按 renotify 周期补发——根治告警疲劳</li>
+    <li>每次都发，靠 Slack 自己去重</li>
+    <li>随机丢弃一部分告警</li>
+    <li>只在工作时间发</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。告警疲劳是监控系统头号杀手：持续 ALERT 每 5 分钟一条，工程师会把频道静音，真问题也被淹没。applyStateMachine 对比 prev/next 严重度，severityChanged 才考虑 emit，并按 renotify 决定是否补发；PAUSED 直接跳过不覆盖用户意图。把 severity 做成状态机而非瞬时值，正是为了能问「和上次比变了吗」。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. monitor 判定要告警后，并不直接调 Slack API，而是把告警发布到 WebhookQueue，再由自动化系统转投递。为什么这样设计？</div>
+  <ol class="opts">
+    <li>判断与投递分离（解耦）：monitor 只管「要不要告警」，不必认识每种投递渠道；投递方式可独立演进/重试/接新渠道，monitor 一行不改——呼应第30课创建/执行分离</li>
+    <li>Slack 不支持直接调用</li>
+    <li>为了把告警存档</li>
+    <li>WebhookQueue 比直接调 Slack 快</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。monitor 的职责是判断是否越线告警，不该耦合「告警怎么送到人手里」（Slack/webhook/邮件/值班）。发布到统一 WebhookQueue，由自动化（第44课 Trigger→Action）决定渠道，于是投递可独立演进、可重试、可接任意新渠道，monitor 不变。这与第30课创建/执行分离、第12课一个入口多生产者，是同一种「解耦」品味。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>Part 5 到此完整：score 模型（28）→ 四种生产 score 的方式（29–32）→ 主动监控告警（33）。回顾整个第五部分，Langfuse 让「评估」从一个静态的「能打分、能查」系统，变成一个动态的「能自动评、能主动告警、还能用人工分校准 AI」的闭环。如果让你为自己的 LLM 应用设计一套评估体系，你会怎么组合这五种能力（人工/LLM裁判/代码/监控）？哪些质量信号你会持续监控并告警，为什么？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Part 5 let you <strong>score</strong> quality—but scores sit in a database, and you can't watch them forever. This lesson caps Part 5 and adds the last link that makes evaluation <strong>actually act</strong>: the <strong>monitor</strong>. It's the "active" half—watching a metric or score on a fixed cadence, and when it <strong>crosses a line you set</strong>, raising an alert on its own. In one phrase: turn quality monitoring from "<strong>you pull</strong>" (look at a dashboard) into "<strong>it pushes</strong>" (alert on anomaly).
+We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget that watches itself</strong>; a <strong>severity state machine</strong> mapping a metric value into OK/WARNING/ALERT; and a path that "<strong>only alerts on a state change</strong> and decouples delivery away".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dashboard (Lesson 40) is like a <strong>checkup report</strong>: you flip it open to learn how things are. A monitor is like a <strong>wearable heart-rate alarm</strong>: it <strong>watches on its own</strong>, stays quiet, and the moment your rate leaves the safe zone it <strong>sounds an alert</strong>—you needn't stare at a screen.
+  You set it three things: the <strong>normal boundary</strong> (threshold, e.g. "error rate under 5%"), <strong>how often to measure</strong> (cadence, e.g. every 5 minutes), and <strong>how far back to look</strong> (window, e.g. the past hour). At each tick it measures once, compares against the boundary, and yields a <strong>severity</strong> (OK / warning / alert).
+  The thoughtful bit: it only beeps when the <strong>state changes</strong> (it pushes when "OK" becomes "alert"), not every 5 minutes; and if the anomaly persists, you can set it to "<strong>remind again every so often</strong>" (renotify). The alarm bell itself isn't wired to one device either—it goes to a <strong>unified notification hub</strong>, which forwards to SMS, Slack, or an on-call system.
+</div>
+
+
+<h2>A dashboard widget that watches itself</h2>
+<p>The neatest part of a monitor is that it <strong>directly reuses the dashboard's query shape</strong>. The source comment says it plainly: a Monitor's query fields "mirror DashboardWidget"—the same <code>view</code> (observations or scores), <code>filters</code> (which data), <code>metric</code> (what to compute). The only difference: a dashboard widget computes once when you <strong>open the page</strong>; a monitor is computed repeatedly by a <strong>scheduler</strong> per <code>cadenceMs</code> and the result is taken to <strong>compare against a threshold</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="The monitor pipeline: a scheduler enqueues due monitors at nextRunAt; the processor computes a metric value over the recent windowMs using the same view/filters/metric as a dashboard; computeSeverity compares it to the alert/warning thresholds by operator to yield a severity; only a severity change emits an alert to the WebhookQueue for delivery">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">monitor pipeline: scheduled metric → threshold → alert only on change</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① scheduler</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt due</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim → enqueue MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② processor computes</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">(= a dashboard widget's query)</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">over the recent windowMs</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; threshold</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ state machine</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">did severity change?</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">emit only if so</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → automation</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">decoupled delivery: Slack / webhook (Lesson 44)</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">only if emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">a dashboard widget "waits for you to look"; a monitor adds ① scheduling + ③④ thresholds and state machine—so it "looks itself, calls you only on anomaly"</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">one query mechanism, two postures: pull (dashboard) and push (monitor)</text>
+</svg>
+<div class="figcap"><b>monitor = a dashboard widget with built-in scheduling and thresholds</b>. <code>schema.prisma:1752</code>'s Monitor packs <code>view/filters/metric</code> (the comment literally says <i>mirrors DashboardWidget</i>) together with <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code>. On the worker, <code>monitorQueue.ts</code>'s <code>MonitorProcessor.process</code> runs ②③④ and only emits ⑤ when a line is crossed.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">view / filters / metric</span></div><div class="ld">The same query trio as a dashboard widget: <code>view</code> decides whether to watch OBSERVATIONS or SCORES_NUMERIC / SCORES_CATEGORICAL (<strong>so it can directly monitor the scores Part 5 produced</strong>), <code>filters</code> scope the data, <code>metric</code> defines what to compute (avg score, error rate, P95 latency). A monitor is "one dashboard curve + one alarm line".</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">how</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> is <strong>how far back</strong> to look (a sliding window, e.g. the past hour); <code>cadenceMs</code> is <strong>how often</strong> to measure (e.g. every 5 minutes). The two are decoupled: you can measure every 5 minutes looking back 1 hour—the window gives smoothing, the cadence gives timeliness.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">when</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code> (GT/GTE/LT/LTE/EQ/NEQ) + <code>alertThreshold</code> (required) + <code>warningThreshold</code> (optional two-tier) decide which <strong>severity</strong> the value falls into. The state machine then decides <strong>whether to actually send an alert this time</strong> (next two sections).</div></div>
+</div>
+
+
+<h2>The severity state machine: from a value to OK / WARNING / ALERT</h2>
+<p>Once the metric value is computed, <code>computeSeverity</code> maps it to a <strong>severity</strong>. The logic is clean: first check whether the value exists (handle "no data"), then compare by operator against the <strong>alert line, then the warning line</strong>—hit the alert line → ALERT, hit the warning line → WARNING, neither → OK.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Severity state machine: a null value is handled per noData mode as NO_DATA, zero-substituted, or carried over; a present value yields ALERT if it meets the alert threshold, WARNING if it meets the warning threshold, otherwise OK; plus user-set PAUSED and initial UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity, six states (computeSeverity + state machine)</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">metric value?</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">check null first</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.0" fill="var(--muted)">per noData mode: zero/carry-over/flag</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="605" y="78" font-size="6.4" fill="var(--muted)">user-paused</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">initial</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="142" y="98" font-size="6.2" fill="var(--muted)">null</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meets alert</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="225" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">meets warning</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="221" y="142" text-anchor="middle" font-size="6.2" fill="var(--teal)">neither</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">three "lifecycle" states NO_DATA/PAUSED/UNKNOWN + three "threshold-derived" states ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>Six-state severity</b>: <code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code> (<code>schema.prisma:1736</code>). <code>computeSeverity</code> first handles null per the <code>noData</code> mode, then compares the alert / warning thresholds by operator. Alert is checked before warning—<strong>highest wins</strong>, ensuring the most severe state takes priority.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>config</th><th>values</th><th>role</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>how to compare: error rate uses GT "exceeds", success rate uses LT "falls below"</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>two lines (warning optional)</td><td>two-tier warning: yellow card then red card, giving you a buffer</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>what to do with no data: treat as 0 / carry over last / flag "no data" / even alert for no data</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">value → severity</span></div>
+  <pre class="code"><span class="cm">// null value: decide per the monitor's noData mode</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// treat as 0 and continue</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// carry over last</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// flag no data</span>
+}
+<span class="cm">// present value: check alert line first, then warning line — highest wins</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, … (six operators)</span></pre>
+</div>
+
+<p>Grounding the abstract config in real scenarios, three typical monitors look like this—note the first two watch the <strong>scores</strong> Part 5 produced:</p>
+<div class="cols">
+  <div class="col"><h4>helpfulness average dropped</h4><p><code>view=SCORES_NUMERIC</code>, metric=avg "helpfulness", <code>operator=LT</code>, warning 0.75 / alert 0.70. Window 1 hour, measured every 5 minutes. <strong>The first sentinel for quality regression.</strong></p></div>
+  <div class="col"><h4>toxicity pass-rate below target</h4><p><code>view=SCORES_NUMERIC</code> (a boolean score's pass-rate), metric=share "non-toxic", <code>operator=LT</code>, alert 0.95. A safety red line alerts the moment it's crossed.</p></div>
+  <div class="col"><h4>error rate spiking</h4><p><code>view=OBSERVATIONS</code>, metric=share of errors, <code>operator=GT</code>, alert 5%. No score needed—watches Lesson 13's observation status directly, so an upstream wobble shows immediately.</p></div>
+</div>
+
+
+<h2>Alert only on change, and decouple delivery away</h2>
+<p>Computing a severity does <strong>not</strong> mean an alert must fire. If you compute every 5 minutes and push each time because it's "still ALERT", your Slack drowns. <code>applyStateMachine</code> fixes this: it compares <strong>the previous and current severity</strong> and, as a rule, <strong>only emits on a state change</strong> (OK→ALERT emits, ALERT→ALERT doesn't); if the anomaly persists, it tops up per the <code>renotify</code> policy. And a PAUSED monitor is skipped outright—not overwriting user intent.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="The state machine decides whether to alert: previous OK now ALERT emits; previous ALERT still ALERT by default doesn't, unless the renotify period elapses; recovery to OK also emits; alerts all go to the WebhookQueue, which automation forwards to Slack or webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">emit only on change · delivery via one queue</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">prev OK → now ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">change → emit!</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → still ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">default no emit (anti-spam)</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">persists + renotify due</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">top up a reminder</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit decision</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED skipped</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue (one notification hub)</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor only publishes, not how to deliver</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">"emit only on change" prevents spam + "one queue then fan out" frees the monitor from knowing each delivery channel (Lesson 44 automation)</text>
+</svg>
+<div class="figcap"><b>Two layers of restraint</b>: <code>applyStateMachine</code> (<code>processor/applyStateMachine.ts</code>) decides <code>emit</code> by "did severity change + renotify", and PAUSED doesn't overwrite user intent; when it does fire, <code>monitorQueue.ts</code> only <b>publishes the alert to the WebhookQueue</b>, leaving the automation system (Trigger→Action) to decide Slack vs webhook.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">whether to send + how</span></div>
+  <pre class="code"><span class="cm">// whether: skip if paused; else decide emit by "severity change + renotify"</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// don't overwrite user intent</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// true only on change or due</span>
+
+<span class="cm">// how: a monitor doesn't send Slack directly, only publishes to WebhookQueue (decoupled)</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// compute→severity→(if needed) publish</span></pre>
+</div>
+
+<p>This path pushes Part 5 to its finish: from Lesson 28's "what a score looks like", through Lessons 29–32's "four ways to produce a score", to this lesson's "<strong>watch those scores/metrics and call someone the moment a line is crossed</strong>". Evaluation finally <strong>closes the loop into action</strong>—you no longer merely <strong>can</strong> see quality; the moment quality drops, the system sees it <strong>for you</strong> and notifies you at once. And the "publish to WebhookQueue, let automation deliver" step dovetails into Part 7's automation and integrations (Lesson 44)—monitoring is just one of many "event sources that can trigger automation".</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why reuse the dashboard's query shape instead of inventing one?</strong> Because "a monitored metric" and "a dashboarded metric" are <strong>the same thing</strong>—avg score, error rate, P95 latency. Having Monitor's <code>view/filters/metric</code> directly mirror DashboardWidget means: any curve you can draw on a dashboard can <strong>become a self-watching alert in one click</strong>; the underlying ClickHouse query machinery is written once, reused twice. <strong>Pull and push share one metric definition</strong>—a rare "saves code and matches intuition" design.<br><br>
+  <strong>Why alert only on a "state change" rather than every time a line is crossed?</strong> Because <strong>alert fatigue</strong> is a monitoring system's number-one killer. If error rate stays high and "still alerting" pings every 5 minutes, engineers soon mute the whole channel—and real new problems get buried. "Emit on change + renotify top-ups" makes every alert <strong>carry information</strong> (the state really changed), neither missing nor spamming. Making severity a <strong>state machine</strong> rather than a per-tick instantaneous value is precisely so it can ask the key question: "<strong>did it change from last time</strong>".<br><br>
+  <strong>Why not send Slack directly, but publish to the WebhookQueue first?</strong> Again the belief that runs through this whole guide—<strong>decoupling</strong>. A monitor's job is "decide whether to alert"; it <strong>shouldn't</strong> care "how the alert reaches a human" (Slack? webhook? email? on-call?). Publishing alerts to one queue, with the automation system (Lesson 44's Trigger→Action) deciding the channel, means delivery can evolve independently, be retried, and connect to any new channel—while the monitor changes not a line. <strong>Decision separate from delivery</strong>, the same architectural taste as Lesson 30's "creation separate from execution" and Lesson 12's "one entry, many producers".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A monitor = active evaluation</strong>: turn quality monitoring from "you pull a dashboard" into "it pushes an alert". It computes a metric over the recent <code>windowMs</code> per <code>cadenceMs</code>, alerting when a line is crossed.</li>
+    <li><strong>Reuses the dashboard query shape</strong>: <code>view/filters/metric</code> (the comment literally says "mirrors DashboardWidget")—any chartable metric can become an alert; <code>view</code> includes SCORES_NUMERIC/CATEGORICAL, so it can <strong>directly monitor the scores Part 5 produced</strong>.</li>
+    <li><strong>Severity state machine</strong>: <code>computeSeverity</code> compares the alert line then the warning line by operator (GT/GTE/LT/LTE/EQ/NEQ), yielding OK/WARNING/ALERT; null is handled per <code>noData</code> mode (zero/carry-over/flag); plus PAUSED/UNKNOWN lifecycle states.</li>
+    <li><strong>Alert only on change</strong>: <code>applyStateMachine</code> compares previous and current severity, as a rule <strong>emitting only on change</strong>, topping up persistent anomalies per <code>renotify</code>, never overwriting PAUSED—curing alert fatigue.</li>
+    <li><strong>Decoupled delivery</strong>: a monitor only publishes alerts to the <code>WebhookQueue</code>, with automation (Lesson 44's Trigger→Action) forwarding to Slack / webhook. Decision separate from delivery, echoing Lesson 30's "creation/execution split".</li>
+    <li><strong>Part 5 closes the loop</strong>: from "the score model" (28) → "four ways to produce a score" (29–32) → "watch scores/metrics and alert actively" (33). Evaluation graduates from "can see quality" to "gets notified the moment quality drops"—truly becoming action.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. What is the essential relationship between a Langfuse monitor and a dashboard?</div>
+  <ol class="opts">
+    <li>a monitor reuses the dashboard widget's query shape (view/filters/metric, the source comment says mirrors DashboardWidget), differing in that a scheduler computes it on a cadence and compares against thresholds — pull (you look) becomes push (it calls you)</li>
+    <li>a dashboard is a monitor's alert history</li>
+    <li>a monitor is a read-only snapshot of a dashboard</li>
+    <li>they use entirely different query engines</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Monitor's view/filters/metric directly mirror DashboardWidget—any curve you can draw on a dashboard becomes a self-watching alert in one click, with the ClickHouse query machinery written once. The difference is only that a monitor adds ① scheduling (per cadenceMs) + ③④ thresholds and a state machine. Pull and push share one metric definition: saves code and matches intuition.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. A monitor stays in ALERT. It computes every 5 minutes but does not send an alert every 5 minutes. What implements this restraint, and what problem does it solve?</div>
+  <ol class="opts">
+    <li>applyStateMachine: as a rule emit only on a severity 'change' (OK→ALERT sends, ALERT→ALERT doesn't), topping up persistent anomalies per the renotify period — curing alert fatigue</li>
+    <li>it sends every time, relying on Slack to dedupe</li>
+    <li>it randomly drops some alerts</li>
+    <li>it only sends during work hours</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Alert fatigue is a monitoring system's top killer: a persistent ALERT pinging every 5 minutes makes engineers mute the channel and bury real issues. applyStateMachine compares prev/next severity, considering emit only when severityChanged, and tops up per renotify; PAUSED is skipped to not overwrite user intent. Making severity a state machine rather than an instantaneous value is exactly to ask 'did it change from last time'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. After deciding to alert, a monitor doesn't call the Slack API directly but publishes the alert to the WebhookQueue, with the automation system forwarding it. Why this design?</div>
+  <ol class="opts">
+    <li>decision separate from delivery (decoupling): the monitor only decides 'whether to alert' and needn't know each delivery channel; delivery can evolve/retry/add channels independently with the monitor unchanged — echoing Lesson 30's create/execute split</li>
+    <li>Slack can't be called directly</li>
+    <li>to archive the alerts</li>
+    <li>the WebhookQueue is faster than calling Slack directly</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A monitor's job is deciding whether a line is crossed, not coupling to 'how the alert reaches a human' (Slack/webhook/email/on-call). Publishing to one WebhookQueue, with automation (Lesson 44's Trigger→Action) choosing the channel, lets delivery evolve/retry/add channels independently while the monitor stays put. Same decoupling taste as Lesson 30's create/execute split and Lesson 12's one-entry-many-producers.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Part 5 is now complete: the score model (28) → four ways to produce scores (29–32) → active monitoring and alerting (33). Reviewing the whole part, Langfuse turns 'evaluation' from a static 'can score, can query' system into a dynamic closed loop that 'auto-evaluates, alerts actively, and calibrates AI with human scores'. If you designed an evaluation system for your own LLM app, how would you combine these five capabilities (human/LLM-judge/code/monitoring)? Which quality signals would you continuously monitor and alert on, and why?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="32-human-annotation.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">人工标注</span><span class="lang-en">Human annotation</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

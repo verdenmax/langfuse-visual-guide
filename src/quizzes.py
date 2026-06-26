@@ -2285,6 +2285,76 @@ QUIZZES = {
             },
         ],
     },
+    "33-monitors-and-alerting.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 monitor（监控器）和 dashboard（仪表盘）有什么本质关系？",
+                    "en": "What is the essential relationship between a Langfuse monitor and a dashboard?",
+                },
+                "opts": [
+                    {
+                        "zh": "monitor 复用仪表盘组件的查询形状（view/filters/metric，源码注释 mirrors DashboardWidget），区别在于它由调度器定时算、并拿去比阈值——pull（你看）变 push（它喊）",
+                        "en": "a monitor reuses the dashboard widget's query shape (view/filters/metric, the source comment says mirrors DashboardWidget), differing in that a scheduler computes it on a cadence and compares against thresholds — pull (you look) becomes push (it calls you)",
+                    },
+                    {"zh": "monitor 是 dashboard 的只读快照", "en": "a monitor is a read-only snapshot of a dashboard"},
+                    {"zh": "两者用完全不同的查询引擎", "en": "they use entirely different query engines"},
+                    {"zh": "dashboard 是 monitor 的告警历史", "en": "a dashboard is a monitor's alert history"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "Monitor 的 view/filters/metric 直接 mirror DashboardWidget——能在仪表盘画出的曲线，都能一键变成会自己盯着的告警，底层 ClickHouse 查询机制只写一遍。区别只在 monitor 多了①调度（按 cadenceMs 定时）+③④阈值与状态机。pull 与 push 共享同一个指标定义，既省代码又顺直觉。",
+                    "en": "Monitor's view/filters/metric directly mirror DashboardWidget—any curve you can draw on a dashboard becomes a self-watching alert in one click, with the ClickHouse query machinery written once. The difference is only that a monitor adds ① scheduling (per cadenceMs) + ③④ thresholds and a state machine. Pull and push share one metric definition: saves code and matches intuition.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "一个 monitor 持续处于 ALERT 状态。它每 5 分钟算一次，但并不会每 5 分钟都发一条告警。这种克制由什么实现，解决什么问题？",
+                    "en": "A monitor stays in ALERT. It computes every 5 minutes but does not send an alert every 5 minutes. What implements this restraint, and what problem does it solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "applyStateMachine：原则上只在严重度「变化」时 emit（OK→ALERT 发、ALERT→ALERT 不发），持续异常按 renotify 周期补发——根治告警疲劳",
+                        "en": "applyStateMachine: as a rule emit only on a severity 'change' (OK→ALERT sends, ALERT→ALERT doesn't), topping up persistent anomalies per the renotify period — curing alert fatigue",
+                    },
+                    {"zh": "每次都发，靠 Slack 自己去重", "en": "it sends every time, relying on Slack to dedupe"},
+                    {"zh": "随机丢弃一部分告警", "en": "it randomly drops some alerts"},
+                    {"zh": "只在工作时间发", "en": "it only sends during work hours"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "告警疲劳是监控系统头号杀手：持续 ALERT 每 5 分钟一条，工程师会把频道静音，真问题也被淹没。applyStateMachine 对比 prev/next 严重度，severityChanged 才考虑 emit，并按 renotify 决定是否补发；PAUSED 直接跳过不覆盖用户意图。把 severity 做成状态机而非瞬时值，正是为了能问「和上次比变了吗」。",
+                    "en": "Alert fatigue is a monitoring system's top killer: a persistent ALERT pinging every 5 minutes makes engineers mute the channel and bury real issues. applyStateMachine compares prev/next severity, considering emit only when severityChanged, and tops up per renotify; PAUSED is skipped to not overwrite user intent. Making severity a state machine rather than an instantaneous value is exactly to ask 'did it change from last time'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "monitor 判定要告警后，并不直接调 Slack API，而是把告警发布到 WebhookQueue，再由自动化系统转投递。为什么这样设计？",
+                    "en": "After deciding to alert, a monitor doesn't call the Slack API directly but publishes the alert to the WebhookQueue, with the automation system forwarding it. Why this design?",
+                },
+                "opts": [
+                    {
+                        "zh": "判断与投递分离（解耦）：monitor 只管「要不要告警」，不必认识每种投递渠道；投递方式可独立演进/重试/接新渠道，monitor 一行不改——呼应第30课创建/执行分离",
+                        "en": "decision separate from delivery (decoupling): the monitor only decides 'whether to alert' and needn't know each delivery channel; delivery can evolve/retry/add channels independently with the monitor unchanged — echoing Lesson 30's create/execute split",
+                    },
+                    {"zh": "WebhookQueue 比直接调 Slack 快", "en": "the WebhookQueue is faster than calling Slack directly"},
+                    {"zh": "为了把告警存档", "en": "to archive the alerts"},
+                    {"zh": "Slack 不支持直接调用", "en": "Slack can't be called directly"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "monitor 的职责是判断是否越线告警，不该耦合「告警怎么送到人手里」（Slack/webhook/邮件/值班）。发布到统一 WebhookQueue，由自动化（第44课 Trigger→Action）决定渠道，于是投递可独立演进、可重试、可接任意新渠道，monitor 不变。这与第30课创建/执行分离、第12课一个入口多生产者，是同一种「解耦」品味。",
+                    "en": "A monitor's job is deciding whether a line is crossed, not coupling to 'how the alert reaches a human' (Slack/webhook/email/on-call). Publishing to one WebhookQueue, with automation (Lesson 44's Trigger→Action) choosing the channel, lets delivery evolve/retry/add channels independently while the monitor stays put. Same decoupling taste as Lesson 30's create/execute split and Lesson 12's one-entry-many-producers.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Part 5 到此完整：score 模型（28）→ 四种生产 score 的方式（29–32）→ 主动监控告警（33）。回顾整个第五部分，Langfuse 让「评估」从一个静态的「能打分、能查」系统，变成一个动态的「能自动评、能主动告警、还能用人工分校准 AI」的闭环。如果让你为自己的 LLM 应用设计一套评估体系，你会怎么组合这五种能力（人工/LLM裁判/代码/监控）？哪些质量信号你会持续监控并告警，为什么？",
+                "en": "Part 5 is now complete: the score model (28) → four ways to produce scores (29–32) → active monitoring and alerting (33). Reviewing the whole part, Langfuse turns 'evaluation' from a static 'can score, can query' system into a dynamic closed loop that 'auto-evaluates, alerts actively, and calibrates AI with human scores'. If you designed an evaluation system for your own LLM app, how would you combine these five capabilities (human/LLM-judge/code/monitoring)? Which quality signals would you continuously monitor and alert on, and why?",
+            },
+        ],
+    },
 }
 
 

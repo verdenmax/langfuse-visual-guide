@@ -1495,3 +1495,340 @@ _EN32.append(r"""
 """)
 
 LESSON_32 = {"zh": "\n".join(_ZH32), "en": "\n".join(_EN32)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L33 · 监控器与告警 / Monitors & alerting
+# ══════════════════════════════════════════════════════════════════════
+_ZH33 = []
+_EN33 = []
+
+_ZH33.append(r"""
+<p class="lead">
+Part 5 让你能给质量<strong>打分</strong>了——但分数躺在库里，你不可能一直盯着看。这一课讲 Part 5 的收尾，也是让评估<strong>真正起作用</strong>的最后一环：<strong>监控器（monitor）</strong>。它是「主动」的那一半——按固定节奏盯着某个指标或分数，一旦<strong>越过你设的线</strong>，就主动发出告警。一句话：把质量监测从「<strong>你去拉</strong>」（看仪表盘）变成「<strong>它来推</strong>」（异常即告警）。
+我们会看到一个优雅的复用：<strong>monitor 本质上是一个「会自己盯着自己」的仪表盘组件</strong>；一台把指标值映射成 OK/WARNING/ALERT 的<strong>严重度状态机</strong>；以及一条「<strong>只在状态变化时才告警</strong>、并把投递解耦出去」的链路。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  仪表盘（第 40 课）像一份<strong>体检报告</strong>：你主动去翻，才知道指标如何。监控器则像一只<strong>可穿戴心率警报器</strong>：它<strong>自己盯着</strong>，平时不吭声，一旦心率冲出安全区间就<strong>主动报警</strong>——你不必时时盯屏。
+  你给它设三样东西：<strong>正常的边界</strong>（阈值，如「错误率别超 5%」）、<strong>多久测一次</strong>（cadence，如每 5 分钟）、<strong>看最近多久的数据</strong>（window，如过去 1 小时）。它每到点就量一次、和边界比一比，得出一个<strong>严重度</strong>（正常 / 警告 / 告警）。
+  贴心的是：它只在<strong>状态发生变化</strong>时响一声（从「正常」变「告警」才推送），而不是每 5 分钟都吵你一遍；要是异常一直不好，你还能设「<strong>每隔一阵再提醒一次</strong>」（renotify）。报警铃本身也不直接接到某一个设备——而是发到一个<strong>统一的通知中枢</strong>，再由它转给短信、Slack 或值班系统。
+</div>
+""")
+
+_ZH33.append(r"""
+<h2>一台会自己盯着自己的仪表盘组件</h2>
+<p>monitor 最妙的设计，是它<strong>直接复用了仪表盘的查询形状</strong>。源码注释写得明明白白：Monitor 的查询字段「mirrors DashboardWidget」——同样的 <code>view</code>（看 observation 还是 score）、<code>filters</code>（过滤哪些数据）、<code>metric</code>（算什么指标）。区别只在于：仪表盘组件等你<strong>打开页面</strong>才算一次；monitor 则由一个<strong>调度器</strong>按 <code>cadenceMs</code> 反复地算、并把结果拿去<strong>比阈值</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="监控流水线：调度器每到 nextRunAt 就把到期的 monitor 入队；处理器用与仪表盘相同的 view/filters/metric 在最近 windowMs 窗口算出一个指标值；computeSeverity 按 operator 比 alert/warning 阈值得出严重度；只有严重度变化才发告警到 WebhookQueue 再转投递">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">监控流水线：定时算指标 → 比阈值 → 变化才告警</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① 调度器</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt 到期</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim 后入队 MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② 处理器算指标</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">（= 仪表盘组件的查询）</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">在最近 windowMs 窗口</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; 阈值</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ 状态机</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">严重度变了吗？</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">变了才 emit 告警</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → 自动化</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">解耦投递：Slack / webhook（第 44 课）</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">仅当 emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">仪表盘组件「等你看」；monitor 多了①调度 + ③④阈值与状态机——于是它「自己看，异常才喊你」</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">同一套查询机制，pull（仪表盘）与 push（监控）两种姿态</text>
+</svg>
+<div class="figcap"><b>monitor = 自带调度与阈值的仪表盘组件</b>。<code>schema.prisma:1752</code> 的 Monitor 把 <code>view/filters/metric</code>（注释原文 <i>mirrors DashboardWidget</i>）和 <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code> 装在一起。worker 端 <code>monitorQueue.ts</code> 的 <code>MonitorProcessor.process</code> 跑②③④，越线才发⑤。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">看什么</span><span class="name">view / filters / metric</span></div><div class="ld">和仪表盘组件同款的查询三件套：<code>view</code> 决定盯 OBSERVATIONS 还是 SCORES_NUMERIC / SCORES_CATEGORICAL（<strong>能直接监控 Part 5 算出的分数</strong>），<code>filters</code> 圈定范围，<code>metric</code> 定义算什么（如平均分、错误率、P95 延迟）。一个 monitor 就是「一条仪表盘曲线 + 一条警戒线」。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">怎么测</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> 是<strong>看最近多久</strong>的数据（滑动窗口，如过去 1 小时），<code>cadenceMs</code> 是<strong>多久测一次</strong>（如每 5 分钟）。两者解耦：你可以每 5 分钟、回看 1 小时——窗口给平滑、节奏给及时。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">何时响</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code>（GT/GTE/LT/LTE/EQ/NEQ）+ <code>alertThreshold</code>（必填）+ <code>warningThreshold</code>（选填两档）决定指标值落进哪个<strong>严重度</strong>。再由状态机决定<strong>这次要不要真的发告警</strong>（下两节细讲）。</div></div>
+</div>
+""")
+
+# (L33 sec2 severity below)
+
+_ZH33.append(r"""
+<h2>严重度状态机：从指标值到 OK / WARNING / ALERT</h2>
+<p>算出指标值后，<code>computeSeverity</code> 把它映射成一个<strong>严重度</strong>。逻辑很干净：先看值在不在（处理「没数据」），再按 operator 依次比<strong>告警线、警告线</strong>——撞上告警线就 ALERT，撞上警告线就 WARNING，都没撞就 OK。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="严重度状态机：指标值为空时按 noData 模式处理为 NO_DATA、补零或沿用上次；非空时若满足告警阈值则 ALERT、满足警告阈值则 WARNING、否则 OK；另有用户手动的 PAUSED 与初始 UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity 六态（computeSeverity + 状态机）</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">指标值 value？</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">先判空</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.2" fill="var(--muted)">按 noData 模式：补零/沿用/标无数据</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="610" y="78" font-size="6.4" fill="var(--muted)">用户暂停</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">初始/未知</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="150" y="98" font-size="6.2" fill="var(--muted)">空</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">撞告警线</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="226" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">撞警告线</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="220" y="140" text-anchor="middle" font-size="6.2" fill="var(--teal)">都没撞</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">三个「生命周期态」NO_DATA/PAUSED/UNKNOWN + 三个「比阈值得到的态」ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>六态严重度</b>：<code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code>（<code>schema.prisma:1736</code>）。<code>computeSeverity</code> 先按 <code>noData</code> 模式处理空值，再按 operator 比 alert / warning 阈值。先比 ALERT 后比 WARNING——<strong>就高不就低</strong>，确保最严重的状态优先。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>配置项</th><th>取值</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>怎么比：错误率用 GT「超过」，成功率用 LT「低于」</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>两条线（警告可选）</td><td>两档预警：先黄牌后红牌，给你缓冲</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>没数据时怎么办：补 0 再判 / 沿用上次 / 标「无数据」/ 还为无数据告警</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">值 → 严重度</span></div>
+  <pre class="code"><span class="cm">// 空值：按 monitor 的 noData 模式决定</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// 当作 0 继续比</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// 沿用上次</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// 标记无数据</span>
+}
+<span class="cm">// 非空：先比告警线、再比警告线——就高不就低</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, …（六种 operator）</span></pre>
+</div>
+
+<p>把抽象配置落到真实场景，三个典型 monitor 长这样——注意前两个直接盯着 Part 5 算出的<strong>分数</strong>：</p>
+<div class="cols">
+  <div class="col"><h4>有用性均分掉了</h4><p><code>view=SCORES_NUMERIC</code>，metric=「有用性」平均分，<code>operator=LT</code>，warning 0.75 / alert 0.70。窗口 1 小时、每 5 分钟测。<strong>质量回归的第一道哨兵。</strong></p></div>
+  <div class="col"><h4>毒性通过率不达标</h4><p><code>view=SCORES_NUMERIC</code>（布尔分的通过率），metric=「无毒」占比，<code>operator=LT</code>，alert 0.95。安全红线一破即告警。</p></div>
+  <div class="col"><h4>错误率飙升</h4><p><code>view=OBSERVATIONS</code>，metric=错误占比，<code>operator=GT</code>，alert 5%。不依赖 score，直接盯第 13 课的 observation 状态——上游一抖就知道。</p></div>
+</div>
+""")
+
+_ZH33.append(r"""
+<h2>只在变化时告警，且把投递解耦出去</h2>
+<p>算出严重度，<strong>不等于</strong>就要发告警。如果每 5 分钟算一次、每次都因为「还在 ALERT」而推一条，你的 Slack 会被刷爆。<code>applyStateMachine</code> 解决这个：它对比<strong>上一次和这一次的严重度</strong>，原则上<strong>只在状态发生变化时才发</strong>（OK→ALERT 发、ALERT→ALERT 不发）；若异常持续，再按 <code>renotify</code> 策略<strong>隔一阵补一次</strong>。而且，被暂停（PAUSED）的 monitor 直接跳过——不覆盖用户意图。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="状态机决定是否发告警：上次 OK 这次 ALERT 则发；上次 ALERT 这次仍 ALERT 默认不发、除非 renotify 周期到；恢复为 OK 也发一条；告警统一发到 WebhookQueue，再由自动化转投递到 Slack 或 webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">变化才 emit · 投递走统一队列</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">上次 OK → 这次 ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">变化 → 发！</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → 仍 ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">默认不发（防刷屏）</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">持续异常 + renotify 到点</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">补一次提醒</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit 决策</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED 直接跳过</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue（统一通知中枢）</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor 只管发布，不管怎么投</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">「变化才发」防刷屏 + 「统一队列再分发」让 monitor 不必认识每种投递渠道（第 44 课自动化）</text>
+</svg>
+<div class="figcap"><b>两层克制</b>：<code>applyStateMachine</code>（<code>processor/applyStateMachine.ts</code>）按「严重度是否变化 + renotify」决定 <code>emit</code>，PAUSED 不覆盖用户意图；真要发时，<code>monitorQueue.ts</code> 只把告警<b>发布到 WebhookQueue</b>，由自动化系统（Trigger→Action）决定投到 Slack 还是 webhook。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">是否发 + 怎么发</span></div>
+  <pre class="code"><span class="cm">// 是否发：暂停跳过；否则按「严重度变化 + renotify」决定 emit</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// 不覆盖用户意图</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// 变化或到点才 true</span>
+
+<span class="cm">// 怎么发：monitor 不直接发 Slack，只发布到 WebhookQueue（解耦投递）</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// 算指标→定severity→（必要时）发布</span></pre>
+</div>
+
+<p>这条链路把 Part 5 推到了终点：从第 28 课「一个 score 长什么样」，到 29–32 课「四种方式生产 score」，再到这一课「<strong>盯着这些分数/指标，越线就主动喊人</strong>」。评估终于<strong>闭环成行动</strong>——你不再只是<strong>能</strong>看到质量，而是质量一掉，系统就<strong>替你</strong>看到、并立刻通知你。而「发布到 WebhookQueue、由自动化转投递」这一步，正好接上 Part 7 的自动化与集成（第 44 课）——监控只是众多「会触发自动化的事件源」之一。</p>
+""")
+
+# (L33 spark+key below)
+
+_ZH33.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 monitor 要复用仪表盘的查询形状，而不是自成一套？</strong> 因为「监控的指标」和「仪表盘看的指标」<strong>本来就是同一个东西</strong>——平均分、错误率、P95 延迟。让 Monitor 的 <code>view/filters/metric</code> 直接 mirror DashboardWidget，意味着：你在仪表盘上画得出的任何曲线，都能<strong>一键变成一个会自己盯着的告警</strong>；底层那套 ClickHouse 查询机制只写一遍、两处复用。<strong>pull 与 push 共享同一个指标定义</strong>，这是少有的「既省代码又顺直觉」的设计。<br><br>
+  <strong>为什么只在「状态变化」时告警，而不是每次越线都发？</strong> 因为<strong>告警疲劳</strong>是监控系统的头号杀手。如果错误率持续高，每 5 分钟一条「还在告警」，工程师很快就会把整个频道静音——于是真正的新问题也被淹没。「变化才发 + renotify 周期补发」让每条告警都<strong>携带信息量</strong>（状态真的变了），既不漏报、又不刷屏。severity 做成<strong>状态机</strong>而非每次重算的瞬时值，正是为了能问出「<strong>和上次比变了吗</strong>」这个关键问题。<br><br>
+  <strong>为什么告警不直接发 Slack，而要先发布到 WebhookQueue？</strong> 又是那个贯穿全书的信念——<strong>解耦</strong>。monitor 的职责是「判断要不要告警」，<strong>不该</strong>关心「告警怎么送到人手里」（Slack？webhook？邮件？值班系统？）。把告警发布到统一队列，再由自动化系统（第 44 课的 Trigger→Action）决定投递渠道，于是：投递方式可独立演进、可重试、可对接任意新渠道，而 monitor 一行不改。<strong>判断与投递分离</strong>，和第 30 课「创建与执行分离」、第 12 课「一个入口多个生产者」是同一种架构品味。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>monitor = 主动的评估</strong>：把质量监测从「你去拉仪表盘」变成「它来推告警」。按 <code>cadenceMs</code> 定时在最近 <code>windowMs</code> 窗口算指标，越线即告警。</li>
+    <li><strong>复用仪表盘查询形状</strong>：<code>view/filters/metric</code> 注释原文「mirrors DashboardWidget」——能画成曲线的指标就能变成告警；<code>view</code> 含 SCORES_NUMERIC/CATEGORICAL，<strong>可直接监控 Part 5 算出的分数</strong>。</li>
+    <li><strong>严重度状态机</strong>：<code>computeSeverity</code> 按 operator（GT/GTE/LT/LTE/EQ/NEQ）先比告警线、再比警告线，得 OK/WARNING/ALERT；空值按 <code>noData</code> 模式处理（补零/沿用/标无数据）；另有 PAUSED/UNKNOWN 生命周期态。</li>
+    <li><strong>只在变化时告警</strong>：<code>applyStateMachine</code> 比上次与这次的严重度，原则上<strong>变化才发</strong>，持续异常按 <code>renotify</code> 补发，PAUSED 不覆盖——根治告警疲劳。</li>
+    <li><strong>解耦投递</strong>：monitor 只把告警发布到 <code>WebhookQueue</code>，由自动化（第 44 课 Trigger→Action）转投 Slack / webhook。判断与投递分离，呼应第 30 课「创建/执行分离」。</li>
+    <li><strong>Part 5 闭环</strong>：从「score 的模型」（28）→「四种生产 score 的方式」（29–32）→「盯着 score/指标主动告警」（33）。评估从「能看见质量」升级为「质量一掉就被通知」——真正成为行动。</li>
+  </ul>
+</div>
+""")
+
+_EN33.append(r"""
+<p class="lead">
+Part 5 let you <strong>score</strong> quality—but scores sit in a database, and you can't watch them forever. This lesson caps Part 5 and adds the last link that makes evaluation <strong>actually act</strong>: the <strong>monitor</strong>. It's the "active" half—watching a metric or score on a fixed cadence, and when it <strong>crosses a line you set</strong>, raising an alert on its own. In one phrase: turn quality monitoring from "<strong>you pull</strong>" (look at a dashboard) into "<strong>it pushes</strong>" (alert on anomaly).
+We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget that watches itself</strong>; a <strong>severity state machine</strong> mapping a metric value into OK/WARNING/ALERT; and a path that "<strong>only alerts on a state change</strong> and decouples delivery away".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dashboard (Lesson 40) is like a <strong>checkup report</strong>: you flip it open to learn how things are. A monitor is like a <strong>wearable heart-rate alarm</strong>: it <strong>watches on its own</strong>, stays quiet, and the moment your rate leaves the safe zone it <strong>sounds an alert</strong>—you needn't stare at a screen.
+  You set it three things: the <strong>normal boundary</strong> (threshold, e.g. "error rate under 5%"), <strong>how often to measure</strong> (cadence, e.g. every 5 minutes), and <strong>how far back to look</strong> (window, e.g. the past hour). At each tick it measures once, compares against the boundary, and yields a <strong>severity</strong> (OK / warning / alert).
+  The thoughtful bit: it only beeps when the <strong>state changes</strong> (it pushes when "OK" becomes "alert"), not every 5 minutes; and if the anomaly persists, you can set it to "<strong>remind again every so often</strong>" (renotify). The alarm bell itself isn't wired to one device either—it goes to a <strong>unified notification hub</strong>, which forwards to SMS, Slack, or an on-call system.
+</div>
+""")
+
+_EN33.append(r"""
+<h2>A dashboard widget that watches itself</h2>
+<p>The neatest part of a monitor is that it <strong>directly reuses the dashboard's query shape</strong>. The source comment says it plainly: a Monitor's query fields "mirror DashboardWidget"—the same <code>view</code> (observations or scores), <code>filters</code> (which data), <code>metric</code> (what to compute). The only difference: a dashboard widget computes once when you <strong>open the page</strong>; a monitor is computed repeatedly by a <strong>scheduler</strong> per <code>cadenceMs</code> and the result is taken to <strong>compare against a threshold</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="The monitor pipeline: a scheduler enqueues due monitors at nextRunAt; the processor computes a metric value over the recent windowMs using the same view/filters/metric as a dashboard; computeSeverity compares it to the alert/warning thresholds by operator to yield a severity; only a severity change emits an alert to the WebhookQueue for delivery">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">monitor pipeline: scheduled metric → threshold → alert only on change</text>
+  <rect x="20" y="40" width="140" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="90" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① scheduler</text><text x="90" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">nextRunAt due</text><text x="90" y="89" text-anchor="middle" font-size="6.8" fill="var(--muted)">claim → enqueue MonitorJob</text>
+  <rect x="190" y="34" width="160" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="270" y="54" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② processor computes</text><text x="270" y="70" text-anchor="middle" font-size="6.6" fill="var(--muted)">view/filters/metric</text><text x="270" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">(= a dashboard widget's query)</text><text x="270" y="95" text-anchor="middle" font-size="6.6" fill="var(--muted)">over the recent windowMs</text>
+  <rect x="380" y="40" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ computeSeverity</text><text x="455" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">value &lt;op&gt; threshold</text><text x="455" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">→ OK/WARNING/ALERT</text>
+  <rect x="560" y="40" width="140" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="630" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">④ state machine</text><text x="630" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">did severity change?</text><text x="630" y="89" text-anchor="middle" font-size="6.6" fill="var(--muted)">emit only if so</text>
+  <rect x="250" y="150" width="220" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="169" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ WebhookQueue → automation</text><text x="360" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">decoupled delivery: Slack / webhook (Lesson 44)</text>
+  <line x1="160" y1="69" x2="188" y2="69" stroke="var(--accent)" stroke-width="1.5"/><polygon points="188,69 179,65 179,73" fill="var(--accent)"/>
+  <line x1="350" y1="69" x2="378" y2="69" stroke="var(--blue)" stroke-width="1.5"/><polygon points="378,69 369,65 369,73" fill="var(--blue)"/>
+  <line x1="530" y1="69" x2="558" y2="69" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,69 549,65 549,73" fill="var(--teal)"/>
+  <line x1="630" y1="98" x2="450" y2="148" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="450,148 459,146 456,139" fill="var(--accent)"/><text x="556" y="128" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">only if emit=true</text>
+  <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">a dashboard widget "waits for you to look"; a monitor adds ① scheduling + ③④ thresholds and state machine—so it "looks itself, calls you only on anomaly"</text>
+  <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">one query mechanism, two postures: pull (dashboard) and push (monitor)</text>
+</svg>
+<div class="figcap"><b>monitor = a dashboard widget with built-in scheduling and thresholds</b>. <code>schema.prisma:1752</code>'s Monitor packs <code>view/filters/metric</code> (the comment literally says <i>mirrors DashboardWidget</i>) together with <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code>. On the worker, <code>monitorQueue.ts</code>'s <code>MonitorProcessor.process</code> runs ②③④ and only emits ⑤ when a line is crossed.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">view / filters / metric</span></div><div class="ld">The same query trio as a dashboard widget: <code>view</code> decides whether to watch OBSERVATIONS or SCORES_NUMERIC / SCORES_CATEGORICAL (<strong>so it can directly monitor the scores Part 5 produced</strong>), <code>filters</code> scope the data, <code>metric</code> defines what to compute (avg score, error rate, P95 latency). A monitor is "one dashboard curve + one alarm line".</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">how</span><span class="name">window / cadence</span></div><div class="ld"><code>windowMs</code> is <strong>how far back</strong> to look (a sliding window, e.g. the past hour); <code>cadenceMs</code> is <strong>how often</strong> to measure (e.g. every 5 minutes). The two are decoupled: you can measure every 5 minutes looking back 1 hour—the window gives smoothing, the cadence gives timeliness.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">when</span><span class="name">threshold / severity</span></div><div class="ld"><code>thresholdOperator</code> (GT/GTE/LT/LTE/EQ/NEQ) + <code>alertThreshold</code> (required) + <code>warningThreshold</code> (optional two-tier) decide which <strong>severity</strong> the value falls into. The state machine then decides <strong>whether to actually send an alert this time</strong> (next two sections).</div></div>
+</div>
+""")
+
+# (en sec2/3/spark below)
+
+_EN33.append(r"""
+<h2>The severity state machine: from a value to OK / WARNING / ALERT</h2>
+<p>Once the metric value is computed, <code>computeSeverity</code> maps it to a <strong>severity</strong>. The logic is clean: first check whether the value exists (handle "no data"), then compare by operator against the <strong>alert line, then the warning line</strong>—hit the alert line → ALERT, hit the warning line → WARNING, neither → OK.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Severity state machine: a null value is handled per noData mode as NO_DATA, zero-substituted, or carried over; a present value yields ALERT if it meets the alert threshold, WARNING if it meets the warning threshold, otherwise OK; plus user-set PAUSED and initial UNKNOWN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">MonitorSeverity, six states (computeSeverity + state machine)</text>
+  <rect x="40" y="44" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="115" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">metric value?</text><text x="115" y="76" text-anchor="middle" font-size="6.6" fill="var(--muted)">check null first</text>
+  <rect x="40" y="104" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--ink)" stroke-dasharray="4 3"/><text x="115" y="122" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">NO_DATA</text><text x="115" y="137" text-anchor="middle" font-size="6.0" fill="var(--muted)">per noData mode: zero/carry-over/flag</text>
+  <rect x="270" y="40" width="150" height="36" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="345" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">ALERT</text>
+  <rect x="270" y="90" width="150" height="36" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="345" y="112" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">WARNING</text>
+  <rect x="270" y="140" width="150" height="36" rx="9" fill="var(--teal)" opacity="0.18" stroke="var(--teal)"/><text x="345" y="162" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">OK</text>
+  <rect x="500" y="60" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="81" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">PAUSED</text>
+  <rect x="500" y="110" width="90" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="545" y="131" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">UNKNOWN</text>
+  <text x="605" y="78" font-size="6.4" fill="var(--muted)">user-paused</text><text x="600" y="128" font-size="6.4" fill="var(--muted)">initial</text>
+  <line x1="115" y1="84" x2="115" y2="102" stroke="var(--faint)" stroke-width="1.2"/><text x="142" y="98" font-size="6.2" fill="var(--muted)">null</text>
+  <line x1="190" y1="58" x2="268" y2="58" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,58 259,54 259,62" fill="var(--accent)"/><text x="229" y="52" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meets alert</text>
+  <line x1="190" y1="70" x2="268" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="268,106 259,102 258,110" fill="var(--accent)"/><text x="225" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">meets warning</text>
+  <line x1="190" y1="78" x2="268" y2="156" stroke="var(--teal)" stroke-width="1.2"/><polygon points="268,156 259,153 258,161" fill="var(--teal)"/><text x="221" y="142" text-anchor="middle" font-size="6.2" fill="var(--teal)">neither</text>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">three "lifecycle" states NO_DATA/PAUSED/UNKNOWN + three "threshold-derived" states ALERT/WARNING/OK</text>
+</svg>
+<div class="figcap"><b>Six-state severity</b>: <code>MonitorSeverity = { PAUSED, UNKNOWN, NO_DATA, OK, WARNING, ALERT }</code> (<code>schema.prisma:1736</code>). <code>computeSeverity</code> first handles null per the <code>noData</code> mode, then compares the alert / warning thresholds by operator. Alert is checked before warning—<strong>highest wins</strong>, ensuring the most severe state takes priority.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>config</th><th>values</th><th>role</th></tr></thead>
+  <tbody>
+    <tr><td><code>thresholdOperator</code></td><td>GT / GTE / LT / LTE / EQ / NEQ</td><td>how to compare: error rate uses GT "exceeds", success rate uses LT "falls below"</td></tr>
+    <tr><td><code>alertThreshold</code> / <code>warningThreshold</code></td><td>two lines (warning optional)</td><td>two-tier warning: yellow card then red card, giving you a buffer</td></tr>
+    <tr><td><code>noData.mode</code></td><td>SUBSTITUTE_ZERO / LAST_SEVERITY / SHOW_NO_DATA / NOTIFY_NO_DATA</td><td>what to do with no data: treat as 0 / carry over last / flag "no data" / even alert for no data</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/monitors/processor/computeSeverity.ts</span><span class="ln">value → severity</span></div>
+  <pre class="code"><span class="cm">// null value: decide per the monitor's noData mode</span>
+<span class="kw">if</span> (value === <span class="kw">null</span>) {
+  <span class="kw">if</span> (mode === <span class="st">"SUBSTITUTE_ZERO"</span>) value = 0;          <span class="cm">// treat as 0 and continue</span>
+  <span class="kw">else if</span> (mode === <span class="st">"LAST_SEVERITY"</span>) <span class="kw">return</span> prevSeverity;  <span class="cm">// carry over last</span>
+  <span class="kw">else</span> <span class="kw">return</span> <span class="st">"NO_DATA"</span>;                              <span class="cm">// flag no data</span>
+}
+<span class="cm">// present value: check alert line first, then warning line — highest wins</span>
+<span class="kw">if</span> (matches(value, operator, alertThreshold))   <span class="kw">return</span> <span class="st">"ALERT"</span>;
+<span class="kw">if</span> (warningThreshold !== <span class="kw">null</span> &amp;&amp;
+    matches(value, operator, warningThreshold))  <span class="kw">return</span> <span class="st">"WARNING"</span>;
+<span class="kw">return</span> <span class="st">"OK"</span>;
+<span class="cm">// matches: GT→value&gt;th, LT→value&lt;th, … (six operators)</span></pre>
+</div>
+
+<p>Grounding the abstract config in real scenarios, three typical monitors look like this—note the first two watch the <strong>scores</strong> Part 5 produced:</p>
+<div class="cols">
+  <div class="col"><h4>helpfulness average dropped</h4><p><code>view=SCORES_NUMERIC</code>, metric=avg "helpfulness", <code>operator=LT</code>, warning 0.75 / alert 0.70. Window 1 hour, measured every 5 minutes. <strong>The first sentinel for quality regression.</strong></p></div>
+  <div class="col"><h4>toxicity pass-rate below target</h4><p><code>view=SCORES_NUMERIC</code> (a boolean score's pass-rate), metric=share "non-toxic", <code>operator=LT</code>, alert 0.95. A safety red line alerts the moment it's crossed.</p></div>
+  <div class="col"><h4>error rate spiking</h4><p><code>view=OBSERVATIONS</code>, metric=share of errors, <code>operator=GT</code>, alert 5%. No score needed—watches Lesson 13's observation status directly, so an upstream wobble shows immediately.</p></div>
+</div>
+""")
+
+_EN33.append(r"""
+<h2>Alert only on change, and decouple delivery away</h2>
+<p>Computing a severity does <strong>not</strong> mean an alert must fire. If you compute every 5 minutes and push each time because it's "still ALERT", your Slack drowns. <code>applyStateMachine</code> fixes this: it compares <strong>the previous and current severity</strong> and, as a rule, <strong>only emits on a state change</strong> (OK→ALERT emits, ALERT→ALERT doesn't); if the anomaly persists, it tops up per the <code>renotify</code> policy. And a PAUSED monitor is skipped outright—not overwriting user intent.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="The state machine decides whether to alert: previous OK now ALERT emits; previous ALERT still ALERT by default doesn't, unless the renotify period elapses; recovery to OK also emits; alerts all go to the WebhookQueue, which automation forwards to Slack or webhook">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">emit only on change · delivery via one queue</text>
+  <rect x="30" y="44" width="150" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="105" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">prev OK → now ALERT</text><text x="105" y="76" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">change → emit!</text>
+  <rect x="30" y="92" width="150" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="105" y="110" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">ALERT → still ALERT</text><text x="105" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">default no emit (anti-spam)</text>
+  <rect x="30" y="140" width="150" height="40" rx="9" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="105" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">persists + renotify due</text><text x="105" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">top up a reminder</text>
+  <rect x="250" y="80" width="160" height="60" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="330" y="102" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">emit decision</text><text x="330" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">applyStateMachine</text><text x="330" y="132" text-anchor="middle" font-size="6.4" fill="var(--muted)">PAUSED skipped</text>
+  <rect x="470" y="60" width="220" height="42" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="580" y="79" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">WebhookQueue (one notification hub)</text><text x="580" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">monitor only publishes, not how to deliver</text>
+  <rect x="470" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="522" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Slack</text>
+  <rect x="585" y="116" width="105" height="38" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="637" y="139" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">webhook</text>
+  <line x1="180" y1="64" x2="248" y2="98" stroke="var(--teal)" stroke-width="1.4"/><polygon points="248,98 239,95 242,103" fill="var(--teal)"/>
+  <line x1="180" y1="160" x2="248" y2="124" stroke="var(--accent)" stroke-width="1.3"/><polygon points="248,124 239,124 243,131" fill="var(--accent)"/>
+  <line x1="410" y1="98" x2="468" y2="84" stroke="var(--accent)" stroke-width="1.5"/><polygon points="468,84 459,82 461,90" fill="var(--accent)"/>
+  <line x1="560" y1="102" x2="535" y2="114" stroke="var(--blue)" stroke-width="1.2"/><line x1="600" y1="102" x2="625" y2="114" stroke="var(--blue)" stroke-width="1.2"/>
+  <text x="360" y="194" text-anchor="middle" font-size="8" fill="var(--faint)">"emit only on change" prevents spam + "one queue then fan out" frees the monitor from knowing each delivery channel (Lesson 44 automation)</text>
+</svg>
+<div class="figcap"><b>Two layers of restraint</b>: <code>applyStateMachine</code> (<code>processor/applyStateMachine.ts</code>) decides <code>emit</code> by "did severity change + renotify", and PAUSED doesn't overwrite user intent; when it does fire, <code>monitorQueue.ts</code> only <b>publishes the alert to the WebhookQueue</b>, leaving the automation system (Trigger→Action) to decide Slack vs webhook.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">processor/applyStateMachine.ts · worker/src/queues/monitorQueue.ts</span><span class="ln">whether to send + how</span></div>
+  <pre class="code"><span class="cm">// whether: skip if paused; else decide emit by "severity change + renotify"</span>
+<span class="kw">if</span> (prev.severity === <span class="st">"PAUSED"</span>) <span class="kw">return</span> { emit: <span class="kw">false</span>, … };   <span class="cm">// don't overwrite user intent</span>
+<span class="kw">const</span> severityChanged = prev.severity !== next.severity;
+<span class="kw">const</span> emit = shouldEmit({ prev, next, prevAlertedAt, renotify, … });  <span class="cm">// true only on change or due</span>
+
+<span class="cm">// how: a monitor doesn't send Slack directly, only publishes to WebhookQueue (decoupled)</span>
+<span class="kw">const</span> processor = <span class="kw">new</span> MonitorProcessor(prisma, <span class="kw">async</span> (input) =&gt; {
+  <span class="kw">await</span> webhookQueue.add(QueueName.WebhookQueue, { payload: input, … });
+});
+<span class="kw">await</span> processor.process(job.data.payload, <span class="kw">new</span> Date());   <span class="cm">// compute→severity→(if needed) publish</span></pre>
+</div>
+
+<p>This path pushes Part 5 to its finish: from Lesson 28's "what a score looks like", through Lessons 29–32's "four ways to produce a score", to this lesson's "<strong>watch those scores/metrics and call someone the moment a line is crossed</strong>". Evaluation finally <strong>closes the loop into action</strong>—you no longer merely <strong>can</strong> see quality; the moment quality drops, the system sees it <strong>for you</strong> and notifies you at once. And the "publish to WebhookQueue, let automation deliver" step dovetails into Part 7's automation and integrations (Lesson 44)—monitoring is just one of many "event sources that can trigger automation".</p>
+""")
+
+_EN33.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why reuse the dashboard's query shape instead of inventing one?</strong> Because "a monitored metric" and "a dashboarded metric" are <strong>the same thing</strong>—avg score, error rate, P95 latency. Having Monitor's <code>view/filters/metric</code> directly mirror DashboardWidget means: any curve you can draw on a dashboard can <strong>become a self-watching alert in one click</strong>; the underlying ClickHouse query machinery is written once, reused twice. <strong>Pull and push share one metric definition</strong>—a rare "saves code and matches intuition" design.<br><br>
+  <strong>Why alert only on a "state change" rather than every time a line is crossed?</strong> Because <strong>alert fatigue</strong> is a monitoring system's number-one killer. If error rate stays high and "still alerting" pings every 5 minutes, engineers soon mute the whole channel—and real new problems get buried. "Emit on change + renotify top-ups" makes every alert <strong>carry information</strong> (the state really changed), neither missing nor spamming. Making severity a <strong>state machine</strong> rather than a per-tick instantaneous value is precisely so it can ask the key question: "<strong>did it change from last time</strong>".<br><br>
+  <strong>Why not send Slack directly, but publish to the WebhookQueue first?</strong> Again the belief that runs through this whole guide—<strong>decoupling</strong>. A monitor's job is "decide whether to alert"; it <strong>shouldn't</strong> care "how the alert reaches a human" (Slack? webhook? email? on-call?). Publishing alerts to one queue, with the automation system (Lesson 44's Trigger→Action) deciding the channel, means delivery can evolve independently, be retried, and connect to any new channel—while the monitor changes not a line. <strong>Decision separate from delivery</strong>, the same architectural taste as Lesson 30's "creation separate from execution" and Lesson 12's "one entry, many producers".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A monitor = active evaluation</strong>: turn quality monitoring from "you pull a dashboard" into "it pushes an alert". It computes a metric over the recent <code>windowMs</code> per <code>cadenceMs</code>, alerting when a line is crossed.</li>
+    <li><strong>Reuses the dashboard query shape</strong>: <code>view/filters/metric</code> (the comment literally says "mirrors DashboardWidget")—any chartable metric can become an alert; <code>view</code> includes SCORES_NUMERIC/CATEGORICAL, so it can <strong>directly monitor the scores Part 5 produced</strong>.</li>
+    <li><strong>Severity state machine</strong>: <code>computeSeverity</code> compares the alert line then the warning line by operator (GT/GTE/LT/LTE/EQ/NEQ), yielding OK/WARNING/ALERT; null is handled per <code>noData</code> mode (zero/carry-over/flag); plus PAUSED/UNKNOWN lifecycle states.</li>
+    <li><strong>Alert only on change</strong>: <code>applyStateMachine</code> compares previous and current severity, as a rule <strong>emitting only on change</strong>, topping up persistent anomalies per <code>renotify</code>, never overwriting PAUSED—curing alert fatigue.</li>
+    <li><strong>Decoupled delivery</strong>: a monitor only publishes alerts to the <code>WebhookQueue</code>, with automation (Lesson 44's Trigger→Action) forwarding to Slack / webhook. Decision separate from delivery, echoing Lesson 30's "creation/execution split".</li>
+    <li><strong>Part 5 closes the loop</strong>: from "the score model" (28) → "four ways to produce a score" (29–32) → "watch scores/metrics and alert actively" (33). Evaluation graduates from "can see quality" to "gets notified the moment quality drops"—truly becoming action.</li>
+  </ul>
+</div>
+""")
+
+LESSON_33 = {"zh": "\n".join(_ZH33), "en": "\n".join(_EN33)}

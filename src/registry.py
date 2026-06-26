@@ -45,4 +45,5 @@ CONTENT = {
     "30-eval-execution-pipeline.html": part5.LESSON_30,
     "31-code-based-evaluation.html": part5.LESSON_31,
     "32-human-annotation.html": part5.LESSON_32,
+    "33-monitors-and-alerting.html": part5.LESSON_33,
 }

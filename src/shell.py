@@ -113,6 +113,8 @@ PAGES = [
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
     ("32-human-annotation.html", "人工标注", "Human annotation",
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
+    ("33-monitors-and-alerting.html", "监控器与告警", "Monitors & alerting",
+     "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
 ]
 
 
@@ -660,6 +662,8 @@ SUBTITLES = {
                                       "deterministic eval: a function computes the score vs LLM's probabilistic judgment; dispatcher strategy pattern {name,dispatch}; Lambda sandbox (per-language)/local vm (insecure-local); sandbox iron rules no-network+size caps 256KB/5.5MB/256KB+timeout; same flow-back source=EVAL"),
     "32-human-annotation.html": ("第三种 score 来源 source=ANNOTATION 闭合三来源 · 常作 ground truth 校准 AI 裁判 · 标注队列绑 scoreConfigIds · item 评 TRACE/OBSERVATION/SESSION · 5 分钟软锁防重复标注 · 同回流 scores 表",
                                  "third score source source=ANNOTATION closes the three sources; often ground truth to calibrate the AI judge; annotation queue binds scoreConfigIds; items review TRACE/OBSERVATION/SESSION; 5-minute soft lock prevents double-annotation; same flow-back into scores table"),
+    "33-monitors-and-alerting.html": ("主动评估：把质量监测从拉(看仪表盘)变推(越线告警) · monitor 复用 DashboardWidget 的 view/filters/metric · window/cadence/阈值 · severity 状态机 OK/WARNING/ALERT · 只在变化时 emit 防刷屏 · 发布 WebhookQueue 解耦投递",
+                                      "active evaluation: turn quality monitoring from pull (dashboard) to push (alert on crossing); a monitor reuses DashboardWidget's view/filters/metric; window/cadence/thresholds; severity state machine OK/WARNING/ALERT; emit only on change to avoid spam; publish to WebhookQueue for decoupled delivery"),
 }
 
 
