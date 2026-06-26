@@ -129,6 +129,8 @@ PAGES = [
      "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
     ("40-dashboards-and-widgets.html", "仪表盘与 widget 系统", "Dashboards & widgets",
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
+    ("41-query-engine.html", "查询引擎", "The query engine",
+     "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
 ]
 
 
@@ -692,6 +694,8 @@ SUBTITLES = {
                                            "the Playground = the same engine's interactive front desk, reusing fetchLLMCompletion (same core as eval L29/experiment L36); LlmApiKeys.secretKey stores ciphertext via AES-256-GCM authenticated encryption + displaySecretKey masked display + adapter abstracts the provider; authTag anti-tamper, random IV, decrypt-on-use; LlmSchema/LlmTool reusable blocks; Part 7 seals the developer-workflow loop"),
     "40-dashboards-and-widgets.html": ("仪表盘看全局聚合 · Dashboard(definition 布局+板级 filters)装一排 DashboardWidget · widget=声明式查询(view+dimensions+metrics+filters)+图表(chartType 9种) · 查询与呈现解耦 · 一份查询形状三处复用(仪表盘画图/第33课监控比阈值/第41课引擎编SQL)，MonitorView=DashboardWidgetViews 去掉 TRACES",
                                        "dashboards see global aggregation; a Dashboard (definition layout + board-level filters) holds a row of DashboardWidgets; a widget = a declarative query (view+dimensions+metrics+filters) + a chart (chartType, 9 types); query/presentation decoupled; one query shape reused three ways (dashboard charts/L33 monitor thresholds/L41 engine SQL), MonitorView = DashboardWidgetViews minus TRACES"),
+    "41-query-engine.html": ("查询引擎=声明式查询→ClickHouse SQL 编译器 · 语义层 dataModel 把逻辑名(name/totalCost)映射到真实 SQL 列/表达式 · QueryBuilder.build 对照字典译维度→GROUP BY/度量→聚合/时间分桶/过滤→参数化 WHERE/连表 · 值走 parameters 防注入(第23课) · view v1/v2 版本化护历史 · 一引擎多消费保口径一致",
+                            "the query engine = a declarative-query → ClickHouse SQL compiler; the semantic-layer dataModel maps logical names (name/totalCost) to real SQL columns/expressions; QueryBuilder.build consults the dictionary to translate dimensions→GROUP BY/measures→aggregations/time-bucketing/filters→parameterized WHERE/joins; values go via parameters for injection safety (L23); view v1/v2 versioning protects history; one engine for many consumers keeps definitions consistent"),
 }
 
 

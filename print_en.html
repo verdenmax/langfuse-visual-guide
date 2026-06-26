@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 40 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 41 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -377,6 +377,7 @@ details[open] > summary { list-style: none; }
   <li>Prompt serving & caching</li>
   <li>Playground & LLM connections</li>
   <li>Dashboards & widgets</li>
+  <li>The query engine</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8447,6 +8448,189 @@ This lesson covers their data model, focusing on a design that will echo repeate
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'One query shape, three reuses' is Langfuse's core move for guaranteeing metric-definition consistency. Recall data products you've built or used: have you hit 'the same metric computes different numbers on different pages/reports/alerts' definition drift? If you designed a mechanism to cure it, how would you? How would you weigh the costs of declarative-query + unified-engine (limited flexibility, the engine must support all needs)?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The query engine</h1>
+
+<p class="lead">
+The last lesson's widget declared <code>view + dimensions + metrics + filters</code>. But ClickHouse only understands <strong>SQL</strong>—it knows nothing of these declarations. The bridge between them is the <strong>query engine</strong>—it <strong>compiles</strong> that declaration <strong>into SQL</strong> and runs it. This lesson takes it apart, revealing two core parts: a <strong>semantic layer</strong> (the data model, mapping friendly logical names like "cost" and "by model" to real ClickHouse columns and expressions), and a <strong>compiler</strong> (<code>QueryBuilder.build()</code>, assembling the declaration into <strong>parameterized</strong> SQL).
+Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and Lesson 35's experiment aggregation <strong>can share one query shape</strong>—because they're all backed by this same compiler; you'll also see again how Lesson 23's "parameterized = injection-safe" discipline carries into aggregation queries.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  The query engine is like a restaurant's <strong>"interpreter + a menu"</strong>. You (the widget) <strong>order in plain words</strong>: "group by model, total the cost, only production". The interpreter (<code>QueryBuilder</code>) opens a <strong>menu</strong> (the data model)—where each "logical dish name" is annotated with <strong>the real ingredients and methods the kitchen uses</strong> ("total cost" = the kitchen table's <code>sum(total_cost)</code> column, "by model" = group by <code>provided_model_name</code>).
+  Following the menu, the interpreter <strong>precisely translates your plain words into a work ticket the kitchen (ClickHouse) can execute</strong> (SQL). Two beauties: one, you <strong>never need to know</strong> what the kitchen's ingredients are called or which fridge they're in—this menu layer isolates you from the kitchen's <strong>physical details</strong>; if the kitchen rearranges ingredients (renames columns, restructures tables), as long as the menu updates, your ordering style <strong>doesn't change one word</strong>. Two, any "concrete value" you fill in (like <code>production</code>) the interpreter <strong>passes in on a separate slip</strong> (parameterized), never written into the ticket body—so even a weird store name <strong>can't alter the ticket itself</strong> (SQL injection prevention, Lesson 23).
+</div>
+
+
+<h2>The semantic layer: translate logical names into real SQL</h2>
+<p>The engine's first part is the <strong>data model (semantic layer)</strong>. For each <code>view</code> (traces / observations / scores-numeric / scores-categorical) it declares a "dictionary": which <strong>dimensions (groupable fields)</strong> and <strong>measures (aggregatable quantities)</strong> this view has, and <strong>which real ClickHouse SQL</strong> each maps to. For example, the dimension <code>name</code> maps to <code>traces.name</code>, and the time dimension to a <code>formatDateTime(...)</code> expression.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="Semantic layer: the widget uses logical names view/dimensions/metrics, the data model maps each logical name to a real ClickHouse column or expression, e.g. dimension name maps to traces.name, measure count maps to a count() aggregation, time maps to formatDateTime">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">data model: a dictionary of logical name ↔ real SQL</text>
+  <rect x="30" y="44" width="180" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="120" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">what you say (logical)</text><rect x="46" y="76" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="92" text-anchor="middle" font-size="7" fill="var(--ink)">view: traces</text><rect x="46" y="106" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="122" text-anchor="middle" font-size="7" fill="var(--ink)">dimension: name</text><rect x="46" y="136" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="152" text-anchor="middle" font-size="7" fill="var(--ink)">metric: count</text><text x="120" y="176" text-anchor="middle" font-size="6.2" fill="var(--muted)">friendly, stable, physical-decoupled</text>
+  <rect x="270" y="64" width="180" height="100" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">data model (dictionary)</text><text x="360" y="105" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">each logical name →</text><text x="360" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">{ sql, alias }</text><text x="360" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">declares groupable dims, aggregatable measures</text><text x="360" y="152" text-anchor="middle" font-size="6.4" fill="var(--muted)">supports v1/v2 versions</text>
+  <rect x="510" y="44" width="180" height="140" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">what the kitchen knows (real SQL)</text><rect x="526" y="76" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="92" text-anchor="middle" font-size="6.6" fill="var(--ink)">FROM traces …</text><rect x="526" y="106" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="122" text-anchor="middle" font-size="6.6" fill="var(--ink)">traces.name</text><rect x="526" y="136" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="152" text-anchor="middle" font-size="6.6" fill="var(--ink)">count(*)</text><text x="600" y="176" text-anchor="middle" font-size="6.2" fill="var(--muted)">physical column names, evolvable</text>
+  <line x1="210" y1="114" x2="268" y2="114" stroke="var(--accent)" stroke-width="1.5"/><polygon points="268,114 259,110 259,118" fill="var(--accent)"/>
+  <line x1="450" y1="114" x2="508" y2="114" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,114 499,110 499,118" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the semantic layer isolates "what you say" from "what the kitchen knows": rename a physical column, only the dictionary changes, all widget/monitor/API queries go on</text>
+</svg>
+<div class="figcap"><b>semantic layer = a dictionary of logical name↔SQL</b>: <code>dataModel.ts</code> declares <code>dimensions</code> and <code>measures</code> per view, each shaped like <code>{ sql: "traces.name", alias: "name" }</code> (a dimension); a time dimension can even be an expression like <code>formatDateTime(traces.timestamp, …)</code>. Source: <code>packages/shared/src/features/query/dataModel.ts:10-70</code>, <code>types.ts:9</code> (viewDeclaration).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/query/dataModel.ts</span><span class="ln">one view's declaration</span></div>
+  <pre class="code"><span class="cm">// each view declares: which dimensions/measures, each mapping to some real SQL</span>
+{
+  name: <span class="st">"traces"</span>,
+  dimensions: {
+    name:        { sql: <span class="st">"traces.name"</span>,      alias: <span class="st">"name"</span> },        <span class="cm">// logical name → physical column</span>
+    environment: { sql: <span class="st">"traces.environment"</span>, alias: <span class="st">"environment"</span> },
+    timestampMonth: { sql: <span class="st">"formatDateTime(traces.timestamp, '%Y-%m')"</span>, … },  <span class="cm">// can be an expression</span>
+  },
+  measures: { count: { … }, totalCost: { sql: <span class="st">"sum(total_cost)"</span>, … }, … },   <span class="cm">// aggregatable quantities</span>
+}
+<span class="cm">// a widget only references logical names like "name"/"totalCost", never touches physical columns</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>view (data source)</th><th>what it aggregates</th><th>typical dimensions / measures</th></tr></thead>
+  <tbody>
+    <tr><td><code>traces</code></td><td>whole traces</td><td>dims: name, environment, userId; measures: count, total cost</td></tr>
+    <tr><td><code>observations</code></td><td>single observations (incl. generations)</td><td>dims: model, type; measures: count, tokens, cost, latency</td></tr>
+    <tr><td><code>scores-numeric</code></td><td>numeric scores</td><td>dims: name, source; measures: avg(value), count</td></tr>
+    <tr><td><code>scores-categorical</code></td><td>categorical scores</td><td>dims: name, stringValue; measures: count, share per category</td></tr>
+  </tbody>
+</table>
+<p>The four views each correspond to a core data type (echoing Lessons 8, 13, 28's domain model). A widget picks a view, then chooses dimensions/measures to group and compute from those it declares—<strong>what you can ask is bounded by the view's dictionary</strong>, both usable and guarded against over-reach.</p>
+
+
+<h2>The compiler: assemble the declaration into parameterized SQL</h2>
+<p>The second part is <code>QueryBuilder.build()</code>—the real <strong>compiler</strong>. It takes a declarative <code>QueryType</code>, consults the data model, and assembles full SQL in steps: <strong>dimensions</strong> become <code>SELECT … GROUP BY</code> columns (<code>mapDimensions</code>); <strong>measures</strong> become <code>count()/sum()/avg()</code> aggregations (<code>mapMetrics</code> + <code>translateAggregation</code>); <strong>time</strong> is bucketed by granularity (<code>applyBucketingDimension</code>, for time-series charts); <strong>filters</strong> become <code>WHERE</code>; and tables are <strong>joined</strong> when needed (<code>buildJoins</code>).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 225" role="img" aria-label="QueryBuilder.build compile flow: a declarative QueryType enters, passing mapDimensions to make GROUP BY columns, mapMetrics for aggregations, applyBucketingDimension for time bucketing, mapFilters for parameterized WHERE, buildJoins to join tables, producing SQL plus parameters handed to queryExecutor to run on ClickHouse">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">QueryBuilder.build(): declaration → parameterized SQL</text>
+  <rect x="20" y="50" width="120" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="70" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">QueryType (declaration)</text><text x="80" y="88" text-anchor="middle" font-size="6.4" fill="var(--muted)">view</text><text x="80" y="102" text-anchor="middle" font-size="6.4" fill="var(--muted)">dimensions</text><text x="80" y="116" text-anchor="middle" font-size="6.4" fill="var(--muted)">metrics</text><text x="80" y="130" text-anchor="middle" font-size="6.4" fill="var(--muted)">filters</text><text x="80" y="144" text-anchor="middle" font-size="6.4" fill="var(--muted)">timeDimension</text>
+  <rect x="180" y="44" width="160" height="132" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="260" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">QueryBuilder.build()</text><text x="260" y="82" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapDimensions → GROUP BY</text><text x="260" y="98" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapMetrics → count/sum/avg</text><text x="260" y="114" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">applyBucketing → time buckets</text><text x="260" y="130" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapFilters → parameterized WHERE</text><text x="260" y="146" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">buildJoins → join when needed</text><text x="260" y="164" text-anchor="middle" font-size="6.2" fill="var(--muted)">translate each item via the data model</text>
+  <rect x="380" y="56" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="455" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">SQL (with {placeholders})</text><text x="455" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">SELECT … GROUP BY …</text><text x="455" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">WHERE env = {p1}</text>
+  <rect x="380" y="124" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="142" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">parameters</text><text x="455" y="157" text-anchor="middle" font-size="6.2" fill="var(--muted)">{ p1: "production" }</text>
+  <rect x="565" y="80" width="135" height="62" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="632" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">queryExecutor</text><text x="632" y="121" text-anchor="middle" font-size="6.2" fill="var(--muted)">sends SQL+params to ClickHouse</text>
+  <line x1="140" y1="110" x2="178" y2="110" stroke="var(--accent)" stroke-width="1.5"/><polygon points="178,110 169,106 169,114" fill="var(--accent)"/>
+  <line x1="340" y1="92" x2="378" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="378,86 369,85 371,93" fill="var(--accent)"/><line x1="340" y1="130" x2="378" y2="142" stroke="var(--teal)" stroke-width="1.4"/><polygon points="378,142 369,138 369,146" fill="var(--teal)"/>
+  <line x1="530" y1="100" x2="563" y2="108" stroke="var(--teal)" stroke-width="1.4"/><polygon points="563,108 554,105 555,113" fill="var(--teal)"/><line x1="530" y1="146" x2="563" y2="120" stroke="var(--teal)" stroke-width="1.4"/><polygon points="563,120 554,121 558,128" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">key: user-filled concrete values (production) always go via parameters, never into the SQL body—parameterized = injection-safe (Lesson 23)</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">SQL separate from values: the template is cacheable/auditable, values bound per call, malicious input can't alter the structure</text>
+</svg>
+<div class="figcap"><b>the compiler translates item by item via the dictionary</b>: <code>queryBuilder.ts</code>'s <code>build()</code> chains <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858). Filters use FilterList's <code>apply()</code> to produce <b>SQL+parameters</b>—user values are bound as parameters, never spliced into the body (same injection prevention as Lesson 23).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/query/server/queryBuilder.ts · queryExecutor.ts</span><span class="ln">declaration → SQL → execute</span></div>
+  <pre class="code"><span class="cm">// 1) a declarative query (from widget / monitor / experiment aggregation, all this shape)</span>
+<span class="kw">const</span> query = { view: <span class="st">"observations"</span>, dimensions: [{ field: <span class="st">"model"</span> }],
+  metrics: [{ measure: <span class="st">"totalCost"</span>, aggregation: <span class="st">"sum"</span> }],
+  filters: [{ column: <span class="st">"environment"</span>, operator: <span class="st">"="</span>, value: <span class="st">"production"</span> }] };
+
+<span class="cm">// 2) compile: consult the data model, assemble parameterized SQL (GROUP BY/aggregate/WHERE/bucket/JOIN)</span>
+<span class="kw">const</span> { sql, parameters } = <span class="kw">new</span> QueryBuilder(chartConfig, version).build(query, projectId);
+<span class="cm">// sql:  SELECT model, sum(total_cost) … WHERE environment = {p_env} GROUP BY model</span>
+<span class="cm">// parameters: { p_env: "production" }   ← values go via parameters, not spliced into SQL</span>
+
+<span class="cm">// 3) execute: queryExecutor sends sql+parameters to ClickHouse</span></pre>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>fetch the view dictionary</h4><p><code>getViewDeclaration(view, version)</code> gets that view's dimension/measure dictionary by version—every later step translates against it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>dimensions → GROUP BY</h4><p><code>mapDimensions</code> translates each logical dimension into SELECT columns and GROUP BY; the time dimension goes to <code>applyBucketingDimension</code> for granularity bucketing.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>measures → aggregations</h4><p><code>mapMetrics</code> + <code>translateAggregation</code> turn measures into count()/sum()/avg() aggregation functions.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>filters → parameterized WHERE</h4><p><code>mapFilters</code> + <code>buildWhereClause</code> use FilterList.apply to produce WHERE, binding user values as parameters.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>join + emit SQL</h4><p>When crossing tables, <code>buildJoins</code> adds JOINs; finally it assembles <code>{ sql, parameters }</code>, handed to <code>queryExecutor</code> to run on ClickHouse.</p></div></div>
+</div>
+
+
+<h2>Why it's worth building this engine</h2>
+<p>Compiling a declaration to SQL could let each widget assemble strings itself. But Langfuse insists on one unified engine, because it solves four problems at once:</p>
+
+<table class="t">
+  <thead><tr><th>design</th><th>what it solves</th><th>echoes</th></tr></thead>
+  <tbody>
+    <tr><td><b>semantic layer</b> (logical name↔SQL)</td><td>rename/restructure physical columns—only the dictionary changes, all queries untouched; users needn't know the physical schema</td><td>decouple "what you want" from "how it's stored"</td></tr>
+    <tr><td><b>parameterization</b> (values via parameters)</td><td>user values never spliced into the SQL body, rooting out SQL injection</td><td>same as Lesson 23's FilterState</td></tr>
+    <tr><td><b>view versioning</b> (v1/v2)</td><td>as the physical schema evolves, old queries still compile against the old view, not breaking history</td><td>Lessons 34/37 "immutable + evolving"</td></tr>
+    <tr><td><b>one engine, many consumers</b></td><td>dashboards/monitors/experiment-aggregation share it, keeping metric definitions globally consistent</td><td>Lesson 40 "one query shape, three reuses"</td></tr>
+  </tbody>
+</table>
+
+<p>Connect these four and the query engine is really a small <strong>"metrics language + compiler"</strong>: the upper layers describe "which metric I want" in a <strong>declarative, physical-agnostic, injection-safe</strong> little language, and the engine renders it <strong>correctly, consistently, safely</strong> into SQL ClickHouse can run. It's the same idea as Lesson 23 compiling FilterState into filter SQL, just upgraded from "filtering" to full "aggregation queries". <strong>Declaration on top, compilation below, physical details sealed firmly inside the engine</strong>—the underlying reason Langfuse can make dashboards, monitors, and the API always compute the same number for the same metric.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why build a semantic layer instead of letting widgets write SQL directly?</strong> Direct SQL seems easier but plants three landmines. One is <strong>coupling</strong>: every widget hardcodes physical column names, so the day ClickHouse restructures a table or renames a column, hundreds of widgets break together and must be fixed one by one. The semantic layer collects "logical name → physical SQL" into one dictionary, so a physical change touches only the dictionary, the upper layer unmoved. Two is <strong>safety</strong>: letting each widget assemble SQL spreads injection-prevention responsibility to everyone who writes a widget—someone will forget or get it wrong, and one hole is one data leak. A unified engine welds parameterization into its single exit, so <strong>injection safety is backstopped by structure</strong>, not diligence. Three is <strong>consistency</strong>: SQL scattered everywhere eventually computes different numbers for the same metric. Collecting metric definitions into the semantic layer gives one algorithm company-wide. <strong>One engine buys decoupling, safety, and consistency all at once</strong>—that's why it's worth the extra few thousand lines.<br><br>
+  <strong>Why do views carry v1/v2 versions?</strong> Because <strong>the physical schema evolves, but historical queries shouldn't break for it</strong>. ClickHouse tables get refactored, columns split and merge, new materialized views appear for performance—all normal evolution of the underlying. If a query binds tightly to the current physical structure, then every underlying move risks miscomputing or erroring every saved widget, monitor, and API query. Introducing versions to a view gives "semantics" an immutable snapshot too: a v1 query forever compiles against the v1 dictionary, even if the underlying has long migrated to v2's new tables. This is the <strong>same belief echoing at the query layer</strong> as Lesson 34's dataset-item versions and Lesson 37's prompt versions—<strong>the underlying can evolve boldly because the upper layer is protected by a stable layer of versioned semantics</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>The query engine = a declarative-query → SQL compiler</strong>: a widget's <code>view+dimensions+metrics+filters</code> declaration is compiled to ClickHouse SQL and executed by it—the engine behind Lesson 40's dashboards.</li>
+    <li><strong>Semantic layer (data model)</strong>: declares <code>dimensions</code>/<code>measures</code> per view, each mapping a logical name to real SQL (e.g. <code>name</code>→<code>traces.name</code>, time→<code>formatDateTime(...)</code>)—the upper layer never touches physical columns.</li>
+    <li><strong>Compiler (QueryBuilder.build)</strong>: consults the dictionary to translate dimensions into GROUP BY, measures into aggregations, time into buckets, filters into WHERE, joining tables when needed, producing <strong>SQL + parameters</strong>.</li>
+    <li><strong>Parameterized = injection-safe</strong>: user-filled values are bound as parameters, never spliced into the SQL body—Lesson 23's FilterState discipline carried into aggregation queries, injection safety backstopped by structure.</li>
+    <li><strong>One engine, four payoffs</strong>: the semantic layer decouples physical, parameterization ensures safety, view v1/v2 versioning protects history, one engine for many consumers keeps definitions consistent—dashboards/monitors/experiments always the same number for the same metric.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's query engine has a 'semantic layer' (data model). What is its core role?</div>
+  <ol class="opts">
+    <li>caching query results</li>
+    <li>compressing ClickHouse data</li>
+    <li>mapping friendly logical names (e.g. dimension name, measure totalCost) to real ClickHouse columns/expressions (traces.name, sum(total_cost)), so the upper layer never touches physical columns—a physical rename/restructure only changes the dictionary</li>
+    <li>translating SQL into natural language</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. dataModel.ts declares dimensions/measures per view, each shaped like { sql: "traces.name", alias: "name" }, mapping logical names to real SQL (even expressions like formatDateTime). A widget only references logical names, never physical columns. So a physical rename/restructure only touches the dictionary, leaving hundreds of widgets unmoved—decoupling 'what you want' from 'how it's stored'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. When QueryBuilder.build() compiles filter conditions into SQL, how are user-filled concrete values (e.g. environment="production") handled?</div>
+  <ol class="opts">
+    <li>stored in Redis then referenced</li>
+    <li>bound as parameters, never spliced into the SQL body (the SQL holds only {placeholders}, values bound per call)—same as Lesson 23's FilterState, rooting out SQL injection structurally</li>
+    <li>directly string-concatenated into the SQL</li>
+    <li>HTML-escaped then concatenated</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. mapFilters/buildWhereClause use FilterList's apply() to produce SQL+parameters: the SQL template has {placeholders}, user values go into a parameters dict, safely bound by the ClickHouse driver. SQL separate from values, the template cacheable/auditable, malicious input can't alter the structure. This is the same injection-prevention discipline as Lesson 23 compiling FilterState into filter SQL, carried into aggregation—injection safety backstopped by structure, not each developer's diligence.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse's views carry v1/v2 versions. Why does the query engine introduce versions to 'views' too?</div>
+  <ol class="opts">
+    <li>v2 queries are faster than v1</li>
+    <li>to support multiple ClickHouse instances</li>
+    <li>version numbers are used for billing</li>
+    <li>because the physical schema evolves (table refactors, column splits, materialized views), yet historical queries shouldn't break for it; a v1 query forever compiles against the v1 dictionary even after the underlying migrates to v2—same belief as Lessons 34/37's 'immutable + evolving'</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. ClickHouse tables get refactored, columns split/merge, materialized views added for performance—normal underlying evolution. If a query binds to the current physical structure, every underlying move risks miscomputing/erroring every saved widget/monitor/API query. Versioning a view gives semantics an immutable snapshot: a v1 query forever compiles against v1. Same belief as Lesson 34's dataset-item versions and Lesson 37's prompt versions—the underlying evolves boldly because the upper layer is protected by stable versioned semantics.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>The query engine is essentially a 'semantic layer + compiler'—a common industry pattern (Cube, LookML, Malloy). What does 'declarative + physical-agnostic + injection-safe' buy, and at what cost (the engine must support every needed query shape, escaping to raw SQL is limited)? If your team built an internal analytics platform, would you choose 'everyone writes SQL' or 'a unified semantic layer', and why? Can the two coexist?</li>
   </ul>
 </div>
 </div>

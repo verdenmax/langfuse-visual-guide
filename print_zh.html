@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 40 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 41 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -377,6 +377,7 @@ details[open] > summary { list-style: none; }
   <li>Prompt 服务与缓存</li>
   <li>Playground 与 LLM 连接</li>
   <li>仪表盘与 widget 系统</li>
+  <li>查询引擎</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -8017,6 +8018,190 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>「一份查询形状，三处复用」是 Langfuse 保证指标口径一致的核心招式。回想你做过或用过的数据产品：是否遇到过「同一个指标在不同页面/报表/告警里算出不同数」的口径漂移？如果让你设计一套机制根治它，你会怎么做？声明式查询 + 统一引擎的代价（灵活性受限、引擎要支持所有需求）你怎么权衡？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>查询引擎</h1>
+
+<p class="lead">
+上一课的 widget 声明了 <code>view + dimensions + metrics + filters</code>。但 ClickHouse 只懂 <strong>SQL</strong>，根本不认识这些声明。中间那座桥，就是<strong>查询引擎（query engine）</strong>——它把这套声明<strong>编译成 SQL</strong>，跑出数据。这一课拆开它，看清两个核心部件：一个<strong>语义层</strong>（data model，把「成本」「按模型」这样的友好逻辑名，映射到真实的 ClickHouse 列与表达式），和一个<strong>编译器</strong>（<code>QueryBuilder.build()</code>，把声明拼装成<strong>参数化</strong>的 SQL）。
+理解了它，你就明白第 40 课仪表盘、第 33 课监控、第 35 课实验聚合<strong>为何能共用一份查询形状</strong>——因为它们背后都是这同一台编译器；也会再次见到第 23 课「参数化防注入」的纪律，在聚合查询里如何贯彻。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  查询引擎像餐厅里的<strong>「翻译官 + 一本菜单」</strong>。你（widget）用<strong>人话点菜</strong>：「按模型分组、统计总成本，只看 production 的」。翻译官（<code>QueryBuilder</code>）翻开一本<strong>菜单</strong>（data model）——菜单上每道「逻辑菜名」都标注着<strong>后厨用的真实食材和做法</strong>（「总成本」=后厨表里的 <code>sum(total_cost)</code> 列、「按模型」=按 <code>provided_model_name</code> 分组）。
+  翻译官照着菜单，把你的人话<strong>精确翻译成后厨（ClickHouse）能执行的工单</strong>（SQL）。妙处有二：其一，你<strong>永远不用知道</strong>后厨的食材叫什么、放在哪个冷柜——菜单这层把你和后厨的<strong>物理细节</strong>隔开了，后厨改了食材摆放（换列名、改表结构），只要菜单跟着更新，你的点法<strong>一字不用改</strong>。其二，凡是你填的「具体值」（如 <code>production</code>），翻译官都<strong>另用一张小纸条夹着递进去</strong>（参数化），绝不直接写进工单正文——这样哪怕你写个奇怪的店名，也绝<strong>串改不了工单本身</strong>（防 SQL 注入，第 23 课）。
+</div>
+
+
+<h2>语义层：把逻辑名翻译成真实 SQL</h2>
+<p>引擎的第一个部件是 <strong>data model（数据模型 / 语义层）</strong>。它为每个 <code>view</code>（traces / observations / scores-numeric / scores-categorical）声明一份「字典」：这个视图有哪些 <strong>dimensions（维度，可分组的字段）</strong>、哪些 <strong>measures（度量，可聚合的量）</strong>，以及它们各自对应<strong>哪一段真实的 ClickHouse SQL</strong>。比如维度 <code>name</code> 对应 <code>traces.name</code>、时间维度对应一段 <code>formatDateTime(...)</code>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="语义层：widget 用逻辑名 view/dimensions/metrics，data model 把每个逻辑名映射到真实 ClickHouse 列或表达式，比如维度 name 映射 traces.name、度量 count 映射 count() 聚合、时间映射 formatDateTime">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">data model：逻辑名 ↔ 真实 SQL 的字典</text>
+  <rect x="30" y="44" width="180" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="120" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">你说的（逻辑名）</text><rect x="46" y="76" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="92" text-anchor="middle" font-size="7" fill="var(--ink)">view: traces</text><rect x="46" y="106" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="122" text-anchor="middle" font-size="7" fill="var(--ink)">dimension: name</text><rect x="46" y="136" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="120" y="152" text-anchor="middle" font-size="7" fill="var(--ink)">metric: count</text><text x="120" y="176" text-anchor="middle" font-size="6.4" fill="var(--muted)">友好、稳定、与物理解耦</text>
+  <rect x="270" y="64" width="180" height="100" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">data model（字典）</text><text x="360" y="105" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">每个逻辑名 →</text><text x="360" y="119" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">{ sql, alias }</text><text x="360" y="138" text-anchor="middle" font-size="6.4" fill="var(--muted)">还声明可分组维度、可聚合度量</text><text x="360" y="152" text-anchor="middle" font-size="6.4" fill="var(--muted)">支持 v1/v2 版本</text>
+  <rect x="510" y="44" width="180" height="140" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">后厨懂的（真实 SQL）</text><rect x="526" y="76" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="92" text-anchor="middle" font-size="6.6" fill="var(--ink)">FROM traces …</text><rect x="526" y="106" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="122" text-anchor="middle" font-size="6.6" fill="var(--ink)">traces.name</text><rect x="526" y="136" width="148" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="152" text-anchor="middle" font-size="6.6" fill="var(--ink)">count(*)</text><text x="600" y="176" text-anchor="middle" font-size="6.4" fill="var(--muted)">物理列名、可演化</text>
+  <line x1="210" y1="114" x2="268" y2="114" stroke="var(--accent)" stroke-width="1.5"/><polygon points="268,114 259,110 259,118" fill="var(--accent)"/>
+  <line x1="450" y1="114" x2="508" y2="114" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,114 499,110 499,118" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">语义层把「你说的」和「后厨懂的」隔开：物理列改了名，只动字典，所有 widget/监控/API 的查询照常</text>
+</svg>
+<div class="figcap"><b>语义层 = 一本逻辑名↔SQL 的字典</b>：<code>dataModel.ts</code> 为每个 view 声明 <code>dimensions</code> 与 <code>measures</code>，每项形如 <code>{ sql: "traces.name", alias: "name" }</code>（维度），时间维度甚至是 <code>formatDateTime(traces.timestamp, …)</code> 这样的表达式。源码：<code>packages/shared/src/features/query/dataModel.ts:10-70</code>、<code>types.ts:9</code>（viewDeclaration）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/query/dataModel.ts</span><span class="ln">一个 view 的声明</span></div>
+  <pre class="code"><span class="cm">// 每个 view 声明：有哪些维度/度量，各自对应哪段真实 SQL</span>
+{
+  name: <span class="st">"traces"</span>,
+  dimensions: {
+    name:        { sql: <span class="st">"traces.name"</span>,      alias: <span class="st">"name"</span> },        <span class="cm">// 逻辑名 → 物理列</span>
+    environment: { sql: <span class="st">"traces.environment"</span>, alias: <span class="st">"environment"</span> },
+    timestampMonth: { sql: <span class="st">"formatDateTime(traces.timestamp, '%Y-%m')"</span>, … },  <span class="cm">// 可是表达式</span>
+  },
+  measures: { count: { … }, totalCost: { sql: <span class="st">"sum(total_cost)"</span>, … }, … },   <span class="cm">// 可聚合的量</span>
+}
+<span class="cm">// widget 只引用 "name"/"totalCost" 这些逻辑名，永不直接碰物理列</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>view（数据源）</th><th>聚合的对象</th><th>典型维度 / 度量</th></tr></thead>
+  <tbody>
+    <tr><td><code>traces</code></td><td>整条 trace</td><td>维度：name、environment、userId；度量：count、总成本</td></tr>
+    <tr><td><code>observations</code></td><td>单步观测（含 generation）</td><td>维度：model、type；度量：count、token 数、成本、延迟</td></tr>
+    <tr><td><code>scores-numeric</code></td><td>数值分</td><td>维度：name、source；度量：avg(value)、count</td></tr>
+    <tr><td><code>scores-categorical</code></td><td>分类分</td><td>维度：name、stringValue；度量：count、各类占比</td></tr>
+  </tbody>
+</table>
+<p>四个 view 各对应一类核心数据（呼应第 8、13、28 课的领域模型）。一个 widget 选定一个 view，再从它声明好的维度/度量里挑要分组、要算的——<strong>能问什么，由 view 的字典划定边界</strong>，既好用又防越界。</p>
+
+
+<h2>编译器：把声明拼成参数化 SQL</h2>
+<p>第二个部件是 <code>QueryBuilder.build()</code>——真正的<strong>编译器</strong>。它拿到一个声明式的 <code>QueryType</code>，对照 data model，分几步把它拼成完整 SQL：<strong>维度</strong>翻译成 <code>SELECT … GROUP BY</code> 的列（<code>mapDimensions</code>）、<strong>度量</strong>翻译成 <code>count()/sum()/avg()</code> 等聚合（<code>mapMetrics</code> + <code>translateAggregation</code>）、<strong>时间</strong>按粒度分桶（<code>applyBucketingDimension</code>，做时序图）、<strong>过滤</strong>翻译成 <code>WHERE</code>，必要时<strong>连表</strong>（<code>buildJoins</code>）。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 225" role="img" aria-label="QueryBuilder.build 编译流程：声明式 QueryType 进入，依次经 mapDimensions 生成 GROUP BY 列、mapMetrics 生成聚合、applyBucketingDimension 做时间分桶、mapFilters 生成参数化 WHERE、buildJoins 连表，产出 SQL 加参数交给 queryExecutor 跑 ClickHouse">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">QueryBuilder.build()：声明 → 参数化 SQL</text>
+  <rect x="20" y="50" width="120" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="70" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">QueryType（声明）</text><text x="80" y="88" text-anchor="middle" font-size="6.4" fill="var(--muted)">view</text><text x="80" y="102" text-anchor="middle" font-size="6.4" fill="var(--muted)">dimensions</text><text x="80" y="116" text-anchor="middle" font-size="6.4" fill="var(--muted)">metrics</text><text x="80" y="130" text-anchor="middle" font-size="6.4" fill="var(--muted)">filters</text><text x="80" y="144" text-anchor="middle" font-size="6.4" fill="var(--muted)">timeDimension</text>
+  <rect x="180" y="44" width="160" height="132" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="260" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">QueryBuilder.build()</text><text x="260" y="82" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapDimensions → GROUP BY</text><text x="260" y="98" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapMetrics → count/sum/avg</text><text x="260" y="114" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">applyBucketing → 时间分桶</text><text x="260" y="130" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">mapFilters → 参数化 WHERE</text><text x="260" y="146" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">buildJoins → 必要时连表</text><text x="260" y="164" text-anchor="middle" font-size="6.2" fill="var(--muted)">对照 data model 翻译每一项</text>
+  <rect x="380" y="56" width="150" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="455" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">SQL（带 {占位符}）</text><text x="455" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">SELECT … GROUP BY …</text><text x="455" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">WHERE env = {p1}</text>
+  <rect x="380" y="124" width="150" height="44" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="455" y="142" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">parameters</text><text x="455" y="157" text-anchor="middle" font-size="6.2" fill="var(--muted)">{ p1: "production" }</text>
+  <rect x="565" y="80" width="135" height="62" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="632" y="104" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">queryExecutor</text><text x="632" y="121" text-anchor="middle" font-size="6.4" fill="var(--muted)">把 SQL+参数发给 ClickHouse</text>
+  <line x1="140" y1="110" x2="178" y2="110" stroke="var(--accent)" stroke-width="1.5"/><polygon points="178,110 169,106 169,114" fill="var(--accent)"/>
+  <line x1="340" y1="92" x2="378" y2="86" stroke="var(--accent)" stroke-width="1.4"/><polygon points="378,86 369,85 371,93" fill="var(--accent)"/><line x1="340" y1="130" x2="378" y2="142" stroke="var(--teal)" stroke-width="1.4"/><polygon points="378,142 369,138 369,146" fill="var(--teal)"/>
+  <line x1="530" y1="100" x2="563" y2="108" stroke="var(--teal)" stroke-width="1.4"/><polygon points="563,108 554,105 555,113" fill="var(--teal)"/><line x1="530" y1="146" x2="563" y2="120" stroke="var(--teal)" stroke-width="1.4"/><polygon points="563,120 554,121 558,128" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">关键：用户填的具体值（production）永远走 parameters，不拼进 SQL 正文——参数化防注入（第23课）</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">SQL 与值分离：模板可缓存/可审计，值随调用绑定，恶意输入串改不了结构</text>
+</svg>
+<div class="figcap"><b>编译器对照字典逐项翻译</b>：<code>queryBuilder.ts</code> 的 <code>build()</code> 串起 <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858)。过滤用 FilterList 的 <code>apply()</code> 产出 <b>SQL+参数</b>——用户值绑成参数，绝不拼进正文（第 23 课同款防注入）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/query/server/queryBuilder.ts · queryExecutor.ts</span><span class="ln">声明 → SQL → 执行</span></div>
+  <pre class="code"><span class="cm">// 1) 声明式查询（来自 widget / monitor / 实验聚合，都是这个形状）</span>
+<span class="kw">const</span> query = { view: <span class="st">"observations"</span>, dimensions: [{ field: <span class="st">"model"</span> }],
+  metrics: [{ measure: <span class="st">"totalCost"</span>, aggregation: <span class="st">"sum"</span> }],
+  filters: [{ column: <span class="st">"environment"</span>, operator: <span class="st">"="</span>, value: <span class="st">"production"</span> }] };
+
+<span class="cm">// 2) 编译：对照 data model，拼成参数化 SQL（GROUP BY/聚合/WHERE/分桶/JOIN）</span>
+<span class="kw">const</span> { sql, parameters } = <span class="kw">new</span> QueryBuilder(chartConfig, version).build(query, projectId);
+<span class="cm">// sql:  SELECT model, sum(total_cost) … WHERE environment = {p_env} GROUP BY model</span>
+<span class="cm">// parameters: { p_env: "production" }   ← 值走参数，不拼进 SQL</span>
+
+<span class="cm">// 3) 执行：queryExecutor 把 sql+parameters 发给 ClickHouse</span></pre>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>取 view 字典</h4><p><code>getViewDeclaration(view, version)</code> 按版本拿到该 view 的维度/度量字典——后续每一步都对照它翻译。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>维度 → GROUP BY</h4><p><code>mapDimensions</code> 把每个逻辑维度译成 SELECT 列和 GROUP BY；时间维度交给 <code>applyBucketingDimension</code> 按粒度分桶。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>度量 → 聚合</h4><p><code>mapMetrics</code> + <code>translateAggregation</code> 把度量译成 count()/sum()/avg() 等聚合函数。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>过滤 → 参数化 WHERE</h4><p><code>mapFilters</code> + <code>buildWhereClause</code> 用 FilterList.apply 产出 WHERE，用户值绑成 parameters。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>连表 + 出 SQL</h4><p>需要跨表时 <code>buildJoins</code> 补 JOIN；最终拼出 <code>{ sql, parameters }</code>，交 <code>queryExecutor</code> 跑 ClickHouse。</p></div></div>
+</div>
+
+
+<h2>为什么值得造这台引擎</h2>
+<p>把声明编译成 SQL，本可以让每个 widget 自己拼字符串。但 Langfuse 偏要造一台统一引擎，因为它一次解决了四个问题：</p>
+
+<table class="t">
+  <thead><tr><th>设计</th><th>解决什么</th><th>呼应</th></tr></thead>
+  <tbody>
+    <tr><td><b>语义层</b>（逻辑名↔SQL）</td><td>物理列改名/换表，只改字典，所有查询不动；用户也无需懂物理 schema</td><td>解耦「想要什么」与「怎么存」</td></tr>
+    <tr><td><b>参数化</b>（值走 parameters）</td><td>用户值绝不拼进 SQL 正文，根除 SQL 注入</td><td>第 23 课 FilterState 同款</td></tr>
+    <tr><td><b>视图版本化</b>（v1/v2）</td><td>物理 schema 演进时，老查询仍按老视图编译，不破坏历史</td><td>第 34/37 课「不可变 + 演进」</td></tr>
+    <tr><td><b>一引擎多消费</b></td><td>仪表盘/监控/实验聚合共用，指标口径全局一致</td><td>第 40 课「一份查询形状三处复用」</td></tr>
+  </tbody>
+</table>
+
+<p>把这四点连起来看，查询引擎其实是一个<strong>小型「指标语言 + 编译器」</strong>：上层用一种<strong>声明式、与物理无关、注入安全</strong>的小语言描述「我要什么指标」，引擎负责把它<strong>正确、一致、安全</strong>地落成 ClickHouse 能跑的 SQL。这和第 23 课把 FilterState 编译成过滤 SQL 是同一种思路，只是从「过滤」升级到了完整的「聚合查询」。<strong>声明在上、编译在下，物理细节被牢牢封在引擎里</strong>——这正是 Langfuse 能让仪表盘、监控、API 对同一指标永远算出同一个数的底层原因。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么要造一个语义层，而不让 widget 直接写 SQL？</strong> 直接写 SQL 看似省事，实则埋三颗雷。其一是<strong>耦合</strong>：每个 widget 都硬编码物理列名，哪天 ClickHouse 改了表结构、换了列名，成百上千张 widget 一起崩，得逐个改。语义层把「逻辑名→物理 SQL」收进一本字典，物理一变只改字典，上层岿然不动。其二是<strong>安全</strong>：让每个 widget 自己拼 SQL，就等于把防注入的责任摊给每个写 widget 的人——总有人会忘、会拼错，一个口子就是一次数据泄露。统一引擎把参数化焊死在唯一出口，<strong>注入安全靠结构兜底</strong>，不靠自觉。其三是<strong>一致</strong>：散落各处的 SQL 迟早对同一指标算出不同数。把指标定义收进语义层，全公司一种算法。<strong>一台引擎，同时买下解耦、安全、一致三件大事</strong>——这就是为什么值得为它多写这几千行。<br><br>
+  <strong>为什么 view 要带 v1/v2 版本？</strong> 因为<strong>物理 schema 会演进，但历史查询不该因此失效</strong>。ClickHouse 表会重构、列会拆分合并、为性能引入新的物化视图——这些都是底层的正常演化。如果查询直接绑死当前物理结构，那每次底层一动，所有保存好的 widget、monitor、API 查询都可能算错或报错。给 view 引入版本，等于让「语义」也有了不可变的快照：一个 v1 的查询永远按 v1 的字典编译，哪怕底层早已迁到 v2 的新表。这和第 34 课数据项版本、第 37 课 prompt 版本是<strong>同一种信念在查询层的回响</strong>——<strong>底层可以大胆演进，因为上层被一层稳定的版本化语义保护着</strong>。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>查询引擎 = 声明式查询 → SQL 的编译器</strong>：widget 的 <code>view+dimensions+metrics+filters</code> 声明，由它编译成 ClickHouse SQL 并执行，是第 40 课仪表盘背后的发动机。</li>
+    <li><strong>语义层（data model）</strong>：为每个 view 声明 <code>dimensions</code>/<code>measures</code>，每项把逻辑名映射到真实 SQL（如 <code>name</code>→<code>traces.name</code>、时间→<code>formatDateTime(...)</code>）——上层永不直接碰物理列。</li>
+    <li><strong>编译器（QueryBuilder.build）</strong>：对照字典把维度译成 GROUP BY、度量译成聚合、时间分桶、过滤译成 WHERE、必要时连表，产出 <strong>SQL + 参数</strong>。</li>
+    <li><strong>参数化防注入</strong>：用户填的值绑成 parameters、绝不拼进 SQL 正文——第 23 课 FilterState 的纪律在聚合查询里同样贯彻，注入安全靠结构兜底。</li>
+    <li><strong>一引擎四收益</strong>：语义层解耦物理、参数化保安全、视图 v1/v2 版本化护历史、一引擎多消费保口径一致——仪表盘/监控/实验对同一指标永远同一个数。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的查询引擎有一个「语义层」（data model）。它的核心作用是什么？</div>
+  <ol class="opts">
+    <li>缓存查询结果</li>
+    <li>压缩 ClickHouse 数据</li>
+    <li>把友好的逻辑名（如维度 name、度量 totalCost）映射到真实的 ClickHouse 列/表达式（traces.name、sum(total_cost)），让上层永不直接碰物理列——物理 schema 改名换表只需改字典</li>
+    <li>把 SQL 翻译成自然语言</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。dataModel.ts 为每个 view 声明 dimensions/measures，每项形如 { sql: "traces.name", alias: "name" }，把逻辑名映射到真实 SQL（甚至是 formatDateTime 这样的表达式）。widget 只引用逻辑名，永不碰物理列。于是物理列改名/换表只需改字典，成百上千张 widget 不动——这是「想要什么」与「怎么存」的解耦。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. QueryBuilder.build() 把过滤条件编译进 SQL 时，用户填的具体值（如 environment="production"）是怎么处理的？</div>
+  <ol class="opts">
+    <li>存进 Redis 再引用</li>
+    <li>绑成 parameters、绝不拼进 SQL 正文（SQL 里只放 {占位符}，值随调用绑定）——和第23课 FilterState 同款，从结构上根除 SQL 注入</li>
+    <li>直接字符串拼接进 SQL</li>
+    <li>先做 HTML 转义再拼接</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。mapFilters/buildWhereClause 用 FilterList 的 apply() 产出 SQL+参数：SQL 模板里是 {占位符}，用户值放进 parameters 字典，由 ClickHouse 驱动安全绑定。SQL 与值分离，模板可缓存/审计，恶意输入串改不了结构。这正是第23课把 FilterState 编译成过滤 SQL 的同一种防注入纪律，在聚合查询里同样贯彻——注入安全靠结构兜底，不靠每个开发者自觉。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse 的 view 带有 v1/v2 版本。为什么查询引擎要给「视图」也引入版本？</div>
+  <ol class="opts">
+    <li>v2 比 v1 查询更快</li>
+    <li>为了支持多个 ClickHouse 实例</li>
+    <li>版本号用于计费</li>
+    <li>因为物理 schema 会演进（表重构、列拆分、加物化视图），但历史查询不该因此失效；一个 v1 查询永远按 v1 字典编译，底层迁到 v2 也不破坏——和第34/37课「不可变+演进」同一信念</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。ClickHouse 表会重构、列会拆分合并、为性能加物化视图——底层正常演化。若查询绑死当前物理结构，每次底层一动，所有保存的 widget/monitor/API 查询都可能算错或报错。给 view 引入 v1/v2，等于给「语义」也加了不可变快照：v1 查询永远按 v1 编译。这和第34课数据项版本、第37课 prompt 版本同一信念——底层敢大胆演进，因为上层被稳定的版本化语义保护。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>查询引擎本质是一个「语义层 + 编译器」——这模式在业界很常见（Cube、LookML、Malloy 等）。它用「声明式 + 物理无关 + 注入安全」换取了什么？又付出了什么代价（引擎得支持所有需要的查询形状，逃逸到原生 SQL 受限）？如果你的团队要做内部分析平台，你会选「人人写 SQL」还是「统一语义层」，为什么？两者能并存吗？</li>
   </ul>
 </div>
 </div>

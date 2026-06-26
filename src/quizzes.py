@@ -2845,6 +2845,76 @@ QUIZZES = {
             },
         ],
     },
+    "41-query-engine.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的查询引擎有一个「语义层」（data model）。它的核心作用是什么？",
+                    "en": "Langfuse's query engine has a 'semantic layer' (data model). What is its core role?",
+                },
+                "opts": [
+                    {
+                        "zh": "把友好的逻辑名（如维度 name、度量 totalCost）映射到真实的 ClickHouse 列/表达式（traces.name、sum(total_cost)），让上层永不直接碰物理列——物理 schema 改名换表只需改字典",
+                        "en": "mapping friendly logical names (e.g. dimension name, measure totalCost) to real ClickHouse columns/expressions (traces.name, sum(total_cost)), so the upper layer never touches physical columns—a physical rename/restructure only changes the dictionary",
+                    },
+                    {"zh": "缓存查询结果", "en": "caching query results"},
+                    {"zh": "把 SQL 翻译成自然语言", "en": "translating SQL into natural language"},
+                    {"zh": "压缩 ClickHouse 数据", "en": "compressing ClickHouse data"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "dataModel.ts 为每个 view 声明 dimensions/measures，每项形如 { sql: \"traces.name\", alias: \"name\" }，把逻辑名映射到真实 SQL（甚至是 formatDateTime 这样的表达式）。widget 只引用逻辑名，永不碰物理列。于是物理列改名/换表只需改字典，成百上千张 widget 不动——这是「想要什么」与「怎么存」的解耦。",
+                    "en": "dataModel.ts declares dimensions/measures per view, each shaped like { sql: \"traces.name\", alias: \"name\" }, mapping logical names to real SQL (even expressions like formatDateTime). A widget only references logical names, never physical columns. So a physical rename/restructure only touches the dictionary, leaving hundreds of widgets unmoved—decoupling 'what you want' from 'how it's stored'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "QueryBuilder.build() 把过滤条件编译进 SQL 时，用户填的具体值（如 environment=\"production\"）是怎么处理的？",
+                    "en": "When QueryBuilder.build() compiles filter conditions into SQL, how are user-filled concrete values (e.g. environment=\"production\") handled?",
+                },
+                "opts": [
+                    {
+                        "zh": "绑成 parameters、绝不拼进 SQL 正文（SQL 里只放 {占位符}，值随调用绑定）——和第23课 FilterState 同款，从结构上根除 SQL 注入",
+                        "en": "bound as parameters, never spliced into the SQL body (the SQL holds only {placeholders}, values bound per call)—same as Lesson 23's FilterState, rooting out SQL injection structurally",
+                    },
+                    {"zh": "直接字符串拼接进 SQL", "en": "directly string-concatenated into the SQL"},
+                    {"zh": "先做 HTML 转义再拼接", "en": "HTML-escaped then concatenated"},
+                    {"zh": "存进 Redis 再引用", "en": "stored in Redis then referenced"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "mapFilters/buildWhereClause 用 FilterList 的 apply() 产出 SQL+参数：SQL 模板里是 {占位符}，用户值放进 parameters 字典，由 ClickHouse 驱动安全绑定。SQL 与值分离，模板可缓存/审计，恶意输入串改不了结构。这正是第23课把 FilterState 编译成过滤 SQL 的同一种防注入纪律，在聚合查询里同样贯彻——注入安全靠结构兜底，不靠每个开发者自觉。",
+                    "en": "mapFilters/buildWhereClause use FilterList's apply() to produce SQL+parameters: the SQL template has {placeholders}, user values go into a parameters dict, safely bound by the ClickHouse driver. SQL separate from values, the template cacheable/auditable, malicious input can't alter the structure. This is the same injection-prevention discipline as Lesson 23 compiling FilterState into filter SQL, carried into aggregation—injection safety backstopped by structure, not each developer's diligence.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 view 带有 v1/v2 版本。为什么查询引擎要给「视图」也引入版本？",
+                    "en": "Langfuse's views carry v1/v2 versions. Why does the query engine introduce versions to 'views' too?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为物理 schema 会演进（表重构、列拆分、加物化视图），但历史查询不该因此失效；一个 v1 查询永远按 v1 字典编译，底层迁到 v2 也不破坏——和第34/37课「不可变+演进」同一信念",
+                        "en": "because the physical schema evolves (table refactors, column splits, materialized views), yet historical queries shouldn't break for it; a v1 query forever compiles against the v1 dictionary even after the underlying migrates to v2—same belief as Lessons 34/37's 'immutable + evolving'",
+                    },
+                    {"zh": "为了支持多个 ClickHouse 实例", "en": "to support multiple ClickHouse instances"},
+                    {"zh": "v2 比 v1 查询更快", "en": "v2 queries are faster than v1"},
+                    {"zh": "版本号用于计费", "en": "version numbers are used for billing"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "ClickHouse 表会重构、列会拆分合并、为性能加物化视图——底层正常演化。若查询绑死当前物理结构，每次底层一动，所有保存的 widget/monitor/API 查询都可能算错或报错。给 view 引入 v1/v2，等于给「语义」也加了不可变快照：v1 查询永远按 v1 编译。这和第34课数据项版本、第37课 prompt 版本同一信念——底层敢大胆演进，因为上层被稳定的版本化语义保护。",
+                    "en": "ClickHouse tables get refactored, columns split/merge, materialized views added for performance—normal underlying evolution. If a query binds to the current physical structure, every underlying move risks miscomputing/erroring every saved widget/monitor/API query. Versioning a view gives semantics an immutable snapshot: a v1 query forever compiles against v1. Same belief as Lesson 34's dataset-item versions and Lesson 37's prompt versions—the underlying evolves boldly because the upper layer is protected by stable versioned semantics.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "查询引擎本质是一个「语义层 + 编译器」——这模式在业界很常见（Cube、LookML、Malloy 等）。它用「声明式 + 物理无关 + 注入安全」换取了什么？又付出了什么代价（引擎得支持所有需要的查询形状，逃逸到原生 SQL 受限）？如果你的团队要做内部分析平台，你会选「人人写 SQL」还是「统一语义层」，为什么？两者能并存吗？",
+                "en": "The query engine is essentially a 'semantic layer + compiler'—a common industry pattern (Cube, LookML, Malloy). What does 'declarative + physical-agnostic + injection-safe' buy, and at what cost (the engine must support every needed query shape, escaping to raw SQL is limited)? If your team built an internal analytics platform, would you choose 'everyone writes SQL' or 'a unified semantic layer', and why? Can the two coexist?",
+            },
+        ],
+    },
 }
 
 
