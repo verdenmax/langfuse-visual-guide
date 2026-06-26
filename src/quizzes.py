@@ -1025,6 +1025,76 @@ QUIZZES = {
             },
         ],
     },
+    "15-ingestion-service.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "一个 observation 先收到 create（带 startTime、input、model），后收到 update（带 endTime、output、usage）。mergeRecords 合并后，startTime 和 model 还在吗？为什么？",
+                    "en": "An observation gets create (startTime, input, model) then update (endTime, output, usage). After mergeRecords, do startTime and model survive? Why?",
+                },
+                "opts": [
+                    {
+                        "zh": "都还在：update 没带这些字段（值为 undefined），overwriteObject 的“不覆盖”规则会保留旧值；startTime 还是 immutable 键，本就锁死",
+                        "en": "both survive: update doesn't carry them (undefined), so overwriteObject's 'don't overwrite' rule keeps the old values; startTime is also an immutable key, locked anyway",
+                    },
+                    {"zh": "都被清空：后到的 update 整体覆盖了 create", "en": "both wiped: the later update wholly overwrites create"},
+                    {"zh": "随机保留其一", "en": "one of them is randomly kept"},
+                    {"zh": "只有 model 还在，startTime 被清空", "en": "only model survives, startTime is wiped"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "overwriteObject 用 lodash mergeWith，命中三条之一就保留旧值：① immutable 键（id/project_id/trace_id/start_time/created_at/environment）② 值为 undefined ③ 空对象。update 只带变化字段，没带的 input/model 是 undefined 故不被抹；start_time 更是 immutable。这正是 create/update 能正确合并的根本。",
+                    "en": "overwriteObject uses lodash mergeWith and keeps the old value on any of three: ① immutable keys (id/project_id/trace_id/start_time/created_at/environment) ② undefined value ③ empty object. update carries only changed fields, so absent input/model are undefined and not wiped; start_time is immutable anyway. This is exactly why create/update merge correctly.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "合并时，mergeRecords 的输入数组里第一个元素总是 ClickHouse 已存在的那条记录。把它放第一位有什么用？",
+                    "en": "In mergeRecords, the first element of the input array is always the existing ClickHouse record. What's the point of putting it first?",
+                },
+                "opts": [
+                    {
+                        "zh": "它当 immutable 字段的基线：左折叠从它开始，后续事件只能覆盖 mutable 字段；created_at、start_time 等锁死字段以它为准，保证身份/锚点稳定",
+                        "en": "it's the baseline for immutable fields: the left-fold starts from it, later events can only overwrite mutable fields; locked fields like created_at, start_time take its value, keeping identity/anchors stable",
+                    },
+                    {"zh": "纯粹是数组顺序习惯，没有语义", "en": "purely an array-order habit, no semantics"},
+                    {"zh": "为了让 ClickHouse 记录覆盖所有新事件", "en": "so the ClickHouse record overwrites all new events"},
+                    {"zh": "为了先把它删掉", "en": "to delete it first"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "折叠从最左（CH 底稿）往右叠事件，后者覆盖前者。但 immutable 键不被覆盖，于是 created_at/start_time 等永远保留 CH 底稿（即第一次写定）的值。这让“读旧底稿 + 叠新修订”既纳新又不改旧，是合并正确性的关键。",
+                    "en": "The fold goes left (CH base) to right (events), later overwriting earlier. But immutable keys aren't overwritten, so created_at/start_time keep the CH base's (first-written) value. This lets 'read old base + apply new revisions' absorb new while preserving old — key to merge correctness.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "既然第 8 课的 ReplacingMergeTree 会按 event_ts 自动去重，为什么 IngestionService 在写入侧还要预合并一遍？",
+                    "en": "Since Lesson 8's ReplacingMergeTree auto-dedups by event_ts, why does IngestionService still pre-merge on the write side?",
+                },
+                "opts": [
+                    {
+                        "zh": "两层解决不同时刻的问题：写入侧预合并保证“写出的那一行当下就完整正确”，查询立即可读；ReplacingMergeTree 的后台去重是最终发生的，收拾并发竞态的尾巴。event_ts=now 让新行总能胜出，两层咬合成纵深防御",
+                        "en": "the two layers solve problems at different moments: write-side pre-merge ensures 'the written row is complete and correct now', readable immediately; ReplacingMergeTree's background dedup is eventual, cleaning up concurrency races. event_ts=now lets the new row always win, meshing the layers into defense in depth",
+                    },
+                    {"zh": "因为 ReplacingMergeTree 其实不工作", "en": "because ReplacingMergeTree doesn't actually work"},
+                    {"zh": "为了把数据写两遍更安全", "en": "to write the data twice for safety"},
+                    {"zh": "纯粹是历史遗留代码", "en": "purely legacy code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "写入侧求“即时正确”——不预合并的话，查询会读到半成品（只有 create 没有 update）；存储侧求“最终唯一”——收拾“同一记录被并发处理产生多行”的竞态。event_ts=now 这个版本戳把两层咬合：预合并产出的新行 event_ts 更大，必在 ReplacingMergeTree 去重里胜出。这是典型的纵深防御。",
+                    "en": "The write side seeks 'immediate correctness' — without pre-merge, queries would read a half-baked row (create but no update); the storage side seeks 'eventual uniqueness', cleaning races that produce multiple rows for one record. The event_ts=now stamp meshes them: a pre-merged new row has a larger event_ts and always wins ReplacingMergeTree's dedup. Classic defense in depth.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "IngestionService 把“合并”和“落盘”切成两层，又把“即时正确”和“最终唯一”分给写入侧与存储侧。这种“同一目标、两层各管一段、用一个版本戳咬合”的纵深防御，你在自己接触过的系统里见过类似设计吗？它的好处和复杂度代价你怎么看？",
+                "en": "IngestionService splits 'merge' from 'persist', and assigns 'immediate correctness' to the write side and 'eventual uniqueness' to the storage side. Have you seen this 'one goal, two layers each owning a stretch, meshed by a version stamp' defense-in-depth elsewhere? How do you weigh its benefits against the added complexity?",
+            },
+        ],
+    },
 }
 
 

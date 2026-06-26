@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>15 · IngestionService：合并的心脏 / IngestionService: the merge heart - Langfuse 图解教程</title>
+<meta name="description" content="第三部分 · 摄取链路｜IngestionService：合并的心脏 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="15 · IngestionService：合并的心脏 / IngestionService: the merge heart - Langfuse 图解教程">
+<meta property="og:description" content="第三部分 · 摄取链路｜IngestionService：合并的心脏 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="15 · IngestionService：合并的心脏 / IngestionService: the merge heart - Langfuse 图解教程">
+<meta name="twitter:description" content="第三部分 · 摄取链路｜IngestionService：合并的心脏 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></span>
+    <span class="pill">15 / 15</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></div>
+    <h1><span class="lang-zh">IngestionService：合并的心脏</span><span class="lang-en">IngestionService: the merge heart</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+第 14 课 worker 取走任务、照 fileKey 把事件从 S3 读了回来。这一课是整条写入链路的<strong>心脏</strong>：那一堆事件，外加数据库里这条记录的<strong>当前状态</strong>，
+究竟怎么被揉成<strong>一条最终记录</strong>？答案藏在 <code>IngestionService</code> 里——<code>mergeAndWrite</code> 按实体类型分流，
+<code>mergeRecords</code> 用一招「左折叠 + 后者覆盖」把多份输入合一，再盖上 <code>event_ts=now</code> 的版本戳。读懂它，第 8 课 ReplacingMergeTree 的「写入侧另一半」就补齐了。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📝 生活类比</div>
+  把合并想成<strong>协作编辑一篇维基词条</strong>。数据库里<strong>当前发布的版本</strong>是底稿；这次收到的每个事件，就像一条按时间排好的<strong>修订</strong>，
+  依次盖在底稿上。后改的覆盖先改的（同一字段，新值赢）；但<strong>某条修订没碰的字段，保持原样</strong>（你只改了「结论」，「正文」不会被清空）。
+  还有几样东西被<strong>锁死</strong>，谁都不能改：词条的<strong>创建时间、唯一 id</strong>。所有修订叠完，得到一份<strong>合并稿</strong>，标上「本次合并时刻」当版本号——
+  这正是 <code>IngestionService</code> 干的事：底稿来自 ClickHouse，修订来自 S3，叠出来的合并稿写回库。
+</div>
+
+
+<h2>mergeAndWrite：先按实体类型分流</h2>
+<p><code>mergeAndWrite</code> 本身只是个<strong>调度员</strong>。它拿到第 13 课算出的实体类型（trace / observation / score / dataset_run_item），
+用一个 <code>switch</code> 把活儿分给对应的 <code>process{Type}EventList</code>。每条线路的骨架一样——<strong>读旧、转换、合并、写回</strong>——只是字段细节随类型而异。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="mergeAndWrite 按实体类型 switch 分派到 processTrace/Observation/Score/DatasetRunItem EventList 四条处理线">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite：一个 switch，四条处理线</text>
+  <rect x="280" y="40" width="160" height="46" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite</text><text x="360" y="76" text-anchor="middle" font-size="8" fill="var(--accent-ink)">switch (entityType)</text>
+  <rect x="24" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="103" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processTrace</text><text x="103" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="103" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ traces 表</text>
+  <rect x="194" y="130" width="158" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="273" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">processObservation</text><text x="273" y="165" text-anchor="middle" font-size="8" fill="var(--accent-ink)">EventList</text><text x="273" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ observations 表（最复杂）</text>
+  <rect x="364" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="443" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processScore</text><text x="443" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="443" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ scores 表</text>
+  <rect x="534" y="130" width="162" height="56" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processDatasetRunItem</text><text x="615" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="615" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">仅 create，不合并</text>
+  <line x1="320" y1="86" x2="120" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="345" y1="86" x2="280" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="375" y1="86" x2="430" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="400" y1="86" x2="595" y2="128" stroke="var(--faint)" stroke-width="1.4"/>
+</svg>
+<div class="figcap"><b>分流而非合流</b>：<code>mergeAndWrite</code> 按实体类型把任务交给四条专用处理线，各自写回第 8 课的对应表。observation 那条最复杂（要算 token/成本、补包装 trace）。源码：<code>worker/src/services/IngestionService/index.ts:149-195</code>。</div>
+</div>
+
+<p>每条处理线，合并的输入其实有<strong>两个来源</strong>，缺一不可：</p>
+
+<div class="cols">
+  <div class="col"><h4>📜 S3：本实体的全部事件</h4><p>worker 用 <code>listFiles</code> 把这个实体在 S3 里的<strong>所有事件</strong>都读回来（create、update……一个不漏），再按 <code>timestamp</code> 排好序。这是「修订流」。</p></div>
+  <div class="col"><h4>🗄️ ClickHouse：当前这条记录</h4><p>同时去 observations 表 <code>getClickhouseRecord</code> 把<strong>已存在的那一行</strong>读出来当<strong>底稿</strong>。它排在合并数组的最前面，作为 immutable 字段的基线。</p></div>
+</div>
+
+<p>为什么两个来源都要？看似冗余，其实各有不可替代的作用。S3 那份是<strong>事件的真账本</strong>（第 14 课），重读全部事件能保证合并出的记录<strong>完整无遗漏</strong>，
+即便这次任务是个迟到的补传；ClickHouse 那份则提供 <strong>immutable 字段的权威基线</strong>（created_at、start_time 这些「第一次写定就锁死」的值），
+还兜住那些可能已经从 S3 滚动清理掉的早期事件。两者叠在一起，<strong>既不丢新、又不改旧</strong>——这就是「读旧底稿 + 叠新修订」的精髓。</p>
+
+
+<h2>mergeRecords：左折叠，后者覆盖</h2>
+<p>核心算法只有几行：把「ClickHouse 底稿 + 按时间排序的事件记录」拼成一个数组，从左往右一个个 <code>overwriteObject</code> 叠上去，最后盖一个 <code>event_ts = now</code>。
+关键全在 <code>overwriteObject</code> 的<strong>三条「不覆盖」规则</strong>里。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="合并左折叠：ClickHouse 底稿加按时间排序的事件依次 overwriteObject 叠加，得到最终记录并打上 event_ts=now">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">左折叠：底稿 → 叠事件 → 最终记录</text>
+  <rect x="20" y="64" width="120" height="62" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="80" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">CH 底稿</text><text x="80" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">已存在的行</text><text x="80" y="113" text-anchor="middle" font-size="7.5" fill="var(--faint)">（可能为空）</text>
+  <rect x="170" y="64" width="120" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="230" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">事件① create</text><text x="230" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">startTime·input</text><text x="230" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">model</text>
+  <rect x="320" y="64" width="120" height="62" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="380" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">事件② update</text><text x="380" y="99" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">endTime·output</text><text x="380" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">usage</text>
+  <rect x="560" y="58" width="140" height="74" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="630" y="80" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">最终记录</text><text x="630" y="96" text-anchor="middle" font-size="7.5" fill="var(--ink)">各字段最新有值者</text><text x="630" y="112" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">event_ts = now</text>
+  <line x1="140" y1="95" x2="168" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="168,95 160,91 160,99" fill="var(--faint)"/>
+  <line x1="290" y1="95" x2="318" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="318,95 310,91 310,99" fill="var(--faint)"/>
+  <line x1="440" y1="95" x2="558" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="558,95 550,91 550,99" fill="var(--faint)"/>
+  <text x="500" y="88" text-anchor="middle" font-size="7.5" fill="var(--faint)">overwriteObject ×N</text>
+  <text x="360" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">overwriteObject 的三条「不覆盖」规则（后者的值被忽略，保留前者）：</text>
+  <rect x="40" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① immutable 键</text><text x="140" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">id·start_time·created_at…</text>
+  <rect x="260" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② 值为 undefined</text><text x="360" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">没带的字段不抹旧值</text>
+  <rect x="480" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="580" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">③ 空对象 {}</text><text x="580" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">空 usage/cost 不覆盖</text>
+</svg>
+<div class="figcap"><b>叠的是「有值的新字段」</b>：后到的事件覆盖先到的，但<strong>三种情况例外</strong>——immutable 键、值为 <code>undefined</code>、空对象。所以 update 只带 endTime/output/usage，create 的 startTime/input/model 安然无恙。源码：<code>IngestionService/index.ts:984-1005</code>、<code>utils.ts:56-81</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts &amp; utils.ts</span><span class="ln">合并核心</span></div>
+  <pre class="code"><span class="cm">// 左折叠：底稿在前，事件按时间在后，逐个叠加</span>
+<span class="kw">let</span> result = { id: records[0].id, project_id: records[0].project_id };
+<span class="kw">for</span> (<span class="kw">const</span> record <span class="kw">of</span> records)
+  result = <span class="fn">overwriteObject</span>(result, record, immutableEntityKeys);
+result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// 版本戳 → 交给第 8 课 ReplacingMergeTree</span>
+
+<span class="cm">// overwriteObject：用 lodash mergeWith，命中任一条就保留旧值 objValue</span>
+<span class="kw">if</span> (nonOverwritableKeys.<span class="fn">includes</span>(key)        <span class="cm">// ① immutable</span>
+    || srcValue === <span class="kw">undefined</span>             <span class="cm">// ② 没带这个字段</span>
+    || (isObject(srcValue) &amp;&amp; isEmpty(srcValue)))  <span class="cm">// ③ 空 usage/cost</span>
+  <span class="kw">return</span> objValue;
+<span class="kw">return</span> srcValue;                            <span class="cm">// 否则后者覆盖前者</span></pre>
+</div>
+
+<p>哪些字段被锁成 immutable？看 observations 这张表：<code>[id, project_id, trace_id, start_time, created_at, environment]</code>。
+它们是记录的<strong>身份与锚点</strong>——一旦第一条事件写定，后续 update 再怎么改都动不了；其余 payload 字段（output、usage、end_time、level、metadata……）才走 last-write-wins。</p>
+
+<p>合并过程中还藏着一个体贴的<strong>向后兼容</strong>细节：如果一个 observation 合并完发现<strong>没有 trace_id</strong>（很老的 SDK，&lt; 2.0 时代埋点不带 trace），
+<code>IngestionService</code> 会顺手<strong>造一条「包装 trace」</strong>——用 observation 自己的 id 当 trace id，补写进 traces 表，再把它挂上去。这样无论数据多老，
+每个 observation 都不会变成「孤儿」，第 5 课那棵 trace 树永远完整。一个小小的补偿逻辑，体现的是这套系统对<strong>历史数据与多版本 SDK</strong> 的尊重与照顾。</p>
+
+<table class="t">
+  <tr><th>字段类别</th><th>例子</th><th>合并规则</th></tr>
+  <tr><td><b>身份 / 锚点（immutable）</b></td><td>id · project_id · trace_id · start_time · created_at · environment</td><td><strong>first-wins</strong>：第一次写定，永不被覆盖</td></tr>
+  <tr><td><b>载荷（mutable）</b></td><td>end_time · output · usage · level · metadata · model…</td><td><strong>last-write-wins</strong>：后到事件覆盖，但 undefined / 空对象不抹旧值</td></tr>
+</table>
+
+
+<h2>observation 那条线的完整一生</h2>
+<p>把最复杂的 <code>processObservationEventList</code> 拆开看，从一堆事件到写回库，正好七步：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>幂等跳过</h4><p>先查 Redis：这个 fileKey 最近几分钟处理过吗？处理过就<strong>直接跳过</strong>（配合第 13 课「事件 id 当文件名」，重复投递不重复算）。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>按时间排序</h4><p><code>toTimeSortedEventList</code> 把事件按 <code>timestamp</code> 排好；同一时刻 create 排在 update 前。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>读 ClickHouse 底稿</h4><p><code>getClickhouseRecord</code> 取出该 observation 已存在的行（带类型与 start_time 过滤），当合并基线。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>事件 → 记录 → 合并</h4><p>把事件映射成记录，<code>mergeRecords</code> 左折叠出 <code>mergedObservationRecord</code>。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>补 input/output</h4><p>从最新往回找第一条非空的 input / output（事件里没有就退回 ClickHouse 的值），并归一化 tool 数据。</p></div></div>
+  <div class="step"><div class="num">6</div><div class="sc"><h4>算 token 与成本</h4><p><code>getGenerationUsage</code> 做模型匹配、token 计数、成本计算（第 16 课详解），并进最终记录。</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>入写库队列</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code>——<strong>不直接写库</strong>，交给第 17 课的批写器攒批落盘。</p></div></div>
+</div>
+
+<p>第 7 步要特别留意：<code>IngestionService</code> 自己<strong>从不直接写 ClickHouse</strong>，它只把合并好的记录塞进 <code>ClickhouseWriter</code> 的队列。
+为什么？因为<strong>逐条写 ClickHouse 是性能灾难</strong>（第 8 课说过它爱大批量）。把「合并」和「落盘」再切开，正是第 6 课「每层只干一件事」的又一次体现——合并归 IngestionService，攒批归 ClickhouseWriter。这种「先在内存里把记录算到位、再交给专门的批写器统一落盘」的两段式，让高频写入既保持正确，又不至于把列式存储压垮；第 17 课会看到批写器如何按表攒批、定时刷新。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>既然第 8 课的 ReplacingMergeTree 自己就会按 event_ts 去重，为什么写入侧还要再合并一遍？</strong> 因为两者解决的是<strong>不同时刻</strong>的问题。
+  写入侧的预合并保证：<strong>每次写出的那一行，当下就是正确的完整状态</strong>——查询立刻就能读到对的数据，不必等后台合并。而 ReplacingMergeTree 的后台去重是<strong>最终</strong>发生的，
+  用来收拾「同一条记录被并发处理、产生多行」这类竞态的尾巴。两层各管一段：<strong>写入侧求「即时正确」，存储侧求「最终唯一」</strong>。
+  再加上 <code>event_ts=now</code> 这个版本戳把两层咬合起来——预合并产出的新行永远有更大的 event_ts，于是它一定能在存储层的去重里胜出。这是典型的<strong>纵深防御</strong>。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><code>mergeAndWrite</code> 是调度员：按实体类型 <code>switch</code> 到 <code>process{Trace,Observation,Score,DatasetRunItem}EventList</code>，骨架都是「读旧→转换→合并→写回」。</li>
+    <li>合并有<strong>两个输入</strong>：S3 里本实体的<strong>全部事件</strong>（listFiles，按时间排序）+ ClickHouse 里<strong>当前那一行</strong>（当 immutable 基线）。</li>
+    <li><code>mergeRecords</code> 把它们<strong>左折叠</strong>（<code>overwriteObject</code> 后者覆盖前者），并打 <code>event_ts=now</code> 版本戳。</li>
+    <li><strong>三条不覆盖规则</strong>：immutable 键（id/start_time/created_at…first-wins）、<code>undefined</code>、空对象——所以 update 只带变化字段、不抹掉 create 的值。</li>
+    <li>合并完只 <code>addToQueue</code>，<strong>不直接写库</strong>（落盘归第 17 课）。写入侧预合并求「即时正确」，存储侧 ReplacingMergeTree 求「最终唯一」，靠 event_ts 咬合——纵深防御。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 一个 observation 先收到 create（带 startTime、input、model），后收到 update（带 endTime、output、usage）。mergeRecords 合并后，startTime 和 model 还在吗？为什么？</div>
+  <ol class="opts">
+    <li>都被清空：后到的 update 整体覆盖了 create</li>
+    <li>都还在：update 没带这些字段（值为 undefined），overwriteObject 的“不覆盖”规则会保留旧值；startTime 还是 immutable 键，本就锁死</li>
+    <li>只有 model 还在，startTime 被清空</li>
+    <li>随机保留其一</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。overwriteObject 用 lodash mergeWith，命中三条之一就保留旧值：① immutable 键（id/project_id/trace_id/start_time/created_at/environment）② 值为 undefined ③ 空对象。update 只带变化字段，没带的 input/model 是 undefined 故不被抹；start_time 更是 immutable。这正是 create/update 能正确合并的根本。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 合并时，mergeRecords 的输入数组里第一个元素总是 ClickHouse 已存在的那条记录。把它放第一位有什么用？</div>
+  <ol class="opts">
+    <li>为了先把它删掉</li>
+    <li>纯粹是数组顺序习惯，没有语义</li>
+    <li>为了让 ClickHouse 记录覆盖所有新事件</li>
+    <li>它当 immutable 字段的基线：左折叠从它开始，后续事件只能覆盖 mutable 字段；created_at、start_time 等锁死字段以它为准，保证身份/锚点稳定</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。折叠从最左（CH 底稿）往右叠事件，后者覆盖前者。但 immutable 键不被覆盖，于是 created_at/start_time 等永远保留 CH 底稿（即第一次写定）的值。这让“读旧底稿 + 叠新修订”既纳新又不改旧，是合并正确性的关键。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 既然第 8 课的 ReplacingMergeTree 会按 event_ts 自动去重，为什么 IngestionService 在写入侧还要预合并一遍？</div>
+  <ol class="opts">
+    <li>为了把数据写两遍更安全</li>
+    <li>纯粹是历史遗留代码</li>
+    <li>因为 ReplacingMergeTree 其实不工作</li>
+    <li>两层解决不同时刻的问题：写入侧预合并保证“写出的那一行当下就完整正确”，查询立即可读；ReplacingMergeTree 的后台去重是最终发生的，收拾并发竞态的尾巴。event_ts=now 让新行总能胜出，两层咬合成纵深防御</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。写入侧求“即时正确”——不预合并的话，查询会读到半成品（只有 create 没有 update）；存储侧求“最终唯一”——收拾“同一记录被并发处理产生多行”的竞态。event_ts=now 这个版本戳把两层咬合：预合并产出的新行 event_ts 更大，必在 ReplacingMergeTree 去重里胜出。这是典型的纵深防御。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>IngestionService 把“合并”和“落盘”切成两层，又把“即时正确”和“最终唯一”分给写入侧与存储侧。这种“同一目标、两层各管一段、用一个版本戳咬合”的纵深防御，你在自己接触过的系统里见过类似设计吗？它的好处和复杂度代价你怎么看？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Lesson 14's worker took the job and read the events back from S3 by fileKey. This lesson is the <strong>heart</strong> of the whole write path: how
+does that pile of events, plus the record's <strong>current state</strong> in the database, get kneaded into <strong>one final record</strong>? The answer
+lives in <code>IngestionService</code> — <code>mergeAndWrite</code> dispatches by entity type, <code>mergeRecords</code> folds many inputs into one with a
+single "left-fold + later-overwrites" move, then stamps a <code>event_ts=now</code> version. Get it, and Lesson 8's ReplacingMergeTree gains its
+"other (write-side) half".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📝 Analogy</div>
+  Think of merging as <strong>collaboratively editing a wiki article</strong>. The database's <strong>currently published version</strong> is the base;
+  each event received this time is like a chronologically ordered <strong>revision</strong>, applied onto the base in turn. Later edits override earlier
+  ones (same field, newer value wins); but <strong>a field a revision didn't touch stays as is</strong> (you only changed the "conclusion", the "body"
+  isn't wiped). A few things are <strong>locked</strong>, untouchable by anyone: the article's <strong>creation time, its unique id</strong>. Stack all
+  revisions and you get a <strong>merged draft</strong>, tagged with "this merge's moment" as the version — exactly what <code>IngestionService</code> does:
+  the base from ClickHouse, the revisions from S3, the merged draft written back.
+</div>
+
+
+<h2>mergeAndWrite: split by entity type first</h2>
+<p><code>mergeAndWrite</code> itself is just a <strong>dispatcher</strong>. It takes Lesson 13's computed entity type (trace / observation / score /
+dataset_run_item) and a <code>switch</code> hands the work to the matching <code>process{Type}EventList</code>. Every line has the same skeleton —
+<strong>read old, transform, merge, write back</strong> — only the field details differ by type.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="mergeAndWrite switches by entity type to processTrace/Observation/Score/DatasetRunItem EventList, four processing lines">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite: one switch, four lines</text>
+  <rect x="280" y="40" width="160" height="46" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite</text><text x="360" y="76" text-anchor="middle" font-size="8" fill="var(--accent-ink)">switch (entityType)</text>
+  <rect x="24" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="103" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processTrace</text><text x="103" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="103" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ traces table</text>
+  <rect x="194" y="130" width="158" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="273" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">processObservation</text><text x="273" y="165" text-anchor="middle" font-size="8" fill="var(--accent-ink)">EventList</text><text x="273" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ observations (richest)</text>
+  <rect x="364" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="443" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processScore</text><text x="443" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="443" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ scores table</text>
+  <rect x="534" y="130" width="162" height="56" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processDatasetRunItem</text><text x="615" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="615" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">create only, no merge</text>
+  <line x1="320" y1="86" x2="120" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="345" y1="86" x2="280" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="375" y1="86" x2="430" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="400" y1="86" x2="595" y2="128" stroke="var(--faint)" stroke-width="1.4"/>
+</svg>
+<div class="figcap"><b>Split, not converge</b>: <code>mergeAndWrite</code> hands the job by entity type to four dedicated lines, each writing back to Lesson 8's matching table. The observation line is the richest (token/cost, wrapper-trace backfill). Source: <code>worker/src/services/IngestionService/index.ts:149-195</code>.</div>
+</div>
+
+<p>On each line, the merge actually has <strong>two sources</strong>, both indispensable:</p>
+
+<div class="cols">
+  <div class="col"><h4>📜 S3: all events of this entity</h4><p>The worker uses <code>listFiles</code> to read back <strong>all events</strong> of this entity in S3 (create, update… none missed), then sorts them by <code>timestamp</code>. This is the "revision stream".</p></div>
+  <div class="col"><h4>🗄️ ClickHouse: the current record</h4><p>Meanwhile it <code>getClickhouseRecord</code>s the <strong>existing row</strong> from observations as the <strong>base draft</strong>. It goes first in the merge array, the baseline for immutable fields.</p></div>
+</div>
+
+<p>Why need both? Seemingly redundant, but each is irreplaceable. The S3 one is the events' <strong>real ledger</strong> (Lesson 14); re-reading all
+events guarantees the merged record is <strong>complete</strong>, even if this job is a late backfill. The ClickHouse one provides the <strong>authoritative
+baseline for immutable fields</strong> (created_at, start_time — those "locked once first written" values) and backstops early events that may have aged out
+of S3. Stacked together, they <strong>lose nothing new while changing nothing old</strong> — the essence of "read the old base + apply new revisions".</p>
+
+
+<h2>mergeRecords: left-fold, later overwrites</h2>
+<p>The core algorithm is just a few lines: assemble "ClickHouse base + time-sorted event records" into an array, fold them left-to-right with
+<code>overwriteObject</code>, then stamp <code>event_ts = now</code>. The crux is entirely in <code>overwriteObject</code>'s <strong>three "don't
+overwrite" rules</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="merge left-fold: ClickHouse base plus time-sorted events overwriteObject in turn, yielding the final record stamped event_ts=now">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Left-fold: base → stack events → final record</text>
+  <rect x="20" y="64" width="120" height="62" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="80" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">CH base</text><text x="80" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">existing row</text><text x="80" y="113" text-anchor="middle" font-size="7.5" fill="var(--faint)">(may be empty)</text>
+  <rect x="170" y="64" width="120" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="230" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">event ① create</text><text x="230" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">startTime·input</text><text x="230" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">model</text>
+  <rect x="320" y="64" width="120" height="62" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="380" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">event ② update</text><text x="380" y="99" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">endTime·output</text><text x="380" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">usage</text>
+  <rect x="560" y="58" width="140" height="74" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="630" y="80" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">final record</text><text x="630" y="96" text-anchor="middle" font-size="7.5" fill="var(--ink)">each field: latest set value</text><text x="630" y="112" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">event_ts = now</text>
+  <line x1="140" y1="95" x2="168" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="168,95 160,91 160,99" fill="var(--faint)"/>
+  <line x1="290" y1="95" x2="318" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="318,95 310,91 310,99" fill="var(--faint)"/>
+  <line x1="440" y1="95" x2="558" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="558,95 550,91 550,99" fill="var(--faint)"/>
+  <text x="500" y="88" text-anchor="middle" font-size="7.5" fill="var(--faint)">overwriteObject ×N</text>
+  <text x="360" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">overwriteObject's three "don't overwrite" rules (later value ignored, earlier kept):</text>
+  <rect x="40" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① immutable key</text><text x="140" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">id·start_time·created_at…</text>
+  <rect x="260" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② value is undefined</text><text x="360" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">absent field won't wipe old</text>
+  <rect x="480" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="580" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">③ empty object {}</text><text x="580" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">empty usage/cost no-op</text>
+</svg>
+<div class="figcap"><b>It stacks "new fields that have a value"</b>: a later event overwrites an earlier one, with <strong>three exceptions</strong> — immutable keys, <code>undefined</code> values, empty objects. So update carrying only endTime/output/usage leaves create's startTime/input/model untouched. Source: <code>IngestionService/index.ts:984-1005</code>, <code>utils.ts:56-81</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts &amp; utils.ts</span><span class="ln">merge core</span></div>
+  <pre class="code"><span class="cm">// Left-fold: base first, events (time-sorted) after, stacked one by one</span>
+<span class="kw">let</span> result = { id: records[0].id, project_id: records[0].project_id };
+<span class="kw">for</span> (<span class="kw">const</span> record <span class="kw">of</span> records)
+  result = <span class="fn">overwriteObject</span>(result, record, immutableEntityKeys);
+result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// version stamp → Lesson 8's ReplacingMergeTree</span>
+
+<span class="cm">// overwriteObject: lodash mergeWith; hit any rule → keep old objValue</span>
+<span class="kw">if</span> (nonOverwritableKeys.<span class="fn">includes</span>(key)        <span class="cm">// ① immutable</span>
+    || srcValue === <span class="kw">undefined</span>             <span class="cm">// ② field not provided</span>
+    || (isObject(srcValue) &amp;&amp; isEmpty(srcValue)))  <span class="cm">// ③ empty usage/cost</span>
+  <span class="kw">return</span> objValue;
+<span class="kw">return</span> srcValue;                            <span class="cm">// else later overwrites earlier</span></pre>
+</div>
+
+<p>Which fields are locked immutable? For the observations table: <code>[id, project_id, trace_id, start_time, created_at, environment]</code>. These are
+the record's <strong>identity and anchors</strong> — set once by the first event, untouchable by any later update; everything else (output, usage, end_time,
+level, metadata…) follows last-write-wins.</p>
+
+<table class="t">
+  <tr><th>field class</th><th>examples</th><th>merge rule</th></tr>
+  <tr><td><b>identity / anchor (immutable)</b></td><td>id · project_id · trace_id · start_time · created_at · environment</td><td><strong>first-wins</strong>: set once, never overwritten</td></tr>
+  <tr><td><b>payload (mutable)</b></td><td>end_time · output · usage · level · metadata · model…</td><td><strong>last-write-wins</strong>: later event overwrites, but undefined / empty object won't wipe old</td></tr>
+</table>
+
+<p>The merge also hides a thoughtful <strong>backward-compat</strong> detail: if a merged observation turns out to have <strong>no trace_id</strong> (a very
+old SDK from the pre-2.0 era that instrumented without a trace), <code>IngestionService</code> quietly <strong>creates a "wrapper trace"</strong> — using
+the observation's own id as the trace id, writing it into the traces table and attaching the observation to it. So no matter how old the data, no
+observation becomes an <strong>orphan</strong>, and Lesson 5's trace tree stays whole. A tiny compensating bit of logic that respects <strong>historical
+data and multi-version SDKs</strong>.</p>
+
+
+<h2>The full life of the observation line</h2>
+<p>Unpack the most complex <code>processObservationEventList</code> and the path from a pile of events to a DB write is exactly seven steps:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with Lesson 13's "event id as filename", redelivery never double-counts).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>sort by time</h4><p><code>toTimeSortedEventList</code> orders events by <code>timestamp</code>; at the same instant, create comes before update.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>read ClickHouse base</h4><p><code>getClickhouseRecord</code> fetches the observation's existing row (filtered by type and start_time) as the merge baseline.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>events → records → merge</h4><p>Map events to records, <code>mergeRecords</code> left-folds into <code>mergedObservationRecord</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>fill input/output</h4><p>Find the first non-null input/output scanning from newest back (fallback to ClickHouse's), and normalize tool data.</p></div></div>
+  <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in Lesson 16), folded into the final record.</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to Lesson 17's batch writer.</p></div></div>
+</div>
+
+<p>Note step 7: <code>IngestionService</code> <strong>never writes ClickHouse directly</strong> — it only pushes the merged record into
+<code>ClickhouseWriter</code>'s queue. Why? Because <strong>row-by-row ClickHouse writes are a performance disaster</strong> (Lesson 8 noted it loves big
+batches). Splitting "merge" from "persist" is again Lesson 6's "each layer does one thing" — merging to IngestionService, batching to ClickhouseWriter.
+This two-stage "compute the record fully in memory, then hand it to a dedicated batch writer" keeps high-frequency writes correct without crushing the
+columnar store; Lesson 17 shows how the writer batches per table and flushes on a timer.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>If Lesson 8's ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
+  <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
+  — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,
+  cleaning up the tail of races like "one record processed concurrently, producing multiple rows". Each layer owns a stretch: <strong>the write side seeks
+  "immediate correctness", the storage side "eventual uniqueness"</strong>. And <code>event_ts=now</code> meshes the two — a pre-merged new row always has
+  a larger event_ts, so it always wins the storage layer's dedup. Classic <strong>defense in depth</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>mergeAndWrite</code> is a dispatcher: <code>switch</code> by entity type to <code>process{Trace,Observation,Score,DatasetRunItem}EventList</code>, all sharing "read old → transform → merge → write back".</li>
+    <li>Merge has <strong>two inputs</strong>: <strong>all events</strong> of this entity from S3 (listFiles, time-sorted) + the <strong>current row</strong> from ClickHouse (the immutable baseline).</li>
+    <li><code>mergeRecords</code> <strong>left-folds</strong> them (<code>overwriteObject</code>, later overwrites earlier) and stamps the <code>event_ts=now</code> version.</li>
+    <li><strong>Three don't-overwrite rules</strong>: immutable keys (id/start_time/created_at… first-wins), <code>undefined</code>, empty objects — so update carries only changed fields without wiping create's values.</li>
+    <li>After merging it only <code>addToQueue</code>s, <strong>not a direct write</strong> (persist is Lesson 17). Write-side pre-merge for "immediate correctness", storage-side ReplacingMergeTree for "eventual uniqueness", meshed by event_ts — defense in depth.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. An observation gets create (startTime, input, model) then update (endTime, output, usage). After mergeRecords, do startTime and model survive? Why?</div>
+  <ol class="opts">
+    <li>both wiped: the later update wholly overwrites create</li>
+    <li>both survive: update doesn't carry them (undefined), so overwriteObject's 'don't overwrite' rule keeps the old values; startTime is also an immutable key, locked anyway</li>
+    <li>only model survives, startTime is wiped</li>
+    <li>one of them is randomly kept</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. overwriteObject uses lodash mergeWith and keeps the old value on any of three: ① immutable keys (id/project_id/trace_id/start_time/created_at/environment) ② undefined value ③ empty object. update carries only changed fields, so absent input/model are undefined and not wiped; start_time is immutable anyway. This is exactly why create/update merge correctly.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. In mergeRecords, the first element of the input array is always the existing ClickHouse record. What's the point of putting it first?</div>
+  <ol class="opts">
+    <li>to delete it first</li>
+    <li>purely an array-order habit, no semantics</li>
+    <li>so the ClickHouse record overwrites all new events</li>
+    <li>it's the baseline for immutable fields: the left-fold starts from it, later events can only overwrite mutable fields; locked fields like created_at, start_time take its value, keeping identity/anchors stable</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The fold goes left (CH base) to right (events), later overwriting earlier. But immutable keys aren't overwritten, so created_at/start_time keep the CH base's (first-written) value. This lets 'read old base + apply new revisions' absorb new while preserving old — key to merge correctness.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Since Lesson 8's ReplacingMergeTree auto-dedups by event_ts, why does IngestionService still pre-merge on the write side?</div>
+  <ol class="opts">
+    <li>to write the data twice for safety</li>
+    <li>purely legacy code</li>
+    <li>because ReplacingMergeTree doesn't actually work</li>
+    <li>the two layers solve problems at different moments: write-side pre-merge ensures 'the written row is complete and correct now', readable immediately; ReplacingMergeTree's background dedup is eventual, cleaning up concurrency races. event_ts=now lets the new row always win, meshing the layers into defense in depth</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The write side seeks 'immediate correctness' — without pre-merge, queries would read a half-baked row (create but no update); the storage side seeks 'eventual uniqueness', cleaning races that produce multiple rows for one record. The event_ts=now stamp meshes them: a pre-merged new row has a larger event_ts and always wins ReplacingMergeTree's dedup. Classic defense in depth.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>IngestionService splits 'merge' from 'persist', and assigns 'immediate correctness' to the write side and 'eventual uniqueness' to the storage side. Have you seen this 'one goal, two layers each owning a stretch, meshed by a version stamp' defense-in-depth elsewhere? How do you weigh its benefits against the added complexity?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="14-ingestion-queue.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">摄取队列</span><span class="lang-en">The ingestion queue</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

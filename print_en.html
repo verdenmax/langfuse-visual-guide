@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 14 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 15 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -351,6 +351,7 @@ details[open] > summary { list-style: none; }
   <li>The ingestion API</li>
   <li>Event types & merge semantics</li>
   <li>The ingestion queue</li>
+  <li>IngestionService: the merge heart</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -3530,6 +3531,205 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Queue + S3 as real ledger' buys spike absorption, fault tolerance and replayability, at the cost of an extra hop and eventual-consistency latency. Designing a high-concurrency write system, how would you weigh 'write the DB directly' against 'queue buffer + object storage'? What signals would tip you toward the latter?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>IngestionService: the merge heart</h1>
+
+<p class="lead">
+Lesson 14's worker took the job and read the events back from S3 by fileKey. This lesson is the <strong>heart</strong> of the whole write path: how
+does that pile of events, plus the record's <strong>current state</strong> in the database, get kneaded into <strong>one final record</strong>? The answer
+lives in <code>IngestionService</code> — <code>mergeAndWrite</code> dispatches by entity type, <code>mergeRecords</code> folds many inputs into one with a
+single "left-fold + later-overwrites" move, then stamps a <code>event_ts=now</code> version. Get it, and Lesson 8's ReplacingMergeTree gains its
+"other (write-side) half".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📝 Analogy</div>
+  Think of merging as <strong>collaboratively editing a wiki article</strong>. The database's <strong>currently published version</strong> is the base;
+  each event received this time is like a chronologically ordered <strong>revision</strong>, applied onto the base in turn. Later edits override earlier
+  ones (same field, newer value wins); but <strong>a field a revision didn't touch stays as is</strong> (you only changed the "conclusion", the "body"
+  isn't wiped). A few things are <strong>locked</strong>, untouchable by anyone: the article's <strong>creation time, its unique id</strong>. Stack all
+  revisions and you get a <strong>merged draft</strong>, tagged with "this merge's moment" as the version — exactly what <code>IngestionService</code> does:
+  the base from ClickHouse, the revisions from S3, the merged draft written back.
+</div>
+
+
+<h2>mergeAndWrite: split by entity type first</h2>
+<p><code>mergeAndWrite</code> itself is just a <strong>dispatcher</strong>. It takes Lesson 13's computed entity type (trace / observation / score /
+dataset_run_item) and a <code>switch</code> hands the work to the matching <code>process{Type}EventList</code>. Every line has the same skeleton —
+<strong>read old, transform, merge, write back</strong> — only the field details differ by type.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="mergeAndWrite switches by entity type to processTrace/Observation/Score/DatasetRunItem EventList, four processing lines">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite: one switch, four lines</text>
+  <rect x="280" y="40" width="160" height="46" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="60" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">mergeAndWrite</text><text x="360" y="76" text-anchor="middle" font-size="8" fill="var(--accent-ink)">switch (entityType)</text>
+  <rect x="24" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="103" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processTrace</text><text x="103" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="103" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ traces table</text>
+  <rect x="194" y="130" width="158" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="273" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">processObservation</text><text x="273" y="165" text-anchor="middle" font-size="8" fill="var(--accent-ink)">EventList</text><text x="273" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ observations (richest)</text>
+  <rect x="364" y="130" width="158" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="443" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processScore</text><text x="443" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="443" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">→ scores table</text>
+  <rect x="534" y="130" width="162" height="56" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processDatasetRunItem</text><text x="615" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="615" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">create only, no merge</text>
+  <line x1="320" y1="86" x2="120" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="345" y1="86" x2="280" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="375" y1="86" x2="430" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="400" y1="86" x2="595" y2="128" stroke="var(--faint)" stroke-width="1.4"/>
+</svg>
+<div class="figcap"><b>Split, not converge</b>: <code>mergeAndWrite</code> hands the job by entity type to four dedicated lines, each writing back to Lesson 8's matching table. The observation line is the richest (token/cost, wrapper-trace backfill). Source: <code>worker/src/services/IngestionService/index.ts:149-195</code>.</div>
+</div>
+
+<p>On each line, the merge actually has <strong>two sources</strong>, both indispensable:</p>
+
+<div class="cols">
+  <div class="col"><h4>📜 S3: all events of this entity</h4><p>The worker uses <code>listFiles</code> to read back <strong>all events</strong> of this entity in S3 (create, update… none missed), then sorts them by <code>timestamp</code>. This is the "revision stream".</p></div>
+  <div class="col"><h4>🗄️ ClickHouse: the current record</h4><p>Meanwhile it <code>getClickhouseRecord</code>s the <strong>existing row</strong> from observations as the <strong>base draft</strong>. It goes first in the merge array, the baseline for immutable fields.</p></div>
+</div>
+
+<p>Why need both? Seemingly redundant, but each is irreplaceable. The S3 one is the events' <strong>real ledger</strong> (Lesson 14); re-reading all
+events guarantees the merged record is <strong>complete</strong>, even if this job is a late backfill. The ClickHouse one provides the <strong>authoritative
+baseline for immutable fields</strong> (created_at, start_time — those "locked once first written" values) and backstops early events that may have aged out
+of S3. Stacked together, they <strong>lose nothing new while changing nothing old</strong> — the essence of "read the old base + apply new revisions".</p>
+
+
+<h2>mergeRecords: left-fold, later overwrites</h2>
+<p>The core algorithm is just a few lines: assemble "ClickHouse base + time-sorted event records" into an array, fold them left-to-right with
+<code>overwriteObject</code>, then stamp <code>event_ts = now</code>. The crux is entirely in <code>overwriteObject</code>'s <strong>three "don't
+overwrite" rules</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="merge left-fold: ClickHouse base plus time-sorted events overwriteObject in turn, yielding the final record stamped event_ts=now">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Left-fold: base → stack events → final record</text>
+  <rect x="20" y="64" width="120" height="62" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="80" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">CH base</text><text x="80" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">existing row</text><text x="80" y="113" text-anchor="middle" font-size="7.5" fill="var(--faint)">(may be empty)</text>
+  <rect x="170" y="64" width="120" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="230" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">event ① create</text><text x="230" y="99" text-anchor="middle" font-size="7.5" fill="var(--muted)">startTime·input</text><text x="230" y="113" text-anchor="middle" font-size="7.5" fill="var(--muted)">model</text>
+  <rect x="320" y="64" width="120" height="62" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="380" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">event ② update</text><text x="380" y="99" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">endTime·output</text><text x="380" y="113" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">usage</text>
+  <rect x="560" y="58" width="140" height="74" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="630" y="80" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">final record</text><text x="630" y="96" text-anchor="middle" font-size="7.5" fill="var(--ink)">each field: latest set value</text><text x="630" y="112" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">event_ts = now</text>
+  <line x1="140" y1="95" x2="168" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="168,95 160,91 160,99" fill="var(--faint)"/>
+  <line x1="290" y1="95" x2="318" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="318,95 310,91 310,99" fill="var(--faint)"/>
+  <line x1="440" y1="95" x2="558" y2="95" stroke="var(--faint)" stroke-width="1.6"/><polygon points="558,95 550,91 550,99" fill="var(--faint)"/>
+  <text x="500" y="88" text-anchor="middle" font-size="7.5" fill="var(--faint)">overwriteObject ×N</text>
+  <text x="360" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">overwriteObject's three "don't overwrite" rules (later value ignored, earlier kept):</text>
+  <rect x="40" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① immutable key</text><text x="140" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">id·start_time·created_at…</text>
+  <rect x="260" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② value is undefined</text><text x="360" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">absent field won't wipe old</text>
+  <rect x="480" y="170" width="200" height="42" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="580" y="187" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">③ empty object {}</text><text x="580" y="201" text-anchor="middle" font-size="7.5" fill="var(--muted)">empty usage/cost no-op</text>
+</svg>
+<div class="figcap"><b>It stacks "new fields that have a value"</b>: a later event overwrites an earlier one, with <strong>three exceptions</strong> — immutable keys, <code>undefined</code> values, empty objects. So update carrying only endTime/output/usage leaves create's startTime/input/model untouched. Source: <code>IngestionService/index.ts:984-1005</code>, <code>utils.ts:56-81</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/IngestionService/index.ts &amp; utils.ts</span><span class="ln">merge core</span></div>
+  <pre class="code"><span class="cm">// Left-fold: base first, events (time-sorted) after, stacked one by one</span>
+<span class="kw">let</span> result = { id: records[0].id, project_id: records[0].project_id };
+<span class="kw">for</span> (<span class="kw">const</span> record <span class="kw">of</span> records)
+  result = <span class="fn">overwriteObject</span>(result, record, immutableEntityKeys);
+result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// version stamp → Lesson 8's ReplacingMergeTree</span>
+
+<span class="cm">// overwriteObject: lodash mergeWith; hit any rule → keep old objValue</span>
+<span class="kw">if</span> (nonOverwritableKeys.<span class="fn">includes</span>(key)        <span class="cm">// ① immutable</span>
+    || srcValue === <span class="kw">undefined</span>             <span class="cm">// ② field not provided</span>
+    || (isObject(srcValue) &amp;&amp; isEmpty(srcValue)))  <span class="cm">// ③ empty usage/cost</span>
+  <span class="kw">return</span> objValue;
+<span class="kw">return</span> srcValue;                            <span class="cm">// else later overwrites earlier</span></pre>
+</div>
+
+<p>Which fields are locked immutable? For the observations table: <code>[id, project_id, trace_id, start_time, created_at, environment]</code>. These are
+the record's <strong>identity and anchors</strong> — set once by the first event, untouchable by any later update; everything else (output, usage, end_time,
+level, metadata…) follows last-write-wins.</p>
+
+<table class="t">
+  <tr><th>field class</th><th>examples</th><th>merge rule</th></tr>
+  <tr><td><b>identity / anchor (immutable)</b></td><td>id · project_id · trace_id · start_time · created_at · environment</td><td><strong>first-wins</strong>: set once, never overwritten</td></tr>
+  <tr><td><b>payload (mutable)</b></td><td>end_time · output · usage · level · metadata · model…</td><td><strong>last-write-wins</strong>: later event overwrites, but undefined / empty object won't wipe old</td></tr>
+</table>
+
+<p>The merge also hides a thoughtful <strong>backward-compat</strong> detail: if a merged observation turns out to have <strong>no trace_id</strong> (a very
+old SDK from the pre-2.0 era that instrumented without a trace), <code>IngestionService</code> quietly <strong>creates a "wrapper trace"</strong> — using
+the observation's own id as the trace id, writing it into the traces table and attaching the observation to it. So no matter how old the data, no
+observation becomes an <strong>orphan</strong>, and Lesson 5's trace tree stays whole. A tiny compensating bit of logic that respects <strong>historical
+data and multi-version SDKs</strong>.</p>
+
+
+<h2>The full life of the observation line</h2>
+<p>Unpack the most complex <code>processObservationEventList</code> and the path from a pile of events to a DB write is exactly seven steps:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with Lesson 13's "event id as filename", redelivery never double-counts).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>sort by time</h4><p><code>toTimeSortedEventList</code> orders events by <code>timestamp</code>; at the same instant, create comes before update.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>read ClickHouse base</h4><p><code>getClickhouseRecord</code> fetches the observation's existing row (filtered by type and start_time) as the merge baseline.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>events → records → merge</h4><p>Map events to records, <code>mergeRecords</code> left-folds into <code>mergedObservationRecord</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>fill input/output</h4><p>Find the first non-null input/output scanning from newest back (fallback to ClickHouse's), and normalize tool data.</p></div></div>
+  <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in Lesson 16), folded into the final record.</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to Lesson 17's batch writer.</p></div></div>
+</div>
+
+<p>Note step 7: <code>IngestionService</code> <strong>never writes ClickHouse directly</strong> — it only pushes the merged record into
+<code>ClickhouseWriter</code>'s queue. Why? Because <strong>row-by-row ClickHouse writes are a performance disaster</strong> (Lesson 8 noted it loves big
+batches). Splitting "merge" from "persist" is again Lesson 6's "each layer does one thing" — merging to IngestionService, batching to ClickhouseWriter.
+This two-stage "compute the record fully in memory, then hand it to a dedicated batch writer" keeps high-frequency writes correct without crushing the
+columnar store; Lesson 17 shows how the writer batches per table and flushes on a timer.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>If Lesson 8's ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
+  <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
+  — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,
+  cleaning up the tail of races like "one record processed concurrently, producing multiple rows". Each layer owns a stretch: <strong>the write side seeks
+  "immediate correctness", the storage side "eventual uniqueness"</strong>. And <code>event_ts=now</code> meshes the two — a pre-merged new row always has
+  a larger event_ts, so it always wins the storage layer's dedup. Classic <strong>defense in depth</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><code>mergeAndWrite</code> is a dispatcher: <code>switch</code> by entity type to <code>process{Trace,Observation,Score,DatasetRunItem}EventList</code>, all sharing "read old → transform → merge → write back".</li>
+    <li>Merge has <strong>two inputs</strong>: <strong>all events</strong> of this entity from S3 (listFiles, time-sorted) + the <strong>current row</strong> from ClickHouse (the immutable baseline).</li>
+    <li><code>mergeRecords</code> <strong>left-folds</strong> them (<code>overwriteObject</code>, later overwrites earlier) and stamps the <code>event_ts=now</code> version.</li>
+    <li><strong>Three don't-overwrite rules</strong>: immutable keys (id/start_time/created_at… first-wins), <code>undefined</code>, empty objects — so update carries only changed fields without wiping create's values.</li>
+    <li>After merging it only <code>addToQueue</code>s, <strong>not a direct write</strong> (persist is Lesson 17). Write-side pre-merge for "immediate correctness", storage-side ReplacingMergeTree for "eventual uniqueness", meshed by event_ts — defense in depth.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. An observation gets create (startTime, input, model) then update (endTime, output, usage). After mergeRecords, do startTime and model survive? Why?</div>
+  <ol class="opts">
+    <li>both wiped: the later update wholly overwrites create</li>
+    <li>both survive: update doesn't carry them (undefined), so overwriteObject's 'don't overwrite' rule keeps the old values; startTime is also an immutable key, locked anyway</li>
+    <li>only model survives, startTime is wiped</li>
+    <li>one of them is randomly kept</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. overwriteObject uses lodash mergeWith and keeps the old value on any of three: ① immutable keys (id/project_id/trace_id/start_time/created_at/environment) ② undefined value ③ empty object. update carries only changed fields, so absent input/model are undefined and not wiped; start_time is immutable anyway. This is exactly why create/update merge correctly.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. In mergeRecords, the first element of the input array is always the existing ClickHouse record. What's the point of putting it first?</div>
+  <ol class="opts">
+    <li>to delete it first</li>
+    <li>purely an array-order habit, no semantics</li>
+    <li>so the ClickHouse record overwrites all new events</li>
+    <li>it's the baseline for immutable fields: the left-fold starts from it, later events can only overwrite mutable fields; locked fields like created_at, start_time take its value, keeping identity/anchors stable</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The fold goes left (CH base) to right (events), later overwriting earlier. But immutable keys aren't overwritten, so created_at/start_time keep the CH base's (first-written) value. This lets 'read old base + apply new revisions' absorb new while preserving old — key to merge correctness.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Since Lesson 8's ReplacingMergeTree auto-dedups by event_ts, why does IngestionService still pre-merge on the write side?</div>
+  <ol class="opts">
+    <li>to write the data twice for safety</li>
+    <li>purely legacy code</li>
+    <li>because ReplacingMergeTree doesn't actually work</li>
+    <li>the two layers solve problems at different moments: write-side pre-merge ensures 'the written row is complete and correct now', readable immediately; ReplacingMergeTree's background dedup is eventual, cleaning up concurrency races. event_ts=now lets the new row always win, meshing the layers into defense in depth</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The write side seeks 'immediate correctness' — without pre-merge, queries would read a half-baked row (create but no update); the storage side seeks 'eventual uniqueness', cleaning races that produce multiple rows for one record. The event_ts=now stamp meshes them: a pre-merged new row has a larger event_ts and always wins ReplacingMergeTree's dedup. Classic defense in depth.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>IngestionService splits 'merge' from 'persist', and assigns 'immediate correctness' to the write side and 'eventual uniqueness' to the storage side. Have you seen this 'one goal, two layers each owning a stretch, meshed by a version stamp' defense-in-depth elsewhere? How do you weigh its benefits against the added complexity?</li>
   </ul>
 </div>
 </div>

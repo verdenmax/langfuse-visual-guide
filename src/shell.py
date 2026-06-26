@@ -77,6 +77,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("14-ingestion-queue.html", "摄取队列", "The ingestion queue",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("15-ingestion-service.html", "IngestionService：合并的心脏", "IngestionService: the merge heart",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -588,6 +590,8 @@ SUBTITLES = {
                                   "event envelope; discriminatedUnion; body inheritance; two ids; latest-wins merge; 18→3"),
     "14-ingestion-queue.html": ("Redis+BullMQ · 队列放指针 fileKey · S3 存本体 · 分片 · 主/次队列 · 重试退避",
                                 "Redis+BullMQ; queue holds fileKey pointer; S3 stores body; sharding; primary/secondary; retry backoff"),
+    "15-ingestion-service.html": ("mergeAndWrite 分派 · 双输入(S3 事件+CH 记录) · mergeRecords 左折叠 · 三条不覆盖规则 · event_ts 版本戳 · 只入队不直写",
+                                  "mergeAndWrite dispatch; two inputs (S3 events + CH record); mergeRecords left-fold; three don't-overwrite rules; event_ts stamp; enqueue not direct-write"),
 }
 
 
