@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 28 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 29 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -365,6 +365,7 @@ details[open] > summary { list-style: none; }
   <li>sessions</li>
   <li>公共 REST API</li>
   <li>评分模型</li>
+  <li>LLM 当裁判</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -5772,6 +5773,196 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>Langfuse 把「AI 评的、人审的、API 报的」分数统一成一种 score、一张表、一套 config，只用 source 字段区分来源。在你做过或设想的系统里，如果要把「多种来源的质量信号」统一成一个可比的指标，你会怎么设计它的数据模型？需要一个像 score config 那样的「schema 守门人」吗，为什么？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>LLM 当裁判</h1>
+
+<p class="lead">
+上一课说 score 是评估的原子单位，也说了它有三种来源。这一课讲最有意思的那种来源：<strong>EVAL——用一个 LLM 去给另一个 LLM 的输出打分</strong>，业界叫 <strong>LLM-as-a-judge（LLM 当裁判）</strong>。
+人工标注准但慢且贵，规则匹配快但只能查表面。让一个「裁判 LLM」读你的 trace、按你给的标准打分，就能<strong>自动、可扩展地</strong>评估「这次回答到底好不好」。这一课拆开 Langfuse 的裁判流水线：
+<strong>模板</strong>（评分标准）、<strong>变量映射</strong>（把 trace 的哪些部分递给裁判看）、<strong>结构化输出</strong>（裁判必须返回规整的分数 + 理由），以及最关键的——评出来的分<strong>怎么变回一个 score</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  想象一场作文比赛的<strong>评委</strong>。<strong>评分细则</strong>（模板 prompt）写着「请就『有用性』给 0–1 分，并说明理由」；但评委不会读整个学生档案，工作人员只把<strong>作文正文和题目</strong>递过去（变量映射：把 trace 的 input/output 填进模板的 <code>{{question}}</code>/<code>{{answer}}</code>）。
+  评委看完，必须在<strong>规定表格</strong>里填「分数 + 评语」（结构化输出，不能写成一段散文让人没法录入）。最后这张评分表被<strong>归档进成绩册</strong>（评出的分作为一个 source=EVAL 的 score，走回第 12 课那条摄取链路，落进 scores 表）。
+  整套流程的妙处：评委本身也是一次 LLM 调用，<strong>所以它自己也被 Langfuse 记成一条 trace</strong>——裁判也在被观测。
+</div>
+
+
+<h2>裁判流水线：从一条 trace 到一个分数</h2>
+<p>Langfuse 把 LLM-as-a-judge 拆成三件可复用的东西：<strong>模板</strong>（评什么、怎么评、用哪个模型）、<strong>评估器</strong>（把模板绑到哪些 trace、变量怎么取、分数叫什么名）、以及一次次的<strong>执行</strong>（真正去取数据、调裁判、产出分数）。下图是一条 trace 走完整条流水线的样子：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="LLM-as-a-judge 流水线：模板与评估器配置，对一条 trace 提取变量、编译提示、调用裁判 LLM 得到结构化的分数+理由，再作为 source=EVAL 的 score 走回摄取链路写入 scores 表">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">裁判流水线：trace → 变量 → 裁判 LLM → score(EVAL)</text>
+  <rect x="20" y="36" width="150" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="95" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① 模板 Template</text><text x="95" y="72" text-anchor="middle" font-size="7" fill="var(--accent-ink)">prompt + 输出定义</text><text x="95" y="84" text-anchor="middle" font-size="7" fill="var(--accent-ink)">+ 模型/provider</text>
+  <rect x="20" y="104" width="150" height="58" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="124" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② 评估器 Evaluator</text><text x="95" y="140" text-anchor="middle" font-size="7" fill="var(--muted)">目标过滤 + 变量映射</text><text x="95" y="152" text-anchor="middle" font-size="7" fill="var(--muted)">+ scoreName</text>
+  <rect x="210" y="70" width="120" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="270" y="90" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ 提取变量</text><text x="270" y="106" text-anchor="middle" font-size="6.8" fill="var(--muted)">从 trace/observation</text><text x="270" y="117" text-anchor="middle" font-size="6.8" fill="var(--muted)">/dataset 取列值</text>
+  <rect x="210" y="140" width="120" height="44" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="270" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">编译提示</text><text x="270" y="173" text-anchor="middle" font-size="6.8" fill="var(--muted)">{{var}} 填实值</text>
+  <rect x="370" y="86" width="140" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="440" y="108" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">④ 裁判 LLM</text><text x="440" y="126" text-anchor="middle" font-size="7" fill="var(--accent-ink)">结构化输出</text><text x="440" y="140" text-anchor="middle" font-size="7" fill="var(--accent-ink)">{ score, reasoning }</text><text x="440" y="156" text-anchor="middle" font-size="6.5" fill="var(--muted)">自身也被记成 trace</text>
+  <rect x="548" y="70" width="152" height="50" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="624" y="89" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ score(source=EVAL)</text><text x="624" y="105" text-anchor="middle" font-size="6.8" fill="var(--muted)">value + comment=理由</text>
+  <rect x="548" y="132" width="152" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="624" y="151" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">⑥ 摄取链路(第12课)</text><text x="624" y="167" text-anchor="middle" font-size="6.8" fill="var(--muted)">SCORE_CREATE → scores 表</text>
+  <line x1="170" y1="65" x2="208" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="133" x2="208" y2="150" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="270" y1="128" x2="270" y2="138" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="120" x2="368" y2="120" stroke="var(--accent)" stroke-width="1.5"/><polygon points="368,120 359,116 359,124" fill="var(--accent)"/>
+  <line x1="510" y1="110" x2="546" y2="98" stroke="var(--accent)" stroke-width="1.5"/><polygon points="546,98 537,97 540,105" fill="var(--accent)"/>
+  <line x1="624" y1="120" x2="624" y2="130" stroke="var(--faint)" stroke-width="1.3"/><polygon points="624,132 620,123 628,123" fill="var(--teal)"/>
+  <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">配置一次（①②），就对每条命中的 trace 自动跑③④⑤⑥——评估是「持续的」，不是「一次性的」</text>
+</svg>
+<div class="figcap"><b>三件套 + 六步</b>：模板与评估器是<b>配置</b>（一次），提取变量/编译提示/调裁判/产出分数/回流摄取是<b>执行</b>（每条 trace 一次）。源码：<code>worker/src/features/evaluation/evalService.ts</code> 的 <code>runLLMAsJudgeEvaluation</code>（:735）串起④⑤，<code>createEvalJobs</code>（:180，下一课）负责①②③ 的调度。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-part"><div class="lh"><span class="badge">①</span><span class="name">模板 Eval Template</span></div><div class="ld">可复用的「评分标准」：一段带 <code>{{变量}}</code> 的 prompt（如「就有用性给 0–1 分并说明理由」）、一个<strong>输出定义</strong>（产出 NUMERIC/CATEGORICAL/BOOLEAN 哪种分、范围多少），外加用哪个 provider/model 当裁判。模板只描述「怎么评」，不绑定具体数据。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">评估器 Evaluator（JobConfiguration）</span></div><div class="ld">把模板「落地」：用一个<strong>过滤条件</strong>圈定要评哪些 trace（如「只评 production 环境、name=chat 的」）、一份<strong>变量映射</strong>（模板里的 <code>{{answer}}</code> 该取 trace 的哪一列），以及最终分数叫什么名（<code>scoreName</code>）。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">执行 Execution（JobExecution）</span></div><div class="ld">每条命中的 trace 触发一次执行：提取变量 → 编译提示 → 调裁判 LLM 拿结构化结果 → 归一成 score → 经摄取链路写回。这条「执行」本身有状态生命周期（第 30 课细讲）。</div></div>
+</div>
+
+
+<h2>变量映射：把 trace 的哪一部分递给裁判</h2>
+<p>模板里写的是 <code>{{question}}</code> <code>{{answer}}</code> 这样的占位符——它们怎么变成真实内容？靠<strong>变量映射</strong>：每个模板变量声明它来自哪个 <code>langfuseObject</code>（trace / observation / dataset_item）的哪一列（<code>selectedColumnId</code>，如 input/output/metadata）。执行时，<code>extractVariablesFromTracingData</code> 按映射去真实的 trace 里把值一个个取出来。</p>
+
+<div class="cols">
+  <div class="col"><h4>模板变量（你写的占位符）</h4><p><code>{{question}}</code> → 用户的问题<br><code>{{answer}}</code> → 模型的回答<br><code>{{context}}</code> → 检索到的资料<br>模板只认名字，不关心数据从哪来。</p></div>
+  <div class="col"><h4>映射（你配的对应关系）</h4><p><code>question</code> ← trace.input<br><code>answer</code> ← trace.output<br><code>context</code> ← observation[retriever].output<br>每条映射 = {templateVariable, langfuseObject, selectedColumnId}。</p></div>
+  <div class="col"><h4>提取（执行时自动做）</h4><p>对每个变量找到映射，去真实 trace/observation/dataset_item 取那一列的值，得到 <code>{var, value}</code>。取不到就退化为空串并告警，不让整次评估崩。</p></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalRuntime.ts · evalService.ts</span><span class="ln">提取 + 编译</span></div>
+  <pre class="code"><span class="cm">// 1) 按映射从真实 trace 取每个变量的值（evalService.ts:1152）</span>
+<span class="kw">for</span> (<span class="kw">const</span> variable <span class="kw">of</span> variables) {
+  <span class="kw">const</span> mapping = variableMapping.find(m =&gt; m.templateVariable === variable);
+  <span class="kw">if</span> (mapping.langfuseObject === <span class="st">"trace"</span>) {        <span class="cm">// 也可能是 observation / dataset_item</span>
+    <span class="kw">const</span> trace = <span class="kw">await</span> getTraceById({ traceId, projectId, timestamp });
+    results.push({ var: variable, value: parseDatabaseRowValue(trace, mapping) });
+  }
+}
+
+<span class="cm">// 2) 把取到的值填进模板的 {{占位符}}（evalRuntime.ts:14）</span>
+<span class="kw">export function</span> <span class="fn">compileEvalPrompt</span>(params) {
+  <span class="kw">const</span> variableMap = Object.fromEntries(
+    params.variables.map(({ var: key, value }) =&gt; [key, parseUnknownToString(value)]));
+  <span class="kw">return</span> compileTemplateString(params.templatePrompt, variableMap);  <span class="cm">// {{answer}} → 实际回答</span>
+}</pre>
+</div>
+
+<p>注意一个细节：提取阶段<strong>保留原始数据形状</strong>（给代码 eval 用，第 31 课），只有在 <code>compileEvalPrompt</code> 这个「喂给裁判 LLM」的边界上才用 <code>parseUnknownToString</code> 拍平成字符串——因为 LLM 的 prompt 终究是文本。这种「在边界处才转换、内部保留原样」的克制，是干净数据流的标志。</p>
+
+
+<h2>结构化输出与回流：分数怎么变回一个 score</h2>
+<p>裁判 LLM 不能只回一段散文——那样没法录入。Langfuse 用<strong>结构化输出</strong>（structured output）强制它返回规整的 JSON：按模板的输出定义，要么 <code>{score: 数, reasoning}</code>（NUMERIC/BOOLEAN），要么 <code>{matches: [...], reasoning}</code>（CATEGORICAL）。拿到后 <code>toNormalizedScores</code> 把它归一成 score：<strong>value 是分、comment 是裁判的理由</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="裁判 LLM 返回结构化的分数与理由，toNormalizedScores 归一成 score，作为 source=EVAL 的 SCORE_CREATE 事件走回第 12 课的摄取链路，最终落进 scores 宽表，与 API、人工来源的分数同表可比">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">结构化输出 → 归一 → 回流摄取链路</text>
+  <rect x="20" y="42" width="170" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="105" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">裁判 LLM 的结构化输出</text><text x="105" y="80" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">{ score: 0.82,</text><text x="105" y="94" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">  reasoning: "回答完整…" }</text><text x="105" y="109" text-anchor="middle" font-size="6.8" fill="var(--muted)">schema 强校验，非自由散文</text>
+  <rect x="232" y="48" width="150" height="62" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="307" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">toNormalizedScores</text><text x="307" y="85" text-anchor="middle" font-size="7" fill="var(--muted)">value ← score</text><text x="307" y="98" text-anchor="middle" font-size="7" fill="var(--muted)">comment ← reasoning</text>
+  <rect x="424" y="42" width="150" height="74" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="499" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">SCORE_CREATE 事件</text><text x="499" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source = EVAL</text><text x="499" y="93" text-anchor="middle" font-size="7" fill="var(--accent-ink)">name/value/dataType/comment</text><text x="499" y="107" text-anchor="middle" font-size="6.8" fill="var(--muted)">和你手写 score 同一种事件</text>
+  <rect x="600" y="54" width="104" height="50" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="652" y="74" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">scores 宽表</text><text x="652" y="90" text-anchor="middle" font-size="6.6" fill="var(--muted)">三来源同表可比</text>
+  <line x1="190" y1="79" x2="230" y2="79" stroke="var(--blue)" stroke-width="1.5"/><polygon points="230,79 221,75 221,83" fill="var(--blue)"/>
+  <line x1="382" y1="79" x2="422" y2="79" stroke="var(--accent)" stroke-width="1.5"/><polygon points="422,79 413,75 413,83" fill="var(--accent)"/>
+  <line x1="574" y1="79" x2="598" y2="79" stroke="var(--teal)" stroke-width="1.5"/><polygon points="598,79 589,75 589,83" fill="var(--teal)"/>
+  <rect x="120" y="142" width="480" height="50" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">关键：评估不是另开一条管道，而是「第 12 课摄取链路」的又一个生产者</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">EVAL 分数和 API、ANNOTATION 分数走同一条 SCORE_CREATE 入口，享受同样的去重/合并/落库</text>
+</svg>
+<div class="figcap"><b>评出来的分，和你亲手提交的分，是同一种事件</b>。<code>evalScoreEvent.ts:52</code> 把结果包成 <code>SCORE_CREATE</code> 且 <code>source: ScoreSourceEnum.EVAL</code>，再走第 12 课的摄取链路。所以裁判产出的分天然与其它来源<strong>同表、同尺、可比</strong>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts:953 · evalScoreEvent.ts:52</span><span class="ln">归一 + 回流</span></div>
+  <pre class="code"><span class="cm">// 归一：value=分，comment=裁判的理由（evalService.ts: toNormalizedScores）</span>
+<span class="kw">const</span> baseFields = { name: scoreName, comment: outputResult.reasoning };
+<span class="kw">if</span> (outputResult.dataType === <span class="st">"NUMERIC"</span>) <span class="kw">return</span> [{ ...baseFields, dataType: <span class="st">"NUMERIC"</span>, value: outputResult.score }];
+<span class="kw">if</span> (outputResult.dataType === <span class="st">"BOOLEAN"</span>) <span class="kw">return</span> [{ ...baseFields, dataType: <span class="st">"BOOLEAN"</span>, value: outputResult.score ? 1 : 0 }];
+
+<span class="cm">// 回流：包成与手写 score 完全相同的 SCORE_CREATE 事件（evalScoreEvent.ts）</span>
+{ type: eventTypes.SCORE_CREATE,
+  body: { name: score.name, value: score.value, dataType: score.dataType,
+          comment: score.comment, configId: score.configId,
+          source: <span class="st">ScoreSourceEnum.EVAL</span>,        <span class="cm">// ← 唯一的「来源」标记</span>
+          executionTraceId: params.executionTraceId } }</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>输出定义</th><th>裁判返回</th><th>归一成 score</th><th>产几条分</th></tr></thead>
+  <tbody>
+    <tr><td><b>NUMERIC</b></td><td>{ score: 数, reasoning }</td><td>value = score</td><td>1 条</td></tr>
+    <tr><td><b>BOOLEAN</b></td><td>{ score: 真/假, reasoning }</td><td>value = score ? 1 : 0</td><td>1 条</td></tr>
+    <tr><td><b>CATEGORICAL</b></td><td>{ matches: [标签…], reasoning }</td><td>每个 match 一条，value = 该标签</td><td>可多条</td></tr>
+  </tbody>
+</table>
+<p>三种输出定义对应模板里你选的分数类型；注意 CATEGORICAL 的 <code>matches</code> 是<strong>数组</strong>——一次评判可以打出<strong>多条</strong>分类分（如同时命中「事实正确」与「语气友好」两个标签）。无论哪种，<code>reasoning</code> 都被原样塞进每条 score 的 <code>comment</code>。源码：<code>evalService.ts:953-997</code> 的 <code>toNormalizedScores</code>。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么裁判必须用「结构化输出」，而不是让它自由发挥？</strong> 因为评估的产物要能<strong>录入、聚合、比较</strong>。若裁判回一段「我觉得这个回答还不错，但开头有点啰嗦……」的散文，你既没法可靠地抽出一个分、也没法跨千条 trace 求平均。
+  强制 <code>{score, reasoning}</code> 的 schema，让分数能进 scores 表（可聚合），又把「为什么给这个分」留在 <code>comment</code> 里（可追溯）——<strong>两全</strong>。<br><br>
+  <strong>更深一层：为什么评估结果要走回摄取链路，而不是直接写库？</strong> 这是 Langfuse 反复出现的信念——<strong>「一个入口，多个生产者」</strong>。无论分数来自 API、人工、还是裁判 LLM，都包成同一种 <code>SCORE_CREATE</code> 事件、走第 12 课那条链路，
+  于是去重、合并、落 ClickHouse 的逻辑只写一遍、对所有来源一致。评估因此不是「另一个系统」，而是<strong>摄取管道的又一个上游</strong>。还有个优雅的递归：裁判自己的那次 LLM 调用，也被记成一条 Langfuse trace（环境标为 LLMJudge）——<strong>观测平台连自己的裁判都一并观测了</strong>。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>LLM-as-a-judge = 用一个 LLM 给另一个 LLM 的输出打分</strong>：在人工（准但慢）与规则（快但浅）之间，提供自动、可扩展的质量评估。</li>
+    <li><strong>三件套</strong>：模板（prompt+输出定义+模型，描述「怎么评」）、评估器（过滤目标+变量映射+scoreName，描述「评谁」）、执行（每条 trace 实际跑一次）。</li>
+    <li><strong>变量映射</strong>：模板的 <code>{{占位符}}</code> 各自声明来自 trace/observation/dataset_item 的哪一列；<code>extractVariablesFromTracingData</code> 执行时去真实数据里取值，<code>compileEvalPrompt</code> 在「喂给 LLM」的边界才拍平成字符串。</li>
+    <li><strong>结构化输出</strong>：裁判被强制返回 <code>{score, reasoning}</code>（或分类的 <code>{matches, reasoning}</code>）；<code>toNormalizedScores</code> 归一为 value=分、comment=理由——可聚合又可追溯。</li>
+    <li><strong>回流摄取（source=EVAL）</strong>：结果包成与手写 score 相同的 <code>SCORE_CREATE</code> 事件走第 12 课链路。评估是摄取管道的又一个生产者，不是独立系统；裁判自身的调用也被记成 trace。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 LLM-as-a-judge 强制裁判 LLM 用「结构化输出」返回 {score, reasoning}，而不是让它自由写一段评语。这么做的核心原因是？</div>
+  <ol class="opts">
+    <li>让裁判模型必须用 GPT-4</li>
+    <li>结构化输出让 LLM 调用更便宜</li>
+    <li>可以不调用 LLM</li>
+    <li>评估的产物要能录入、聚合、比较：分必须能进 scores 表跨千条 trace 求平均，理由留在 comment 里可追溯——散文两样都做不到</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若裁判回一段散文，既没法可靠抽出一个数值分、也没法跨大量 trace 聚合。强制 {score, reasoning} 的 schema 让 value 进 scores 表（可聚合）、reasoning 进 comment（可追溯），两全。toNormalizedScores 正是据此把输出归一成 score（value=分，comment=理由）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 裁判 LLM 评出的分，最终是怎么变成数据库里一条可查询的 score 的？</div>
+  <ol class="opts">
+    <li>存进一张专门的 eval 结果表</li>
+    <li>直接 INSERT 进 ClickHouse，绕过摄取链路</li>
+    <li>包成 source=EVAL 的 SCORE_CREATE 事件，走第 12 课那条和手写 score 完全相同的摄取链路——评估是摄取管道的又一个生产者，不是独立系统</li>
+    <li>只存在内存里供仪表盘读取</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。evalScoreEvent.ts 把归一后的结果包成 eventTypes.SCORE_CREATE、标 source=ScoreSourceEnum.EVAL，再走摄取链路。于是去重、合并、落 ClickHouse 的逻辑只写一遍、对 API/EVAL/ANNOTATION 三来源一致。这正是「一个入口，多个生产者」的体现，也让裁判分天然与其它来源同表可比。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 模板里写的是 {{question}}、{{answer}} 这样的占位符。执行时它们怎么变成真实内容？</div>
+  <ol class="opts">
+    <li>用固定的示例数据</li>
+    <li>裁判 LLM 自己去数据库查</li>
+    <li>前端把内容硬编码进模板</li>
+    <li>靠变量映射：每个模板变量声明来自 trace/observation/dataset_item 的哪一列，extractVariablesFromTracingData 去真实数据取值，compileEvalPrompt 再填进占位符</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。每条映射是 {templateVariable, langfuseObject, selectedColumnId}。执行时按映射从真实 trace/observation/dataset_item 取那一列的值，得到 {var, value}；compileEvalPrompt 在「喂给 LLM」的边界用 parseUnknownToString 拍平成字符串再填进 {{占位符}}。提取阶段保留原始形状（给代码 eval 用），只在边界处转换。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>LLM-as-a-judge 用一个 LLM 评判另一个 LLM——但裁判自己也会犯错、也有偏好。你会怎么验证「裁判本身是否可靠」？（提示：Langfuse 把裁判的每次调用也记成一条 trace，且评出的分能和人工标注的分同表比较。）这对「用 AI 评 AI」的可信度建设意味着什么？</li>
   </ul>
 </div>
 </div>

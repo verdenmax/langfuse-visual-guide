@@ -2005,6 +2005,76 @@ QUIZZES = {
             },
         ],
     },
+    "29-llm-as-a-judge.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 LLM-as-a-judge 强制裁判 LLM 用「结构化输出」返回 {score, reasoning}，而不是让它自由写一段评语。这么做的核心原因是？",
+                    "en": "Langfuse's LLM-as-a-judge forces the judge LLM to return {score, reasoning} via 'structured output' rather than free prose. The core reason is?",
+                },
+                "opts": [
+                    {
+                        "zh": "评估的产物要能录入、聚合、比较：分必须能进 scores 表跨千条 trace 求平均，理由留在 comment 里可追溯——散文两样都做不到",
+                        "en": "the product of evaluation must be recordable, aggregatable, comparable: the score must enter the scores table to average across thousands of traces, with the reasoning kept in comment for traceability — prose does neither",
+                    },
+                    {"zh": "结构化输出让 LLM 调用更便宜", "en": "structured output makes the LLM call cheaper"},
+                    {"zh": "可以不调用 LLM", "en": "it avoids calling the LLM"},
+                    {"zh": "让裁判模型必须用 GPT-4", "en": "it forces the judge to use GPT-4"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若裁判回一段散文，既没法可靠抽出一个数值分、也没法跨大量 trace 聚合。强制 {score, reasoning} 的 schema 让 value 进 scores 表（可聚合）、reasoning 进 comment（可追溯），两全。toNormalizedScores 正是据此把输出归一成 score（value=分，comment=理由）。",
+                    "en": "If the judge returns prose, you can't reliably extract a numeric score nor aggregate across many traces. Forcing a {score, reasoning} schema puts value into the scores table (aggregatable) and reasoning into comment (traceable) — both at once. toNormalizedScores normalizes the output into a score exactly this way (value=score, comment=reasoning).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "裁判 LLM 评出的分，最终是怎么变成数据库里一条可查询的 score 的？",
+                    "en": "How does the judge LLM's verdict ultimately become a queryable score in the database?",
+                },
+                "opts": [
+                    {
+                        "zh": "包成 source=EVAL 的 SCORE_CREATE 事件，走第 12 课那条和手写 score 完全相同的摄取链路——评估是摄取管道的又一个生产者，不是独立系统",
+                        "en": "wrapped as a source=EVAL SCORE_CREATE event through the exact same Lesson-12 ingestion path as a hand-written score — evaluation is another producer for the ingestion pipeline, not a separate system",
+                    },
+                    {"zh": "直接 INSERT 进 ClickHouse，绕过摄取链路", "en": "directly INSERTed into ClickHouse, bypassing ingestion"},
+                    {"zh": "存进一张专门的 eval 结果表", "en": "stored in a dedicated eval-results table"},
+                    {"zh": "只存在内存里供仪表盘读取", "en": "kept in memory only for dashboards"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "evalScoreEvent.ts 把归一后的结果包成 eventTypes.SCORE_CREATE、标 source=ScoreSourceEnum.EVAL，再走摄取链路。于是去重、合并、落 ClickHouse 的逻辑只写一遍、对 API/EVAL/ANNOTATION 三来源一致。这正是「一个入口，多个生产者」的体现，也让裁判分天然与其它来源同表可比。",
+                    "en": "evalScoreEvent.ts wraps the normalized result as eventTypes.SCORE_CREATE tagged source=ScoreSourceEnum.EVAL, then runs the ingestion path. So dedup/merge/ClickHouse-persist are written once and consistent across API/EVAL/ANNOTATION. This is 'one entry, many producers', and makes judge scores inherently comparable in the same table.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "模板里写的是 {{question}}、{{answer}} 这样的占位符。执行时它们怎么变成真实内容？",
+                    "en": "The template holds placeholders like {{question}}, {{answer}}. How do they become real content at execution?",
+                },
+                "opts": [
+                    {
+                        "zh": "靠变量映射：每个模板变量声明来自 trace/observation/dataset_item 的哪一列，extractVariablesFromTracingData 去真实数据取值，compileEvalPrompt 再填进占位符",
+                        "en": "via variable mapping: each template variable declares which column of trace/observation/dataset_item it comes from; extractVariablesFromTracingData fetches real values, then compileEvalPrompt fills the placeholders",
+                    },
+                    {"zh": "裁判 LLM 自己去数据库查", "en": "the judge LLM queries the database itself"},
+                    {"zh": "用固定的示例数据", "en": "with fixed sample data"},
+                    {"zh": "前端把内容硬编码进模板", "en": "the frontend hardcodes content into the template"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "每条映射是 {templateVariable, langfuseObject, selectedColumnId}。执行时按映射从真实 trace/observation/dataset_item 取那一列的值，得到 {var, value}；compileEvalPrompt 在「喂给 LLM」的边界用 parseUnknownToString 拍平成字符串再填进 {{占位符}}。提取阶段保留原始形状（给代码 eval 用），只在边界处转换。",
+                    "en": "Each mapping is {templateVariable, langfuseObject, selectedColumnId}. At run it pulls that column's value from the real trace/observation/dataset_item into {var, value}; compileEvalPrompt flattens to a string via parseUnknownToString at the 'feed-to-LLM' boundary before filling {{placeholders}}. Extraction keeps original shapes (for code eval), converting only at the boundary.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "LLM-as-a-judge 用一个 LLM 评判另一个 LLM——但裁判自己也会犯错、也有偏好。你会怎么验证「裁判本身是否可靠」？（提示：Langfuse 把裁判的每次调用也记成一条 trace，且评出的分能和人工标注的分同表比较。）这对「用 AI 评 AI」的可信度建设意味着什么？",
+                "en": "LLM-as-a-judge uses one LLM to judge another — but the judge itself errs and has biases. How would you validate 'whether the judge itself is reliable'? (Hint: Langfuse records each judge call as a trace, and judge scores sit in the same table as human-annotation scores for comparison.) What does this imply for building trust in 'AI judging AI'?",
+            },
+        ],
+    },
 }
 
 

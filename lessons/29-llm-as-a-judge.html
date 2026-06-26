@@ -1,270 +1,349 @@
-"""Part 5 — 评估与评分 / Evaluation & scoring. Lessons L28–L33.
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>29 · LLM 当裁判 / LLM-as-a-judge - Langfuse 图解教程</title>
+<meta name="description" content="第五部分 · 评估与评分｜LLM 当裁判 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="29 · LLM 当裁判 / LLM-as-a-judge - Langfuse 图解教程">
+<meta property="og:description" content="第五部分 · 评估与评分｜LLM 当裁判 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="29 · LLM 当裁判 / LLM-as-a-judge - Langfuse 图解教程">
+<meta name="twitter:description" content="第五部分 · 评估与评分｜LLM 当裁判 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
 
-Same authoring pattern as part1..part4: each lesson assembles its bilingual body
-from ``_ZHn`` / ``_ENn`` section lists, then exports ``LESSON_NN = {"zh","en"}``.
-All technical claims are grounded in the real langfuse/langfuse source.
-"""
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
 
-# ══════════════════════════════════════════════════════════════════════
-# L28 · 评分模型 / The scoring model
-# ══════════════════════════════════════════════════════════════════════
-_ZH28 = []
-_EN28 = []
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
 
-_ZH28.append(r"""
-<p class="lead">
-前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 打分。而一切的原子单位，是 <strong>score（评分）</strong>。
-这一课先把 score 的<strong>数据模型</strong>讲透：一个 score 长什么样、有哪<strong>三种数据类型</strong>（数值/分类/布尔）、<strong>score config</strong> 这个「评分的 schema」管什么，以及一个 score 可能来自哪<strong>三种来源</strong>。
-理解了这套模型，后面五课（LLM 评判、代码 eval、人工标注、监控）就都只是「<strong>用不同方式生产 score</strong>」而已。
-</p>
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
 
-<div class="card analogy">
-  <div class="tag">📋 生活类比</div>
-  把 score 想成给一次回答贴的一张<strong>评价标签</strong>。标签上写着<strong>评什么</strong>（name，如「有用性」）、<strong>打多少</strong>（value）、以及这是<strong>哪种刻度</strong>（dataType：是 0–1 的分数？还是「好/中/差」的档位？还是「对/错」的勾叉？）。
-  而 <strong>score config</strong> 就像这类标签的<strong>印制规范</strong>：它规定「有用性」这张标签必须是 0–1 的数值、「情感」那张必须从 {正/中/负} 里选一个——于是<strong>同名标签永远同一把尺</strong>，才能横向比较、求平均。
-  至于标签是谁贴的（source）：可能是你<strong>亲手</strong>贴（API）、可能是 <strong>AI 评判员</strong>贴（EVAL）、也可能是<strong>人工审核</strong>贴（ANNOTATION）——但只要刻度一致，三方贴的标签就活在<strong>同一个可比的空间</strong>里。
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第五部分 · 评估与评分</span><span class="lang-en">Part 5 · Evaluation &amp; Scoring</span></span>
+    <span class="pill">29 / 29</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
 </div>
-""")
-
-# (L28 sections appended below)
-
-_ZH28.append(r"""
-<h2>三种刻度：数值、分类、布尔</h2>
-<p>一个 score 的灵魂是它的 <code>dataType</code>——它决定 value 怎么解读、怎么校验。Langfuse 用 Zod 把三种类型定义得清清楚楚（外加一个旧的 TEXT）：</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="score 三种数据类型：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
-  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score 的三种刻度（dataType）</text>
-  <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC 数值</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value 是一个数</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">可设 minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">例：有用性 0–1、延迟分 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可求平均、可排序</text>
-  <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL 分类</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">一组「标签 ↔ 值」</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">标签唯一、值唯一</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：情感 {正/中/负}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可计数、可分组</text>
-  <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN 布尔</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">特殊的分类</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">固定两档：True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：是否含敏感词</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可算通过率</text>
-</svg>
-<div class="figcap"><b>三种刻度，各有所长</b>：<b>NUMERIC</b>（数，带可选 min/max，能求平均/排序）、<b>CATEGORICAL</b>（标签↔值的固定集合，标签与值都唯一，能计数/分组）、<b>BOOLEAN</b>（固定为 <code>True=1 / False=0</code> 的特殊分类，能算通过率）。源码：<code>packages/shared/src/domain/score-configs.ts:18-80</code>。</div>
-</div>
-
-<div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
-  <pre class="code"><span class="cm">// 数值：可选区间，无 categories</span>
-NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
-
-<span class="cm">// 分类：一组 {label, value}，标签唯一、值唯一（validateCategories）</span>
-CategoricalConfigFields = { dataType: <span class="st">"CATEGORICAL"</span>, categories: [{label, value}, …] };
-
-<span class="cm">// 布尔：其实是「恰好两档」的特殊分类，且锁死为 True=1 / False=0</span>
-BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
-  categories: [{label:<span class="st">"True"</span>, value:1}, {label:<span class="st">"False"</span>, value:0}] };  <span class="cm">// length===2 强校验</span></pre>
-</div>
-
-<p>注意一个优雅之处：<strong>布尔不是独立的第四种类型，而是被实现成「恰好两档、且锁死为 True=1/False=0」的分类</strong>。这样底层只需处理「数值」和「分类」两套逻辑，布尔顺势复用分类的存储与聚合——
-少一套特例，多一分一致。这也呼应了第 8 课「宽事件」的思路：能用通用机制表达的，就别新造一个。</p>
-
-<p>还有个贯穿始终的设计：<strong><code>value</code> 永远是一个数</strong>，而 <code>stringValue</code> 只用来存「标签」。NUMERIC 的 value 就是那个数、stringValue 为空；CATEGORICAL/BOOLEAN 则把标签放进 stringValue、把映射后的数放进 value（如 <code>"positive"</code>→某数、<code>"True"</code>→1）。
-正因为<strong>任何 score 都有一个数值 value</strong>，求平均、画趋势、算通过率才对所有类型一视同仁——这是「可比」的物理基础。</p>
-
-<table class="t">
-  <thead><tr><th>dataType</th><th>value / stringValue</th><th>约束</th><th>能做的聚合</th><th>例子</th></tr></thead>
-  <tbody>
-    <tr><td><b>NUMERIC</b></td><td>value=那个数；stringValue 空</td><td>可选 minValue / maxValue</td><td>均值、分布、趋势</td><td>helpfulness 0.82</td></tr>
-    <tr><td><b>CATEGORICAL</b></td><td>stringValue=标签；value=映射数</td><td>标签唯一、值唯一</td><td>计数、占比、分组</td><td>sentiment "positive"</td></tr>
-    <tr><td><b>BOOLEAN</b></td><td>stringValue="True"/"False"；value∈{0,1}</td><td>锁死两档 True=1 / False=0</td><td>通过率</td><td>is_toxic False (0)</td></tr>
-  </tbody>
-</table>
-<p>提醒：<code>scores.ts</code> 里 dataType 其实列了 <strong>5</strong> 种——上面 3 种是 score config 支持的「可比刻度」，另有 <strong>TEXT</strong>（自由文本，长度 ≤500，旧式）和 <strong>CORRECTION</strong>（人工标注纠正专用，name 固定为 <code>"output"</code>）。后两者不是可聚合的刻度，故本课聚焦前三。源码：<code>scores.ts:46-52</code>（5 种）、<code>score-configs.ts:117-138</code>（config 仅 4 种 discriminatedUnion）。</p>
-
-""")
-
-# (config + source section below)
-
-_ZH28.append(r"""
-<h2>score config：一张「评分的 schema」</h2>
-<p>光有 dataType 还不够。如果同一个「有用性」分数，今天有人打 0–1、明天有人打 1–100，数据就乱成一锅。<strong>score config</strong> 就是解决这个的：它是某个 score <strong>name 的 schema</strong>——
-声明这个名字下的分数是什么 dataType、什么区间/有哪些类别。于是无论分数从哪来，都按<strong>同一把尺</strong>校验，才谈得上比较与聚合。</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 210" role="img" aria-label="score config 作为某 name 的 schema，校验来自 API、EVAL、ANNOTATION 三种来源的分数，使它们落入同一可比空间">
-  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一份 config 把守一个 name：三来源、同一把尺</text>
-  <rect x="20" y="44" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API（你亲手提交）</text><text x="95" y="74" text-anchor="middle" font-size="7" fill="var(--muted)">source=API</text>
-  <rect x="20" y="86" width="150" height="36" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="103" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL（AI/代码评判）</text><text x="95" y="116" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source=EVAL</text>
-  <rect x="20" y="128" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="145" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">ANNOTATION（人工）</text><text x="95" y="158" text-anchor="middle" font-size="7" fill="var(--muted)">source=ANNOTATION</text>
-  <rect x="270" y="74" width="180" height="62" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">score config（name 的 schema）</text><text x="360" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">"有用性" = NUMERIC [0,1]</text><text x="360" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">校验 value 是否合规</text>
-  <rect x="500" y="80" width="200" height="50" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="600" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores 表（第 8 课宽表）</text><text x="600" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">同名同尺 → 可比、可聚合</text>
-  <line x1="170" y1="62" x2="268" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="104" x2="268" y2="105" stroke="var(--accent)" stroke-width="1.3"/><line x1="170" y1="146" x2="268" y2="118" stroke="var(--faint)" stroke-width="1.3"/>
-  <line x1="450" y1="105" x2="498" y2="105" stroke="var(--faint)" stroke-width="1.5"/><polygon points="498,105 489,101 489,109" fill="var(--faint)"/>
-  <text x="360" y="186" text-anchor="middle" font-size="8.5" fill="var(--faint)">三种来源殊途同归：都按 config 校验、都写进同一张 scores 表——评判/人工/API 活在同一个可比空间</text>
-</svg>
-<div class="figcap"><b>一份 config 守一个 name</b>：score config 声明某 name 的 dataType 与约束（数值区间 / 类别集合），校验来自 <b>API / EVAL / ANNOTATION</b> 三种来源的分数，使它们落进同一张 scores 表、同一把尺。源码：<code>scores.ts:4</code>（<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>）。</div>
-</div>
-
-<div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 6、12 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（第 29 课）或代码 eval（第 31 课）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（第 32 课）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
-</div>
-
-<h2>一个 score 对象到底有哪些字段</h2>
-<p>把 <code>ScoreSchema</code> 拆开看，一条 score 大致分三组字段——「评什么·打多少」「谁打的·带什么」「挂在哪」。最值得记的是最后一组：<strong>一条 score 必须挂在 trace / observation / session / 数据集运行 四者之一上</strong>（四个引用字段，恰好一个非空）。</p>
-
-<div class="cols">
-  <div class="col"><h4>评什么 · 打多少</h4><p><code>name</code> 评的是哪个维度（如「有用性」）；<code>value</code> 永远是一个数；<code>stringValue</code> 标签（分类/布尔/文本才有）；<code>dataType</code> 哪种刻度。</p></div>
-  <div class="col"><h4>谁打的 · 带什么</h4><p><code>source</code> API / EVAL / ANNOTATION；<code>authorUserId</code> 人工标注者（可空）；<code>comment</code> 备注（可空）；<code>configId</code> 按哪份 config 校验；<code>queueId</code> 来自哪个标注队列。</p></div>
-  <div class="col"><h4>挂在哪（四选一）</h4><p><code>traceId</code> 整条 trace；<code>observationId</code> trace 里某一步；<code>sessionId</code> 整个会话；<code>datasetRunId</code> 某次数据集运行——<strong>必须恰有一个非空</strong>。</p></div>
-</div>
-<p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
-""")
-
-# (spark + key below)
-
-_ZH28.append(r"""
-<div class="card spark">
-  <div class="tag">🎯 设计取舍</div>
-  <strong>为什么要专门搞一个 score config，而不是让大家随手打分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
-  那这些分数<strong>放在一起毫无意义</strong>——求平均是错的、画趋势是错的、做对比更是错的。score config 把「某个名字 = 某种刻度」<strong>固定下来、强制校验</strong>，于是同名分数永远可比，
-  你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和第 8 课「provided vs computed」、第 16 课「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
-  下游的一切分析才有坚实地基</strong>。而把三种来源统一到同一张 scores 表、同一套 config，则让「AI 评的」「人审的」「API 报的」分数活在一个空间里——<strong>这正是 Part 5 后续每一课的共同终点：生产可比的 score</strong>。
-</div>
-
-<div class="card key">
-  <div class="tag">🎯 本课要点</div>
-  <ul>
-    <li><strong>score 是评估的原子单位</strong>：一个 (name, value, dataType, source) 挂在 trace 或其中某步 observation 上（也可挂 session / 数据集运行），把「发生了什么」变成「做得多好」。</li>
-    <li><strong>三种 dataType</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
-    <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应第 8 课「能用通用机制就别新造」。</li>
-    <li><strong>score config = 某 name 的 schema</strong>：声明 dataType 与约束（区间/类别），强制校验，使<strong>同名分数永远同一把尺</strong>、可比可聚合。</li>
-    <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进第 8 课的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
-  </ul>
-</div>
-""")
-
-_EN28.append(r"""
-<p class="lead">
-The first four parts let you <strong>see</strong> what happened on every LLM call. But "what happened" is not the same as "<strong>how good was it</strong>". This part is about <strong>evaluation</strong>—how to put a number on a trace. And the atomic unit of all of it is the <strong>score</strong>.
-This lesson nails down the score's <strong>data model</strong>: what a score looks like, its <strong>three data types</strong> (numeric / categorical / boolean), what the <strong>score config</strong> ("the schema of a score") governs, and which <strong>three sources</strong> a score can come from.
-Once you have this model, the next five lessons (LLM-as-a-judge, code eval, human annotation, monitors) are all just "<strong>different ways of producing a score</strong>".
-</p>
-
-<div class="card analogy">
-  <div class="tag">📋 Analogy</div>
-  Think of a score as an <strong>evaluation sticker</strong> slapped on one answer. The sticker says <strong>what you're rating</strong> (name, e.g. "helpfulness"), <strong>the rating</strong> (value), and <strong>which kind of scale</strong> (dataType: a 0–1 number? a "good/ok/bad" tier? a "right/wrong" tick?).
-  The <strong>score config</strong> is the <strong>printing standard</strong> for that kind of sticker: it mandates that "helpfulness" must be a 0–1 number, that "sentiment" must be one of {pos/neutral/neg}—so <strong>same-named stickers always use the same ruler</strong>, which is what makes them comparable and averageable.
-  As for who applied the sticker (source): maybe <strong>you</strong> did (API), maybe an <strong>AI judge</strong> did (EVAL), maybe a <strong>human reviewer</strong> did (ANNOTATION)—but as long as the scale matches, all three live in the <strong>same comparable space</strong>.
-</div>
-""")
-
-_EN28.append(r"""
-<h2>Three scales: numeric, categorical, boolean</h2>
-<p>The soul of a score is its <code>dataType</code>—it decides how the value is read and validated. Langfuse pins down three types with Zod (plus a legacy TEXT):</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="The three score data types: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
-  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A score's three scales (dataType)</text>
-  <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value is a number</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">optional minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">e.g. helpfulness 0–1, latency 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">averageable, sortable</text>
-  <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a set of label ↔ value</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">labels unique, values unique</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. sentiment {pos/neu/neg}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">countable, groupable</text>
-  <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a special category</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">locked: True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. contains toxic words?</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">pass-rate computable</text>
-</svg>
-<div class="figcap"><b>Three scales, each with a strength</b>: <b>NUMERIC</b> (a number with optional min/max, averageable/sortable), <b>CATEGORICAL</b> (a fixed set of label↔value, both unique, countable/groupable), <b>BOOLEAN</b> (a special category locked to <code>True=1 / False=0</code>, pass-rate computable). Source: <code>packages/shared/src/domain/score-configs.ts:18-80</code>.</div>
-</div>
-
-<div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
-  <pre class="code"><span class="cm">// numeric: optional bounds, no categories</span>
-NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
-
-<span class="cm">// categorical: a set of {label, value}; labels unique, values unique (validateCategories)</span>
-CategoricalConfigFields = { dataType: <span class="st">"CATEGORICAL"</span>, categories: [{label, value}, …] };
-
-<span class="cm">// boolean: really a "exactly two" special category, locked to True=1 / False=0</span>
-BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
-  categories: [{label:<span class="st">"True"</span>, value:1}, {label:<span class="st">"False"</span>, value:0}] };  <span class="cm">// length===2 enforced</span></pre>
-</div>
-
-<p>Note one elegant move: <strong>boolean is not a separate fourth type—it is implemented as a "exactly two categories, locked to True=1/False=0" category</strong>. So the core only handles two logics, "numeric" and "categorical", and boolean reuses categorical storage and aggregation—
-one fewer special case, one more bit of consistency. This echoes Lesson 8's "wide event" idea: if a general mechanism can express it, don't invent a new one.</p>
-
-<p>One more design that runs throughout: <strong>the <code>value</code> is always a number</strong>, while <code>stringValue</code> only holds the "label". A NUMERIC value is just that number with an empty stringValue; CATEGORICAL/BOOLEAN put the label in stringValue and the mapped number in value (e.g. <code>"positive"</code>→a number, <code>"True"</code>→1).
-Precisely because <strong>every score has a numeric value</strong>, averaging, trending, and pass-rate work uniformly across all types—the physical basis of "comparable".</p>
-
-<table class="t">
-  <thead><tr><th>dataType</th><th>value / stringValue</th><th>constraints</th><th>aggregations</th><th>example</th></tr></thead>
-  <tbody>
-    <tr><td><b>NUMERIC</b></td><td>value=the number; stringValue empty</td><td>optional minValue / maxValue</td><td>mean, distribution, trend</td><td>helpfulness 0.82</td></tr>
-    <tr><td><b>CATEGORICAL</b></td><td>stringValue=label; value=mapped number</td><td>labels unique, values unique</td><td>count, share, group-by</td><td>sentiment "positive"</td></tr>
-    <tr><td><b>BOOLEAN</b></td><td>stringValue="True"/"False"; value∈{0,1}</td><td>locked: True=1 / False=0</td><td>pass-rate</td><td>is_toxic False (0)</td></tr>
-  </tbody>
-</table>
-<p>Reminder: <code>scores.ts</code> actually lists <strong>5</strong> dataTypes—the three above are the "comparable scales" a score config supports, plus <strong>TEXT</strong> (free text, length ≤500, legacy) and <strong>CORRECTION</strong> (for human-annotation corrections, name fixed to <code>"output"</code>). The latter two aren't aggregatable scales, so this lesson focuses on the first three. Source: <code>scores.ts:46-52</code> (5 types), <code>score-configs.ts:117-138</code> (config is a 4-way discriminatedUnion).</p>
-
-""")
-
-# (en config + source + spark + key below)
-
-_EN28.append(r"""
-<h2>score config: a "schema for scoring"</h2>
-<p>A dataType alone isn't enough. If the same "helpfulness" score is rated 0–1 by one person today and 1–100 by another tomorrow, the data turns to mush. <strong>score config</strong> fixes exactly this: it is the <strong>schema of a score name</strong>—
-declaring what dataType that name uses, and what bounds / which categories. So no matter where a score comes from, it is validated against the <strong>same ruler</strong>, which is the precondition for comparison and aggregation.</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 210" role="img" aria-label="A score config as the schema of a name, validating scores from API, EVAL, and ANNOTATION sources so they land in one comparable space">
-  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One config guards one name: three sources, one ruler</text>
-  <rect x="20" y="44" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API (you submit it)</text><text x="95" y="74" text-anchor="middle" font-size="7" fill="var(--muted)">source=API</text>
-  <rect x="20" y="86" width="150" height="36" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="103" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL (AI/code judge)</text><text x="95" y="116" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source=EVAL</text>
-  <rect x="20" y="128" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="145" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">ANNOTATION (human)</text><text x="95" y="158" text-anchor="middle" font-size="7" fill="var(--muted)">source=ANNOTATION</text>
-  <rect x="270" y="74" width="180" height="62" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">score config (name's schema)</text><text x="360" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness" = NUMERIC [0,1]</text><text x="360" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">validates the value</text>
-  <rect x="500" y="80" width="200" height="50" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="600" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores table (L8 wide table)</text><text x="600" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">same name+ruler → comparable</text>
-  <line x1="170" y1="62" x2="268" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="104" x2="268" y2="105" stroke="var(--accent)" stroke-width="1.3"/><line x1="170" y1="146" x2="268" y2="118" stroke="var(--faint)" stroke-width="1.3"/>
-  <line x1="450" y1="105" x2="498" y2="105" stroke="var(--faint)" stroke-width="1.5"/><polygon points="498,105 489,101 489,109" fill="var(--faint)"/>
-  <text x="360" y="186" text-anchor="middle" font-size="8.5" fill="var(--faint)">three sources converge: all validated by config, all written to one scores table—judge/human/API in one comparable space</text>
-</svg>
-<div class="figcap"><b>One config guards one name</b>: a score config declares a name's dataType and constraints (numeric bounds / category set), validating scores from <b>API / EVAL / ANNOTATION</b> into one scores table, one ruler. Source: <code>scores.ts:4</code> (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>).</div>
-</div>
-
-<div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">you submit it</span></div><div class="ld">Use the SDK's <code>score.create</code> directly—e.g. your own offline eval script, or thumbs-up collected in production. This is one origin of the <code>SCORE_CREATE</code> event on the ingestion path of Lessons 6 & 12.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI or code judge</span></div><div class="ld">Scores computed by LLM-as-a-judge (Lesson 29) or code eval (Lesson 31). They too <strong>flow back through the same ingestion path</strong> to become scores—evaluation isn't a separate pipeline, it's a producer of scores.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">human annotation</span></div><div class="ld">Human reviewers score traces against the config in an annotation queue (Lesson 32). They land in the same scores table, just with source set to ANNOTATION.</div></div>
-</div>
-
-<h2>What fields a score object actually has</h2>
-<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / observation / session / dataset-run</strong> (four reference fields, exactly one non-null).</p>
-
-<div class="cols">
-  <div class="col"><h4>what · how much</h4><p><code>name</code> which dimension (e.g. "helpfulness"); <code>value</code> always a number; <code>stringValue</code> the label (categorical/boolean/text only); <code>dataType</code> which scale.</p></div>
-  <div class="col"><h4>who · with what</h4><p><code>source</code> API / EVAL / ANNOTATION; <code>authorUserId</code> the human annotator (nullable); <code>comment</code> a note (nullable); <code>configId</code> which config validates it; <code>queueId</code> which annotation queue it came from.</p></div>
-  <div class="col"><h4>attached to (one of)</h4><p><code>traceId</code> the whole trace; <code>observationId</code> one step within; <code>sessionId</code> the whole session; <code>datasetRunId</code> one dataset run—<strong>exactly one must be non-null</strong>.</p></div>
-</div>
-<p>This "one-of-four attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation</strong> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). One score model covers every evaluation granularity, from a single step to a whole batch experiment. Source: <code>packages/shared/src/domain/scores.ts:89-133</code>.</p>
-""")
-
-_EN28.append(r"""
-<div class="card spark">
-  <div class="tag">🎯 Design trade-off</div>
-  <strong>Why bother with a dedicated score config instead of letting everyone score freely?</strong> Because <strong>"being comparable" is the entire value of evaluation</strong>. If under the name "helpfulness" team A rates 0–1, team B uses a percentage, and C uses "good/bad",
-  then those scores are <strong>meaningless together</strong>—averaging is wrong, trending is wrong, comparing is more wrong still. A score config <strong>fixes and enforces</strong> "a given name = a given scale", so same-named scores are forever comparable,
-  and you can confidently ask "did average helpfulness rise this week" or "which model has the higher toxicity pass-rate". This is the same engineering belief as Lesson 8's "provided vs computed" and Lesson 16's "pricing schema": <strong>model "what the data should look like" explicitly and validate up front,
-  and every downstream analysis stands on solid ground</strong>. Unifying three sources into one scores table and one config set lets "AI-judged", "human-reviewed", and "API-reported" scores live in one space—<strong>which is the shared destination of every remaining lesson in Part 5: producing comparable scores</strong>.
-</div>
-
-<div class="card key">
-  <div class="tag">🎯 Key points</div>
-  <ul>
-    <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
-    <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
-    <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing Lesson 8's "don't invent when a general mechanism works".</li>
-    <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
-    <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to Lesson 8's scores table. The next five lessons are just "producing scores in different ways".</li>
-  </ul>
-</div>
-""")
-
-LESSON_28 = {"zh": "\n".join(_ZH28), "en": "\n".join(_EN28)}
-
-
-# ══════════════════════════════════════════════════════════════════════
-# L29 · LLM 当裁判 / LLM-as-a-judge
-# ══════════════════════════════════════════════════════════════════════
-_ZH29 = []
-_EN29 = []
-
-_ZH29.append(r"""
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第五部分 · 评估与评分</span><span class="lang-en">Part 5 · Evaluation &amp; Scoring</span></div>
+    <h1><span class="lang-zh">LLM 当裁判</span><span class="lang-en">LLM-as-a-judge</span></h1>
+  </div>
+  <div class="lang-zh">
 <p class="lead">
 上一课说 score 是评估的原子单位，也说了它有三种来源。这一课讲最有意思的那种来源：<strong>EVAL——用一个 LLM 去给另一个 LLM 的输出打分</strong>，业界叫 <strong>LLM-as-a-judge（LLM 当裁判）</strong>。
 人工标注准但慢且贵，规则匹配快但只能查表面。让一个「裁判 LLM」读你的 trace、按你给的标准打分，就能<strong>自动、可扩展地</strong>评估「这次回答到底好不好」。这一课拆开 Langfuse 的裁判流水线：
@@ -277,9 +356,8 @@ _ZH29.append(r"""
   评委看完，必须在<strong>规定表格</strong>里填「分数 + 评语」（结构化输出，不能写成一段散文让人没法录入）。最后这张评分表被<strong>归档进成绩册</strong>（评出的分作为一个 source=EVAL 的 score，走回第 12 课那条摄取链路，落进 scores 表）。
   整套流程的妙处：评委本身也是一次 LLM 调用，<strong>所以它自己也被 Langfuse 记成一条 trace</strong>——裁判也在被观测。
 </div>
-""")
 
-_ZH29.append(r"""
+
 <h2>裁判流水线：从一条 trace 到一个分数</h2>
 <p>Langfuse 把 LLM-as-a-judge 拆成三件可复用的东西：<strong>模板</strong>（评什么、怎么评、用哪个模型）、<strong>评估器</strong>（把模板绑到哪些 trace、变量怎么取、分数叫什么名）、以及一次次的<strong>执行</strong>（真正去取数据、调裁判、产出分数）。下图是一条 trace 走完整条流水线的样子：</p>
 
@@ -308,11 +386,8 @@ _ZH29.append(r"""
   <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">评估器 Evaluator（JobConfiguration）</span></div><div class="ld">把模板「落地」：用一个<strong>过滤条件</strong>圈定要评哪些 trace（如「只评 production 环境、name=chat 的」）、一份<strong>变量映射</strong>（模板里的 <code>{{answer}}</code> 该取 trace 的哪一列），以及最终分数叫什么名（<code>scoreName</code>）。</div></div>
   <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">执行 Execution（JobExecution）</span></div><div class="ld">每条命中的 trace 触发一次执行：提取变量 → 编译提示 → 调裁判 LLM 拿结构化结果 → 归一成 score → 经摄取链路写回。这条「执行」本身有状态生命周期（第 30 课细讲）。</div></div>
 </div>
-""")
 
-# (L29 sec2 mapping below)
 
-_ZH29.append(r"""
 <h2>变量映射：把 trace 的哪一部分递给裁判</h2>
 <p>模板里写的是 <code>{{question}}</code> <code>{{answer}}</code> 这样的占位符——它们怎么变成真实内容？靠<strong>变量映射</strong>：每个模板变量声明它来自哪个 <code>langfuseObject</code>（trace / observation / dataset_item）的哪一列（<code>selectedColumnId</code>，如 input/output/metadata）。执行时，<code>extractVariablesFromTracingData</code> 按映射去真实的 trace 里把值一个个取出来。</p>
 
@@ -342,11 +417,8 @@ _ZH29.append(r"""
 </div>
 
 <p>注意一个细节：提取阶段<strong>保留原始数据形状</strong>（给代码 eval 用，第 31 课），只有在 <code>compileEvalPrompt</code> 这个「喂给裁判 LLM」的边界上才用 <code>parseUnknownToString</code> 拍平成字符串——因为 LLM 的 prompt 终究是文本。这种「在边界处才转换、内部保留原样」的克制，是干净数据流的标志。</p>
-""")
 
-# (L29 sec3 output below)
 
-_ZH29.append(r"""
 <h2>结构化输出与回流：分数怎么变回一个 score</h2>
 <p>裁判 LLM 不能只回一段散文——那样没法录入。Langfuse 用<strong>结构化输出</strong>（structured output）强制它返回规整的 JSON：按模板的输出定义，要么 <code>{score: 数, reasoning}</code>（NUMERIC/BOOLEAN），要么 <code>{matches: [...], reasoning}</code>（CATEGORICAL）。拿到后 <code>toNormalizedScores</code> 把它归一成 score：<strong>value 是分、comment 是裁判的理由</strong>。</p>
 
@@ -389,9 +461,8 @@ _ZH29.append(r"""
   </tbody>
 </table>
 <p>三种输出定义对应模板里你选的分数类型；注意 CATEGORICAL 的 <code>matches</code> 是<strong>数组</strong>——一次评判可以打出<strong>多条</strong>分类分（如同时命中「事实正确」与「语气友好」两个标签）。无论哪种，<code>reasoning</code> 都被原样塞进每条 score 的 <code>comment</code>。源码：<code>evalService.ts:953-997</code> 的 <code>toNormalizedScores</code>。</p>
-""")
 
-_ZH29.append(r"""
+
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么裁判必须用「结构化输出」，而不是让它自由发挥？</strong> 因为评估的产物要能<strong>录入、聚合、比较</strong>。若裁判回一段「我觉得这个回答还不错，但开头有点啰嗦……」的散文，你既没法可靠地抽出一个分、也没法跨千条 trace 求平均。
@@ -410,9 +481,55 @@ _ZH29.append(r"""
     <li><strong>回流摄取（source=EVAL）</strong>：结果包成与手写 score 相同的 <code>SCORE_CREATE</code> 事件走第 12 课链路。评估是摄取管道的又一个生产者，不是独立系统；裁判自身的调用也被记成 trace。</li>
   </ul>
 </div>
-""")
-
-_EN29.append(r"""
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 LLM-as-a-judge 强制裁判 LLM 用「结构化输出」返回 {score, reasoning}，而不是让它自由写一段评语。这么做的核心原因是？</div>
+  <ol class="opts">
+    <li>让裁判模型必须用 GPT-4</li>
+    <li>结构化输出让 LLM 调用更便宜</li>
+    <li>可以不调用 LLM</li>
+    <li>评估的产物要能录入、聚合、比较：分必须能进 scores 表跨千条 trace 求平均，理由留在 comment 里可追溯——散文两样都做不到</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。若裁判回一段散文，既没法可靠抽出一个数值分、也没法跨大量 trace 聚合。强制 {score, reasoning} 的 schema 让 value 进 scores 表（可聚合）、reasoning 进 comment（可追溯），两全。toNormalizedScores 正是据此把输出归一成 score（value=分，comment=理由）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 裁判 LLM 评出的分，最终是怎么变成数据库里一条可查询的 score 的？</div>
+  <ol class="opts">
+    <li>存进一张专门的 eval 结果表</li>
+    <li>直接 INSERT 进 ClickHouse，绕过摄取链路</li>
+    <li>包成 source=EVAL 的 SCORE_CREATE 事件，走第 12 课那条和手写 score 完全相同的摄取链路——评估是摄取管道的又一个生产者，不是独立系统</li>
+    <li>只存在内存里供仪表盘读取</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。evalScoreEvent.ts 把归一后的结果包成 eventTypes.SCORE_CREATE、标 source=ScoreSourceEnum.EVAL，再走摄取链路。于是去重、合并、落 ClickHouse 的逻辑只写一遍、对 API/EVAL/ANNOTATION 三来源一致。这正是「一个入口，多个生产者」的体现，也让裁判分天然与其它来源同表可比。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 模板里写的是 {{question}}、{{answer}} 这样的占位符。执行时它们怎么变成真实内容？</div>
+  <ol class="opts">
+    <li>用固定的示例数据</li>
+    <li>裁判 LLM 自己去数据库查</li>
+    <li>前端把内容硬编码进模板</li>
+    <li>靠变量映射：每个模板变量声明来自 trace/observation/dataset_item 的哪一列，extractVariablesFromTracingData 去真实数据取值，compileEvalPrompt 再填进占位符</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。每条映射是 {templateVariable, langfuseObject, selectedColumnId}。执行时按映射从真实 trace/observation/dataset_item 取那一列的值，得到 {var, value}；compileEvalPrompt 在「喂给 LLM」的边界用 parseUnknownToString 拍平成字符串再填进 {{占位符}}。提取阶段保留原始形状（给代码 eval 用），只在边界处转换。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>LLM-as-a-judge 用一个 LLM 评判另一个 LLM——但裁判自己也会犯错、也有偏好。你会怎么验证「裁判本身是否可靠」？（提示：Langfuse 把裁判的每次调用也记成一条 trace，且评出的分能和人工标注的分同表比较。）这对「用 AI 评 AI」的可信度建设意味着什么？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
 <p class="lead">
 Last lesson said a score is evaluation's atomic unit, and that it has three sources. This lesson covers the most interesting source: <strong>EVAL—using one LLM to score another LLM's output</strong>, known industry-wide as <strong>LLM-as-a-judge</strong>.
 Human labeling is accurate but slow and costly; rule matching is fast but only checks the surface. Letting a "judge LLM" read your trace and score it against your criteria gives you <strong>automatic, scalable</strong> assessment of "was this answer actually good". This lesson takes apart Langfuse's judge pipeline:
@@ -425,9 +542,8 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
   After reading, the judge must fill in a <strong>fixed form</strong> with "score + comment" (structured output—not a prose blob no one can record). Finally that scoring sheet is <strong>filed into the gradebook</strong> (the verdict becomes a source=EVAL score, flowing back through Lesson 12's ingestion path into the scores table).
   The neat part: the judge is itself an LLM call, <strong>so it too is recorded as a Langfuse trace</strong>—the judge is also observed.
 </div>
-""")
 
-_EN29.append(r"""
+
 <h2>The judge pipeline: from one trace to one score</h2>
 <p>Langfuse splits LLM-as-a-judge into three reusable things: a <strong>template</strong> (what to rate, how, with which model), an <strong>evaluator</strong> (which traces to bind the template to, how variables are fetched, what the score is named), and repeated <strong>executions</strong> (actually fetching data, calling the judge, producing scores). Below is one trace's journey through the whole pipeline:</p>
 
@@ -456,11 +572,8 @@ _EN29.append(r"""
   <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">Evaluator (JobConfiguration)</span></div><div class="ld">"Grounds" the template: a <strong>filter</strong> picking which traces to evaluate (e.g. "only production, name=chat"), a <strong>variable mapping</strong> (which column the template's <code>{{answer}}</code> reads), and what the final score is named (<code>scoreName</code>).</div></div>
   <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">Execution (JobExecution)</span></div><div class="ld">Each matching trace triggers one execution: extract variables → compile prompt → call judge LLM for a structured result → normalize into a score → write back via the ingestion path. This "execution" has its own status lifecycle (detailed in Lesson 30).</div></div>
 </div>
-""")
 
-# (en sec2/3/spark below)
 
-_EN29.append(r"""
 <h2>Variable mapping: which part of the trace to hand the judge</h2>
 <p>The template holds placeholders like <code>{{question}}</code> <code>{{answer}}</code>—how do they become real content? Via the <strong>variable mapping</strong>: each template variable declares which <code>langfuseObject</code> (trace / observation / dataset_item) and which column (<code>selectedColumnId</code>, e.g. input/output/metadata) it comes from. At execution, <code>extractVariablesFromTracingData</code> pulls each value from the real trace per the mapping.</p>
 
@@ -490,9 +603,8 @@ _EN29.append(r"""
 </div>
 
 <p>Note a detail: extraction <strong>preserves the original data shape</strong> (for code eval, Lesson 31), and only at the <code>compileEvalPrompt</code> boundary—the "feed to the judge LLM" boundary—is it flattened to a string via <code>parseUnknownToString</code>, because a prompt is ultimately text. This restraint—"convert at the boundary, keep raw internally"—is a hallmark of clean data flow.</p>
-""")
 
-_EN29.append(r"""
+
 <h2>Structured output and flow-back: how a verdict becomes a score</h2>
 <p>The judge LLM can't just return prose—that can't be recorded. Langfuse uses <strong>structured output</strong> to force tidy JSON: per the template's output definition, either <code>{score: number, reasoning}</code> (NUMERIC/BOOLEAN) or <code>{matches: [...], reasoning}</code> (CATEGORICAL). Then <code>toNormalizedScores</code> normalizes it into a score: <strong>value is the score, comment is the judge's reasoning</strong>.</p>
 
@@ -535,9 +647,8 @@ _EN29.append(r"""
   </tbody>
 </table>
 <p>The three output definitions match the score type you pick in the template; note CATEGORICAL's <code>matches</code> is an <strong>array</strong>—one verdict can emit <strong>several</strong> categorical scores (e.g. hitting both "factually correct" and "friendly tone"). Either way, <code>reasoning</code> is dropped verbatim into each score's <code>comment</code>. Source: <code>evalService.ts:953-997</code> <code>toNormalizedScores</code>.</p>
-""")
 
-_EN29.append(r"""
+
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why must the judge use "structured output" instead of free-forming?</strong> Because the product of evaluation must be <strong>recordable, aggregatable, comparable</strong>. If the judge returns prose like "I think this answer is decent but the opening is wordy…", you can neither reliably extract a score nor average across a thousand traces.
@@ -556,5 +667,65 @@ _EN29.append(r"""
     <li><strong>Flow back (source=EVAL)</strong>: the result is wrapped as the same <code>SCORE_CREATE</code> event through Lesson 12's path. Evaluation is another producer for the ingestion pipeline, not a separate system; the judge's own call is also recorded as a trace.</li>
   </ul>
 </div>
-""")
-LESSON_29 = {"zh": "\n".join(_ZH29), "en": "\n".join(_EN29)}
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's LLM-as-a-judge forces the judge LLM to return {score, reasoning} via 'structured output' rather than free prose. The core reason is?</div>
+  <ol class="opts">
+    <li>it forces the judge to use GPT-4</li>
+    <li>structured output makes the LLM call cheaper</li>
+    <li>it avoids calling the LLM</li>
+    <li>the product of evaluation must be recordable, aggregatable, comparable: the score must enter the scores table to average across thousands of traces, with the reasoning kept in comment for traceability — prose does neither</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. If the judge returns prose, you can't reliably extract a numeric score nor aggregate across many traces. Forcing a {score, reasoning} schema puts value into the scores table (aggregatable) and reasoning into comment (traceable) — both at once. toNormalizedScores normalizes the output into a score exactly this way (value=score, comment=reasoning).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. How does the judge LLM's verdict ultimately become a queryable score in the database?</div>
+  <ol class="opts">
+    <li>stored in a dedicated eval-results table</li>
+    <li>directly INSERTed into ClickHouse, bypassing ingestion</li>
+    <li>wrapped as a source=EVAL SCORE_CREATE event through the exact same Lesson-12 ingestion path as a hand-written score — evaluation is another producer for the ingestion pipeline, not a separate system</li>
+    <li>kept in memory only for dashboards</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. evalScoreEvent.ts wraps the normalized result as eventTypes.SCORE_CREATE tagged source=ScoreSourceEnum.EVAL, then runs the ingestion path. So dedup/merge/ClickHouse-persist are written once and consistent across API/EVAL/ANNOTATION. This is 'one entry, many producers', and makes judge scores inherently comparable in the same table.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The template holds placeholders like {{question}}, {{answer}}. How do they become real content at execution?</div>
+  <ol class="opts">
+    <li>with fixed sample data</li>
+    <li>the judge LLM queries the database itself</li>
+    <li>the frontend hardcodes content into the template</li>
+    <li>via variable mapping: each template variable declares which column of trace/observation/dataset_item it comes from; extractVariablesFromTracingData fetches real values, then compileEvalPrompt fills the placeholders</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Each mapping is {templateVariable, langfuseObject, selectedColumnId}. At run it pulls that column's value from the real trace/observation/dataset_item into {var, value}; compileEvalPrompt flattens to a string via parseUnknownToString at the 'feed-to-LLM' boundary before filling {{placeholders}}. Extraction keeps original shapes (for code eval), converting only at the boundary.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>LLM-as-a-judge uses one LLM to judge another — but the judge itself errs and has biases. How would you validate 'whether the judge itself is reliable'? (Hint: Langfuse records each judge call as a trace, and judge scores sit in the same table as human-annotation scores for comparison.) What does this imply for building trust in 'AI judging AI'?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="28-scoring-model.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">评分模型</span><span class="lang-en">The scoring model</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

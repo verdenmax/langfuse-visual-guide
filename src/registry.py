@@ -41,4 +41,5 @@ CONTENT = {
     "26-sessions.html": part4.LESSON_26,
     "27-public-rest-api.html": part4.LESSON_27,
     "28-scoring-model.html": part5.LESSON_28,
+    "29-llm-as-a-judge.html": part5.LESSON_29,
 }

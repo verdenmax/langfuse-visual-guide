@@ -105,6 +105,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("28-scoring-model.html", "评分模型", "The scoring model",
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
+    ("29-llm-as-a-judge.html", "LLM 当裁判", "LLM-as-a-judge",
+     "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
 ]
 
 
@@ -644,6 +646,8 @@ SUBTITLES = {
                                 "route factory unifies auth/rate-limit/validation; Redis cache+negative caching scales; folder versions v1/v2/v3; Fern contract generates multi-language SDKs; external stability"),
     "28-scoring-model.html": ("score = 评估的原子单位 (name/value/dataType/source) · 三种刻度数值/分类/布尔 · 布尔是锁死的特殊分类 · config 是 name 的 schema 保可比 · 三来源 API/EVAL/ANNOTATION 同写 scores 表",
                               "score = evaluation's atomic unit (name/value/dataType/source); three scales numeric/categorical/boolean; boolean is a locked special category; config is a name's schema for comparability; three sources API/EVAL/ANNOTATION write one scores table"),
+    "29-llm-as-a-judge.html": ("用一个 LLM 给另一个 LLM 打分 · 三件套模板/评估器/执行 · 变量映射把 trace 列填进 {{占位符}} · 结构化输出 {score,reasoning} · reasoning→comment · source=EVAL 经 SCORE_CREATE 回流第12课摄取链路",
+                               "use one LLM to score another; three pieces template/evaluator/execution; variable mapping fills trace columns into {{placeholders}}; structured output {score,reasoning}; reasoning→comment; source=EVAL flows back via SCORE_CREATE through L12 ingestion"),
 }
 
 

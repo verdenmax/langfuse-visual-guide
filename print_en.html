@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 28 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 29 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -365,6 +365,7 @@ details[open] > summary { list-style: none; }
   <li>Sessions</li>
   <li>The public REST API</li>
   <li>The scoring model</li>
+  <li>LLM-as-a-judge</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -6202,6 +6203,196 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Langfuse unifies 'AI-judged, human-reviewed, API-reported' scores into one score type, one table, one config, distinguishing origin only by a source field. In a system you've built or imagined, if you had to unify 'quality signals from many sources' into one comparable metric, how would you design its data model? Would you want a 'schema gatekeeper' like a score config — and why?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>LLM-as-a-judge</h1>
+
+<p class="lead">
+Last lesson said a score is evaluation's atomic unit, and that it has three sources. This lesson covers the most interesting source: <strong>EVAL—using one LLM to score another LLM's output</strong>, known industry-wide as <strong>LLM-as-a-judge</strong>.
+Human labeling is accurate but slow and costly; rule matching is fast but only checks the surface. Letting a "judge LLM" read your trace and score it against your criteria gives you <strong>automatic, scalable</strong> assessment of "was this answer actually good". This lesson takes apart Langfuse's judge pipeline:
+the <strong>template</strong> (the rubric), the <strong>variable mapping</strong> (which parts of the trace to hand the judge), the <strong>structured output</strong> (the judge must return a tidy score + reasoning), and most crucially—<strong>how the verdict turns back into a score</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a <strong>judge</strong> at an essay contest. The <strong>scoring rubric</strong> (template prompt) says "rate 'helpfulness' 0–1 and explain why"; but the judge doesn't read the whole student file—staff hand over only the <strong>essay body and the prompt</strong> (variable mapping: fill the trace's input/output into the template's <code>{{question}}</code>/<code>{{answer}}</code>).
+  After reading, the judge must fill in a <strong>fixed form</strong> with "score + comment" (structured output—not a prose blob no one can record). Finally that scoring sheet is <strong>filed into the gradebook</strong> (the verdict becomes a source=EVAL score, flowing back through Lesson 12's ingestion path into the scores table).
+  The neat part: the judge is itself an LLM call, <strong>so it too is recorded as a Langfuse trace</strong>—the judge is also observed.
+</div>
+
+
+<h2>The judge pipeline: from one trace to one score</h2>
+<p>Langfuse splits LLM-as-a-judge into three reusable things: a <strong>template</strong> (what to rate, how, with which model), an <strong>evaluator</strong> (which traces to bind the template to, how variables are fetched, what the score is named), and repeated <strong>executions</strong> (actually fetching data, calling the judge, producing scores). Below is one trace's journey through the whole pipeline:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="The LLM-as-a-judge pipeline: a template and evaluator configure it; for a trace it extracts variables, compiles the prompt, calls the judge LLM to get a structured score+reasoning, then as a source=EVAL score flows back through the ingestion path into the scores table">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">judge pipeline: trace → variables → judge LLM → score(EVAL)</text>
+  <rect x="20" y="36" width="150" height="58" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="95" y="56" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">① Template</text><text x="95" y="72" text-anchor="middle" font-size="7" fill="var(--accent-ink)">prompt + output def</text><text x="95" y="84" text-anchor="middle" font-size="7" fill="var(--accent-ink)">+ model/provider</text>
+  <rect x="20" y="104" width="150" height="58" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="124" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">② Evaluator</text><text x="95" y="140" text-anchor="middle" font-size="7" fill="var(--muted)">target filter + var mapping</text><text x="95" y="152" text-anchor="middle" font-size="7" fill="var(--muted)">+ scoreName</text>
+  <rect x="210" y="70" width="120" height="58" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="270" y="90" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">③ extract vars</text><text x="270" y="106" text-anchor="middle" font-size="6.8" fill="var(--muted)">from trace/observation</text><text x="270" y="117" text-anchor="middle" font-size="6.8" fill="var(--muted)">/dataset columns</text>
+  <rect x="210" y="140" width="120" height="44" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="270" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">compile prompt</text><text x="270" y="173" text-anchor="middle" font-size="6.8" fill="var(--muted)">{{var}} → real value</text>
+  <rect x="370" y="86" width="140" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="440" y="108" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">④ judge LLM</text><text x="440" y="126" text-anchor="middle" font-size="7" fill="var(--accent-ink)">structured output</text><text x="440" y="140" text-anchor="middle" font-size="7" fill="var(--accent-ink)">{ score, reasoning }</text><text x="440" y="156" text-anchor="middle" font-size="6.5" fill="var(--muted)">itself recorded as a trace</text>
+  <rect x="548" y="70" width="152" height="50" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="624" y="89" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⑤ score(source=EVAL)</text><text x="624" y="105" text-anchor="middle" font-size="6.8" fill="var(--muted)">value + comment=reasoning</text>
+  <rect x="548" y="132" width="152" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="624" y="151" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">⑥ ingestion path (L12)</text><text x="624" y="167" text-anchor="middle" font-size="6.8" fill="var(--muted)">SCORE_CREATE → scores table</text>
+  <line x1="170" y1="65" x2="208" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="133" x2="208" y2="150" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="270" y1="128" x2="270" y2="138" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="330" y1="120" x2="368" y2="120" stroke="var(--accent)" stroke-width="1.5"/><polygon points="368,120 359,116 359,124" fill="var(--accent)"/>
+  <line x1="510" y1="110" x2="546" y2="98" stroke="var(--accent)" stroke-width="1.5"/><polygon points="546,98 537,97 540,105" fill="var(--accent)"/>
+  <line x1="624" y1="120" x2="624" y2="130" stroke="var(--faint)" stroke-width="1.3"/><polygon points="624,132 620,123 628,123" fill="var(--teal)"/>
+  <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">configure once (①②) and ③④⑤⑥ run automatically per matching trace—evaluation is "continuous", not "one-off"</text>
+</svg>
+<div class="figcap"><b>Three pieces + six steps</b>: template and evaluator are <b>config</b> (once); extract/compile/judge/produce/flow-back are <b>execution</b> (once per trace). Source: <code>worker/src/features/evaluation/evalService.ts</code>'s <code>runLLMAsJudgeEvaluation</code> (:735) wires ④⑤; <code>createEvalJobs</code> (:180, next lesson) schedules ①②③.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-part"><div class="lh"><span class="badge">①</span><span class="name">Eval Template</span></div><div class="ld">A reusable "rubric": a prompt with <code>{{variables}}</code> (e.g. "rate helpfulness 0–1 with reasoning"), an <strong>output definition</strong> (which score it produces—NUMERIC/CATEGORICAL/BOOLEAN, what range), plus which provider/model judges. A template only describes "how to rate", binding no specific data.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">Evaluator (JobConfiguration)</span></div><div class="ld">"Grounds" the template: a <strong>filter</strong> picking which traces to evaluate (e.g. "only production, name=chat"), a <strong>variable mapping</strong> (which column the template's <code>{{answer}}</code> reads), and what the final score is named (<code>scoreName</code>).</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">Execution (JobExecution)</span></div><div class="ld">Each matching trace triggers one execution: extract variables → compile prompt → call judge LLM for a structured result → normalize into a score → write back via the ingestion path. This "execution" has its own status lifecycle (detailed in Lesson 30).</div></div>
+</div>
+
+
+<h2>Variable mapping: which part of the trace to hand the judge</h2>
+<p>The template holds placeholders like <code>{{question}}</code> <code>{{answer}}</code>—how do they become real content? Via the <strong>variable mapping</strong>: each template variable declares which <code>langfuseObject</code> (trace / observation / dataset_item) and which column (<code>selectedColumnId</code>, e.g. input/output/metadata) it comes from. At execution, <code>extractVariablesFromTracingData</code> pulls each value from the real trace per the mapping.</p>
+
+<div class="cols">
+  <div class="col"><h4>Template variables (your placeholders)</h4><p><code>{{question}}</code> → the user's question<br><code>{{answer}}</code> → the model's answer<br><code>{{context}}</code> → retrieved material<br>The template only knows names, not where data comes from.</p></div>
+  <div class="col"><h4>Mapping (the correspondence you configure)</h4><p><code>question</code> ← trace.input<br><code>answer</code> ← trace.output<br><code>context</code> ← observation[retriever].output<br>Each mapping = {templateVariable, langfuseObject, selectedColumnId}.</p></div>
+  <div class="col"><h4>Extraction (done automatically at run)</h4><p>For each variable find its mapping, fetch that column's value from the real trace/observation/dataset_item, yielding <code>{var, value}</code>. If missing, degrade to an empty string with a warning—never crash the whole eval.</p></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalRuntime.ts · evalService.ts</span><span class="ln">extract + compile</span></div>
+  <pre class="code"><span class="cm">// 1) Pull each variable's value from the real trace per its mapping (evalService.ts:1152)</span>
+<span class="kw">for</span> (<span class="kw">const</span> variable <span class="kw">of</span> variables) {
+  <span class="kw">const</span> mapping = variableMapping.find(m =&gt; m.templateVariable === variable);
+  <span class="kw">if</span> (mapping.langfuseObject === <span class="st">"trace"</span>) {        <span class="cm">// could also be observation / dataset_item</span>
+    <span class="kw">const</span> trace = <span class="kw">await</span> getTraceById({ traceId, projectId, timestamp });
+    results.push({ var: variable, value: parseDatabaseRowValue(trace, mapping) });
+  }
+}
+
+<span class="cm">// 2) Fill the values into the template's {{placeholders}} (evalRuntime.ts:14)</span>
+<span class="kw">export function</span> <span class="fn">compileEvalPrompt</span>(params) {
+  <span class="kw">const</span> variableMap = Object.fromEntries(
+    params.variables.map(({ var: key, value }) =&gt; [key, parseUnknownToString(value)]));
+  <span class="kw">return</span> compileTemplateString(params.templatePrompt, variableMap);  <span class="cm">// {{answer}} → actual answer</span>
+}</pre>
+</div>
+
+<p>Note a detail: extraction <strong>preserves the original data shape</strong> (for code eval, Lesson 31), and only at the <code>compileEvalPrompt</code> boundary—the "feed to the judge LLM" boundary—is it flattened to a string via <code>parseUnknownToString</code>, because a prompt is ultimately text. This restraint—"convert at the boundary, keep raw internally"—is a hallmark of clean data flow.</p>
+
+
+<h2>Structured output and flow-back: how a verdict becomes a score</h2>
+<p>The judge LLM can't just return prose—that can't be recorded. Langfuse uses <strong>structured output</strong> to force tidy JSON: per the template's output definition, either <code>{score: number, reasoning}</code> (NUMERIC/BOOLEAN) or <code>{matches: [...], reasoning}</code> (CATEGORICAL). Then <code>toNormalizedScores</code> normalizes it into a score: <strong>value is the score, comment is the judge's reasoning</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="The judge LLM returns a structured score and reasoning; toNormalizedScores normalizes it into a score, which as a source=EVAL SCORE_CREATE event flows back through Lesson 12's ingestion path into the scores wide table, comparable with API and human-sourced scores in the same table">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">structured output → normalize → flow back to ingestion</text>
+  <rect x="20" y="42" width="170" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="105" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">judge LLM structured output</text><text x="105" y="80" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">{ score: 0.82,</text><text x="105" y="94" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">  reasoning: "complete…" }</text><text x="105" y="109" text-anchor="middle" font-size="6.8" fill="var(--muted)">schema-enforced, not free prose</text>
+  <rect x="232" y="48" width="150" height="62" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="307" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">toNormalizedScores</text><text x="307" y="85" text-anchor="middle" font-size="7" fill="var(--muted)">value ← score</text><text x="307" y="98" text-anchor="middle" font-size="7" fill="var(--muted)">comment ← reasoning</text>
+  <rect x="424" y="42" width="150" height="74" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="499" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">SCORE_CREATE event</text><text x="499" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source = EVAL</text><text x="499" y="93" text-anchor="middle" font-size="7" fill="var(--accent-ink)">name/value/dataType/comment</text><text x="499" y="107" text-anchor="middle" font-size="6.8" fill="var(--muted)">same event as a hand-written score</text>
+  <rect x="600" y="54" width="104" height="50" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="652" y="74" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">scores table</text><text x="652" y="90" text-anchor="middle" font-size="6.4" fill="var(--muted)">3 sources, comparable</text>
+  <line x1="190" y1="79" x2="230" y2="79" stroke="var(--blue)" stroke-width="1.5"/><polygon points="230,79 221,75 221,83" fill="var(--blue)"/>
+  <line x1="382" y1="79" x2="422" y2="79" stroke="var(--accent)" stroke-width="1.5"/><polygon points="422,79 413,75 413,83" fill="var(--accent)"/>
+  <line x1="574" y1="79" x2="598" y2="79" stroke="var(--teal)" stroke-width="1.5"/><polygon points="598,79 589,75 589,83" fill="var(--teal)"/>
+  <rect x="120" y="142" width="480" height="50" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Key: evaluation isn't a separate pipeline—it's another producer for Lesson 12's ingestion path</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">EVAL scores share the SCORE_CREATE entry with API & ANNOTATION—same dedup/merge/persist</text>
+</svg>
+<div class="figcap"><b>A judged score and a hand-submitted score are the same event</b>. <code>evalScoreEvent.ts:52</code> wraps the result as a <code>SCORE_CREATE</code> with <code>source: ScoreSourceEnum.EVAL</code>, then runs Lesson 12's ingestion path. So judge-produced scores are inherently <strong>same-table, same-ruler, comparable</strong> with other sources.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/evaluation/evalService.ts:953 · evalScoreEvent.ts:52</span><span class="ln">normalize + flow back</span></div>
+  <pre class="code"><span class="cm">// normalize: value=score, comment=judge's reasoning (evalService.ts: toNormalizedScores)</span>
+<span class="kw">const</span> baseFields = { name: scoreName, comment: outputResult.reasoning };
+<span class="kw">if</span> (outputResult.dataType === <span class="st">"NUMERIC"</span>) <span class="kw">return</span> [{ ...baseFields, dataType: <span class="st">"NUMERIC"</span>, value: outputResult.score }];
+<span class="kw">if</span> (outputResult.dataType === <span class="st">"BOOLEAN"</span>) <span class="kw">return</span> [{ ...baseFields, dataType: <span class="st">"BOOLEAN"</span>, value: outputResult.score ? 1 : 0 }];
+
+<span class="cm">// flow back: wrap as the exact same SCORE_CREATE event as a hand-written score (evalScoreEvent.ts)</span>
+{ type: eventTypes.SCORE_CREATE,
+  body: { name: score.name, value: score.value, dataType: score.dataType,
+          comment: score.comment, configId: score.configId,
+          source: <span class="st">ScoreSourceEnum.EVAL</span>,        <span class="cm">// ← the one "source" marker</span>
+          executionTraceId: params.executionTraceId } }</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>output definition</th><th>judge returns</th><th>normalized to score</th><th>scores produced</th></tr></thead>
+  <tbody>
+    <tr><td><b>NUMERIC</b></td><td>{ score: number, reasoning }</td><td>value = score</td><td>1</td></tr>
+    <tr><td><b>BOOLEAN</b></td><td>{ score: true/false, reasoning }</td><td>value = score ? 1 : 0</td><td>1</td></tr>
+    <tr><td><b>CATEGORICAL</b></td><td>{ matches: [labels…], reasoning }</td><td>one per match, value = that label</td><td>may be many</td></tr>
+  </tbody>
+</table>
+<p>The three output definitions match the score type you pick in the template; note CATEGORICAL's <code>matches</code> is an <strong>array</strong>—one verdict can emit <strong>several</strong> categorical scores (e.g. hitting both "factually correct" and "friendly tone"). Either way, <code>reasoning</code> is dropped verbatim into each score's <code>comment</code>. Source: <code>evalService.ts:953-997</code> <code>toNormalizedScores</code>.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why must the judge use "structured output" instead of free-forming?</strong> Because the product of evaluation must be <strong>recordable, aggregatable, comparable</strong>. If the judge returns prose like "I think this answer is decent but the opening is wordy…", you can neither reliably extract a score nor average across a thousand traces.
+  Forcing a <code>{score, reasoning}</code> schema lets the score enter the scores table (aggregatable) while keeping "why this score" in <code>comment</code> (traceable)—<strong>both at once</strong>.<br><br>
+  <strong>Deeper: why do eval results flow back through the ingestion path rather than write the DB directly?</strong> This is a recurring Langfuse belief—<strong>"one entry, many producers"</strong>. Whether a score comes from API, human, or a judge LLM, it's wrapped as the same <code>SCORE_CREATE</code> event through Lesson 12's path,
+  so dedup, merge, and ClickHouse persistence are written once and consistent for every source. Evaluation is therefore not "another system" but <strong>another upstream of the ingestion pipeline</strong>. And an elegant recursion: the judge's own LLM call is recorded as a Langfuse trace (environment tagged LLMJudge)—<strong>the observability platform observes even its own judge</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>LLM-as-a-judge = use one LLM to score another's output</strong>: between human (accurate but slow) and rules (fast but shallow), it offers automatic, scalable quality assessment.</li>
+    <li><strong>Three pieces</strong>: template (prompt+output def+model, "how to rate"), evaluator (target filter+variable mapping+scoreName, "whom to rate"), execution (actually runs once per trace).</li>
+    <li><strong>Variable mapping</strong>: each template <code>{{placeholder}}</code> declares which column of trace/observation/dataset_item it comes from; <code>extractVariablesFromTracingData</code> fetches real values at run, and <code>compileEvalPrompt</code> flattens to a string only at the "feed-to-LLM" boundary.</li>
+    <li><strong>Structured output</strong>: the judge is forced to return <code>{score, reasoning}</code> (or <code>{matches, reasoning}</code> for categorical); <code>toNormalizedScores</code> normalizes to value=score, comment=reasoning—aggregatable and traceable.</li>
+    <li><strong>Flow back (source=EVAL)</strong>: the result is wrapped as the same <code>SCORE_CREATE</code> event through Lesson 12's path. Evaluation is another producer for the ingestion pipeline, not a separate system; the judge's own call is also recorded as a trace.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's LLM-as-a-judge forces the judge LLM to return {score, reasoning} via 'structured output' rather than free prose. The core reason is?</div>
+  <ol class="opts">
+    <li>it forces the judge to use GPT-4</li>
+    <li>structured output makes the LLM call cheaper</li>
+    <li>it avoids calling the LLM</li>
+    <li>the product of evaluation must be recordable, aggregatable, comparable: the score must enter the scores table to average across thousands of traces, with the reasoning kept in comment for traceability — prose does neither</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. If the judge returns prose, you can't reliably extract a numeric score nor aggregate across many traces. Forcing a {score, reasoning} schema puts value into the scores table (aggregatable) and reasoning into comment (traceable) — both at once. toNormalizedScores normalizes the output into a score exactly this way (value=score, comment=reasoning).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. How does the judge LLM's verdict ultimately become a queryable score in the database?</div>
+  <ol class="opts">
+    <li>stored in a dedicated eval-results table</li>
+    <li>directly INSERTed into ClickHouse, bypassing ingestion</li>
+    <li>wrapped as a source=EVAL SCORE_CREATE event through the exact same Lesson-12 ingestion path as a hand-written score — evaluation is another producer for the ingestion pipeline, not a separate system</li>
+    <li>kept in memory only for dashboards</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. evalScoreEvent.ts wraps the normalized result as eventTypes.SCORE_CREATE tagged source=ScoreSourceEnum.EVAL, then runs the ingestion path. So dedup/merge/ClickHouse-persist are written once and consistent across API/EVAL/ANNOTATION. This is 'one entry, many producers', and makes judge scores inherently comparable in the same table.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The template holds placeholders like {{question}}, {{answer}}. How do they become real content at execution?</div>
+  <ol class="opts">
+    <li>with fixed sample data</li>
+    <li>the judge LLM queries the database itself</li>
+    <li>the frontend hardcodes content into the template</li>
+    <li>via variable mapping: each template variable declares which column of trace/observation/dataset_item it comes from; extractVariablesFromTracingData fetches real values, then compileEvalPrompt fills the placeholders</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Each mapping is {templateVariable, langfuseObject, selectedColumnId}. At run it pulls that column's value from the real trace/observation/dataset_item into {var, value}; compileEvalPrompt flattens to a string via parseUnknownToString at the 'feed-to-LLM' boundary before filling {{placeholders}}. Extraction keeps original shapes (for code eval), converting only at the boundary.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>LLM-as-a-judge uses one LLM to judge another — but the judge itself errs and has biases. How would you validate 'whether the judge itself is reliable'? (Hint: Langfuse records each judge call as a trace, and judge scores sit in the same table as human-annotation scores for comparison.) What does this imply for building trust in 'AI judging AI'?</li>
   </ul>
 </div>
 </div>
