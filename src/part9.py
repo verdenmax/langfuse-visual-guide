@@ -547,3 +547,296 @@ _EN45.append(r"""
 """)
 
 LESSON_45 = {"zh": "\n".join(_ZH45), "en": "\n".join(_EN45)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L46 · 分析集成 / Analytics integrations
+# ══════════════════════════════════════════════════════════════════════
+_ZH46 = []
+_EN46 = []
+
+# (L46 sections below)
+
+_ZH46.append(r"""
+<p class="lead">
+第 43 课讲的是「平台向你收费」，这一课反过来：<strong>把你的数据，源源不断地送回到你自己的地盘</strong>。Langfuse 攒下的 trace、observation、score，你可能想拉进自家的 <strong>PostHog / Mixpanel</strong> 做产品分析，或者落到 <strong>S3 / GCS / Azure</strong> 的对象存储里长期归档、喂给数据仓库。这一课讲这套「<strong>你的数据，你的去处</strong>」的分析集成怎么实现——三个长得几乎一样的集成（PostHog、Mixpanel、Blob Storage），共享同一套漂亮的工程骨架：<strong>两级 fan-out 队列</strong>（定时调度 → 逐项目处理）、<strong>lastSyncAt 水位线的增量同步</strong>（只送新数据、不重不漏）、以及 blob 导出的<strong>流式处理</strong>（再大的数据量也不会撑爆内存）。
+看完你会明白：一个成熟平台「往外导数据」这件事，远不止「写个定时任务 SELECT 一把发出去」那么简单。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  把 Langfuse 想成一个<strong>不断记账的总账房</strong>，而你想把账本<strong>定期抄送</strong>到几个不同的地方：抄一份给楼上的分析部门（PostHog/Mixpanel），再归档一份到地下室的档案库（S3/GCS）。怎么抄才靠谱？
+  ① 不能每次都从头抄整本账（太慢、太浪费）——只抄<strong>上次抄到那一页之后的新内容</strong>，并在抄完后<strong>夹一个新书签</strong>（这就是 <code>lastSyncAt</code> 水位线）。② 不能一个人扛着所有部门的抄写活——派一个<strong>调度员</strong>清点「哪些部门要抄送」，再给每个部门<strong>单独派一个抄写员</strong>并行干（两级 fan-out）。③ 给档案库抄那种超厚的账本时，不能先把整本搬到桌上再抄（桌子会塌=内存爆）——而是<strong>翻一页抄一页、抄完即走</strong>（流式处理）。这三条朴素的智慧，正是这一课的全部精髓。
+</div>
+""")
+
+# (L46 sec1 below)
+
+_ZH46.append(r"""
+<h2>你的数据，你的去处：三个同构的集成</h2>
+<p>分析集成有三个：<strong>PostHog</strong>、<strong>Mixpanel</strong>（产品分析），<strong>Blob Storage</strong>（S3 / S3 兼容 / Azure 对象存储）。它们的数据模型长得几乎一样，都<strong>以 projectId 为主键</strong>（一个项目一份配置）、都把访问凭据<strong>加密保管</strong>（又是第 39 课的加密）、都有一个 <code>lastSyncAt</code> 记「上次同步到哪」、一个 <code>enabled</code> 开关、一个 <code>exportSource</code> 选「导哪些数据」（TRACES_OBSERVATIONS / +EVENTS / 仅 EVENTS）。Blob Storage 配置更丰富：bucket、prefix、文件格式（CSV/JSON/JSONL）、是否压缩、导出频率等。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="你的数据你的去处：Langfuse 的 trace/observation/score 数据，通过三个同构集成扇出到外部——PostHog、Mixpanel 做产品分析，S3/GCS/Azure 对象存储做归档；每个集成以projectId为主键、加密凭据、lastSyncAt水位、enabled开关、exportSource选数据">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">第43课是平台收你的钱；这课是把数据送回你手里</text>
+  <rect x="40" y="70" width="160" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="120" y="94" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse</text><text x="120" y="112" text-anchor="middle" font-size="6.8" fill="var(--muted)">trace · observation</text><text x="120" y="126" text-anchor="middle" font-size="6.8" fill="var(--muted)">score（你的可观测数据）</text><text x="120" y="148" text-anchor="middle" font-size="6.2" fill="var(--faint)">ClickHouse 里攒下的</text>
+  <rect x="500" y="40" width="190" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="595" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">PostHog</text><text x="595" y="73" text-anchor="middle" font-size="6.2" fill="var(--muted)">产品分析 · posthog.capture()</text>
+  <rect x="500" y="98" width="190" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="595" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Mixpanel</text><text x="595" y="131" text-anchor="middle" font-size="6.2" fill="var(--muted)">产品分析 · 按 region 上报</text>
+  <rect x="500" y="156" width="190" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="595" y="174" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">S3 / S3兼容 / Azure</text><text x="595" y="189" text-anchor="middle" font-size="6.2" fill="var(--muted)">对象存储归档 · CSV/JSON/JSONL</text><text x="595" y="200" text-anchor="middle" font-size="5.8" fill="var(--faint)">可压缩 · 喂数仓</text>
+  <rect x="250" y="86" width="180" height="68" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="340" y="104" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">同构的集成配置</text><text x="340" y="119" text-anchor="middle" font-size="6.0" fill="var(--muted)">projectId 主键 · 加密凭据</text><text x="340" y="131" text-anchor="middle" font-size="6.0" fill="var(--muted)">lastSyncAt · enabled</text><text x="340" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">exportSource 选导哪些数据</text>
+  <line x1="200" y1="120" x2="248" y2="120" stroke="var(--accent)" stroke-width="1.4"/><polygon points="248,120 239,116 239,124" fill="var(--accent)"/>
+  <line x1="430" y1="108" x2="498" y2="62" stroke="var(--blue)" stroke-width="1.3"/><polygon points="498,62 489,62 493,70" fill="var(--blue)"/>
+  <line x1="430" y1="120" x2="498" y2="120" stroke="var(--blue)" stroke-width="1.3"/><polygon points="498,120 489,116 489,124" fill="var(--blue)"/>
+  <line x1="430" y1="132" x2="498" y2="178" stroke="var(--teal)" stroke-width="1.3"/><polygon points="498,178 489,174 493,182" fill="var(--teal)"/>
+  <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">三个集成共享同一套骨架：两级 fan-out 队列 + lastSyncAt 增量同步 + 加密凭据；blob 额外用流式导出</text>
+</svg>
+<div class="figcap"><b>你的数据，你的去处</b>：模型见 <code>schema.prisma:1183</code> PosthogIntegration、<code>:1196</code> MixpanelIntegration、<code>:1209</code> BlobStorageIntegration——均以 <code>projectId</code> 为主键，存加密凭据（encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey）、<code>lastSyncAt</code>、<code>enabled</code>、<code>exportSource</code>（<code>AnalyticsIntegrationExportSource</code>：TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS）。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>集成</th><th>去处</th><th>凭据（加密）</th><th>特有配置</th></tr></thead>
+  <tbody>
+    <tr><td><b>PostHog</b></td><td>产品分析平台</td><td>encryptedPosthogApiKey + host</td><td>—</td></tr>
+    <tr><td><b>Mixpanel</b></td><td>产品分析平台</td><td>encryptedMixpanelProjectToken</td><td>mixpanelRegion（数据驻留区）</td></tr>
+    <tr><td><b>Blob Storage</b></td><td>S3 / S3兼容 / Azure</td><td>secretAccessKey（可选→也可用 IAM 角色）</td><td>bucket/prefix/fileType/compressed/exportFrequency/exportMode</td></tr>
+  </tbody>
+</table>
+""")
+
+# (L46 sec2 below)
+
+_ZH46.append(r"""
+<h2>两级 fan-out：一个调度员，N 个抄写员</h2>
+<p>导数据不能用「一个大任务串行处理所有项目」——某个项目慢或失败会拖累全部。Langfuse 用经典的<strong>两级 fan-out</strong>：每个集成有<strong>两条队列</strong>。<strong>① 调度队列</strong>（cron 定时触发）：<code>handlePostHogIntegrationSchedule</code> 查出所有 <code>enabled: true</code> 的集成，<code>addBulk</code> 给<strong>每个项目各塞一个处理任务</strong>。<strong>② 处理队列</strong>：每个任务独立处理一个项目的导出，包在 <code>instrumentAsync</code> 里<strong>各开一条新 trace</strong>（OTel CONSUMER span，方便单独观测）。三个集成各有自己<strong>独立的两条队列</strong>——PostHog 堵了不影响 Mixpanel，互不拖累。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="两级fan-out队列：cron定时触发调度队列，handleSchedule 查出所有enabled集成，addBulk 给每个项目塞一个处理任务到处理队列，每个处理任务独立导出一个项目并各开一条新trace；三个集成各有独立的两条队列互不影响">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">调度队列清点 → 处理队列逐项目并行干</text>
+  <rect x="20" y="60" width="100" height="50" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="70" y="80" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">cron 定时</text><text x="70" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">周期触发</text>
+  <rect x="150" y="52" width="170" height="66" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="235" y="72" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">① 调度队列</text><text x="235" y="88" text-anchor="middle" font-size="6.2" fill="var(--muted)">handleSchedule：findMany</text><text x="235" y="100" text-anchor="middle" font-size="6.2" fill="var(--muted)">{ enabled: true } 清点</text><text x="235" y="112" text-anchor="middle" font-size="6.2" fill="var(--muted)">addBulk 扇出</text>
+  <rect x="400" y="40" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="59" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② 处理：项目 A</text>
+  <rect x="400" y="78" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② 处理：项目 B</text>
+  <rect x="400" y="116" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="135" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② 处理：项目 C …</text>
+  <rect x="585" y="58" width="120" height="70" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="645" y="78" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">各开一条新 trace</text><text x="645" y="93" text-anchor="middle" font-size="6.0" fill="var(--muted)">instrumentAsync</text><text x="645" y="105" text-anchor="middle" font-size="6.0" fill="var(--muted)">CONSUMER span</text><text x="645" y="118" text-anchor="middle" font-size="6.0" fill="var(--muted)">逐项目独立观测</text>
+  <line x1="120" y1="85" x2="148" y2="85" stroke="var(--accent)" stroke-width="1.4"/><polygon points="148,85 139,81 139,89" fill="var(--accent)"/>
+  <line x1="320" y1="78" x2="398" y2="55" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,55 389,55 393,62" fill="var(--blue)"/>
+  <line x1="320" y1="85" x2="398" y2="93" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,93 389,89 389,97" fill="var(--blue)"/>
+  <line x1="320" y1="92" x2="398" y2="131" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,131 389,127 392,135" fill="var(--blue)"/>
+  <line x1="550" y1="55" x2="583" y2="80" stroke="var(--faint)" stroke-width="1"/><line x1="550" y1="93" x2="583" y2="93" stroke="var(--faint)" stroke-width="1"/><line x1="550" y1="131" x2="583" y2="106" stroke="var(--faint)" stroke-width="1"/>
+  <rect x="150" y="160" width="400" height="64" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="178" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">去重 + 隔离</text><text x="350" y="194" text-anchor="middle" font-size="6.4" fill="var(--muted)">jobId = `${projectId}-${lastSyncAt}`：同一项目同一同步窗口不重复入队</text><text x="350" y="208" text-anchor="middle" font-size="6.4" fill="var(--muted)">removeOnFail：失败任务立即清理，不挡下个周期重排</text><text x="350" y="220" text-anchor="middle" font-size="6.2" fill="var(--faint)">三个集成各有独立两条队列 → 一个堵了不连累其它</text>
+</svg>
+<div class="figcap"><b>两级 fan-out</b>：<code>postHogIntegrationProcessor</code>（调度，<code>postHogIntegrationQueue.ts:11</code>）→ <code>handlePostHogIntegrationSchedule</code> 查 <code>enabled:true</code> 后 <code>addBulk</code>（:35）扇出；<code>postHogIntegrationProcessingProcessor</code>（:23）每任务 <code>instrumentAsync(startNewTrace)</code> 处理一个项目。去重 <code>jobId=projectId-lastSyncAt</code>（:50）、<code>removeOnFail</code>（:51）。Mixpanel/BlobStorage 同构。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/posthog/handlePostHogIntegrationSchedule.ts</span><span class="ln">调度：清点 → 扇出</span></div>
+  <pre class="code"><span class="cm">// 调度队列：查出所有启用的集成，给每个项目扇出一个处理任务</span>
+<span class="kw">const</span> projects = <span class="kw">await</span> prisma.posthogIntegration.<span class="fn">findMany</span>({
+  select: { lastSyncAt: <span class="kw">true</span>, projectId: <span class="kw">true</span> },
+  where: { enabled: <span class="kw">true</span> },                       <span class="cm">// 只调度开了开关的</span>
+});
+
+<span class="kw">await</span> processingQueue.<span class="fn">addBulk</span>(projects.map((integration) =&gt; ({
+  name: QueueJobs.PostHogIntegrationProcessingJob,
+  data: { payload: { projectId: integration.projectId } },
+  opts: {
+    <span class="cm">// 去重：同一项目 + 同一 lastSyncAt 窗口，不会被排两次</span>
+    jobId: <span class="st">`${integration.projectId}-${integration.lastSyncAt?.toISOString() ?? ""}`</span>,
+    removeOnFail: <span class="kw">true</span>,                          <span class="cm">// 失败立即清理，不挡下个周期</span>
+  },
+})));</pre>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">第一级</span><span class="name">调度队列（清点 + 扇出）</span></div><div class="ld">cron 周期触发，<code>findMany({enabled:true})</code> 查出所有该同步的项目，<code>addBulk</code> 一次性把「每项目一个任务」塞进处理队列。本身不干重活，只负责「派活」。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">第二级</span><span class="name">处理队列（逐项目导出）</span></div><div class="ld">每个任务独立处理一个项目：解密凭据 → 查增量数据 → 送达去处 → 挪水位。<code>instrumentAsync(startNewTrace)</code> 各开一条 trace，可被多 worker 并行消费、各自独立观测。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">护栏</span><span class="name">去重 + 失败清理</span></div><div class="ld"><code>jobId=projectId-lastSyncAt</code> 保证「同项目同窗口」不重复入队（幂等）；<code>removeOnFail</code> 让失败任务立即出队、不挡下个 cron 周期重排。三集成各有独立队列，互不连累。</div></div>
+</div>
+""")
+
+# (L46 sec3 below)
+
+_ZH46.append(r"""
+<h2>增量同步水位 + 流式导出</h2>
+<p>每个项目的处理任务，核心是<strong>增量</strong>：只导上次之后的新数据。窗口下界 <code>minTimestamp = lastSyncAt || project.createdAt</code>（首次跑就从项目创建时间起）；上界 <code>maxTimestamp = min(下一个UTC日界, 当前-30分钟)</code>——<strong>留 30 分钟缓冲</strong>避免抓到还在陆续到达的数据，<strong>按日切块</strong>避免一个卡住的集成每次都重扫越来越大的窗口（还顺带对齐 ClickHouse 的分区裁剪）。导完后 <code>update({lastSyncAt: maxTimestamp})</code> <strong>把书签往前挪</strong>。对 Blob Storage 这种可能很大的导出，还用 Node <strong>stream pipeline</strong>：一行行查、一行行转格式(CSV/JSON/JSONL)、可选 gzip 压缩、直接<strong>流</strong>进 S3/GCS——<strong>绝不把整个结果集装进内存</strong>。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>定下增量窗口</h4><p><code>minTimestamp</code> = 上次的 <code>lastSyncAt</code>（首次 = 项目 createdAt）；<code>maxTimestamp</code> = min(下一个 UTC 日界, now−30min)。空窗口直接跳过。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>解密凭据 + 查这段数据</h4><p><code>decrypt</code> 还原 API key / token / secret，从 ClickHouse 查 [min, max) 区间的 trace/observation/score（按 <code>exportSource</code> 选类型）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>送达去处</h4><p>PostHog/Mixpanel：转成事件 <code>posthog.capture()</code> 逐条上报；Blob：<strong>流式</strong> pipeline 一行行转 CSV/JSON/JSONL(±gzip) 经 <code>StorageServiceFactory</code> 写 S3/S3兼容/Azure。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>挪动水位</h4><p>成功后 <code>update({ lastSyncAt: maxTimestamp })</code>。下个周期从这里接着导——天然增量、不重不漏。</p></div></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 170" role="img" aria-label="增量水位推进：时间轴上 lastSyncAt 是上次书签，本次导出 [minTimestamp, maxTimestamp) 这段，maxTimestamp 留出当前前30分钟缓冲不抓在途数据，导完把 lastSyncAt 挪到 maxTimestamp，下次从此继续">
+  <text x="360" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">水位线只进不退：每次只导一段新数据</text>
+  <line x1="40" y1="80" x2="680" y2="80" stroke="var(--faint)" stroke-width="1.5"/><polygon points="680,80 670,75 670,85" fill="var(--faint)"/><text x="690" y="83" font-size="7" fill="var(--muted)">时间</text>
+  <line x1="160" y1="66" x2="160" y2="94" stroke="var(--accent)" stroke-width="2"/><text x="160" y="58" text-anchor="middle" font-size="7.2" font-weight="700" fill="var(--accent-ink)">lastSyncAt</text><text x="160" y="108" text-anchor="middle" font-size="6" fill="var(--muted)">上次书签 = 本次 min</text>
+  <rect x="160" y="70" width="300" height="20" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="310" y="84" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--ink)">本次导出 [min, max)</text>
+  <line x1="460" y1="66" x2="460" y2="94" stroke="var(--teal)" stroke-width="2"/><text x="460" y="58" text-anchor="middle" font-size="7.2" font-weight="700" fill="var(--teal)">maxTimestamp</text>
+  <rect x="460" y="70" width="150" height="20" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="3 2"/><text x="535" y="84" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">30 分钟缓冲（不抓）</text>
+  <line x1="610" y1="66" x2="610" y2="94" stroke="var(--muted)" stroke-width="1.5"/><text x="610" y="108" text-anchor="middle" font-size="6.2" fill="var(--muted)">now</text>
+  <text x="535" y="120" text-anchor="middle" font-size="6.4" fill="var(--faint)">留缓冲：避免抓到还在陆续写入的在途数据</text>
+  <line x1="160" y1="135" x2="460" y2="135" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="460,135 451,131 451,139" fill="var(--accent)"/><text x="310" y="150" text-anchor="middle" font-size="7" fill="var(--accent-ink)">导完：lastSyncAt 挪到 maxTimestamp → 下次从此继续</text>
+</svg>
+<div class="figcap"><b>增量水位</b>：<code>handlePostHogIntegrationProjectJob.ts:322</code> <code>minTimestamp = lastSyncAt || project.createdAt</code>；<code>:324</code> 上界先取 now−30min，再 <code>:339</code> 与「下一个 UTC 日界」取 min（按日切块、对齐 CH 分区）；<code>:394</code> 成功后 <code>posthogIntegration.update({lastSyncAt: maxTimestamp})</code>。Blob 导出用 <code>StorageServiceFactory</code> + <code>stream pipeline/Transform</code>（<code>handleBlobStorageIntegrationProjectJob.ts:1,9</code>）。</div>
+</div>
+""")
+
+_ZH46.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么要拆成「调度 + 处理」两级队列，而不是一个任务里 for 循环处理所有项目？</strong> 三个理由：<strong>① 隔离</strong>——项目 A 的导出报错或卡死，绝不能让项目 B/C 的同步也跟着挂；拆成独立任务后，一个失败只是它自己 <code>removeOnFail</code> 掉，其余照常。<strong>② 并行</strong>——N 个项目的处理任务可以被多个 worker 并行消费，而不是排成一长串串行干。<strong>③ 可观测</strong>——每个项目的处理 <code>instrumentAsync(startNewTrace)</code> 各开一条 trace，出问题时能精确定位是哪个项目、哪一步。这套「一个调度员清点、给每个对象单独派活」的 fan-out，在第 30 课 eval、第 43 课计量里反复出现——<strong>是 Langfuse 处理「对一批对象各做一遍」的标准答案</strong>。<br><br>
+  <strong>为什么增量同步要留「30 分钟缓冲」、还要「按日切块」，而不是一路同步到此刻？</strong> 因为数据是<strong>陆续到达</strong>的：摄取链路有批处理和延迟，此刻去查「最近几分钟」，很可能漏掉还在路上、马上要落库的事件。退 30 分钟取一个<strong>相对稳定的水位</strong>，宁可慢一点也不漏数据。而「按日切块」是给<strong>异常情况兜底</strong>：万一某集成停了很久（或在老项目上做全量回填），<code>lastSyncAt</code> 落后很多，如果一次性扫「从那时到现在」的超大窗口，每小时重试都在重扫巨量数据、永远追不上；按 UTC 日界切成一天一段，既<strong>限制单次工作量</strong>，又正好对齐 ClickHouse 按天分区的裁剪，查得更快。<strong>增量同步的精髓不是「同步到最新」，而是「每次稳稳推进一小步、且这一步可控」。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>你的数据，你的去处</strong>：与第 43 课「平台收你钱」相反，分析集成把你的 trace/observation/score 导回你自己的 PostHog/Mixpanel（产品分析）和 S3/S3兼容/Azure（对象存储归档）。</li>
+    <li><strong>三个同构集成</strong>：PosthogIntegration/MixpanelIntegration/BlobStorageIntegration（schema.prisma:1183/1196/1209）均以 <code>projectId</code> 为主键、加密凭据（复用第39课）、<code>lastSyncAt</code> 水位、<code>enabled</code>、<code>exportSource</code>。</li>
+    <li><strong>两级 fan-out 队列</strong>：调度队列（cron→查 enabled→<code>addBulk</code> 逐项目扇出，<code>jobId=projectId-lastSyncAt</code> 去重、<code>removeOnFail</code>）+ 处理队列（每项目 <code>instrumentAsync</code> 各开新 trace）。三集成各有独立两队列，互不拖累。</li>
+    <li><strong>增量同步水位</strong>：<code>min=lastSyncAt||createdAt</code>，<code>max=min(次日界, now−30min)</code>；30 分钟缓冲避在途数据、按日切块限单次工作量并对齐 CH 分区；成功后挪 <code>lastSyncAt</code>。只导新数据、不重不漏。</li>
+    <li><strong>blob 流式导出</strong>：Node <code>stream pipeline/Transform</code> 一行行转 CSV/JSON/JSONL（±gzip），经 <code>StorageServiceFactory</code> 写 S3/GCS/Azure——再大也不撑爆内存。fan-out/增量/流式，是「往外导数据」的三件套智慧。</li>
+  </ul>
+</div>
+""")
+
+_EN46.append(r"""
+<p class="lead">
+Lesson 43 was "the platform charging you"; this lesson is the reverse: <strong>sending your data, continuously, back to your own turf</strong>. The traces, observations, and scores Langfuse accumulates — you may want to pull them into your own <strong>PostHog / Mixpanel</strong> for product analytics, or land them in <strong>S3 / GCS / Azure</strong> object storage for long-term archival and feeding a data warehouse. This lesson covers how that "<strong>your data, your destinations</strong>" analytics integration works — three nearly-identical integrations (PostHog, Mixpanel, Blob Storage) sharing one elegant engineering skeleton: a <strong>two-level fan-out queue</strong> (scheduled dispatch → per-project processing), <strong>incremental sync via a lastSyncAt watermark</strong> (only new data, no-dup-no-miss), and <strong>streaming</strong> for blob export (no memory blowup no matter the volume).
+By the end you'll see: a mature platform "exporting data out" is far more than "write a cron job, SELECT once, send it off."
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture Langfuse as a <strong>ledger room constantly bookkeeping</strong>, and you want to <strong>periodically copy</strong> the ledger to a few different places: one copy to the analytics department upstairs (PostHog/Mixpanel), another archived to the basement vault (S3/GCS). How to copy reliably?
+  ① Don't re-copy the whole ledger from scratch each time (slow, wasteful) — only copy <strong>the new content after where you left off</strong>, and <strong>tuck a new bookmark</strong> in when done (that's the <code>lastSyncAt</code> watermark). ② Don't have one person shoulder the copying for all departments — assign a <strong>dispatcher</strong> to tally "which departments need a copy," then assign <strong>a separate scribe per department</strong> to work in parallel (two-level fan-out). ③ When copying a super-thick ledger to the vault, don't haul the whole book onto the desk first (the desk collapses = memory blows up) — instead <strong>flip a page, copy a page, move on</strong> (streaming). These three plain pieces of wisdom are the whole essence of this lesson.
+</div>
+
+<h2>Your data, your destinations: three isomorphic integrations</h2>
+<p>There are three analytics integrations: <strong>PostHog</strong>, <strong>Mixpanel</strong> (product analytics), and <strong>Blob Storage</strong> (S3 / S3-compatible / Azure object storage). Their data models look nearly identical — all <strong>keyed by projectId</strong> (one config per project), all keeping access credentials <strong>encrypted</strong> (Lesson 39's encryption again), all with a <code>lastSyncAt</code> recording "where the last sync reached," an <code>enabled</code> switch, and an <code>exportSource</code> choosing "which data to export" (TRACES_OBSERVATIONS / +EVENTS / EVENTS only). Blob Storage's config is richer: bucket, prefix, file format (CSV/JSON/JSONL), whether to compress, export frequency, etc.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Your data your destinations: Langfuse's trace/observation/score data fans out to external systems via three isomorphic integrations — PostHog, Mixpanel for product analytics, S3/GCS/Azure object storage for archival; each keyed by projectId, encrypted credentials, lastSyncAt watermark, enabled switch, exportSource data selector">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Lesson 43 is the platform charging you; this is sending data back to you</text>
+  <rect x="40" y="70" width="160" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="120" y="94" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse</text><text x="120" y="112" text-anchor="middle" font-size="6.8" fill="var(--muted)">trace · observation</text><text x="120" y="126" text-anchor="middle" font-size="6.8" fill="var(--muted)">score (your observability data)</text><text x="120" y="148" text-anchor="middle" font-size="6.2" fill="var(--faint)">accumulated in ClickHouse</text>
+  <rect x="500" y="40" width="190" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="595" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">PostHog</text><text x="595" y="73" text-anchor="middle" font-size="6.2" fill="var(--muted)">product analytics · posthog.capture()</text>
+  <rect x="500" y="98" width="190" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="595" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">Mixpanel</text><text x="595" y="131" text-anchor="middle" font-size="6.2" fill="var(--muted)">product analytics · report by region</text>
+  <rect x="500" y="156" width="190" height="48" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="595" y="174" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">S3 / S3-compatible / Azure</text><text x="595" y="189" text-anchor="middle" font-size="6.2" fill="var(--muted)">object-storage archive · CSV/JSON/JSONL</text><text x="595" y="200" text-anchor="middle" font-size="5.8" fill="var(--faint)">compressible · feed a warehouse</text>
+  <rect x="250" y="86" width="180" height="68" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="340" y="104" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">isomorphic integration config</text><text x="340" y="119" text-anchor="middle" font-size="6.0" fill="var(--muted)">projectId key · encrypted creds</text><text x="340" y="131" text-anchor="middle" font-size="6.0" fill="var(--muted)">lastSyncAt · enabled</text><text x="340" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">exportSource selects which data</text>
+  <line x1="200" y1="120" x2="248" y2="120" stroke="var(--accent)" stroke-width="1.4"/><polygon points="248,120 239,116 239,124" fill="var(--accent)"/>
+  <line x1="430" y1="108" x2="498" y2="62" stroke="var(--blue)" stroke-width="1.3"/><polygon points="498,62 489,62 493,70" fill="var(--blue)"/>
+  <line x1="430" y1="120" x2="498" y2="120" stroke="var(--blue)" stroke-width="1.3"/><polygon points="498,120 489,116 489,124" fill="var(--blue)"/>
+  <line x1="430" y1="132" x2="498" y2="178" stroke="var(--teal)" stroke-width="1.3"/><polygon points="498,178 489,174 493,182" fill="var(--teal)"/>
+  <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">All three share one skeleton: two-level fan-out queue + lastSyncAt incremental sync + encrypted creds; blob adds streaming export</text>
+</svg>
+<div class="figcap"><b>Your data, your destinations</b>: models at <code>schema.prisma:1183</code> PosthogIntegration, <code>:1196</code> MixpanelIntegration, <code>:1209</code> BlobStorageIntegration — all keyed by <code>projectId</code>, storing encrypted credentials (encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey), <code>lastSyncAt</code>, <code>enabled</code>, <code>exportSource</code> (<code>AnalyticsIntegrationExportSource</code>: TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS).</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>Integration</th><th>Destination</th><th>Credentials (encrypted)</th><th>Specific config</th></tr></thead>
+  <tbody>
+    <tr><td><b>PostHog</b></td><td>product analytics platform</td><td>encryptedPosthogApiKey + host</td><td>—</td></tr>
+    <tr><td><b>Mixpanel</b></td><td>product analytics platform</td><td>encryptedMixpanelProjectToken</td><td>mixpanelRegion (data residency)</td></tr>
+    <tr><td><b>Blob Storage</b></td><td>S3 / S3-compatible / Azure</td><td>secretAccessKey (optional → can use IAM role)</td><td>bucket/prefix/fileType/compressed/exportFrequency/exportMode</td></tr>
+  </tbody>
+</table>
+""")
+
+_EN46.append(r"""
+<h2>Two-level fan-out: one dispatcher, N scribes</h2>
+<p>Exporting data can't use "one big task serially processing all projects" — one slow or failing project would drag down all the rest. Langfuse uses the classic <strong>two-level fan-out</strong>: each integration has <strong>two queues</strong>. <strong>① Scheduling queue</strong> (cron-triggered): <code>handlePostHogIntegrationSchedule</code> finds all <code>enabled: true</code> integrations and <code>addBulk</code>s <strong>one processing task per project</strong>. <strong>② Processing queue</strong>: each task independently handles one project's export, wrapped in <code>instrumentAsync</code> that <strong>starts a fresh trace</strong> per project (an OTel CONSUMER span, for isolated observability). The three integrations each have their own <strong>independent pair of queues</strong> — a PostHog jam doesn't affect Mixpanel, no mutual drag.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Two-level fan-out queue: a cron triggers the scheduling queue, handleSchedule finds all enabled integrations, addBulk enqueues one processing task per project to the processing queue, each processing task independently exports one project and starts a fresh trace; the three integrations each have an independent pair of queues that don't affect one another">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Scheduling queue tallies → processing queue works per project in parallel</text>
+  <rect x="20" y="60" width="100" height="50" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"/><text x="70" y="80" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">cron</text><text x="70" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">periodic trigger</text>
+  <rect x="150" y="52" width="170" height="66" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="235" y="72" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">① scheduling queue</text><text x="235" y="88" text-anchor="middle" font-size="6.2" fill="var(--muted)">handleSchedule: findMany</text><text x="235" y="100" text-anchor="middle" font-size="6.2" fill="var(--muted)">{ enabled: true } tally</text><text x="235" y="112" text-anchor="middle" font-size="6.2" fill="var(--muted)">addBulk fan-out</text>
+  <rect x="400" y="40" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="59" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② process: project A</text>
+  <rect x="400" y="78" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② process: project B</text>
+  <rect x="400" y="116" width="150" height="30" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="475" y="135" text-anchor="middle" font-size="7" font-weight="700" fill="var(--teal)">② process: project C …</text>
+  <rect x="585" y="58" width="120" height="70" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="645" y="78" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">fresh trace each</text><text x="645" y="93" text-anchor="middle" font-size="6.0" fill="var(--muted)">instrumentAsync</text><text x="645" y="105" text-anchor="middle" font-size="6.0" fill="var(--muted)">CONSUMER span</text><text x="645" y="118" text-anchor="middle" font-size="6.0" fill="var(--muted)">per-project observability</text>
+  <line x1="120" y1="85" x2="148" y2="85" stroke="var(--accent)" stroke-width="1.4"/><polygon points="148,85 139,81 139,89" fill="var(--accent)"/>
+  <line x1="320" y1="78" x2="398" y2="55" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,55 389,55 393,62" fill="var(--blue)"/>
+  <line x1="320" y1="85" x2="398" y2="93" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,93 389,89 389,97" fill="var(--blue)"/>
+  <line x1="320" y1="92" x2="398" y2="131" stroke="var(--blue)" stroke-width="1.2"/><polygon points="398,131 389,127 392,135" fill="var(--blue)"/>
+  <line x1="550" y1="55" x2="583" y2="80" stroke="var(--faint)" stroke-width="1"/><line x1="550" y1="93" x2="583" y2="93" stroke="var(--faint)" stroke-width="1"/><line x1="550" y1="131" x2="583" y2="106" stroke="var(--faint)" stroke-width="1"/>
+  <rect x="150" y="160" width="400" height="64" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="178" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">dedup + isolation</text><text x="350" y="194" text-anchor="middle" font-size="6.4" fill="var(--muted)">jobId = `${projectId}-${lastSyncAt}`: same project, same sync window not enqueued twice</text><text x="350" y="208" text-anchor="middle" font-size="6.4" fill="var(--muted)">removeOnFail: failed jobs cleaned immediately, don't block next cycle's re-queue</text><text x="350" y="220" text-anchor="middle" font-size="6.2" fill="var(--faint)">three integrations, three independent queue pairs → one jam won't drag others</text>
+</svg>
+<div class="figcap"><b>Two-level fan-out</b>: <code>postHogIntegrationProcessor</code> (scheduling, <code>postHogIntegrationQueue.ts:11</code>) → <code>handlePostHogIntegrationSchedule</code> finds <code>enabled:true</code> then <code>addBulk</code> (:35) fans out; <code>postHogIntegrationProcessingProcessor</code> (:23) per-task <code>instrumentAsync(startNewTrace)</code> handles one project. Dedup <code>jobId=projectId-lastSyncAt</code> (:50), <code>removeOnFail</code> (:51). Mixpanel/BlobStorage are isomorphic.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/posthog/handlePostHogIntegrationSchedule.ts</span><span class="ln">schedule: tally → fan-out</span></div>
+  <pre class="code"><span class="cm">// scheduling queue: find all enabled integrations, fan out one task per project</span>
+<span class="kw">const</span> projects = <span class="kw">await</span> prisma.posthogIntegration.<span class="fn">findMany</span>({
+  select: { lastSyncAt: <span class="kw">true</span>, projectId: <span class="kw">true</span> },
+  where: { enabled: <span class="kw">true</span> },                       <span class="cm">// only schedule the switched-on ones</span>
+});
+
+<span class="kw">await</span> processingQueue.<span class="fn">addBulk</span>(projects.map((integration) =&gt; ({
+  name: QueueJobs.PostHogIntegrationProcessingJob,
+  data: { payload: { projectId: integration.projectId } },
+  opts: {
+    <span class="cm">// dedup: same project + same lastSyncAt window won't be scheduled twice</span>
+    jobId: <span class="st">`${integration.projectId}-${integration.lastSyncAt?.toISOString() ?? ""}`</span>,
+    removeOnFail: <span class="kw">true</span>,                          <span class="cm">// clean failures immediately, don't block next cycle</span>
+  },
+})));</pre>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">level 1</span><span class="name">Scheduling queue (tally + fan-out)</span></div><div class="ld">Cron-triggered periodically, <code>findMany({enabled:true})</code> finds all projects due for sync, <code>addBulk</code> stuffs "one task per project" into the processing queue at once. It does no heavy lifting itself — only "assigns work."</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">level 2</span><span class="name">Processing queue (per-project export)</span></div><div class="ld">Each task independently handles one project: decrypt credentials → query incremental data → deliver to destination → advance watermark. <code>instrumentAsync(startNewTrace)</code> opens its own trace, consumable by multiple workers in parallel, each independently observable.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">guardrail</span><span class="name">Dedup + failure cleanup</span></div><div class="ld"><code>jobId=projectId-lastSyncAt</code> ensures "same project, same window" isn't enqueued twice (idempotent); <code>removeOnFail</code> dequeues failed tasks immediately, not blocking the next cron cycle's re-queue. Three integrations, independent queues, no mutual drag.</div></div>
+</div>
+""")
+
+_EN46.append(r"""
+<h2>Incremental sync watermark + streaming export</h2>
+<p>Each project's processing task is at its core <strong>incremental</strong>: export only the new data since last time. The window's lower bound <code>minTimestamp = lastSyncAt || project.createdAt</code> (first run starts from project creation); the upper bound <code>maxTimestamp = min(next UTC day boundary, now − 30 minutes)</code> — <strong>leaving a 30-minute buffer</strong> to avoid grabbing still-arriving data, and <strong>chunking by day</strong> so a stuck integration doesn't re-scan an ever-growing window each run (also aligning with ClickHouse partition pruning). After exporting, <code>update({lastSyncAt: maxTimestamp})</code> <strong>advances the bookmark</strong>. For potentially-huge Blob Storage exports, it uses a Node <strong>stream pipeline</strong>: query row by row, transform format row by row (CSV/JSON/JSONL), optionally gzip, and <strong>stream</strong> straight into S3/GCS — <strong>never loading the whole result set into memory</strong>.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Set the incremental window</h4><p><code>minTimestamp</code> = previous <code>lastSyncAt</code> (first time = project createdAt); <code>maxTimestamp</code> = min(next UTC day boundary, now−30min). An empty window is skipped.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Decrypt credentials + query this slice</h4><p><code>decrypt</code> the API key / token / secret, query the [min, max) slice of trace/observation/score from ClickHouse (type chosen by <code>exportSource</code>).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Deliver to the destination</h4><p>PostHog/Mixpanel: transform into events, <code>posthog.capture()</code> one by one; Blob: <strong>streaming</strong> pipeline transforms row by row into CSV/JSON/JSONL (±gzip), writes to S3/S3-compatible/Azure via <code>StorageServiceFactory</code>.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Advance the watermark</h4><p>On success <code>update({ lastSyncAt: maxTimestamp })</code>. The next cycle continues from here — naturally incremental, no-dup-no-miss.</p></div></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 170" role="img" aria-label="Watermark advancing: on the timeline lastSyncAt is the previous bookmark, this run exports the [minTimestamp, maxTimestamp) slice, maxTimestamp leaves a 30-minute buffer before now to avoid in-flight data, after export lastSyncAt moves to maxTimestamp, next time continues from there">
+  <text x="360" y="20" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">The watermark only moves forward: export one new slice each time</text>
+  <line x1="40" y1="80" x2="680" y2="80" stroke="var(--faint)" stroke-width="1.5"/><polygon points="680,80 670,75 670,85" fill="var(--faint)"/><text x="690" y="83" font-size="7" fill="var(--muted)">time</text>
+  <line x1="160" y1="66" x2="160" y2="94" stroke="var(--accent)" stroke-width="2"/><text x="160" y="58" text-anchor="middle" font-size="7.2" font-weight="700" fill="var(--accent-ink)">lastSyncAt</text><text x="160" y="108" text-anchor="middle" font-size="6" fill="var(--muted)">prev bookmark = this min</text>
+  <rect x="160" y="70" width="300" height="20" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="310" y="84" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--ink)">this export [min, max)</text>
+  <line x1="460" y1="66" x2="460" y2="94" stroke="var(--teal)" stroke-width="2"/><text x="460" y="58" text-anchor="middle" font-size="7.2" font-weight="700" fill="var(--teal)">maxTimestamp</text>
+  <rect x="460" y="70" width="150" height="20" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="3 2"/><text x="535" y="84" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">30-min buffer (not grabbed)</text>
+  <line x1="610" y1="66" x2="610" y2="94" stroke="var(--muted)" stroke-width="1.5"/><text x="610" y="108" text-anchor="middle" font-size="6.2" fill="var(--muted)">now</text>
+  <text x="535" y="120" text-anchor="middle" font-size="6.4" fill="var(--faint)">buffer: avoid grabbing still-arriving in-flight data</text>
+  <line x1="160" y1="135" x2="460" y2="135" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="460,135 451,131 451,139" fill="var(--accent)"/><text x="310" y="150" text-anchor="middle" font-size="7" fill="var(--accent-ink)">on done: lastSyncAt moves to maxTimestamp → next run continues here</text>
+</svg>
+<div class="figcap"><b>Incremental watermark</b>: <code>handlePostHogIntegrationProjectJob.ts:322</code> <code>minTimestamp = lastSyncAt || project.createdAt</code>; <code>:324</code> upper bound first takes now−30min, then <code>:339</code> min'd with the "next UTC day boundary" (day-chunking, aligns CH partitions); <code>:394</code> on success <code>posthogIntegration.update({lastSyncAt: maxTimestamp})</code>. Blob export uses <code>StorageServiceFactory</code> + <code>stream pipeline/Transform</code> (<code>handleBlobStorageIntegrationProjectJob.ts:1,9</code>).</div>
+</div>
+""")
+
+_EN46.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why split into "scheduling + processing" two queues, instead of a for-loop over all projects in one task?</strong> Three reasons: <strong>① isolation</strong> — project A's export erroring or hanging must never take down B/C's syncs; split into independent tasks, one failure just <code>removeOnFail</code>s itself, the rest carry on. <strong>② parallelism</strong> — N projects' processing tasks can be consumed by multiple workers in parallel, rather than queued into one long serial chain. <strong>③ observability</strong> — each project's processing <code>instrumentAsync(startNewTrace)</code> opens its own trace, so when something breaks you can pinpoint which project, which step. This "one dispatcher tallies, assigns separate work per object" fan-out recurs in Lesson 30's eval and Lesson 43's metering — <strong>it's Langfuse's standard answer for "do one pass over a batch of objects."</strong><br><br>
+  <strong>Why does incremental sync leave a "30-minute buffer" and "chunk by day," instead of syncing right up to now?</strong> Because data <strong>arrives gradually</strong>: the ingestion path has batching and lag, so querying "the last few minutes" right now likely misses events still in flight, about to land. Backing off 30 minutes takes a <strong>relatively stable watermark</strong> — rather slower than miss data. And "chunk by day" is a <strong>safety net for anomalies</strong>: if an integration was stopped for a long time (or backfilling an older project), <code>lastSyncAt</code> lags far behind; scanning "from then to now" as one giant window means every hourly retry re-scans massive data, never catching up. Slicing by UTC day boundary <strong>bounds per-run work</strong> and aligns exactly with ClickHouse's day partition pruning, querying faster. <strong>The essence of incremental sync isn't "sync to the latest," but "advance one small, controlled step steadily each time."</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Your data, your destinations</strong>: opposite to Lesson 43's "platform charging you," analytics integration exports your trace/observation/score back to your own PostHog/Mixpanel (product analytics) and S3/S3-compatible/Azure (object-storage archival).</li>
+    <li><strong>Three isomorphic integrations</strong>: PosthogIntegration/MixpanelIntegration/BlobStorageIntegration (schema.prisma:1183/1196/1209) all keyed by <code>projectId</code>, encrypted credentials (reuse Lesson 39), <code>lastSyncAt</code> watermark, <code>enabled</code>, <code>exportSource</code>.</li>
+    <li><strong>Two-level fan-out queue</strong>: scheduling queue (cron→find enabled→<code>addBulk</code> fans out per project, <code>jobId=projectId-lastSyncAt</code> dedup, <code>removeOnFail</code>) + processing queue (each project <code>instrumentAsync</code> opens a fresh trace). Each integration has its own queue pair, no mutual drag.</li>
+    <li><strong>Incremental sync watermark</strong>: <code>min=lastSyncAt||createdAt</code>, <code>max=min(next-day-boundary, now−30min)</code>; the 30-min buffer avoids in-flight data, day-chunking bounds per-run work and aligns CH partitions; advance <code>lastSyncAt</code> on success. Only new data, no-dup-no-miss.</li>
+    <li><strong>Blob streaming export</strong>: Node <code>stream pipeline/Transform</code> transforms row by row into CSV/JSON/JSONL (±gzip), writes to S3/GCS/Azure via <code>StorageServiceFactory</code> — no memory blowup at any size. Fan-out / incremental / streaming are the trio of wisdom for "exporting data out."</li>
+  </ul>
+</div>
+""")
+
+LESSON_46 = {"zh": "\n".join(_ZH46), "en": "\n".join(_EN46)}

@@ -3195,6 +3195,76 @@ QUIZZES = {
             },
         ],
     },
+    "46-analytics-integrations.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "分析集成把数据导出去，用的是「调度队列 + 处理队列」两级 fan-out，而不是「一个定时任务里 for 循环处理所有项目」。这样拆的主要好处是？",
+                    "en": "Analytics integration exports data via a two-level fan-out of 'scheduling queue + processing queue', rather than 'a for-loop over all projects in one cron task'. The main benefit of this split is?",
+                },
+                "opts": [
+                    {
+                        "zh": "隔离+并行+可观测：项目A的导出失败/卡死不连累B/C(各自removeOnFail)；N个项目任务可被多worker并行消费而非串行；每项目instrumentAsync各开一条trace，出问题能精确定位到哪个项目哪一步",
+                        "en": "isolation + parallelism + observability: project A's export failing/hanging doesn't drag down B/C (each removeOnFail itself); N project tasks can be consumed by multiple workers in parallel rather than serially; each project's instrumentAsync opens its own trace, so problems pinpoint which project, which step",
+                    },
+                    {"zh": "两级队列比一级队列省内存", "en": "two-level queues use less memory than one-level"},
+                    {"zh": "Slack 要求所有导出都走两级队列", "en": "Slack requires all exports to use two-level queues"},
+                    {"zh": "处理队列能自动加密数据", "en": "the processing queue auto-encrypts data"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "一个大任务串行处理所有项目，有三个致命问题：① 某项目报错或超慢，整个批次都受影响；② 无法利用多 worker 并行，项目一多就越拖越久；③ 所有项目混在一条执行流里，出问题难定位。拆成「调度清点 + 逐项目处理」后：失败的任务 removeOnFail 自己清掉、不挡别人；处理任务可被多 worker 并行抢；每个项目 instrumentAsync 各开一条 trace 独立观测。这套 fan-out 在第30课 eval、第43课计量里反复出现，是「对一批对象各做一遍」的标准答案。",
+                    "en": "One big task serially processing all projects has three fatal problems: ① one project erroring or being very slow affects the whole batch; ② can't leverage multiple workers in parallel, so it drags on as projects grow; ③ all projects mixed in one execution flow, hard to pinpoint problems. Split into 'schedule-tally + per-project process': a failed task removeOnFails itself without blocking others; processing tasks are grabbed by multiple workers in parallel; each project's instrumentAsync opens its own trace for isolated observability. This fan-out recurs in Lesson 30 eval and Lesson 43 metering—the standard answer for 'do one pass over a batch of objects'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "增量同步时，maxTimestamp 不取「当前时刻」，而是取 min(下一个UTC日界, 当前−30分钟)。这「退30分钟」和「按日切块」分别是为了解决什么？",
+                    "en": "In incremental sync, maxTimestamp isn't 'now' but min(next UTC day boundary, now−30min). What do the 'back off 30 minutes' and 'chunk by day' each solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "退30分钟：数据是陆续到达的(摄取有批处理/延迟)，取一个相对稳定的水位避免漏掉还在路上的在途事件；按日切块：给异常兜底——某集成停很久/老项目回填时 lastSyncAt 落后很多，一次性扫超大窗口会每次重扫巨量数据永远追不上，按天切既限单次工作量又对齐CH按天分区裁剪",
+                        "en": "back off 30min: data arrives gradually (ingestion has batching/lag), so take a relatively stable watermark to avoid missing in-flight events still on the way; chunk by day: a safety net for anomalies—if an integration stopped long or backfills an old project, lastSyncAt lags far, scanning one giant window re-scans massive data each retry and never catches up; day-slicing bounds per-run work and aligns CH day-partition pruning",
+                    },
+                    {"zh": "都是为了让导出的数据更少", "en": "both are to export less data"},
+                    {"zh": "都是 Mixpanel API 的硬性要求", "en": "both are hard requirements of the Mixpanel API"},
+                    {"zh": "退30分钟是为了避开服务器高峰", "en": "backing off 30min avoids server peak hours"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这两个细节体现了增量同步的工程现实。「退30分钟」对应「数据不是瞬间齐的」：摄取链路有缓冲和延迟，紧贴此刻去查会漏掉马上要落库的事件，宁可慢一点也要不漏。「按日切块」对应「异常恢复要可控」：如果一个集成停了一周、或在一个老项目上首次全量，lastSyncAt 和现在差很远，若一次扫完这超大窗口，每小时重试都在啃巨量数据、可能永远追不上、还撑爆资源；切成一天一段后，每次只推进一天、工作量有上界，且正好命中 ClickHouse 按天分区，查得快。增量同步追求的是「稳稳推进一小步」，不是「一步到最新」。",
+                    "en": "These two details reflect incremental sync's engineering reality. 'Back off 30min' addresses 'data isn't instantly complete': the ingestion path has buffering and lag; querying right up to now misses events about to land, so rather slower than miss. 'Chunk by day' addresses 'recovery must be controlled': if an integration stopped for a week, or first full-export on an old project, lastSyncAt is far from now; scanning that giant window at once means each hourly retry gnaws massive data, may never catch up, and blows resources; sliced into one-day chunks, each run advances one day with a bounded workload, and hits ClickHouse's day partitions for fast queries. Incremental sync aims for 'advance one small step steadily', not 'jump to the latest in one step'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Blob Storage 导出（可能导出海量历史数据到 S3）用的是 Node stream pipeline，一行行查、一行行转格式、流式写出，而不是先把整个结果集查进内存再写。这个选择最关键的原因是？",
+                    "en": "Blob Storage export (possibly exporting massive history to S3) uses a Node stream pipeline—query row by row, transform row by row, write streaming—rather than loading the whole result set into memory first. The most critical reason for this choice is?",
+                },
+                "opts": [
+                    {
+                        "zh": "内存安全：导出量可能远超内存(几百万行)，若全装进内存会OOM崩溃；流式「翻一页处理一页、处理完即走」让内存占用恒定，无论导10行还是1亿行都不会撑爆",
+                        "en": "memory safety: the export volume may far exceed memory (millions of rows); loading it all would OOM-crash; streaming 'process a page, move on' keeps memory constant, so whether exporting 10 rows or 100 million it won't blow up",
+                    },
+                    {"zh": "流式导出的数据更准确", "en": "streaming export produces more accurate data"},
+                    {"zh": "S3 只接受流式上传", "en": "S3 only accepts streaming uploads"},
+                    {"zh": "流式能自动去重数据", "en": "streaming auto-deduplicates data"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "「把整个结果集装进内存再处理」在数据量小时没问题，但导出场景的数据量可能是几百万、上亿行——一次性查进内存会直接 OOM 把进程打挂。流式处理（stream pipeline/Transform）的精髓是「数据像水一样流过」：查一行、转一行格式(CSV/JSON/JSONL)、写一行到 S3，处理完的行立即释放，内存占用与数据总量无关、恒定在一个小水平。这和第24课列表用游标分页、第38课不一次性加载所有 prompt 是同一种「面对不确定规模时，不要把全部装进内存」的工程纪律。",
+                    "en": "'Load the whole result set into memory then process' is fine when small, but export volumes can be millions or hundreds of millions of rows—loading at once directly OOM-kills the process. The essence of streaming (stream pipeline/Transform) is 'data flows like water': query a row, transform a row's format (CSV/JSON/JSONL), write a row to S3, releasing processed rows immediately, so memory is independent of total volume, constant at a small level. This is the same 'when facing uncertain scale, don't load everything into memory' discipline as Lesson 24's cursor pagination and Lesson 38's not loading all prompts at once.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课的分析集成体现了「往外导数据」的三件套：两级 fan-out（隔离+并行+可观测）、lastSyncAt 增量水位（只导新数据、留缓冲、按日切块）、流式导出（内存安全）。请设想：如果让你给一个系统设计「定期把数据同步到外部」的功能，这三条你会怎么取舍和组合？哪些场景可以省掉其中一两条（比如数据量很小、或要求强实时）？增量水位若遇到「数据可能被回溯修改」（不只是追加）又会带来什么新难题？",
+                "en": "This lesson's analytics integration embodies the trio for 'exporting data out': two-level fan-out (isolation+parallelism+observability), lastSyncAt incremental watermark (only new data, leave buffer, chunk by day), streaming export (memory safety). Imagine: if you designed a 'periodically sync data to external' feature for a system, how would you weigh and combine these three? Which scenarios let you drop one or two (e.g. tiny data volume, or strong real-time requirement)? And if the incremental watermark meets 'data may be retroactively modified' (not just appended), what new difficulty arises?",
+            },
+        ],
+    },
 }
 
 

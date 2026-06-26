@@ -61,4 +61,5 @@ CONTENT = {
     "43-cloud-usage-metering.html": part8.LESSON_43,
     "44-automations-webhooks.html": part9.LESSON_44,
     "45-slack-and-notifications.html": part9.LESSON_45,
+    "46-analytics-integrations.html": part9.LESSON_46,
 }
