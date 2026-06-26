@@ -434,7 +434,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
-用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 98% 的观测在 trace 后 5 分钟内）把窗设成 2 天，留足安全裕量，几乎不会真漏。
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 96% 的观测在 trace 之后 2 分钟内开始）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
 <strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
 
 
@@ -613,7 +613,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
 is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~98% of observations finish within 5 minutes of the trace), Langfuse sets the window to 2 days, leaving ample safety margin, so it almost never truly misses.
+(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">

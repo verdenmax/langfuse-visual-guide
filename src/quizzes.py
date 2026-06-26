@@ -1799,33 +1799,33 @@ QUIZZES = {
         "mcq": [
             {
                 "q": {
-                    "zh": "Langfuse 的 session（会话，比如一段多轮对话）在存储上是怎么回事？",
-                    "en": "How does a Langfuse session (e.g. a multi-turn conversation) exist in storage?",
+                    "zh": "Langfuse 的 session（会话，比如一段多轮对话）的「指标与列表」在存储上是怎么回事？",
+                    "en": "How do a Langfuse session's metrics and listing (e.g. a multi-turn conversation) exist in storage?",
                 },
                 "opts": [
                     {
-                        "zh": "它不是一种新存储的实体，而是 traces 按 session_id 的 GROUP BY 聚合——session_id 只是第 8 课 traces 宽表上的一列，分组即得会话，各指标是对组内 traces 的聚合",
-                        "en": "it isn't a newly-stored entity but a GROUP BY of traces on session_id — session_id is just a column on Lesson 8's traces wide table, grouping yields the session, and each metric is an aggregate over the grouped traces",
+                        "zh": "它们不单独存，而是 traces 按 session_id 的 GROUP BY 现算出来——session_id 只是第 8 课宽表上的一列，分组即得各项聚合指标（仅有一个轻量元数据存根 trace_sessions 在摄取时落 Postgres）",
+                        "en": "they aren't stored separately but computed on the fly by GROUP BY of traces on session_id — session_id is just a column on Lesson 8's wide table, grouping yields all the aggregate metrics (only a lightweight metadata stub, trace_sessions, is persisted to Postgres on ingestion)",
                     },
-                    {"zh": "session 有自己的表，每条 trace 进来时更新它", "en": "sessions have their own table, updated as each trace arrives"},
-                    {"zh": "session 存在 Redis 里", "en": "sessions live in Redis"},
-                    {"zh": "session 是前端临时拼出来的，不落库", "en": "sessions are assembled ad-hoc on the frontend, never persisted"},
+                    {"zh": "每个会话的全部指标（计数/成本/时长）都预先算好、存进一张表，每条 trace 进来都更新它", "en": "every session's full metrics (count/cost/duration) are pre-computed and stored in a table, updated by each incoming trace"},
+                    {"zh": "session 的指标全存在 Redis 里", "en": "session metrics all live in Redis"},
+                    {"zh": "session 是前端临时拼出来的，后端完全不参与", "en": "sessions are assembled ad-hoc on the frontend, with no backend involvement"},
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "因为 session_id 本就是 traces 宽表的一列，按它 GROUP BY 就能现算出会话，user_ids（去重）、trace_count（计数）、duration（最晚−最早）、session_total_cost（求和）都是对组内 traces 的聚合。会话是派生视图，不需要新表、新写入路径。",
-                    "en": "Since session_id is already a column on the traces wide table, GROUP BY on it computes the session on the fly; user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum) are aggregates over the grouped traces. A session is a derived view — no new table, no new write path.",
+                    "zh": "session_id 本就是 traces 宽表的一列，按它 GROUP BY 就能现算出会话的全部指标：user_ids（去重）、trace_count（计数）、duration（最晚−最早）、session_total_cost（求和）。这些聚合不预存——避免每条 trace 都要同步更新。摄取时只往 Postgres trace_sessions 落一个极轻的存根（id/project/environment + 元数据如收藏/公开），登记会话存在，但不存指标。",
+                    "en": "session_id is already a column on the traces wide table, so GROUP BY on it computes all the session's metrics on the fly: user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum). These aggregates aren't pre-stored — avoiding a sync update per trace. On ingestion only a tiny stub goes into Postgres trace_sessions (id/project/environment + metadata like bookmarked/public), registering the session's existence but storing no metrics.",
                 },
             },
             {
                 "q": {
-                    "zh": "把 session 做成「traces 的派生视图」而不是独立维护的实体，最大的好处是？",
-                    "en": "Making a session a 'derived view of traces' rather than a separately-maintained entity — the biggest benefit?",
+                    "zh": "把 session 的「指标」靠 GROUP BY 现算、而不是预先算好存进一张表，最大的好处是？",
+                    "en": "Computing a session's metrics on the fly by GROUP BY rather than pre-computing them into a table — the biggest benefit?",
                 },
                 "opts": [
                     {
-                        "zh": "永远一致 + 零额外写入：新来一条带某 session_id 的 trace 自动归入那个会话，不需要任何「更新会话表」的同步，也就不会出现「trace 写了、会话计数忘了加」的不一致",
-                        "en": "always consistent + zero extra writes: a new trace with some session_id automatically joins that session, no 'update the sessions table' sync, so no 'trace written but session count forgotten' inconsistency",
+                        "zh": "指标永远和底层 traces 一致 + 零额外聚合写入：新来一条带某 session_id 的 trace 自动被算进那个会话的统计，不需要「更新会话聚合」的同步，也就不会出现「trace 写了、会话计数忘了加」的不一致",
+                        "en": "metrics always consistent with the underlying traces + zero extra aggregate writes: a new trace with some session_id is automatically counted into that session's stats, no 'update the session aggregates' sync, so no 'trace written but session count forgotten' inconsistency",
                     },
                     {"zh": "让 session 查询更快", "en": "makes session queries faster"},
                     {"zh": "节省 trace 的存储空间", "en": "saves trace storage space"},
@@ -1833,8 +1833,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "派生视图天然一致：会话从 traces 现算，新 trace 自动归入，无需同步步骤，杜绝了「双写不一致」这类 bug。若反过来给 session 单建表，每条 trace 都要更新对应会话的计数/成本/时间——多一条写入链路、多一份要操心同步的状态。能从已有数据现算的就别再单独存。",
-                    "en": "A derived view is inherently consistent: the session is computed from traces, a new trace auto-joins, no sync step, eliminating 'dual-write inconsistency' bugs. Conversely a separate sessions table makes every trace update its session's count/cost/time — an extra write path and state to sync. Compute from existing data rather than store again.",
+                    "zh": "现算的聚合天然和底层一致：会话指标从 traces 现场 GROUP BY 得出，新 trace 自动算入，无需同步聚合值，杜绝了「双写不一致」bug。若反过来把每个会话的计数/成本/时长预存进表，每条 trace 都要更新它——多一条写入链路、多一份要操心同步的状态。会话仍会落一个轻量元数据存根（trace_sessions），但昂贵的聚合一律现算、不预存。",
+                    "en": "On-the-fly aggregates are inherently consistent with the underlying data: session metrics come from a live GROUP BY over traces, a new trace is auto-counted, no aggregate to sync, eliminating 'dual-write inconsistency' bugs. Conversely pre-storing each session's count/cost/duration makes every trace update it — an extra write path and state to sync. A lightweight metadata stub (trace_sessions) is still persisted, but the expensive aggregates are always computed, never pre-stored.",
                 },
             },
             {

@@ -4552,11 +4552,11 @@ map" and the next seven lessons won't get you lost.
 
 <h2>One building, three doors</h2>
 <p>The big picture first. <code>web/</code> is a Next.js app; under <code>web/src</code> sit a few big areas: <code>features/</code> (vertical, by-feature
-modules, ~80 of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
+modules, dozens of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
 routes), plus a small <code>app/</code> (App Router). And the external interfaces are exactly the three doors from the intro:</p>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (~80)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (dozens)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (Lesson 24) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (Lesson 21); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
   <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">routing</span></div><div class="ld"><code>pages/</code> is the trunk (UI pages + API routes), <code>app/</code> is just 4 files for special semantics. Plus <code>hooks/</code>, <code>ee/</code> (enterprise), etc.</div></div>
@@ -4570,15 +4570,15 @@ frontend components, state hooks, server logic, even a README under one <code>fe
 precisely at a <code>features/</code> subfolder.</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, App-Router/SSE for streaming and webhooks">
+<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, special-semantics endpoints for streaming and webhooks">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
   <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
-  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
+  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · special semantics</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
 </svg>
-<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>App-Router/SSE</b> (<code>app/api/**</code>, 4 files + the streaming endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
+<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>special semantics</b> (App Router <code>app/api/**</code> 4 files + a Pages-Router streaming SSE endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
 </div>
 
 <div class="codefile">
@@ -4619,7 +4619,7 @@ the App Router has all of <strong>4 files</strong>. This isn't being behind the 
   <tr><th>this door</th><th>for whom</th><th>where</th><th>why</th></tr>
   <tr><td><b>tRPC</b></td><td>own UI (React)</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>types flow backend → frontend, change one spot and the whole chain errors; internal API needn't be externally stable</td></tr>
   <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (Lesson 27)</td></tr>
-  <tr><td><b>App-Router / SSE</b></td><td>webhook sources · streaming dashboards</td><td><code>app/api/**</code> + streaming endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics Pages Router handles awkwardly</td></tr>
+  <tr><td><b>special semantics (App Router + SSE)</b></td><td>webhook sources · streaming dashboards</td><td>App Router <code>app/api/**</code> (webhooks etc.) + a Pages-Router streaming SSE endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics a plain Pages-Router route handles awkwardly</td></tr>
 </table>
 
 <p>Behind this split is a clear boundary: <strong>internally, seek "type-safe, fast to change"; externally, seek "stable contract, controlled versions"</strong>.
@@ -4654,8 +4654,8 @@ other. This is the master plan of Part 4's read path.</p>
   <div class="tag">🎯 Key points</div>
   <ul>
     <li>Langfuse's frontend is a <strong>Next.js app</strong>, <strong>mostly Pages Router</strong>; App Router is just 4 files for raw Request/streaming/webhook.</li>
-    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), App-Router/SSE (streaming/webhook).</li>
-    <li><code>web/src</code> layers: <code>features/</code> (~80 vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
+    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), special-semantics endpoints (App Router handlers + a Pages-Router streaming SSE, for webhook/streaming).</li>
+    <li><code>web/src</code> layers: <code>features/</code> (dozens of vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
     <li>Core boundary: <strong>internally seek type-safety and iteration speed (tRPC), externally seek contract stability and version control (REST + Fern)</strong> — same data, two external postures.</li>
     <li>This is Part 4's read-path overview; the next seven lessons drill into the tRPC backbone, repository layer, filtering, tables, detail, sessions, and the public REST API.</li>
   </ul>
@@ -5023,7 +5023,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
 is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~98% of observations finish within 5 minutes of the trace), Langfuse sets the window to 2 days, leaving ample safety margin, so it almost never truly misses.
+(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">
@@ -5662,7 +5662,7 @@ unbounded one</strong>:</p>
 <p class="lead">
 Lessons 24 and 25 covered the list and detail of a single trace. But a real conversation is often <strong>multi-turn</strong> — the user asks, the AI answers,
 back and forth a dozen rounds, each round a trace. What threads them into <strong>one whole conversation</strong> is the <strong>session</strong>. This lesson's key
-insight is strikingly lean: <strong>a session isn't a newly-stored entity, but an aggregation of traces grouped by <code>session_id</code></strong>. Better still,
+insight is strikingly lean: <strong>a session's metrics and listing aren't stored separately; they're computed on the fly by grouping traces on <code>session_id</code></strong> (only a tiny metadata stub is persisted, more below). Better still,
 the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</strong> — bluntly, <strong>it's the trace table, grouped</strong>.
 </p>
 
@@ -5676,7 +5676,7 @@ the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</s
 
 
 <h2>session = traces grouped by session_id</h2>
-<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a "session" needs no new table — just
+<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a session's metrics and listing <strong>needn't be stored separately</strong> — just
 <strong>GROUP BY session_id</strong> over traces sharing the same id and you get one "session" row, whose metrics are all <strong>aggregates over the grouped
 traces</strong>:</p>
 
@@ -5703,7 +5703,7 @@ traces</strong>:</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
-  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, four "shapes"</span>
+  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, several "shapes" (sessions: count/rows/metrics)</span>
 <span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
   <span class="kw">switch</span> (select) {
     <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// cheap</span>
@@ -5742,7 +5742,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
   <text x="410" y="120" font-size="8" fill="var(--ink)">session_total_cost / usage (total cost/usage)</text>
   <text x="410" y="142" font-size="7.5" fill="var(--muted)">→ computed, filled by session_id into rows</text>
 </svg>
-<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "four shapes + compact-rows/metrics split". <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
+<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "select-driven shapes + compact-rows/metrics split" (sessions has count/rows/metrics). <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
 </div>
 
 <table class="t">
@@ -5755,9 +5755,17 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 </table>
 
 <div class="cols">
-  <div class="col"><h4>🟢 session = derived view (Langfuse's choice)</h4><p>A session isn't stored separately; it's computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> <strong>automatically</strong> belongs to session S1 — no sync needed, always consistent.</p></div>
-  <div class="col"><h4>🔴 session = its own entity (not done)</h4><p>Give sessions their own table and every incoming trace must <strong>update its session's</strong> count, cost, time — an extra write path, an extra piece of state that could drift. Save it if you can.</p></div>
+  <div class="col"><h4>🟢 metrics computed on the fly (Langfuse's choice)</h4><p>A session's metrics <strong>aren't pre-stored</strong>; they're computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> is <strong>automatically</strong> counted into session S1's stats — metrics always consistent with the underlying traces, no aggregate to sync.</p></div>
+  <div class="col"><h4>🔴 pre-stored aggregates (not done)</h4><p>Pre-compute each session's count, cost, duration into a table and every incoming trace must <strong>update its session's</strong> aggregates — an extra write path, an extra piece of state that could drift from the underlying traces. Compute rather than pre-store.</p></div>
 </div>
+
+<p>One detail to set straight: a session <strong>isn't entirely absent from storage</strong>. On ingestion, if a trace carries a <code>session_id</code>, the worker
+<strong>upserts a tiny "stub" row</strong> into Postgres's <code>trace_sessions</code> table (just id, project_id, environment, timestamps, with <code>ON CONFLICT DO
+NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
+(like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
+table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
+but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
 <p>Open a session and you see its traces <strong>laid out as a conversation timeline by time</strong> — round one, round two… click into a round and it's Lesson 25's
@@ -5774,52 +5782,54 @@ shaped the next, where the conversation started to go off the rails.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
-  <strong>Why make a session a "grouped view" of traces rather than an entity with its own storage?</strong> Because <strong>what you can compute from existing data,
-  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this "derived" form is
-  naturally <strong>always consistent</strong> — a new trace bearing some session_id <strong>automatically</strong> joins that session, no "update the sessions table" sync
-  step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Conversely, giving sessions their own table to maintain conjures up an
-  extra write path and a piece of state to worry about syncing — not worth it. Better still: because the sessions table <strong>reuses Lesson 24's machinery
-  verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL state". <strong>A seemingly substantial new feature is
-  essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless dividend of orthogonal design.
+  <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
+  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
+  naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that
+  session's stats, no "update the session aggregates" sync step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Langfuse
+  persists only a <strong>tiny session stub</strong> in Postgres (registering existence + holding metadata), leaving all the <strong>expensive aggregates to query-time
+  computation</strong> — avoiding the sync burden of pre-stored aggregates while keeping a place to hang metadata like bookmarked/public. Better still: because the
+  sessions table <strong>reuses Lesson 24's machinery verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL
+  state". <strong>A seemingly substantial new feature's listing and metrics are essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless
+  dividend of orthogonal design.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); it's a <strong>derived view, not a new stored entity</strong>.</li>
-    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces.</li>
+    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); its <strong>metrics and listing are derived</strong>, with only a lightweight metadata stub (<code>trace_sessions</code>) persisted to Postgres on ingestion.</li>
+    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces (not pre-stored).</li>
     <li><strong>Aggregation rules</strong>: <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum, a two-level aggregation into observations), <code>trace_ids</code> (collect).</li>
-    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same four shapes (count/rows/metrics) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
-    <li>Tradeoff: a derived view is <strong>always consistent</strong> (new traces auto-join, no sync) with <strong>zero extra writes</strong>; compute from existing data rather than store again — the effortless dividend of orthogonal design.</li>
+    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same select-driven shapes (count/rows/metrics — one fewer than traces, no identifiers) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
+    <li>Tradeoff: derived metrics are <strong>always consistent with the underlying traces</strong> (new traces auto-counted, no aggregate to sync) with <strong>zero extra aggregate writes</strong>; persist what's identity/metadata, compute the aggregates rather than pre-store — the effortless dividend of orthogonal design.</li>
   </ul>
 </div>
 
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. How does a Langfuse session (e.g. a multi-turn conversation) exist in storage?</div>
+  <div class="qn">1. How do a Langfuse session's metrics and listing (e.g. a multi-turn conversation) exist in storage?</div>
   <ol class="opts">
-    <li>it isn't a newly-stored entity but a GROUP BY of traces on session_id — session_id is just a column on Lesson 8's traces wide table, grouping yields the session, and each metric is an aggregate over the grouped traces</li>
-    <li>sessions have their own table, updated as each trace arrives</li>
-    <li>sessions are assembled ad-hoc on the frontend, never persisted</li>
-    <li>sessions live in Redis</li>
+    <li>they aren't stored separately but computed on the fly by GROUP BY of traces on session_id — session_id is just a column on Lesson 8's wide table, grouping yields all the aggregate metrics (only a lightweight metadata stub, trace_sessions, is persisted to Postgres on ingestion)</li>
+    <li>every session's full metrics (count/cost/duration) are pre-computed and stored in a table, updated by each incoming trace</li>
+    <li>sessions are assembled ad-hoc on the frontend, with no backend involvement</li>
+    <li>session metrics all live in Redis</li>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Since session_id is already a column on the traces wide table, GROUP BY on it computes the session on the fly; user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum) are aggregates over the grouped traces. A session is a derived view — no new table, no new write path.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. session_id is already a column on the traces wide table, so GROUP BY on it computes all the session's metrics on the fly: user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum). These aggregates aren't pre-stored — avoiding a sync update per trace. On ingestion only a tiny stub goes into Postgres trace_sessions (id/project/environment + metadata like bookmarked/public), registering the session's existence but storing no metrics.</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Making a session a 'derived view of traces' rather than a separately-maintained entity — the biggest benefit?</div>
+  <div class="qn">2. Computing a session's metrics on the fly by GROUP BY rather than pre-computing them into a table — the biggest benefit?</div>
   <ol class="opts">
-    <li>always consistent + zero extra writes: a new trace with some session_id automatically joins that session, no 'update the sessions table' sync, so no 'trace written but session count forgotten' inconsistency</li>
+    <li>metrics always consistent with the underlying traces + zero extra aggregate writes: a new trace with some session_id is automatically counted into that session's stats, no 'update the session aggregates' sync, so no 'trace written but session count forgotten' inconsistency</li>
     <li>makes session queries faster</li>
     <li>lets sessions be deleted independently</li>
     <li>saves trace storage space</li>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A derived view is inherently consistent: the session is computed from traces, a new trace auto-joins, no sync step, eliminating 'dual-write inconsistency' bugs. Conversely a separate sessions table makes every trace update its session's count/cost/time — an extra write path and state to sync. Compute from existing data rather than store again.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. On-the-fly aggregates are inherently consistent with the underlying data: session metrics come from a live GROUP BY over traces, a new trace is auto-counted, no aggregate to sync, eliminating 'dual-write inconsistency' bugs. Conversely pre-storing each session's count/cost/duration makes every trace update it — an extra write path and state to sync. A lightweight metadata stub (trace_sessions) is still persisted, but the expensive aggregates are always computed, never pre-stored.</div></div></div>
   </details>
 </div>
 <div class="quiz">

@@ -346,8 +346,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 第 24、25 课讲的是单条 trace 的列表与详情。可真实的对话往往是<strong>多轮</strong>的——用户问一句、AI 答一句，来回十几轮，每一轮是一条 trace。把它们<strong>串成一段完整对话</strong>的，就是
-<strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>session 不是一种新存储的实体，而是 traces 按 <code>session_id</code> 的一次「分组聚合」</strong>。
-更妙的是，会话表<strong>几乎原样复用了第 24 课那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
+<strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>会话的全部「指标与列表」都不单独存储，而是 traces 按 <code>session_id</code> 的一次「分组聚合」现算出来</strong>
+（仅有一个极轻的元数据存根落库，下面会讲）。更妙的是，会话表<strong>几乎原样复用了第 24 课那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
 </p>
 
 <div class="card analogy">
@@ -359,7 +359,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>session = traces 按 session_id 分组</h2>
-<p>回想第 8 课：<code>session_id</code> 只是 traces 宽表上的<strong>一个普通列</strong>。所以「会话」根本不需要新表——只要把同一个 <code>session_id</code> 的 traces <strong>GROUP BY 聚到一起</strong>，
+<p>回想第 8 课：<code>session_id</code> 只是 traces 宽表上的<strong>一个普通列</strong>。所以会话的<strong>指标与列表不必单独存</strong>——只要把同一个 <code>session_id</code> 的 traces <strong>GROUP BY 聚到一起</strong>，
 就得到一行「会话」，它的各项指标都是<strong>对组内 traces 的聚合</strong>：</p>
 
 <div class="fig">
@@ -385,7 +385,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
-  <pre class="code"><span class="cm">// 和第 24 课的 getTracesTableGeneric 同一个套路：一个函数，四种「形状」</span>
+  <pre class="code"><span class="cm">// 和第 24 课的 getTracesTableGeneric 同一个套路：一个函数，几种「形状」（会话用 count/rows/metrics 三种）</span>
 <span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
   <span class="kw">switch</span> (select) {
     <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// 便宜</span>
@@ -401,7 +401,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>原样复用：会话表就是「分了组的 trace 表」</h2>
-<p>看出来了吗——<code>getSessionsTableGeneric</code> 和第 24 课的 <code>getTracesTableGeneric</code> <strong>简直是一个模子</strong>：同样的<strong>四种形状</strong>（count / rows / metrics），
+<p>看出来了吗——<code>getSessionsTableGeneric</code> 和第 24 课的 <code>getTracesTableGeneric</code> <strong>简直是一个模子</strong>：同样的<strong>「按 select 取不同形状」</strong>（会话有 count / rows / metrics 三种，比 traces 少一个 identifiers），
 同样的<strong>「紧凑行 vs 指标」拆分</strong>。会话列表也是：先把便宜的会话身份行画出来，昂贵的聚合指标（duration、总成本）<strong>后到补入</strong>。第 24 课的所有性能技巧，会话<strong>白白继承</strong>：
 分页、回看时间窗、按需聚合、URL 状态、列预设、行选择——这些在第 24 课里费心打磨的能力，会话表<strong>一行新代码都不用写</strong>就全有了，因为它走的是同一套通用机制。
 这就是把表格系统做成<strong>「实体无关的通用件」</strong>的回报：再来一个「按某个维度聚合的列表」（会话、用户、模型……），都能套同一个模子。</p>
@@ -433,9 +433,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </table>
 
 <div class="cols">
-  <div class="col"><h4>🟢 会话=派生视图（Langfuse 的选择）</h4><p>session 不另存，靠 GROUP BY 从 traces 现算。新来一条带 <code>session_id=S1</code> 的 trace，它<strong>自动</strong>就属于会话 S1——无需任何同步，永远一致。</p></div>
-  <div class="col"><h4>🔴 会话=独立实体（没这么做）</h4><p>若给 session 单建一张表，每条 trace 进来都得去<strong>更新对应会话</strong>的计数、成本、时间——多一套写入、多一处可能不一致的状态。能省则省。</p></div>
+  <div class="col"><h4>🟢 指标靠现算（Langfuse 的选择）</h4><p>会话的<strong>各项指标不预先存</strong>，靠 GROUP BY 从 traces 现算。新来一条带 <code>session_id=S1</code> 的 trace，它<strong>自动</strong>就被算进会话 S1 的统计——指标永远和底层 traces 一致，无需同步聚合值。</p></div>
+  <div class="col"><h4>🔴 预存聚合（没这么做）</h4><p>若把每个会话的计数、成本、时长<strong>预先算好存进一张表</strong>，每条 trace 进来都得去<strong>更新对应会话</strong>的这些聚合值——多一套写入、多一处可能与底层 traces 不一致的状态。能现算就别预存。</p></div>
 </div>
+
+<p>需要厘清一个细节：会话<strong>并非完全不落库</strong>。摄取时，如果一条 trace 带了 <code>session_id</code>，worker 会往 Postgres 的 <code>trace_sessions</code> 表
+<strong>upsert 一个极轻的「存根」行</strong>（只有 id、project_id、environment、时间戳，且 <code>ON CONFLICT DO NOTHING</code>——同一会话只登记一次）。这行的作用是「<strong>登记这个会话存在</strong>」、
+以及挂一些<strong>会话级元数据</strong>（如收藏、公开标记）。但请注意：真正昂贵的那些——<strong>user_ids、轮数、时长、总成本、trace 列表——全都不在这张表里</strong>，它们一律由 ClickHouse 对 traces 现场 GROUP BY 算出。
+所以准确的说法是：<strong>会话有一个轻量元数据实体被持久化，但它的全部指标与列表是派生的</strong>。这正是关键取舍——<strong>该存的（身份、元数据）才存，能算的（聚合指标）就别存</strong>。</p>
 
 <h2>会话详情：把对话按时序铺开</h2>
 <p>点开一个会话，看到的是它含的那些 trace<strong>按时间排成一条对话时间线</strong>——第一轮、第二轮……每一轮点进去又是第 25 课那棵观测树。从列表到详情，会话只是在 trace 之上加了一层「对话」的视角，
@@ -451,49 +456,49 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么把 session 做成 traces 的「分组视图」，而不是一个有自己存储的独立实体？</strong> 因为<strong>能从已有数据现算的，就别再单独存一份</strong>。
-  <code>session_id</code> 本就是第 8 课宽表上的一列，按它分组是<strong>免费</strong>的；而且这种「派生」天然<strong>永远一致</strong>——新来一条 trace 带着某 session_id，它<strong>自动</strong>就归入那个会话，
-  不需要任何「更新会话表」的同步步骤，也就不存在「trace 写进去了、会话计数却忘了加」这种不一致 bug。如果反过来给 session 单建一张表、单独维护，就凭空多出一条写入链路、一份要操心同步的状态——
-  得不偿失。更划算的是：因为会话表<strong>原样复用了第 24 课的表格机制</strong>，它<strong>白嫖</strong>了那套「紧凑行 vs 指标、按需聚合、URL 状态」的全部性能与体验。
-  <strong>一个看起来很实在的新功能，本质上只是一句 GROUP BY + 复用已有机制</strong>——这是「正交设计」最省力的红利。
+  <strong>为什么会话的指标都靠现算，而不是预先算好、单独存一份聚合？</strong> 因为<strong>能从已有数据现算的聚合，就别再冗余存一份</strong>。
+  <code>session_id</code> 本就是第 8 课宽表上的一列，按它分组是<strong>免费</strong>的；而且这种「现算」天然<strong>永远和底层一致</strong>——新来一条 trace 带着某 session_id，它<strong>自动</strong>就被算进那个会话的统计，
+  不需要任何「更新会话聚合」的同步步骤，也就不存在「trace 写进去了、会话计数却忘了加」这种不一致 bug。Langfuse 只在 Postgres 落一个<strong>极轻的会话存根</strong>（登记存在 + 挂元数据），
+  把所有<strong>昂贵的聚合留给查询时现算</strong>——既避免了预存聚合的同步负担，又保留了一个挂收藏/公开等元数据的落点。更划算的是：因为会话表<strong>原样复用了第 24 课的表格机制</strong>，
+  它<strong>白嫖</strong>了那套「紧凑行 vs 指标、按需聚合、URL 状态」的全部性能与体验。<strong>一个看起来很实在的新功能，列表与指标本质上只是一句 GROUP BY + 复用已有机制</strong>——这是「正交设计」最省力的红利。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>session = 多条 trace 按 <code>session_id</code> 分组</strong>（一段多轮对话 = 一个会话 = 多条 trace）；它是<strong>派生视图，不是新存储实体</strong>。</li>
-    <li><code>session_id</code> 只是第 8 课宽表的一列，<code>GROUP BY session_id</code> 即得会话；各指标是对组内 traces 的聚合。</li>
+    <li><strong>session = 多条 trace 按 <code>session_id</code> 分组</strong>（一段多轮对话 = 一个会话 = 多条 trace）；其<strong>指标与列表是派生的</strong>，仅一个轻量元数据存根（<code>trace_sessions</code>）在摄取时落 Postgres。</li>
+    <li><code>session_id</code> 只是第 8 课宽表的一列，<code>GROUP BY session_id</code> 即得会话；各指标是对组内 traces 的聚合（不预存）。</li>
     <li><strong>聚合口径</strong>：<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚−最早）、<code>session_total_cost</code>（求和）、<code>trace_ids</code>（收集）。</li>
-    <li><strong>原样复用第 24 课</strong>：<code>getSessionsTableGeneric</code> 同样四形状（count/rows/metrics）、同样紧凑行 vs 指标拆分——所有性能技巧白白继承。</li>
-    <li>取舍：派生视图<strong>永远一致</strong>（新 trace 自动归会话、无需同步）、<strong>零额外写入</strong>；能从已有数据现算的就别再单独存——正交设计的省力红利。</li>
+    <li><strong>原样复用第 24 课</strong>：<code>getSessionsTableGeneric</code> 同样的紧凑行 vs 指标拆分（会话有 count/rows/metrics 三种形状，比 traces 少一个 identifiers）——性能技巧白白继承。</li>
+    <li>取舍：派生指标<strong>永远和底层一致</strong>（新 trace 自动算入、无需同步聚合）、<strong>零额外聚合写入</strong>；该存的（身份/元数据存根）才存，能算的（聚合指标）就别预存——正交设计的省力红利。</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 自测 · 想一想为什么这么设计</h2>
 <div class="quiz">
-  <div class="qn">1. Langfuse 的 session（会话，比如一段多轮对话）在存储上是怎么回事？</div>
+  <div class="qn">1. Langfuse 的 session（会话，比如一段多轮对话）的「指标与列表」在存储上是怎么回事？</div>
   <ol class="opts">
-    <li>它不是一种新存储的实体，而是 traces 按 session_id 的 GROUP BY 聚合——session_id 只是第 8 课 traces 宽表上的一列，分组即得会话，各指标是对组内 traces 的聚合</li>
-    <li>session 有自己的表，每条 trace 进来时更新它</li>
-    <li>session 是前端临时拼出来的，不落库</li>
-    <li>session 存在 Redis 里</li>
+    <li>它们不单独存，而是 traces 按 session_id 的 GROUP BY 现算出来——session_id 只是第 8 课宽表上的一列，分组即得各项聚合指标（仅有一个轻量元数据存根 trace_sessions 在摄取时落 Postgres）</li>
+    <li>每个会话的全部指标（计数/成本/时长）都预先算好、存进一张表，每条 trace 进来都更新它</li>
+    <li>session 是前端临时拼出来的，后端完全不参与</li>
+    <li>session 的指标全存在 Redis 里</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。因为 session_id 本就是 traces 宽表的一列，按它 GROUP BY 就能现算出会话，user_ids（去重）、trace_count（计数）、duration（最晚−最早）、session_total_cost（求和）都是对组内 traces 的聚合。会话是派生视图，不需要新表、新写入路径。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。session_id 本就是 traces 宽表的一列，按它 GROUP BY 就能现算出会话的全部指标：user_ids（去重）、trace_count（计数）、duration（最晚−最早）、session_total_cost（求和）。这些聚合不预存——避免每条 trace 都要同步更新。摄取时只往 Postgres trace_sessions 落一个极轻的存根（id/project/environment + 元数据如收藏/公开），登记会话存在，但不存指标。</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. 把 session 做成「traces 的派生视图」而不是独立维护的实体，最大的好处是？</div>
+  <div class="qn">2. 把 session 的「指标」靠 GROUP BY 现算、而不是预先算好存进一张表，最大的好处是？</div>
   <ol class="opts">
-    <li>永远一致 + 零额外写入：新来一条带某 session_id 的 trace 自动归入那个会话，不需要任何「更新会话表」的同步，也就不会出现「trace 写了、会话计数忘了加」的不一致</li>
+    <li>指标永远和底层 traces 一致 + 零额外聚合写入：新来一条带某 session_id 的 trace 自动被算进那个会话的统计，不需要「更新会话聚合」的同步，也就不会出现「trace 写了、会话计数忘了加」的不一致</li>
     <li>让 session 查询更快</li>
     <li>让 session 能被单独删除</li>
     <li>节省 trace 的存储空间</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。派生视图天然一致：会话从 traces 现算，新 trace 自动归入，无需同步步骤，杜绝了「双写不一致」这类 bug。若反过来给 session 单建表，每条 trace 都要更新对应会话的计数/成本/时间——多一条写入链路、多一份要操心同步的状态。能从已有数据现算的就别再单独存。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。现算的聚合天然和底层一致：会话指标从 traces 现场 GROUP BY 得出，新 trace 自动算入，无需同步聚合值，杜绝了「双写不一致」bug。若反过来把每个会话的计数/成本/时长预存进表，每条 trace 都要更新它——多一条写入链路、多一份要操心同步的状态。会话仍会落一个轻量元数据存根（trace_sessions），但昂贵的聚合一律现算、不预存。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -520,7 +525,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <p class="lead">
 Lessons 24 and 25 covered the list and detail of a single trace. But a real conversation is often <strong>multi-turn</strong> — the user asks, the AI answers,
 back and forth a dozen rounds, each round a trace. What threads them into <strong>one whole conversation</strong> is the <strong>session</strong>. This lesson's key
-insight is strikingly lean: <strong>a session isn't a newly-stored entity, but an aggregation of traces grouped by <code>session_id</code></strong>. Better still,
+insight is strikingly lean: <strong>a session's metrics and listing aren't stored separately; they're computed on the fly by grouping traces on <code>session_id</code></strong> (only a tiny metadata stub is persisted, more below). Better still,
 the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</strong> — bluntly, <strong>it's the trace table, grouped</strong>.
 </p>
 
@@ -534,7 +539,7 @@ the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</s
 
 
 <h2>session = traces grouped by session_id</h2>
-<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a "session" needs no new table — just
+<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a session's metrics and listing <strong>needn't be stored separately</strong> — just
 <strong>GROUP BY session_id</strong> over traces sharing the same id and you get one "session" row, whose metrics are all <strong>aggregates over the grouped
 traces</strong>:</p>
 
@@ -561,7 +566,7 @@ traces</strong>:</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
-  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, four "shapes"</span>
+  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, several "shapes" (sessions: count/rows/metrics)</span>
 <span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
   <span class="kw">switch</span> (select) {
     <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// cheap</span>
@@ -600,7 +605,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
   <text x="410" y="120" font-size="8" fill="var(--ink)">session_total_cost / usage (total cost/usage)</text>
   <text x="410" y="142" font-size="7.5" fill="var(--muted)">→ computed, filled by session_id into rows</text>
 </svg>
-<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "four shapes + compact-rows/metrics split". <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
+<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "select-driven shapes + compact-rows/metrics split" (sessions has count/rows/metrics). <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
 </div>
 
 <table class="t">
@@ -613,9 +618,17 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 </table>
 
 <div class="cols">
-  <div class="col"><h4>🟢 session = derived view (Langfuse's choice)</h4><p>A session isn't stored separately; it's computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> <strong>automatically</strong> belongs to session S1 — no sync needed, always consistent.</p></div>
-  <div class="col"><h4>🔴 session = its own entity (not done)</h4><p>Give sessions their own table and every incoming trace must <strong>update its session's</strong> count, cost, time — an extra write path, an extra piece of state that could drift. Save it if you can.</p></div>
+  <div class="col"><h4>🟢 metrics computed on the fly (Langfuse's choice)</h4><p>A session's metrics <strong>aren't pre-stored</strong>; they're computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> is <strong>automatically</strong> counted into session S1's stats — metrics always consistent with the underlying traces, no aggregate to sync.</p></div>
+  <div class="col"><h4>🔴 pre-stored aggregates (not done)</h4><p>Pre-compute each session's count, cost, duration into a table and every incoming trace must <strong>update its session's</strong> aggregates — an extra write path, an extra piece of state that could drift from the underlying traces. Compute rather than pre-store.</p></div>
 </div>
+
+<p>One detail to set straight: a session <strong>isn't entirely absent from storage</strong>. On ingestion, if a trace carries a <code>session_id</code>, the worker
+<strong>upserts a tiny "stub" row</strong> into Postgres's <code>trace_sessions</code> table (just id, project_id, environment, timestamps, with <code>ON CONFLICT DO
+NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
+(like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
+table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
+but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
 <p>Open a session and you see its traces <strong>laid out as a conversation timeline by time</strong> — round one, round two… click into a round and it's Lesson 25's
@@ -632,51 +645,53 @@ shaped the next, where the conversation started to go off the rails.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
-  <strong>Why make a session a "grouped view" of traces rather than an entity with its own storage?</strong> Because <strong>what you can compute from existing data,
-  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this "derived" form is
-  naturally <strong>always consistent</strong> — a new trace bearing some session_id <strong>automatically</strong> joins that session, no "update the sessions table" sync
-  step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Conversely, giving sessions their own table to maintain conjures up an
-  extra write path and a piece of state to worry about syncing — not worth it. Better still: because the sessions table <strong>reuses Lesson 24's machinery
-  verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL state". <strong>A seemingly substantial new feature is
-  essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless dividend of orthogonal design.
+  <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
+  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
+  naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that
+  session's stats, no "update the session aggregates" sync step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Langfuse
+  persists only a <strong>tiny session stub</strong> in Postgres (registering existence + holding metadata), leaving all the <strong>expensive aggregates to query-time
+  computation</strong> — avoiding the sync burden of pre-stored aggregates while keeping a place to hang metadata like bookmarked/public. Better still: because the
+  sessions table <strong>reuses Lesson 24's machinery verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL
+  state". <strong>A seemingly substantial new feature's listing and metrics are essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless
+  dividend of orthogonal design.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); it's a <strong>derived view, not a new stored entity</strong>.</li>
-    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces.</li>
+    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); its <strong>metrics and listing are derived</strong>, with only a lightweight metadata stub (<code>trace_sessions</code>) persisted to Postgres on ingestion.</li>
+    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces (not pre-stored).</li>
     <li><strong>Aggregation rules</strong>: <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum, a two-level aggregation into observations), <code>trace_ids</code> (collect).</li>
-    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same four shapes (count/rows/metrics) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
-    <li>Tradeoff: a derived view is <strong>always consistent</strong> (new traces auto-join, no sync) with <strong>zero extra writes</strong>; compute from existing data rather than store again — the effortless dividend of orthogonal design.</li>
+    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same select-driven shapes (count/rows/metrics — one fewer than traces, no identifiers) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
+    <li>Tradeoff: derived metrics are <strong>always consistent with the underlying traces</strong> (new traces auto-counted, no aggregate to sync) with <strong>zero extra aggregate writes</strong>; persist what's identity/metadata, compute the aggregates rather than pre-store — the effortless dividend of orthogonal design.</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. How does a Langfuse session (e.g. a multi-turn conversation) exist in storage?</div>
+  <div class="qn">1. How do a Langfuse session's metrics and listing (e.g. a multi-turn conversation) exist in storage?</div>
   <ol class="opts">
-    <li>it isn't a newly-stored entity but a GROUP BY of traces on session_id — session_id is just a column on Lesson 8's traces wide table, grouping yields the session, and each metric is an aggregate over the grouped traces</li>
-    <li>sessions have their own table, updated as each trace arrives</li>
-    <li>sessions are assembled ad-hoc on the frontend, never persisted</li>
-    <li>sessions live in Redis</li>
+    <li>they aren't stored separately but computed on the fly by GROUP BY of traces on session_id — session_id is just a column on Lesson 8's wide table, grouping yields all the aggregate metrics (only a lightweight metadata stub, trace_sessions, is persisted to Postgres on ingestion)</li>
+    <li>every session's full metrics (count/cost/duration) are pre-computed and stored in a table, updated by each incoming trace</li>
+    <li>sessions are assembled ad-hoc on the frontend, with no backend involvement</li>
+    <li>session metrics all live in Redis</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Since session_id is already a column on the traces wide table, GROUP BY on it computes the session on the fly; user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum) are aggregates over the grouped traces. A session is a derived view — no new table, no new write path.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. session_id is already a column on the traces wide table, so GROUP BY on it computes all the session's metrics on the fly: user_ids (distinct), trace_count (count), duration (latest−earliest), session_total_cost (sum). These aggregates aren't pre-stored — avoiding a sync update per trace. On ingestion only a tiny stub goes into Postgres trace_sessions (id/project/environment + metadata like bookmarked/public), registering the session's existence but storing no metrics.</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Making a session a 'derived view of traces' rather than a separately-maintained entity — the biggest benefit?</div>
+  <div class="qn">2. Computing a session's metrics on the fly by GROUP BY rather than pre-computing them into a table — the biggest benefit?</div>
   <ol class="opts">
-    <li>always consistent + zero extra writes: a new trace with some session_id automatically joins that session, no 'update the sessions table' sync, so no 'trace written but session count forgotten' inconsistency</li>
+    <li>metrics always consistent with the underlying traces + zero extra aggregate writes: a new trace with some session_id is automatically counted into that session's stats, no 'update the session aggregates' sync, so no 'trace written but session count forgotten' inconsistency</li>
     <li>makes session queries faster</li>
     <li>lets sessions be deleted independently</li>
     <li>saves trace storage space</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A derived view is inherently consistent: the session is computed from traces, a new trace auto-joins, no sync step, eliminating 'dual-write inconsistency' bugs. Conversely a separate sessions table makes every trace update its session's count/cost/time — an extra write path and state to sync. Compute from existing data rather than store again.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. On-the-fly aggregates are inherently consistent with the underlying data: session metrics come from a live GROUP BY over traces, a new trace is auto-counted, no aggregate to sync, eliminating 'dual-write inconsistency' bugs. Conversely pre-storing each session's count/cost/duration makes every trace update it — an extra write path and state to sync. A lightweight metadata stub (trace_sessions) is still persisted, but the expensive aggregates are always computed, never pre-stored.</div></div></div>
   </details>
 </div>
 <div class="quiz">

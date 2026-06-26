@@ -30,12 +30,12 @@ _ZH20.append(r"""
 
 _ZH20.append(r"""
 <h2>一栋楼、三道门</h2>
-<p>先看整体。<code>web/</code> 是一个 Next.js 应用，<code>web/src</code> 下分几大块：<code>features/</code>（按功能切的纵向模块，约 80 个）、
+<p>先看整体。<code>web/</code> 是一个 Next.js 应用，<code>web/src</code> 下分几大块：<code>features/</code>（按功能切的纵向模块，数十个）、
 <code>components/</code>（共享 UI，含表格系统）、<code>server/</code>（鉴权 + tRPC）、<code>pages/</code>（页面与 API 路由）、还有少量 <code>app/</code>（App Router）。
 而对外的接口，正是开篇说的三道门：</p>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">纵向功能模块（~80 个）</span></div><div class="ld">按业务功能切分的「竖切片」：traces、search-bar、public-api、batch-exports… 每个功能把自己的页面、组件、server 逻辑收在一处。Langfuse 绝大多数代码住在这里。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">纵向功能模块（数十个）</span></div><div class="ld">按业务功能切分的「竖切片」：traces、search-bar、public-api、batch-exports… 每个功能把自己的页面、组件、server 逻辑收在一处。Langfuse 绝大多数代码住在这里。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">共享 UI</span></div><div class="ld">跨功能复用的通用组件，最重要的是 <code>components/table/</code> 那套表格系统（第 24 课）——列表、过滤、分页、列控制、行选择全靠它，是整个后台界面的骨架。</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">鉴权 + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> 是 tRPC 的根与中间件、procedure 定义（第 21 课）；<code>server/auth.ts</code> 是 NextAuth 会话。这是「员工通道」的安检处。</div></div>
   <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">路由</span></div><div class="ld"><code>pages/</code> 是主干（UI 页面 + API 路由），<code>app/</code> 仅 4 个文件兜特殊语义。还有 <code>hooks/</code>、<code>ee/</code>（企业版）等。</div></div>
@@ -46,15 +46,15 @@ _ZH20.append(r"""
 <code>features/&lt;功能&gt;/</code> 一处。好处是：读懂或修改一个功能，<strong>主要只需看一个目录</strong>；功能之间边界清晰，不易互相牵连。这也是为什么后面每讲一课，我们几乎都能精准地指向一个 <code>features/</code> 子目录，而不必满仓库地翻找散落各处的代码。</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web 应用：Pages Router 承载 UI 页面与多数 API；三种 API 风格 tRPC 给 UI、REST 给 SDK、App-Router/SSE 给流式与 webhook">
+<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web 应用：Pages Router 承载 UI 页面与多数 API；三种 API 风格 tRPC 给 UI、REST 给 SDK、特殊语义端点给流式与 webhook">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Langfuse web 应用：一栋楼，三道门</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js 应用（web/）· 以 Pages Router 为主</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI 页面 pages/project/[projectId]/…（traces / sessions / dashboards / datasets …）</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src 目录：features/ · components/ · server/ · hooks/ · ee/</text>
   <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① 员工通道 · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给自家 UI · 类型安全</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 个 feature 路由</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 21 课</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② 公共前台 · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给外部 SDK · 稳定带版本</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern 契约</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 27 课</text>
-  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ 装卸口 · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/**（仅 4 个文件）</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">流式 SSE · webhook</text>
+  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">③ 装卸口 · 特殊语义</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/**（仅 4 个文件）</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">流式 SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
 </svg>
-<div class="figcap"><b>三道门各服务各的客</b>：<b>tRPC</b>（<code>pages/api/trpc/[trpc].ts</code>）给自家 UI、类型安全；<b>REST</b>（<code>pages/api/public/**</code>）给外部 SDK、稳定带版本；<b>App-Router/SSE</b>（<code>app/api/**</code> 仅 4 文件 + 流式端点）给 webhook 与流式。源码：<code>web/src/server/api/root.ts</code>、<code>web/src/features/public-api/</code>、<code>web/src/app/</code>。</div>
+<div class="figcap"><b>三道门各服务各的客</b>：<b>tRPC</b>（<code>pages/api/trpc/[trpc].ts</code>）给自家 UI、类型安全；<b>REST</b>（<code>pages/api/public/**</code>）给外部 SDK、稳定带版本；<b>特殊语义</b>（App Router <code>app/api/**</code> 4 文件 + Pages Router 流式 SSE 端点）给 webhook 与流式。源码：<code>web/src/server/api/root.ts</code>、<code>web/src/features/public-api/</code>、<code>web/src/app/</code>。</div>
 </div>
 
 <div class="codefile">
@@ -98,7 +98,7 @@ _ZH20.append(r"""
   <tr><th>这道门</th><th>给谁用</th><th>在哪</th><th>为什么</th></tr>
   <tr><td><b>tRPC</b></td><td>自家 UI（React）</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>类型从后端贯穿到前端，改一处全链路报错；内部接口无需对外稳定</td></tr>
   <tr><td><b>公共 REST</b></td><td>外部 SDK / 用户脚本</td><td><code>pages/api/public/**</code></td><td>对外契约要<strong>稳定、带版本</strong>，由 Fern 生成多语言 SDK（第 27 课）</td></tr>
-  <tr><td><b>App-Router / SSE</b></td><td>webhook 源 · 流式仪表盘</td><td><code>app/api/**</code> + 流式端点</td><td>需要原始 <code>Request</code>、<code>text/event-stream</code> 等 Pages Router 不顺手的语义</td></tr>
+  <tr><td><b>特殊语义（App Router + SSE）</b></td><td>webhook 源 · 流式仪表盘</td><td>App Router <code>app/api/**</code>（webhook 等）+ Pages Router 的流式 SSE 端点</td><td>需要原始 <code>Request</code>、<code>text/event-stream</code> 等普通 Pages Router 路由不顺手的语义</td></tr>
 </table>
 
 <p>这套划分背后是一条清晰的边界：<strong>对内求「类型安全、改得快」，对外求「契约稳定、版本可控」</strong>。UI 和后端是同一个团队、同一个仓库，用 tRPC 把类型一路打通，
@@ -132,8 +132,8 @@ _ZH20.append(r"""
   <div class="tag">🎯 本课要点</div>
   <ul>
     <li>Langfuse 前端是 <strong>Next.js 应用</strong>，<strong>绝大多数用 Pages Router</strong>；App Router 仅 4 个文件，专给原始 Request/流式/webhook。</li>
-    <li><strong>三种 API 风格并存</strong>：tRPC（UI，类型安全）、公共 REST（SDK，稳定带版本）、App-Router/SSE（流式/webhook）。</li>
-    <li><code>web/src</code> 分层：<code>features/</code>（~80 个纵向功能模块）、<code>components/</code>（共享 UI）、<code>server/</code>（鉴权+tRPC）、<code>pages/</code>、<code>app/</code>。</li>
+    <li><strong>三种 API 风格并存</strong>：tRPC（UI，类型安全）、公共 REST（SDK，稳定带版本）、特殊语义端点（App Router 处理器 + Pages Router 流式 SSE，供 webhook/流式）。</li>
+    <li><code>web/src</code> 分层：<code>features/</code>（数十个纵向功能模块）、<code>components/</code>（共享 UI）、<code>server/</code>（鉴权+tRPC）、<code>pages/</code>、<code>app/</code>。</li>
     <li>核心边界：<strong>对内求类型安全与迭代速度（tRPC），对外求契约稳定与版本可控（REST + Fern）</strong>——同一批数据、两种对外姿态。</li>
     <li>这是 Part 4「读取链路」的总览图；接下来七课将分别钻进 tRPC 骨架、仓储层、过滤、表格、详情、sessions、公共 REST。</li>
   </ul>
@@ -162,11 +162,11 @@ map" and the next seven lessons won't get you lost.
 _EN20.append(r"""
 <h2>One building, three doors</h2>
 <p>The big picture first. <code>web/</code> is a Next.js app; under <code>web/src</code> sit a few big areas: <code>features/</code> (vertical, by-feature
-modules, ~80 of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
+modules, dozens of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
 routes), plus a small <code>app/</code> (App Router). And the external interfaces are exactly the three doors from the intro:</p>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (~80)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (dozens)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (Lesson 24) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (Lesson 21); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
   <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">routing</span></div><div class="ld"><code>pages/</code> is the trunk (UI pages + API routes), <code>app/</code> is just 4 files for special semantics. Plus <code>hooks/</code>, <code>ee/</code> (enterprise), etc.</div></div>
@@ -180,15 +180,15 @@ frontend components, state hooks, server logic, even a README under one <code>fe
 precisely at a <code>features/</code> subfolder.</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, App-Router/SSE for streaming and webhooks">
+<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, special-semantics endpoints for streaming and webhooks">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
   <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
-  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
+  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · special semantics</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
 </svg>
-<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>App-Router/SSE</b> (<code>app/api/**</code>, 4 files + the streaming endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
+<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>special semantics</b> (App Router <code>app/api/**</code> 4 files + a Pages-Router streaming SSE endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
 </div>
 
 <div class="codefile">
@@ -230,7 +230,7 @@ the App Router has all of <strong>4 files</strong>. This isn't being behind the 
   <tr><th>this door</th><th>for whom</th><th>where</th><th>why</th></tr>
   <tr><td><b>tRPC</b></td><td>own UI (React)</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>types flow backend → frontend, change one spot and the whole chain errors; internal API needn't be externally stable</td></tr>
   <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (Lesson 27)</td></tr>
-  <tr><td><b>App-Router / SSE</b></td><td>webhook sources · streaming dashboards</td><td><code>app/api/**</code> + streaming endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics Pages Router handles awkwardly</td></tr>
+  <tr><td><b>special semantics (App Router + SSE)</b></td><td>webhook sources · streaming dashboards</td><td>App Router <code>app/api/**</code> (webhooks etc.) + a Pages-Router streaming SSE endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics a plain Pages-Router route handles awkwardly</td></tr>
 </table>
 
 <p>Behind this split is a clear boundary: <strong>internally, seek "type-safe, fast to change"; externally, seek "stable contract, controlled versions"</strong>.
@@ -266,8 +266,8 @@ _EN20.append(r"""
   <div class="tag">🎯 Key points</div>
   <ul>
     <li>Langfuse's frontend is a <strong>Next.js app</strong>, <strong>mostly Pages Router</strong>; App Router is just 4 files for raw Request/streaming/webhook.</li>
-    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), App-Router/SSE (streaming/webhook).</li>
-    <li><code>web/src</code> layers: <code>features/</code> (~80 vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
+    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), special-semantics endpoints (App Router handlers + a Pages-Router streaming SSE, for webhook/streaming).</li>
+    <li><code>web/src</code> layers: <code>features/</code> (dozens of vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
     <li>Core boundary: <strong>internally seek type-safety and iteration speed (tRPC), externally seek contract stability and version control (REST + Fern)</strong> — same data, two external postures.</li>
     <li>This is Part 4's read-path overview; the next seven lessons drill into the tRPC backbone, repository layer, filtering, tables, detail, sessions, and the public REST API.</li>
   </ul>
@@ -709,7 +709,7 @@ _ZH22.append(r"""
 </div>
 
 <p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
-用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 98% 的观测在 trace 后 5 分钟内）把窗设成 2 天，留足安全裕量，几乎不会真漏。
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 96% 的观测在 trace 之后 2 分钟内开始）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
 <strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
 """)
 
@@ -847,7 +847,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
 is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~98% of observations finish within 5 minutes of the trace), Langfuse sets the window to 2 days, leaving ample safety margin, so it almost never truly misses.
+(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">
@@ -1710,8 +1710,8 @@ _EN26 = []
 _ZH26.append(r"""
 <p class="lead">
 第 24、25 课讲的是单条 trace 的列表与详情。可真实的对话往往是<strong>多轮</strong>的——用户问一句、AI 答一句，来回十几轮，每一轮是一条 trace。把它们<strong>串成一段完整对话</strong>的，就是
-<strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>session 不是一种新存储的实体，而是 traces 按 <code>session_id</code> 的一次「分组聚合」</strong>。
-更妙的是，会话表<strong>几乎原样复用了第 24 课那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
+<strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>会话的全部「指标与列表」都不单独存储，而是 traces 按 <code>session_id</code> 的一次「分组聚合」现算出来</strong>
+（仅有一个极轻的元数据存根落库，下面会讲）。更妙的是，会话表<strong>几乎原样复用了第 24 课那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
 </p>
 
 <div class="card analogy">
@@ -1726,7 +1726,7 @@ _ZH26.append(r"""
 
 _ZH26.append(r"""
 <h2>session = traces 按 session_id 分组</h2>
-<p>回想第 8 课：<code>session_id</code> 只是 traces 宽表上的<strong>一个普通列</strong>。所以「会话」根本不需要新表——只要把同一个 <code>session_id</code> 的 traces <strong>GROUP BY 聚到一起</strong>，
+<p>回想第 8 课：<code>session_id</code> 只是 traces 宽表上的<strong>一个普通列</strong>。所以会话的<strong>指标与列表不必单独存</strong>——只要把同一个 <code>session_id</code> 的 traces <strong>GROUP BY 聚到一起</strong>，
 就得到一行「会话」，它的各项指标都是<strong>对组内 traces 的聚合</strong>：</p>
 
 <div class="fig">
@@ -1752,7 +1752,7 @@ _ZH26.append(r"""
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
-  <pre class="code"><span class="cm">// 和第 24 课的 getTracesTableGeneric 同一个套路：一个函数，四种「形状」</span>
+  <pre class="code"><span class="cm">// 和第 24 课的 getTracesTableGeneric 同一个套路：一个函数，几种「形状」（会话用 count/rows/metrics 三种）</span>
 <span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
   <span class="kw">switch</span> (select) {
     <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// 便宜</span>
@@ -1771,7 +1771,7 @@ _ZH26.append(r"""
 
 _ZH26.append(r"""
 <h2>原样复用：会话表就是「分了组的 trace 表」</h2>
-<p>看出来了吗——<code>getSessionsTableGeneric</code> 和第 24 课的 <code>getTracesTableGeneric</code> <strong>简直是一个模子</strong>：同样的<strong>四种形状</strong>（count / rows / metrics），
+<p>看出来了吗——<code>getSessionsTableGeneric</code> 和第 24 课的 <code>getTracesTableGeneric</code> <strong>简直是一个模子</strong>：同样的<strong>「按 select 取不同形状」</strong>（会话有 count / rows / metrics 三种，比 traces 少一个 identifiers），
 同样的<strong>「紧凑行 vs 指标」拆分</strong>。会话列表也是：先把便宜的会话身份行画出来，昂贵的聚合指标（duration、总成本）<strong>后到补入</strong>。第 24 课的所有性能技巧，会话<strong>白白继承</strong>：
 分页、回看时间窗、按需聚合、URL 状态、列预设、行选择——这些在第 24 课里费心打磨的能力，会话表<strong>一行新代码都不用写</strong>就全有了，因为它走的是同一套通用机制。
 这就是把表格系统做成<strong>「实体无关的通用件」</strong>的回报：再来一个「按某个维度聚合的列表」（会话、用户、模型……），都能套同一个模子。</p>
@@ -1803,9 +1803,14 @@ _ZH26.append(r"""
 </table>
 
 <div class="cols">
-  <div class="col"><h4>🟢 会话=派生视图（Langfuse 的选择）</h4><p>session 不另存，靠 GROUP BY 从 traces 现算。新来一条带 <code>session_id=S1</code> 的 trace，它<strong>自动</strong>就属于会话 S1——无需任何同步，永远一致。</p></div>
-  <div class="col"><h4>🔴 会话=独立实体（没这么做）</h4><p>若给 session 单建一张表，每条 trace 进来都得去<strong>更新对应会话</strong>的计数、成本、时间——多一套写入、多一处可能不一致的状态。能省则省。</p></div>
+  <div class="col"><h4>🟢 指标靠现算（Langfuse 的选择）</h4><p>会话的<strong>各项指标不预先存</strong>，靠 GROUP BY 从 traces 现算。新来一条带 <code>session_id=S1</code> 的 trace，它<strong>自动</strong>就被算进会话 S1 的统计——指标永远和底层 traces 一致，无需同步聚合值。</p></div>
+  <div class="col"><h4>🔴 预存聚合（没这么做）</h4><p>若把每个会话的计数、成本、时长<strong>预先算好存进一张表</strong>，每条 trace 进来都得去<strong>更新对应会话</strong>的这些聚合值——多一套写入、多一处可能与底层 traces 不一致的状态。能现算就别预存。</p></div>
 </div>
+
+<p>需要厘清一个细节：会话<strong>并非完全不落库</strong>。摄取时，如果一条 trace 带了 <code>session_id</code>，worker 会往 Postgres 的 <code>trace_sessions</code> 表
+<strong>upsert 一个极轻的「存根」行</strong>（只有 id、project_id、environment、时间戳，且 <code>ON CONFLICT DO NOTHING</code>——同一会话只登记一次）。这行的作用是「<strong>登记这个会话存在</strong>」、
+以及挂一些<strong>会话级元数据</strong>（如收藏、公开标记）。但请注意：真正昂贵的那些——<strong>user_ids、轮数、时长、总成本、trace 列表——全都不在这张表里</strong>，它们一律由 ClickHouse 对 traces 现场 GROUP BY 算出。
+所以准确的说法是：<strong>会话有一个轻量元数据实体被持久化，但它的全部指标与列表是派生的</strong>。这正是关键取舍——<strong>该存的（身份、元数据）才存，能算的（聚合指标）就别存</strong>。</p>
 
 <h2>会话详情：把对话按时序铺开</h2>
 <p>点开一个会话，看到的是它含的那些 trace<strong>按时间排成一条对话时间线</strong>——第一轮、第二轮……每一轮点进去又是第 25 课那棵观测树。从列表到详情，会话只是在 trace 之上加了一层「对话」的视角，
@@ -1824,21 +1829,21 @@ _ZH26.append(r"""
 _ZH26.append(r"""
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么把 session 做成 traces 的「分组视图」，而不是一个有自己存储的独立实体？</strong> 因为<strong>能从已有数据现算的，就别再单独存一份</strong>。
-  <code>session_id</code> 本就是第 8 课宽表上的一列，按它分组是<strong>免费</strong>的；而且这种「派生」天然<strong>永远一致</strong>——新来一条 trace 带着某 session_id，它<strong>自动</strong>就归入那个会话，
-  不需要任何「更新会话表」的同步步骤，也就不存在「trace 写进去了、会话计数却忘了加」这种不一致 bug。如果反过来给 session 单建一张表、单独维护，就凭空多出一条写入链路、一份要操心同步的状态——
-  得不偿失。更划算的是：因为会话表<strong>原样复用了第 24 课的表格机制</strong>，它<strong>白嫖</strong>了那套「紧凑行 vs 指标、按需聚合、URL 状态」的全部性能与体验。
-  <strong>一个看起来很实在的新功能，本质上只是一句 GROUP BY + 复用已有机制</strong>——这是「正交设计」最省力的红利。
+  <strong>为什么会话的指标都靠现算，而不是预先算好、单独存一份聚合？</strong> 因为<strong>能从已有数据现算的聚合，就别再冗余存一份</strong>。
+  <code>session_id</code> 本就是第 8 课宽表上的一列，按它分组是<strong>免费</strong>的；而且这种「现算」天然<strong>永远和底层一致</strong>——新来一条 trace 带着某 session_id，它<strong>自动</strong>就被算进那个会话的统计，
+  不需要任何「更新会话聚合」的同步步骤，也就不存在「trace 写进去了、会话计数却忘了加」这种不一致 bug。Langfuse 只在 Postgres 落一个<strong>极轻的会话存根</strong>（登记存在 + 挂元数据），
+  把所有<strong>昂贵的聚合留给查询时现算</strong>——既避免了预存聚合的同步负担，又保留了一个挂收藏/公开等元数据的落点。更划算的是：因为会话表<strong>原样复用了第 24 课的表格机制</strong>，
+  它<strong>白嫖</strong>了那套「紧凑行 vs 指标、按需聚合、URL 状态」的全部性能与体验。<strong>一个看起来很实在的新功能，列表与指标本质上只是一句 GROUP BY + 复用已有机制</strong>——这是「正交设计」最省力的红利。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>session = 多条 trace 按 <code>session_id</code> 分组</strong>（一段多轮对话 = 一个会话 = 多条 trace）；它是<strong>派生视图，不是新存储实体</strong>。</li>
-    <li><code>session_id</code> 只是第 8 课宽表的一列，<code>GROUP BY session_id</code> 即得会话；各指标是对组内 traces 的聚合。</li>
+    <li><strong>session = 多条 trace 按 <code>session_id</code> 分组</strong>（一段多轮对话 = 一个会话 = 多条 trace）；其<strong>指标与列表是派生的</strong>，仅一个轻量元数据存根（<code>trace_sessions</code>）在摄取时落 Postgres。</li>
+    <li><code>session_id</code> 只是第 8 课宽表的一列，<code>GROUP BY session_id</code> 即得会话；各指标是对组内 traces 的聚合（不预存）。</li>
     <li><strong>聚合口径</strong>：<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚−最早）、<code>session_total_cost</code>（求和）、<code>trace_ids</code>（收集）。</li>
-    <li><strong>原样复用第 24 课</strong>：<code>getSessionsTableGeneric</code> 同样四形状（count/rows/metrics）、同样紧凑行 vs 指标拆分——所有性能技巧白白继承。</li>
-    <li>取舍：派生视图<strong>永远一致</strong>（新 trace 自动归会话、无需同步）、<strong>零额外写入</strong>；能从已有数据现算的就别再单独存——正交设计的省力红利。</li>
+    <li><strong>原样复用第 24 课</strong>：<code>getSessionsTableGeneric</code> 同样的紧凑行 vs 指标拆分（会话有 count/rows/metrics 三种形状，比 traces 少一个 identifiers）——性能技巧白白继承。</li>
+    <li>取舍：派生指标<strong>永远和底层一致</strong>（新 trace 自动算入、无需同步聚合）、<strong>零额外聚合写入</strong>；该存的（身份/元数据存根）才存，能算的（聚合指标）就别预存——正交设计的省力红利。</li>
   </ul>
 </div>
 """)
@@ -1847,7 +1852,7 @@ _EN26.append(r"""
 <p class="lead">
 Lessons 24 and 25 covered the list and detail of a single trace. But a real conversation is often <strong>multi-turn</strong> — the user asks, the AI answers,
 back and forth a dozen rounds, each round a trace. What threads them into <strong>one whole conversation</strong> is the <strong>session</strong>. This lesson's key
-insight is strikingly lean: <strong>a session isn't a newly-stored entity, but an aggregation of traces grouped by <code>session_id</code></strong>. Better still,
+insight is strikingly lean: <strong>a session's metrics and listing aren't stored separately; they're computed on the fly by grouping traces on <code>session_id</code></strong> (only a tiny metadata stub is persisted, more below). Better still,
 the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</strong> — bluntly, <strong>it's the trace table, grouped</strong>.
 </p>
 
@@ -1862,7 +1867,7 @@ the sessions table <strong>reuses Lesson 24's table machinery nearly verbatim</s
 
 _EN26.append(r"""
 <h2>session = traces grouped by session_id</h2>
-<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a "session" needs no new table — just
+<p>Recall Lesson 8: <code>session_id</code> is just <strong>an ordinary column</strong> on the traces wide table. So a session's metrics and listing <strong>needn't be stored separately</strong> — just
 <strong>GROUP BY session_id</strong> over traces sharing the same id and you get one "session" row, whose metrics are all <strong>aggregates over the grouped
 traces</strong>:</p>
 
@@ -1889,7 +1894,7 @@ traces</strong>:</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
-  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, four "shapes"</span>
+  <pre class="code"><span class="cm">// the same pattern as Lesson 24's getTracesTableGeneric: one function, several "shapes" (sessions: count/rows/metrics)</span>
 <span class="kw">const</span> getSessionsTableGeneric = <span class="kw">async</span> &lt;T&gt;(props: { select: <span class="st">"count"</span> | <span class="st">"rows"</span> | <span class="st">"metrics"</span> }) =&gt; {
   <span class="kw">switch</span> (select) {
     <span class="kw">case</span> <span class="st">"rows"</span>:    sqlSelect = <span class="st">"session_id, min/max_timestamp, trace_ids, user_ids, trace_count …"</span>; <span class="cm">// cheap</span>
@@ -1929,7 +1934,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
   <text x="410" y="120" font-size="8" fill="var(--ink)">session_total_cost / usage (total cost/usage)</text>
   <text x="410" y="142" font-size="7.5" fill="var(--muted)">→ computed, filled by session_id into rows</text>
 </svg>
-<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "four shapes + compact-rows/metrics split". <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
+<div class="figcap"><b>The same table machinery</b>: the sessions table reuses Lesson 24's "select-driven shapes + compact-rows/metrics split" (sessions has count/rows/metrics). <code>rows</code> takes session identity and its <code>trace_ids</code> (cheap, rendered first), <code>metrics</code> takes <code>duration</code>, <code>session_total_cost</code> etc. (expensive, later). Source: <code>sessions-ui-table-service.ts:132-160</code>.</div>
 </div>
 
 <table class="t">
@@ -1942,9 +1947,17 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 </table>
 
 <div class="cols">
-  <div class="col"><h4>🟢 session = derived view (Langfuse's choice)</h4><p>A session isn't stored separately; it's computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> <strong>automatically</strong> belongs to session S1 — no sync needed, always consistent.</p></div>
-  <div class="col"><h4>🔴 session = its own entity (not done)</h4><p>Give sessions their own table and every incoming trace must <strong>update its session's</strong> count, cost, time — an extra write path, an extra piece of state that could drift. Save it if you can.</p></div>
+  <div class="col"><h4>🟢 metrics computed on the fly (Langfuse's choice)</h4><p>A session's metrics <strong>aren't pre-stored</strong>; they're computed from traces by GROUP BY. A new trace with <code>session_id=S1</code> is <strong>automatically</strong> counted into session S1's stats — metrics always consistent with the underlying traces, no aggregate to sync.</p></div>
+  <div class="col"><h4>🔴 pre-stored aggregates (not done)</h4><p>Pre-compute each session's count, cost, duration into a table and every incoming trace must <strong>update its session's</strong> aggregates — an extra write path, an extra piece of state that could drift from the underlying traces. Compute rather than pre-store.</p></div>
 </div>
+
+<p>One detail to set straight: a session <strong>isn't entirely absent from storage</strong>. On ingestion, if a trace carries a <code>session_id</code>, the worker
+<strong>upserts a tiny "stub" row</strong> into Postgres's <code>trace_sessions</code> table (just id, project_id, environment, timestamps, with <code>ON CONFLICT DO
+NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
+(like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
+table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
+but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
 <p>Open a session and you see its traces <strong>laid out as a conversation timeline by time</strong> — round one, round two… click into a round and it's Lesson 25's
@@ -1961,23 +1974,25 @@ shaped the next, where the conversation started to go off the rails.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
-  <strong>Why make a session a "grouped view" of traces rather than an entity with its own storage?</strong> Because <strong>what you can compute from existing data,
-  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this "derived" form is
-  naturally <strong>always consistent</strong> — a new trace bearing some session_id <strong>automatically</strong> joins that session, no "update the sessions table" sync
-  step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Conversely, giving sessions their own table to maintain conjures up an
-  extra write path and a piece of state to worry about syncing — not worth it. Better still: because the sessions table <strong>reuses Lesson 24's machinery
-  verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL state". <strong>A seemingly substantial new feature is
-  essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless dividend of orthogonal design.
+  <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
+  don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
+  naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that
+  session's stats, no "update the session aggregates" sync step, hence no "the trace got written but the session count was forgotten" inconsistency bug. Langfuse
+  persists only a <strong>tiny session stub</strong> in Postgres (registering existence + holding metadata), leaving all the <strong>expensive aggregates to query-time
+  computation</strong> — avoiding the sync burden of pre-stored aggregates while keeping a place to hang metadata like bookmarked/public. Better still: because the
+  sessions table <strong>reuses Lesson 24's machinery verbatim</strong>, it <strong>freeloads</strong> all of that "compact rows vs metrics, on-demand aggregation, URL
+  state". <strong>A seemingly substantial new feature's listing and metrics are essentially one GROUP BY plus reusing existing machinery</strong> — the most effortless
+  dividend of orthogonal design.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); it's a <strong>derived view, not a new stored entity</strong>.</li>
-    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces.</li>
+    <li><strong>A session = many traces grouped by <code>session_id</code></strong> (one multi-turn conversation = one session = many traces); its <strong>metrics and listing are derived</strong>, with only a lightweight metadata stub (<code>trace_sessions</code>) persisted to Postgres on ingestion.</li>
+    <li><code>session_id</code> is just a column on Lesson 8's wide table; <code>GROUP BY session_id</code> yields the session; each metric is an aggregate over the grouped traces (not pre-stored).</li>
     <li><strong>Aggregation rules</strong>: <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum, a two-level aggregation into observations), <code>trace_ids</code> (collect).</li>
-    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same four shapes (count/rows/metrics) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
-    <li>Tradeoff: a derived view is <strong>always consistent</strong> (new traces auto-join, no sync) with <strong>zero extra writes</strong>; compute from existing data rather than store again — the effortless dividend of orthogonal design.</li>
+    <li><strong>Reuses Lesson 24 verbatim</strong>: <code>getSessionsTableGeneric</code> has the same select-driven shapes (count/rows/metrics — one fewer than traces, no identifiers) and the same compact-rows-vs-metrics split — all the performance tricks inherited free.</li>
+    <li>Tradeoff: derived metrics are <strong>always consistent with the underlying traces</strong> (new traces auto-counted, no aggregate to sync) with <strong>zero extra aggregate writes</strong>; persist what's identity/metadata, compute the aggregates rather than pre-store — the effortless dividend of orthogonal design.</li>
   </ul>
 </div>
 """)
