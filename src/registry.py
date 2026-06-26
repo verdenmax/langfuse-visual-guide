@@ -36,4 +36,5 @@ CONTENT = {
     "22-repository-layer.html": part4.LESSON_22,
     "23-filtering-search-bar.html": part4.LESSON_23,
     "24-lists-and-tables.html": part4.LESSON_24,
+    "25-trace-detail-tree.html": part4.LESSON_25,
 }

@@ -1435,3 +1435,267 @@ the other half of a big list's craft beyond "fast" — "stable" (no loss across 
 </div>
 """)
 LESSON_24 = {"zh": "\n".join(_ZH24), "en": "\n".join(_EN24)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L25 · trace 详情与观测树 / Trace detail & the observation tree
+# ══════════════════════════════════════════════════════════════════════
+_ZH25 = []
+_EN25 = []
+
+_ZH25.append(r"""
+<p class="lead">
+第 24 课是<strong>列表</strong>——给几千条 trace 各取一行紧凑数据、把昂贵的都推迟。这一课是它的<strong>反面</strong>：<strong>详情页</strong>。点开一条 trace，你要看的是<strong>整棵观测树 + 所有评分</strong>——
+一次<strong>全量取</strong>。为什么敢全取？因为「一条 trace」本身是<strong>有界</strong>的（不是几千条的列表）。但树里每个观测的 input/output 可能<strong>巨大</strong>，所以详情依然有纪律：
+树查询<strong>不带 IO</strong>（点开某节点才懒加载），再用一个 <code>verbosity</code> 旋钮给 trace 自身的 IO 封顶。<strong>同一套「限制无界维度」的功夫，换了个尺度施展。</strong>
+</p>
+
+<div class="card analogy">
+  <div class="tag">📖 生活类比</div>
+  把列表和详情想成<strong>图书馆目录</strong>与<strong>一本书</strong>。目录（列表）给你几千本书的<strong>小卡片</strong>，谁也不会把整本书抄上去。可当你<strong>抽出某一本</strong>（详情），
+  你要的是<strong>整本书的结构</strong>——目录、章节、页码一览无余。但你<strong>不会一上来就把每一页的长篇脚注全复印下来</strong>；只有翻到某页、想细看时，才去读那条脚注（某个观测的 IO 懒加载）。
+  「<strong>整本书的骨架一次给全，单页的长内容用到才取</strong>」——这就是详情页在「全量」与「克制」之间的平衡。
+</div>
+""")
+
+# (L25 sections appended below)
+
+_ZH25.append(r"""
+<h2>一次取全树，但树上不挂 IO</h2>
+<p>详情页的主查询是 <code>byIdWithObservationsAndScores</code>。它跑在 <code>protectedGetTraceProcedure</code> 上——这道门（第 21 课）已经<strong>预取了 trace 本体并校验过访问权</strong>（还允许公开分享的 trace）。
+然后它<strong>并行</strong>取两样：整棵<strong>观测树</strong>和这条 trace 的<strong>全部评分</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="byIdWithObservationsAndScores 并行取观测树（不含 IO）与评分，partition 出 CORRECTION，从观测起止派生 latency，返回不带 IO 的树，点开节点再懒加载 IO">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">详情：一次取全树（结构+时序），IO 留到点开再取</text>
+  <rect x="20" y="42" width="150" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">门已预取 trace</text><text x="95" y="76" text-anchor="middle" font-size="7" fill="var(--accent-ink)">protectedGetTraceProcedure</text><text x="95" y="87" text-anchor="middle" font-size="6.8" fill="var(--muted)">校验访问权（含公开）</text>
+  <rect x="200" y="34" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="290" y="53" text-anchor="middle" font-size="8" fill="var(--ink)">getObservationsForTrace（树）</text>
+  <rect x="200" y="70" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="290" y="89" text-anchor="middle" font-size="8" fill="var(--ink)">getScoresAndCorrections（评分）</text>
+  <text x="290" y="118" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">↑ Promise.all 并行 ↑</text>
+  <rect x="410" y="40" width="140" height="92" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="480" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">组装</text><text x="480" y="78" text-anchor="middle" font-size="7.5" fill="var(--ink)">partition 出 CORRECTION</text><text x="480" y="93" text-anchor="middle" font-size="7.5" fill="var(--ink)">从起止派生 latency</text><text x="480" y="108" text-anchor="middle" font-size="7.5" fill="var(--ink)">观测 IO 置空</text><text x="480" y="122" text-anchor="middle" font-size="7" fill="var(--muted)">includeIO:false</text>
+  <rect x="578" y="40" width="128" height="44" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="642" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">返回：树 + 评分</text><text x="642" y="73" text-anchor="middle" font-size="7" fill="var(--muted)">结构、时序，无 IO</text>
+  <rect x="578" y="94" width="128" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="642" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">点开某节点 →</text><text x="642" y="125" text-anchor="middle" font-size="7" fill="var(--accent-ink)">懒加载该观测 IO</text>
+  <line x1="170" y1="60" x2="198" y2="50" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="72" x2="198" y2="84" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="380" y1="84" x2="408" y2="84" stroke="var(--faint)" stroke-width="1.4"/><polygon points="408,84 400,80 400,88" fill="var(--faint)"/>
+  <line x1="550" y1="70" x2="576" y2="62" stroke="var(--faint)" stroke-width="1.3"/><line x1="550" y1="100" x2="576" y2="110" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="40" y="150" width="660" height="76" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="170" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">一棵观测树（结构与时序）：</text>
+  <text x="80" y="190" font-size="9" fill="var(--ink)">▸ trace</text><text x="120" y="206" font-size="9" fill="var(--ink)">▸ span: 检索</text><text x="180" y="222" font-size="9" fill="var(--muted)">• generation: LLM 调用（IO 点开才取）</text><text x="470" y="206" font-size="8" fill="var(--muted)">右侧：getAgentGraphData → agent 图视图</text>
+</svg>
+<div class="figcap"><b>取全骨架、缓取血肉</b>：<code>byIdWithObservationsAndScores</code> 并行取观测树（<code>includeIO:false</code>）与评分，partition 出 CORRECTION 类分数、从观测起止派生 latency，返回<strong>不含 IO</strong> 的树；点开某节点才懒加载它的 IO。另有 <code>getAgentGraphData</code> 供 agent 图。源码：<code>web/src/server/api/routers/traces.ts:368,610</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/routers/traces.ts</span><span class="ln">byIdWithObservationsAndScores :368</span></div>
+  <pre class="code"><span class="cm">// ctx.trace 已由门预取（含权限校验）；并行取树与评分</span>
+<span class="kw">const</span> [observations, traceScores] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+  <span class="fn">getObservationsForTrace</span>({ traceId, projectId, includeIO: <span class="kw">false</span> }), <span class="cm">// 树不带 IO</span>
+  <span class="fn">getScoresAndCorrectionsForTraces</span>({ projectId, traceIds: [traceId] }),
+]);
+<span class="cm">// CORRECTION 类分数单独分出来</span>
+<span class="kw">const</span> [corrections, scores] = <span class="fn">partition</span>(scores, (s) =&gt; s.dataType === <span class="st">"CORRECTION"</span>);
+<span class="cm">// 从观测的最早起、最晚止派生整条 trace 的延迟</span>
+<span class="kw">const</span> latencyMs = maxEnd - minStart;
+<span class="kw">return</span> { ...trace, observations: obs.<span class="fn">map</span>((o) =&gt; ({ ...o, input: undefined, output: undefined })) };</pre>
+</div>
+
+<p>注意 <code>includeIO: false</code> 这个不起眼的参数——它是详情页性能的关键。设想一条 agent trace 有<strong>三百个观测</strong>，每个观测的 input/output 又是一段不短的 JSON：
+如果开树时就把全部 IO 一并拉回，光这一个请求就可能是几十 MB、几秒钟。Langfuse 的选择是<strong>树先到、IO 后取</strong>：</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 树带全 IO</h4><p>一次拉回三百个观测 + 它们的全部 IO，请求几十 MB、慢且占内存。可你打开详情时，<strong>大多数节点你压根不会展开</strong>——绝大部分 IO 是白拉的。</p></div>
+  <div class="col"><h4>😀 树先到，IO 懒加载</h4><p>树查询只带<strong>结构与时序</strong>（轻、快），整棵树<strong>立刻可见</strong>；你点开哪个观测，才去取<strong>那一个</strong>的 IO。按需付费，绝不为没看的节点买单——这也让超大 trace 的详情页依然能秒开。</p></div>
+</div>
+""")
+
+# (verbosity + contrast section below)
+
+_ZH25.append(r"""
+<h2>verbosity 旋钮：给「巨型 trace」的 IO 封顶</h2>
+<p>就算是一条 trace，它<strong>自身</strong>的 input/output 也可能是个几 MB 的大 JSON（比如塞了整段长上下文）。为此，单条 trace 的查询 <code>byId</code> 带一个 <code>verbosity</code> 参数（<code>compact / truncated / full</code>），
+在<strong>服务端</strong>就决定 IO 要不要解析、要不要截断——别让一个超大 trace 把响应撑爆：</p>
+
+<p>为什么要在<strong>服务端</strong>而不是前端截断？因为<strong>等数据传到前端再裁，已经晚了</strong>——那几 MB 已经从 ClickHouse 读出、序列化、走完网络。<code>verbosity</code> 让裁剪发生在<strong>最靠近数据源的地方</strong>：
+该不带 IO 的（compact）压根不取，该截断的（truncated）在序列化前就截短，只有明确要看全（full）才完整返回。同一个 <code>byId</code> 接口，因此能既服务「列表里要个轻量预览」又服务「详情页要看全文」，靠一个参数切换姿态。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 170" role="img" aria-label="verbosity 三档：compact 不取 IO、truncated 截断 IO、full 完整 IO，在服务端决定，给巨型 trace 的 IO 封顶">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">verbosity：在服务端就给 IO 定档</text>
+  <rect x="30" y="40" width="200" height="106" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="130" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">compact</text><text x="130" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">不带 IO，最轻</text><text x="130" y="104" text-anchor="middle" font-size="7.5" fill="var(--faint)">列表/概览场景</text><text x="130" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">载荷最小</text>
+  <rect x="260" y="40" width="200" height="106" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">truncated</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">IO 截断到上限</text><text x="360" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">巨型 trace 也不撑爆</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">够看个大概</text>
+  <rect x="490" y="40" width="200" height="106" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="590" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">full（默认）</text><text x="590" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">完整 IO</text><text x="590" y="104" text-anchor="middle" font-size="7.5" fill="var(--faint)">单条详情、要看全</text><text x="590" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">载荷最大</text>
+</svg>
+<div class="figcap"><b>三档封顶</b>：<code>byId</code> 的 <code>verbosity</code>（<code>compact / truncated / full</code>，默认 full）在服务端决定 trace 自身 IO 是否解析/截断，给超大 trace 的响应封顶。源码：<code>web/src/server/api/trpc.ts:480,524-525</code>（<code>parseIO(input, verbosity)</code>）。</div>
+</div>
+
+<p>从用户视角看，打开一条 trace 详情的完整体验是这样五步——树几乎瞬间出现，细节随你的点击逐步充实：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>进门预取 + 校验</h4><p><code>protectedGetTraceProcedure</code> 已把 trace 本体取好、并确认你有权访问（公开分享的 trace 也放行）。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>并行取树与评分</h4><p><code>Promise.all</code> 同时拉观测树（不带 IO）与全部评分，两者谁慢等谁、但一起发出。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>组装并渲染骨架</h4><p>partition 出 CORRECTION、派生 latency，整棵<strong>观测树的结构与时序立刻画出</strong>——你马上能看清这次调用的全貌。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>点开节点，懒加载 IO</h4><p>你点某个 generation 想看它的 prompt/completion，前端才去取<strong>那一个</strong>观测的 IO，按 verbosity 决定完整还是截断。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>（可选）切到 agent 图</h4><p>想看 agent 的步骤拓扑？<code>getAgentGraphData</code> 另起一路，把这棵树渲染成一张有向图（trace-graph-view），让多步 agent 的调用关系一眼看清。</p></div></div>
+</div>
+
+<p>把第 24、25 两课摆在一起，「同一套纪律、两个尺度」就一目了然了——<strong>无论列表还是详情，都先圈定有界的维度、把无界的维度往后推</strong>：</p>
+
+<table class="t">
+  <tr><th></th><th>列表（第 24 课）</th><th>详情（本课）</th></tr>
+  <tr><td><b>有界的，先取</b></td><td>几千条 trace 的<strong>紧凑行</strong>（每条 ~12 列）</td><td>一条 trace 的<strong>整棵观测树</strong>（结构+时序）</td></tr>
+  <tr><td><b>无界的，缓取</b></td><td>成本/延迟/评分<strong>指标</strong>（要 JOIN）→ 并行后到</td><td>每个观测的 <strong>IO</strong>（可能巨大）→ 点开懒加载</td></tr>
+  <tr><td><b>封顶手段</b></td><td>分页、回看时间窗、按需 FINAL/JOIN</td><td>树查询不带 IO、<code>verbosity</code> 截断 trace 自身 IO</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么详情敢「一次取全树」，列表却要「极力推迟」？</strong> 关键在<strong>有界性</strong>。列表面对的是<strong>无界的行数</strong>（几千、几万条 trace），所以连一行里稍贵的列都得推迟；
+  详情面对的是<strong>一条 trace</strong>——它的观测数量再多也是<strong>有界</strong>的，而且「看清这一条的全貌」正是详情页的价值，所以结构与时序值得一次取全。
+  但<strong>有界的实体里仍藏着无界的维度</strong>：单个观测的 IO 可以是 2MB 的 JSON，几百个观测叠起来又会爆。于是同一套「圈定有界、推迟无界」的纪律<strong>下沉到树内部</strong>——
+  树取全（有界的结构），IO 缓取（无界的内容），再用 verbosity 给 trace 自身 IO 封顶。<strong>不是「列表克制、详情放纵」，而是两者都在各自的尺度上做同一件事：只急着取你扛得住的那部分。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>详情页主查询 <code>byIdWithObservationsAndScores</code> 跑在 <code>protectedGetTraceProcedure</code> 上（门已<strong>预取 trace 并校验访问权</strong>，含公开分享）。</li>
+    <li><strong>并行</strong>取观测树 + 评分；<code>partition</code> 出 CORRECTION 类分数；从观测起止<strong>派生 latency</strong>。</li>
+    <li><strong>树不带 IO</strong>（<code>includeIO:false</code>，观测 input/output 置空）——点开某节点才<strong>懒加载</strong>它的 IO，避免一次拉几百个观测的巨型内容、让超大 trace 详情也能秒开。</li>
+    <li><code>verbosity</code>（<code>compact / truncated / full</code>）在<strong>服务端</strong>给 trace 自身 IO 定档/截断，防超大 trace 撑爆响应。另有 <code>getAgentGraphData</code> 供 agent 图视图。</li>
+    <li>与第 24 课「同一纪律、两个尺度」：<strong>先取有界维度（列表=紧凑行 / 详情=树结构），推迟无界维度（列表=指标 / 详情=观测 IO）</strong>——只急着取你扛得住的那部分。</li>
+  </ul>
+</div>
+""")
+
+_EN25.append(r"""
+<p class="lead">
+Lesson 24 was the <strong>list</strong> — fetch one compact row each for thousands of traces, defer everything expensive. This lesson is its <strong>opposite</strong>:
+the <strong>detail page</strong>. Open one trace and you want the <strong>whole observation tree + all scores</strong> — one <strong>full fetch</strong>. Why dare to fetch
+it all? Because "one trace" is <strong>bounded</strong> (not a list of thousands). But each observation's input/output in the tree could be <strong>huge</strong>, so the
+detail still has discipline: the tree query carries <strong>no IO</strong> (lazy-loaded per node when you expand it), with a <code>verbosity</code> knob capping the
+trace's own IO. <strong>The same "bound the unbounded dimension" craft, applied at a different scale.</strong>
+</p>
+
+<div class="card analogy">
+  <div class="tag">📖 Analogy</div>
+  Think of list vs detail as a <strong>library catalog</strong> vs <strong>one book</strong>. The catalog (list) gives you <strong>tiny cards</strong> for thousands of
+  books — nobody transcribes a whole book onto a card. But when you <strong>pull one book</strong> (detail), you want the <strong>whole book's structure</strong> — table
+  of contents, chapters, page numbers at a glance. Yet you <strong>don't photocopy every page's long footnotes upfront</strong>; only when you flip to a page and want
+  the detail do you read that footnote (an observation's IO, lazy-loaded). "<strong>The whole book's skeleton at once, a page's long content fetched on demand</strong>"
+  — that's the detail page's balance between "complete" and "restraint".
+</div>
+""")
+
+_EN25.append(r"""
+<h2>Fetch the whole tree at once, but hang no IO on it</h2>
+<p>The detail page's main query is <code>byIdWithObservationsAndScores</code>. It runs on <code>protectedGetTraceProcedure</code> — that door (Lesson 21) has already
+<strong>prefetched the trace itself and verified access</strong> (allowing publicly shared traces too). It then fetches two things <strong>in parallel</strong>: the
+whole <strong>observation tree</strong> and all of this trace's <strong>scores</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="byIdWithObservationsAndScores fetches the observation tree (no IO) and scores in parallel, partitions out CORRECTION, derives latency from observation start/end, returns the IO-less tree, and lazy-loads IO when a node is opened">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Detail: fetch the whole tree (structure+timing), IO on click</text>
+  <rect x="20" y="42" width="150" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">door prefetched trace</text><text x="95" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">protectedGetTraceProcedure</text><text x="95" y="87" text-anchor="middle" font-size="6.8" fill="var(--muted)">access verified (incl. public)</text>
+  <rect x="200" y="34" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="290" y="53" text-anchor="middle" font-size="8" fill="var(--ink)">getObservationsForTrace (tree)</text>
+  <rect x="200" y="70" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="290" y="89" text-anchor="middle" font-size="7.5" fill="var(--ink)">getScoresAndCorrections (scores)</text>
+  <text x="290" y="118" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">↑ Promise.all parallel ↑</text>
+  <rect x="410" y="40" width="140" height="92" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="480" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">assemble</text><text x="480" y="78" text-anchor="middle" font-size="7.5" fill="var(--ink)">partition out CORRECTION</text><text x="480" y="93" text-anchor="middle" font-size="7.5" fill="var(--ink)">derive latency from spans</text><text x="480" y="108" text-anchor="middle" font-size="7.5" fill="var(--ink)">strip observation IO</text><text x="480" y="122" text-anchor="middle" font-size="7" fill="var(--muted)">includeIO:false</text>
+  <rect x="578" y="40" width="128" height="44" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="642" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">return: tree + scores</text><text x="642" y="73" text-anchor="middle" font-size="7" fill="var(--muted)">structure, timing, no IO</text>
+  <rect x="578" y="94" width="128" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="642" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">open a node →</text><text x="642" y="125" text-anchor="middle" font-size="7" fill="var(--accent-ink)">lazy-load that IO</text>
+  <line x1="170" y1="60" x2="198" y2="50" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="72" x2="198" y2="84" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="380" y1="84" x2="408" y2="84" stroke="var(--faint)" stroke-width="1.4"/><polygon points="408,84 400,80 400,88" fill="var(--faint)"/>
+  <line x1="550" y1="70" x2="576" y2="62" stroke="var(--faint)" stroke-width="1.3"/><line x1="550" y1="100" x2="576" y2="110" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="40" y="150" width="660" height="76" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="170" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">one observation tree (structure &amp; timing):</text>
+  <text x="80" y="190" font-size="9" fill="var(--ink)">▸ trace</text><text x="120" y="206" font-size="9" fill="var(--ink)">▸ span: retrieval</text><text x="200" y="222" font-size="9" fill="var(--muted)">• generation: LLM call (IO fetched on click)</text><text x="480" y="206" font-size="8" fill="var(--muted)">right: getAgentGraphData → agent graph view</text>
+</svg>
+<div class="figcap"><b>Fetch the skeleton, defer the flesh</b>: <code>byIdWithObservationsAndScores</code> fetches the observation tree (<code>includeIO:false</code>) and scores in parallel, partitions out CORRECTION-type scores, derives latency from observation start/end, returns the <strong>IO-less</strong> tree; opening a node lazy-loads its IO. Plus <code>getAgentGraphData</code> for the agent graph. Source: <code>web/src/server/api/routers/traces.ts:368,610</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/routers/traces.ts</span><span class="ln">byIdWithObservationsAndScores :368</span></div>
+  <pre class="code"><span class="cm">// ctx.trace prefetched by the door (with access check); fetch tree &amp; scores in parallel</span>
+<span class="kw">const</span> [observations, traceScores] = <span class="kw">await</span> Promise.<span class="fn">all</span>([
+  <span class="fn">getObservationsForTrace</span>({ traceId, projectId, includeIO: <span class="kw">false</span> }), <span class="cm">// tree without IO</span>
+  <span class="fn">getScoresAndCorrectionsForTraces</span>({ projectId, traceIds: [traceId] }),
+]);
+<span class="cm">// split out CORRECTION-type scores</span>
+<span class="kw">const</span> [corrections, scores] = <span class="fn">partition</span>(scores, (s) =&gt; s.dataType === <span class="st">"CORRECTION"</span>);
+<span class="cm">// derive the whole trace's latency from earliest start, latest end of observations</span>
+<span class="kw">const</span> latencyMs = maxEnd - minStart;
+<span class="kw">return</span> { ...trace, observations: obs.<span class="fn">map</span>((o) =&gt; ({ ...o, input: undefined, output: undefined })) };</pre>
+</div>
+
+<p>Note the unremarkable <code>includeIO: false</code> — it's the key to the detail page's performance. Imagine an agent trace with <strong>three hundred
+observations</strong>, each observation's input/output a sizeable JSON: load all the IO when opening the tree and that one request could be tens of MB and several
+seconds. Langfuse's choice is <strong>tree first, IO later</strong>:</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 tree with all IO</h4><p>Fetch three hundred observations + all their IO at once: a tens-of-MB request, slow and memory-heavy. But when you open the detail, <strong>you won't expand most nodes</strong> — most of that IO was fetched for nothing.</p></div>
+  <div class="col"><h4>😀 tree first, IO lazy</h4><p>The tree query carries only <strong>structure and timing</strong> (light, fast), so the whole tree is <strong>visible immediately</strong>; expand an observation and only <strong>that one's</strong> IO is fetched. Pay on demand, never for nodes you didn't look at — so even a huge trace's detail page opens instantly.</p></div>
+</div>
+""")
+
+_EN25.append(r"""
+<h2>The verbosity knob: capping IO for "giant traces"</h2>
+<p>Even one trace's <strong>own</strong> input/output could be a multi-MB JSON (say, stuffed with a long context). For this, the single-trace query <code>byId</code>
+carries a <code>verbosity</code> param (<code>compact / truncated / full</code>) that decides <strong>server-side</strong> whether IO is parsed or truncated — don't let a
+giant trace blow up the response:</p>
+
+<p>Why truncate <strong>server-side</strong>, not on the frontend? Because <strong>trimming after the data reaches the frontend is too late</strong> — those few MB
+already got read from ClickHouse, serialized, and crossed the network. <code>verbosity</code> puts the trimming <strong>closest to the data source</strong>: what should
+carry no IO (compact) isn't fetched at all, what should be truncated (truncated) is cut before serialization, and only an explicit "show all" (full) returns the
+whole thing. So one <code>byId</code> endpoint serves both "a lightweight preview in a list" and "see the full text on a detail page", switching posture by a single
+parameter.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 170" role="img" aria-label="verbosity three levels: compact no IO, truncated cut IO, full complete IO, decided server-side to cap giant-trace IO">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">verbosity: tier the IO server-side</text>
+  <rect x="30" y="40" width="200" height="106" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="130" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">compact</text><text x="130" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">no IO, lightest</text><text x="130" y="104" text-anchor="middle" font-size="7.5" fill="var(--faint)">list/overview cases</text><text x="130" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">smallest payload</text>
+  <rect x="260" y="40" width="200" height="106" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">truncated</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">IO cut to a cap</text><text x="360" y="104" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">giant traces don't blow up</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">enough for the gist</text>
+  <rect x="490" y="40" width="200" height="106" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="590" y="62" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">full (default)</text><text x="590" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">complete IO</text><text x="590" y="104" text-anchor="middle" font-size="7.5" fill="var(--faint)">single detail, see it all</text><text x="590" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">largest payload</text>
+</svg>
+<div class="figcap"><b>Three-tier cap</b>: <code>byId</code>'s <code>verbosity</code> (<code>compact / truncated / full</code>, default full) decides server-side whether the trace's own IO is parsed/truncated, capping the response for huge traces. Source: <code>web/src/server/api/trpc.ts:480,524-525</code> (<code>parseIO(input, verbosity)</code>).</div>
+</div>
+
+<p>From the user's view, opening a trace detail is five steps — the tree appears almost instantly, details fill in as you click:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>door prefetch + verify</h4><p><code>protectedGetTraceProcedure</code> has already fetched the trace and confirmed your access (publicly shared traces pass too).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>parallel fetch tree &amp; scores</h4><p><code>Promise.all</code> pulls the observation tree (no IO) and all scores at once — both fired together, wait for the slower.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>assemble &amp; render skeleton</h4><p>Partition out CORRECTION, derive latency, and the tree's <strong>structure and timing paint immediately</strong> — you see the whole call at once.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>open a node, lazy-load IO</h4><p>Click a generation to see its prompt/completion and the frontend fetches <strong>that one</strong> observation's IO, full or truncated per verbosity.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>(optional) switch to the agent graph</h4><p>Want the agent's step topology? <code>getAgentGraphData</code> takes another path, rendering the tree as a directed graph (trace-graph-view).</p></div></div>
+</div>
+
+<p>Place Lessons 24 and 25 side by side and "one discipline, two scales" is plain — <strong>whether list or detail, fence the bounded dimension first and defer the
+unbounded one</strong>:</p>
+
+<table class="t">
+  <tr><th></th><th>list (Lesson 24)</th><th>detail (this lesson)</th></tr>
+  <tr><td><b>bounded — fetch first</b></td><td>thousands of traces' <strong>compact rows</strong> (~12 cols each)</td><td>one trace's <strong>whole observation tree</strong> (structure+timing)</td></tr>
+  <tr><td><b>unbounded — defer</b></td><td>cost/latency/score <strong>metrics</strong> (need JOINs) → parallel, later</td><td>each observation's <strong>IO</strong> (possibly huge) → lazy-load on click</td></tr>
+  <tr><td><b>capping means</b></td><td>pagination, look-back windows, conditional FINAL/JOIN</td><td>tree query without IO, <code>verbosity</code> truncating the trace's own IO</td></tr>
+</table>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why does detail dare to "fetch the whole tree", while the list "defers aggressively"?</strong> The key is <strong>boundedness</strong>. The list faces an
+  <strong>unbounded number of rows</strong> (thousands, tens of thousands of traces), so even a slightly pricey column per row must be deferred; the detail faces
+  <strong>one trace</strong> — however many observations it has, that count is <strong>bounded</strong>, and "seeing this one in full" is precisely the detail page's value, so
+  the structure and timing are worth fetching all at once. But <strong>a bounded entity still hides an unbounded dimension inside</strong>: a single observation's IO can be
+  a 2MB JSON, and hundreds stacked up explode again. So the same "fence the bounded, defer the unbounded" discipline <strong>descends into the tree</strong> — fetch the tree
+  in full (the bounded structure), defer the IO (the unbounded content), and cap the trace's own IO with verbosity. <strong>It's not "list restrained, detail
+  indulgent"; both do the same thing at their own scale: only rush to fetch the part you can bear.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The detail page's main query <code>byIdWithObservationsAndScores</code> runs on <code>protectedGetTraceProcedure</code> (the door <strong>prefetched the trace and verified access</strong>, including public shares).</li>
+    <li><strong>Parallel</strong> fetch of the observation tree + scores; <code>partition</code> out CORRECTION-type scores; <strong>derive latency</strong> from observation start/end.</li>
+    <li><strong>Tree without IO</strong> (<code>includeIO:false</code>, observation input/output stripped) — opening a node <strong>lazy-loads</strong> its IO, avoiding pulling hundreds of observations' huge content at once.</li>
+    <li><code>verbosity</code> (<code>compact / truncated / full</code>) tiers/truncates the trace's own IO <strong>server-side</strong>, preventing huge traces from blowing up the response. Plus <code>getAgentGraphData</code> for the agent graph view.</li>
+    <li>With Lesson 24, "one discipline, two scales": <strong>fetch the bounded dimension first (list=compact rows / detail=tree structure), defer the unbounded one (list=metrics / detail=observation IO)</strong> — only rush to fetch the part you can bear.</li>
+  </ul>
+</div>
+""")
+LESSON_25 = {"zh": "\n".join(_ZH25), "en": "\n".join(_EN25)}

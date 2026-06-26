@@ -97,6 +97,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("24-lists-and-tables.html", "列表与表格", "Lists & tables",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("25-trace-detail-tree.html", "trace 详情与观测树", "Trace detail & the observation tree",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -628,6 +630,8 @@ SUBTITLES = {
                                      "FilterState intermediate contract; compiles to CH/PG SQL; random placeholders block injection; mandatory project_id; search bar controlled editor; AI filter round-trip drops hallucinations"),
     "24-lists-and-tables.html": ("getTracesTableGeneric 四形状 · 紧凑行 vs 指标并发 · joinTableCoreAndMetrics 按 id 合并 · 按需 JOIN/FINAL · 表态 URL 真源三层",
                                  "getTracesTableGeneric four shapes; compact rows vs metrics parallel; joinTableCoreAndMetrics merge by id; conditional JOIN/FINAL; table state URL-as-truth three layers"),
+    "25-trace-detail-tree.html": ("byIdWithObservationsAndScores 全量取树 · 并行树+评分 · includeIO:false 懒加载 · partition CORRECTION · verbosity 封顶 · 列表/详情同纪律两尺度",
+                                  "byIdWithObservationsAndScores full tree fetch; parallel tree+scores; includeIO:false lazy-load; partition CORRECTION; verbosity cap; list/detail one discipline two scales"),
 }
 
 

@@ -1725,6 +1725,76 @@ QUIZZES = {
             },
         ],
     },
+    "25-trace-detail-tree.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "详情页要看一条 trace 的整棵观测树，可 byIdWithObservationsAndScores 取观测时却传 includeIO:false（不带 input/output）。为什么？",
+                    "en": "The detail page shows a trace's whole observation tree, yet byIdWithObservationsAndScores fetches observations with includeIO:false (no input/output). Why?",
+                },
+                "opts": [
+                    {
+                        "zh": "树查询只带结构与时序（轻、快），整棵树立刻可见；某个观测的 IO 可能是几 MB JSON、几百个叠起来会爆，所以点开哪个节点才懒加载那一个的 IO——按需付费，不为没看的节点买单",
+                        "en": "the tree query carries only structure and timing (light, fast) so the whole tree shows instantly; one observation's IO can be a multi-MB JSON and hundreds explode, so only opening a node lazy-loads that one's IO — pay on demand, never for nodes you didn't look at",
+                    },
+                    {"zh": "因为观测没有 IO 字段", "en": "because observations have no IO fields"},
+                    {"zh": "为了隐藏 IO 不让用户看", "en": "to hide IO from users"},
+                    {"zh": "因为 IO 存在另一个数据库", "en": "because IO lives in another database"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "一条 agent trace 可能有几百个观测，每个 IO 是不短的 JSON。开树就拉全部 IO 会是几十 MB、好几秒，而你大多数节点根本不展开——白拉。Langfuse 让树先到（结构+时序）、IO 点开懒加载，于是超大 trace 详情也能秒开。",
+                    "en": "An agent trace may have hundreds of observations, each IO a sizeable JSON. Loading all IO when opening the tree would be tens of MB and seconds, yet you won't expand most nodes — wasted. Langfuse sends the tree first (structure+timing) and lazy-loads IO on click, so even a huge trace's detail opens instantly.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "第 24 课列表「极力推迟」、第 25 课详情「一次取全树」，看似相反。它们其实遵循同一条原则，是哪条？",
+                    "en": "Lesson 24's list 'defers aggressively' while Lesson 25's detail 'fetches the whole tree' — seemingly opposite. What single principle do they share?",
+                },
+                "opts": [
+                    {
+                        "zh": "先取有界的维度、推迟无界的维度：列表面对无界行数→连稍贵的列都推迟；详情面对一条 trace（观测数有界）→结构取全，但树内单个观测 IO 仍是无界维度→懒加载。只急着取你扛得住的那部分",
+                        "en": "fetch the bounded dimension first, defer the unbounded one: the list faces unbounded rows → defer even slightly pricey columns; the detail faces one trace (bounded observation count) → fetch structure in full, but a single observation's IO is still an unbounded dimension within → lazy-load. Only rush to fetch the part you can bear",
+                    },
+                    {"zh": "都尽量多取数据", "en": "both fetch as much data as possible"},
+                    {"zh": "都尽量少取数据", "en": "both fetch as little data as possible"},
+                    {"zh": "列表用 ClickHouse、详情用 Postgres", "en": "list uses ClickHouse, detail uses Postgres"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "关键是有界性。列表的行数无界（几千几万），故连一行里稍贵的指标都推迟；详情面对一条 trace，观测数虽多但有界，且看全这一条正是详情价值，故结构与时序一次取全。但有界实体内仍藏无界维度（单观测 IO），于是同一纪律下沉到树内：树取全、IO 缓取、verbosity 封顶。",
+                    "en": "The key is boundedness. The list's row count is unbounded (thousands+), so even per-row metrics are deferred; the detail faces one trace whose observation count, though large, is bounded, and seeing this one in full is the detail's value, so structure and timing are fetched at once. But a bounded entity hides an unbounded dimension (per-observation IO), so the same discipline descends into the tree: fetch the tree, defer IO, cap with verbosity.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "byId 接口带一个 verbosity 参数（compact/truncated/full），在服务端决定 trace 自身 IO 是否解析/截断。为什么要在服务端而不是前端做这个截断？",
+                    "en": "byId carries a verbosity param (compact/truncated/full) deciding server-side whether the trace's own IO is parsed/truncated. Why truncate server-side rather than on the frontend?",
+                },
+                "opts": [
+                    {
+                        "zh": "等数据传到前端再裁已经晚了——那几 MB 已从 ClickHouse 读出、序列化、走完网络。verbosity 让裁剪发生在最靠近数据源处：compact 压根不取、truncated 序列化前截短、full 才完整返回",
+                        "en": "trimming after data reaches the frontend is too late — those MB already got read from ClickHouse, serialized, crossed the network. verbosity puts trimming closest to the source: compact doesn't fetch, truncated cuts before serialization, only full returns it whole",
+                    },
+                    {"zh": "前端不能截断字符串", "en": "the frontend can't truncate strings"},
+                    {"zh": "为了让前端代码更简单", "en": "to simplify frontend code"},
+                    {"zh": "因为服务端更安全", "en": "because the server is more secure"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "截断的目的是省「读取+序列化+传输」的成本；这些成本在数据离开 ClickHouse 时就已发生，到前端再裁只是徒劳。verbosity 在服务端、最靠近数据源处定档：compact 不取 IO、truncated 序列化前截短、full 完整。于是同一个 byId 既能给列表轻量预览、又能给详情看全文。",
+                    "en": "Truncation aims to save 'read+serialize+transfer' cost; those costs already happen as data leaves ClickHouse, so trimming at the frontend is futile. verbosity tiers server-side, closest to the source: compact fetches no IO, truncated cuts before serialization, full returns whole. So one byId serves both a list's lightweight preview and a detail's full text.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「圈定有界维度先取、推迟无界维度」——这条原则你能用到自己做的「列表 + 详情」界面吗？想想你的实体里哪些维度是有界的（适合一次取）、哪些是无界的（该懒加载或封顶）？你会在哪一层、用什么手段给无界维度封顶？",
+                "en": "'Fence the bounded dimension and fetch it first, defer the unbounded one' — can you apply this to your own 'list + detail' UIs? Which dimensions of your entities are bounded (fetch at once) and which unbounded (lazy-load or cap)? At which layer and by what means would you cap the unbounded ones?",
+            },
+        ],
+    },
 }
 
 
