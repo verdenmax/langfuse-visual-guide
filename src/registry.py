@@ -13,4 +13,5 @@ CONTENT = {
     "02-observability-2-and-wide-events.html": part1.LESSON_02,
     "03-three-pillars-deep.html": part1.LESSON_03,
     "04-project-map-monorepo.html": part1.LESSON_04,
+    "05-life-of-a-trace.html": part1.LESSON_05,
 }

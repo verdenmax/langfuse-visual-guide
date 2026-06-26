@@ -325,6 +325,76 @@ QUIZZES = {
             },
         ],
     },
+    "05-life-of-a-trace.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的摄取为什么是异步的（API 收下就入队返回，由 worker 后台处理），而不是 API 同步写完 ClickHouse 才返回？",
+                    "en": "Why is Langfuse ingestion async (the API enqueues and returns, the worker processes in the background) rather than the API synchronously writing ClickHouse before returning?",
+                },
+                "opts": [
+                    {
+                        "zh": "为了让 API 永远毫秒级返回、几乎不拖累你的应用，并能用队列做缓冲：洪峰先排队、worker 批量可重试地消费、扛不住就横向扩容",
+                        "en": "So the API always returns in ms and barely drags your app, and the queue buffers: spikes queue up, the worker consumes in batches retryably, and you scale out when overwhelmed",
+                    },
+                    {"zh": "因为 ClickHouse 不支持同步写入", "en": "Because ClickHouse doesn't support synchronous writes"},
+                    {"zh": "为了故意增加延迟以省钱", "en": "To deliberately add latency to save money"},
+                    {"zh": "因为 API 不能访问数据库", "en": "Because the API cannot access the database"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若 API 同步合并/算成本/写库，你每次 LLM 调用都被拖慢，且下游一抖动 API 就超时甚至把错误反弹给业务。异步把“收件”和“处理”解耦：API 极轻、几乎不可能慢；worker 批量、可重试、可扩容地消化洪峰。代价是秒级延迟（最终一致）。",
+                    "en": "If the API synchronously merged/costed/wrote, every LLM call is slowed and a downstream hiccup times out the API or bounces errors into your business. Async decouples accept from process: the API is featherweight and rarely slow; the worker digests spikes in batches, retryably, scalably. The cost is seconds of lag (eventual consistency).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "worker 处理时为什么要回 S3 取“这个 id 的历史事件”再合并？",
+                    "en": "Why does the worker re-read 'this id's prior events' from S3 and merge during processing?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为一个 observation 常被分多次、可能乱序地上报（先 create 再 update），worker 必须把这些碎片合并成一条一致的最终记录",
+                        "en": "Because one observation is often reported in multiple, possibly out-of-order events (create then update), and the worker must merge these fragments into one consistent final record",
+                    },
+                    {"zh": "因为 ClickHouse 会丢数据，要从 S3 恢复", "en": "Because ClickHouse loses data and must restore from S3"},
+                    {"zh": "因为 S3 比队列快", "en": "Because S3 is faster than the queue"},
+                    {"zh": "因为合并必须在前端做", "en": "Because merging must happen in the frontend"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "SDK 上报往往不是一次性的：先发 create（我开始了），调用返回后再发 update（输出/用量）。两条分别到达，worker 回 S3 取历史把碎片拼成完整一行。这也支撑了“事件可乱序到达、worker 收敛成最终态”，正是第 3 课 parentObservationId 设计的运行时体现。",
+                    "en": "SDK reporting often isn't one-shot: a create ('I started') then an update ('output/usage') after the call returns. They arrive separately; the worker re-reads S3 to stitch the fragments into one row. This supports 'events arrive out of order, worker converges to final state' — the runtime realization of L03's parentObservationId design.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "“最终一致”对使用 Langfuse 意味着什么实践注意点？",
+                    "en": "What practical caveat does 'eventual consistency' imply when using Langfuse?",
+                },
+                "opts": [
+                    {
+                        "zh": "刚埋点的数据可能要等一两秒才在 UI 出现；别把它当强一致业务库，写自动化测试验证埋点时要给摄取留处理时间",
+                        "en": "Just-instrumented data may take a second or two to appear in the UI; don't treat it as a strongly-consistent business DB, and when testing instrumentation, allow ingestion time to process",
+                    },
+                    {"zh": "数据永远不会出现", "en": "Data will never appear"},
+                    {"zh": "必须手动刷新数据库连接", "en": "You must manually refresh the DB connection"},
+                    {"zh": "trace 会随机丢失", "en": "Traces are randomly lost"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "异步摄取有秒级处理延迟，对“事后排查/看板/评估”完全够用，但意味着“写完不一定立刻可读”。所以别拿它当强一致库；自动化验证埋点时要等摄取处理完，否则会误判“数据没上来”。",
+                    "en": "Async ingestion has seconds of processing lag — fine for after-the-fact triage/dashboards/eval, but it means 'written isn't instantly readable'. So don't treat it as a strongly-consistent store; when verifying instrumentation in tests, wait for ingestion or you'll falsely conclude 'no data arrived'.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "回顾第一部分：用你自己的话，把“一条 trace 的一生”讲给一个没用过 Langfuse 的同事听（从 SDK 到 UI）。你觉得哪一段最容易被忽略、但其实最关键？",
+                "en": "Recap Part 1: in your own words, tell a colleague who's never used Langfuse the 'life of a trace' from SDK to UI. Which leg do you think is most overlooked yet most crucial?",
+            },
+        ],
+    },
 }
 
 

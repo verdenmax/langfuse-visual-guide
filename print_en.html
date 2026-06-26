@@ -334,13 +334,14 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 4 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 5 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
   <li>Observability 2.0 & wide events</li>
   <li>The three pillars in depth</li>
   <li>Project map (monorepo & narrow waist)</li>
+  <li>Life of a trace (bird's-eye)</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -1513,6 +1514,222 @@ the server, and the per-language SDKs always in sync.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>If your own project had both a 'user-facing service' and a 'background worker', would you keep them in one repo or split? Borrowing Langfuse's narrow waist, what would you pull into a shared layer?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Life of a trace (bird's-eye)</h1>
+
+<p class="lead">
+Part 1 is nearly done. You now know <strong>what the data looks like</strong> (trace/observation/score), <strong>where the code
+lives</strong> (monorepo & narrow waist), and the <strong>design philosophy</strong> behind it (wide events). This lesson
+<strong>strings them into one line</strong>: follow <strong>one concrete trace</strong> from the moment your app calls
+<code>langfuse.trace(...)</code> all the way to it appearing in the UI list, being opened, even being auto-scored. It's a
+<strong>trailer</strong> — each leg is tagged with the later lesson that covers it, so by the end you have the whole map's
+<strong>route plan</strong>. Put differently, the first four lessons took the parts out one by one; this one puts them back and
+fires the engine once, so you see the data <strong>actually flowing</strong> — with that dynamic panorama, digging into each part
+lesson by lesson won't lose the forest for the trees.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of a trace's life as <strong>shipping a parcel</strong>: at home you <strong>place the order and seal the box</strong> (create
+  trace/observation in the SDK); a courier <strong>picks it up</strong>, scans it into a bag (the public API accepts the events and
+  quickly enqueues); the parcel queues in a <strong>sorting center</strong> and is <strong>processed in the back</strong> (the worker
+  pulls from the queue, merges, computes "shipping cost" = cost); then it's <strong>shelved into the warehouse</strong> (written to
+  ClickHouse); finally you open your phone to <strong>track it</strong> (see the trace in the UI). The key: <strong>placing the order
+  is not the same as being shelved</strong> — pickup, sorting and shelving sit in between, so there's a <strong>brief processing
+  delay</strong>. That's the essence of Langfuse's "async" ingestion.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 360" role="img" aria-label="A trace flows from SDK through API, Redis queue, worker into ClickHouse, then back to the UI via repository and tRPC">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Write: SDK → … → ClickHouse (top)　Read: ClickHouse → … → UI (bottom)</text>
+  <rect x="20" y="44" width="116" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">SDK / OTel</text><text x="78" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">your app</text>
+  <rect x="164" y="44" width="116" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="222" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">public API</text><text x="222" y="80" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · validate+enqueue</text>
+  <rect x="308" y="44" width="104" height="46" rx="9" fill="var(--red-soft)" stroke="var(--red)"/><text x="360" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Redis queue</text><text x="360" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">BullMQ</text>
+  <rect x="440" y="44" width="116" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">worker</text><text x="498" y="80" text-anchor="middle" font-size="9" fill="var(--accent-ink)">merge·cost</text>
+  <rect x="584" y="44" width="116" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="642" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="642" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">wide-event tables</text>
+  <line x1="136" y1="67" x2="162" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="162,67 153,62 153,72" fill="var(--faint)"/><text x="149" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L12</text>
+  <line x1="280" y1="67" x2="306" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="306,67 297,62 297,72" fill="var(--faint)"/><text x="293" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L14</text>
+  <line x1="412" y1="67" x2="438" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="438,67 429,62 429,72" fill="var(--faint)"/><text x="425" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L15</text>
+  <line x1="556" y1="67" x2="582" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="582,67 573,62 573,72" fill="var(--faint)"/><text x="569" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L17</text>
+  <rect x="440" y="128" width="116" height="40" rx="9" fill="var(--panel)" stroke="var(--line)"/><text x="498" y="146" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">S3 / blob</text><text x="498" y="160" text-anchor="middle" font-size="8.5" fill="var(--muted)">event log·media L19</text>
+  <line x1="498" y1="90" x2="498" y2="126" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="4 3"/><polygon points="498,126 493,117 503,117" fill="var(--faint)"/>
+  <line x1="642" y1="90" x2="642" y2="214" stroke="var(--purple)" stroke-width="1.8"/><polygon points="642,214 637,205 647,205" fill="var(--purple)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)">— — — — — data is stored; below is reading — — — — —</text>
+  <rect x="584" y="218" width="116" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="642" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="642" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">same wide table</text>
+  <rect x="430" y="218" width="130" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">repository</text><text x="495" y="254" text-anchor="middle" font-size="9" fill="var(--accent-ink)">build SQL L22</text>
+  <rect x="270" y="218" width="130" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="335" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">tRPC</text><text x="335" y="254" text-anchor="middle" font-size="9" fill="var(--accent-ink)">type-safe API L21</text>
+  <rect x="110" y="218" width="130" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="175" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">UI</text><text x="175" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">list·detail L20·25</text>
+  <line x1="584" y1="241" x2="562" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="562,241 571,236 571,246" fill="var(--faint)"/>
+  <line x1="430" y1="241" x2="402" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="402,241 411,236 411,246" fill="var(--faint)"/>
+  <line x1="270" y1="241" x2="242" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="242,241 251,236 251,246" fill="var(--faint)"/>
+  <text x="360" y="312" text-anchor="middle" font-size="10" fill="var(--faint)">writes are async (seconds of lag) · reads are real-time (one click queries)</text>
+</svg>
+<div class="figcap"><b>A trace's full journey</b>: the top half is the <b>write path</b> (SDK→API→Redis→worker→ClickHouse, with S3 alongside), each leg tagged with its lesson (L12–19); the bottom half is the <b>read path</b> (ClickHouse→repository→tRPC→UI, L20–27). The two paths "meet" at the ClickHouse wide table: writes put data in, reads take it out.</div>
+</div>
+
+<h2>Top half · write: SDK to ClickHouse</h2>
+<p>First the parcel's "shipped to shelved" journey. It's deliberately <strong>async</strong> — the API only accepts and enqueues
+fast, leaving the heavy lifting to the worker:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK creates events (L06)</h4><p>Your app calls the SDK or emits an OTel span, producing <strong>events</strong> like trace-create / observation-create / score-create.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Public API accepts & enqueues (L12·14)</h4><p><code>web/src/pages/api/public/ingestion.ts</code> authenticates, Zod-validates a batch, then <strong>quickly drops it into the Redis queue</strong> and returns — without waiting for processing.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>worker merges & aggregates (L15)</h4><p><code>IngestionService</code> pulls events from the queue, <strong>fetches this record's prior events from S3</strong> and merges (multiple updates to one observation fold into one), deciding the final shape.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>compute token & cost (L16)</h4><p>Match the model name to the pricing table and <strong>backfill</strong> any unreported usage/cost (remember provided vs computed from L03?).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>ClickhouseWriter batches the write (L17)</h4><p><strong>Batch</strong> processed records and write them to ClickHouse traces/observations/scores in one go (ReplacingMergeTree handles "later write of same id wins").</p></div></div>
+</div>
+
+<p>In this path, <strong>S3 plays "the raw event manuscript"</strong>: each incoming event lands in S3 first, and the worker re-reads S3
+when merging. That allows <strong>replay</strong> on failure and lets "multiple updates to one observation" merge correctly — details
+unpacked in L15–17. For now, remember the spine: <strong>accept → enqueue → merge → cost → store</strong>.</p>
+
+<p>It's worth calling out why step 3, "<strong>merge</strong>", can't be skipped. The reason: an SDK often reports one observation
+<strong>not all at once</strong>. For an LLM call, the SDK might first send an "observation-create" saying "I started, model is gpt-4o",
+then after the call returns send an "observation-update" adding "output is X, used 1240 tokens". Those two events <strong>arrive
+separately</strong>, and the worker must <strong>merge them into one final record</strong>. That's why it re-reads S3 for "this id's
+prior events" — stitching the fragments that arrived at different times into one complete row. Grasp this and you see how Lesson 3's
+"observations can arrive out of order via parentObservationId" is actually realized in ingestion: <strong>events may come in multiple
+pieces, out of order, and the worker converges them into a consistent final state.</strong></p>
+
+
+<h2>Bottom half · read: from UI back to ClickHouse</h2>
+<p>Once stored, seeing it in your browser takes a different, more <strong>real-time</strong> path — you click, it queries:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>UI issues a query (L20)</h4><p>You open the trace list; the frontend issues a type-safe request via a <strong>tRPC</strong> hook (e.g. <code>api.traces.all.useQuery</code>).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>tRPC auth & dispatch (L21)</h4><p>The request hits <code>web/src/server/api</code>; middleware first checks "do you belong to this project" (RBAC), then dispatches to the right router handler.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>repository builds the query (L22·23)</h4><p>The handler calls functions in <code>packages/shared/src/server/repositories</code>, translating your filters into <strong>ClickHouse SQL</strong> (with time windows, selecting only the needed columns).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>ClickHouse returns; UI renders (L24·25)</h4><p>The list reads only <strong>compact narrow fields</strong> (fast); only when you open a trace does it fetch the full input/output and build the observation tree.</p></div></div>
+</div>
+
+<p>Note that write and read <strong>converge</strong> on this one ClickHouse table: writes put the wide event in, reads pull it out
+every which way. Lesson 2's "lists read narrow fields, detail reads big fields" is realized on exactly this read path.</p>
+
+<h2>Why separate "accept" from "process"</h2>
+<p>The cleverest step in this path is the API "<strong>accept and return</strong>". It splits the whole thing into a "fast lane" and a
+"slow lane":</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="The API returns to the app in milliseconds (fast lane) while enqueuing events for the worker to process in the background (slow lane)">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Fast lane: API returns in ms　Slow lane: worker processes in background</text>
+  <rect x="30" y="80" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="90" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">your app</text><text x="90" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">can't wait</text>
+  <rect x="220" y="80" width="120" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="280" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">public API</text><text x="280" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">validate+enqueue only</text>
+  <line x1="150" y1="96" x2="218" y2="96" stroke="var(--faint)" stroke-width="1.8"/><polygon points="218,96 209,91 209,101" fill="var(--faint)"/><text x="184" y="88" text-anchor="middle" font-size="8.5" fill="var(--faint)">events</text>
+  <line x1="218" y1="120" x2="152" y2="120" stroke="var(--accent)" stroke-width="2"/><polygon points="152,120 161,115 161,125" fill="var(--accent)"/><text x="185" y="138" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">200 OK in ms (fast lane)</text>
+  <rect x="410" y="80" width="110" height="56" rx="10" fill="var(--red-soft)" stroke="var(--red)"/><text x="465" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Redis queue</text><text x="465" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">reservoir</text>
+  <rect x="580" y="80" width="110" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="635" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">worker ×N</text><text x="635" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">batch·retryable</text>
+  <line x1="340" y1="108" x2="408" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="408,108 399,103 399,113" fill="var(--faint)"/>
+  <line x1="520" y1="108" x2="578" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="578,108 569,103 569,113" fill="var(--faint)"/>
+  <text x="465" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">slow lane: spikes queue up; the worker consumes at its own pace, scale out if overwhelmed</text>
+</svg>
+<div class="figcap"><b>One clean cut</b>: between app and API is the <b>fast lane</b> (returns in ms, almost never slow); after the API is the <b>slow lane</b> (enqueue → worker batches in the background). The queue is a reservoir: spikes queue up, and you add workers when overwhelmed.</div>
+</div>
+
+<p>Consider: a high-traffic LLM app may produce thousands of observations per second. If the API had to <strong>synchronously</strong>
+merge, compute cost and write ClickHouse before returning, two bad things happen: one, every app call <strong>waits</strong> those
+extra hundreds of ms, needlessly slowed by your monitoring tool; two, if ClickHouse hiccups or a spike maxes it out, the API
+<strong>times out and even bounces errors back into your business</strong>. Cutting "accept" from "process" reduces the API to a
+featherweight "<strong>validate + enqueue</strong>" endpoint — almost impossible to slow, almost impossible to drag your app down via
+a downstream issue.</p>
+
+<p>The queue is a <strong>reservoir</strong>: spikes queue up, the worker consumes in <strong>batches</strong> at its own pace, and you
+<strong>add workers</strong> (scale out) when it can't keep up. Langfuse even splits the ingestion queue into <strong>primary/secondary
+lanes</strong> (L14), isolating high-throughput big projects from ordinary ones so one project's spike can't drown everyone. The cost
+is the bit of lag mentioned next — but keep Δ to seconds and users barely notice. This is why nearly every high-throughput telemetry
+system (not just Langfuse) looks like this: <strong>lightweight accept + async process + batched store</strong>. Grasp this spine and
+you can predict what each Part 3 lesson is solving.</p>
+
+<h2>The cost of async: eventual consistency</h2>
+<p>Stitch the halves together and one fact must be clear in your mind: <strong>from SDK send to UI visibility there's queue processing
+in between, a few seconds of lag</strong>. This is <strong>eventual consistency</strong>.</p>
+
+<p>What does "eventual consistency" mean in practice? It means that right after a call runs in your app, if you immediately switch to
+the Langfuse UI and refresh, you <strong>might not see it yet</strong> — wait a second or two, refresh, and it appears. For almost all
+observability use this is perfectly fine: you come <strong>after the fact</strong> to triage, view dashboards, evaluate — a few seconds
+don't matter. But it flags two things: first, <strong>don't treat Langfuse as a strongly-consistent business database</strong> — it's a
+telemetry system, not a "write-then-read-immediately" store; second, if you write automated tests to verify "is instrumentation
+correct", remember to <strong>allow ingestion time to process</strong>, or you'll falsely conclude "the data never arrived". Understand
+this boundary and the lag won't surprise you — you'll appreciate the "<strong>never drag the business</strong>" trade behind it.</p>
+
+<div class="timeline">
+  <div class="lane"><span class="lane-label">t0</span><span class="tslot now">SDK sends events</span><span class="tslot">API enqueues (returns in ms)</span></div>
+  <div class="lane"><span class="lane-label">t0 + Δ</span><span class="tslot span">worker queues → merge → cost → write ClickHouse</span></div>
+  <div class="lane"><span class="lane-label">t0 + Δ′</span><span class="tslot now">only now can the UI query this trace</span></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why tolerate that lag and go async?</strong> Because ingestion must absorb <strong>very high write throughput</strong> while
+  your app <strong>can't afford to wait</strong>. If the API synchronously merged, computed cost and wrote before returning, every LLM
+  call would be slowed by Langfuse and could fail on downstream hiccups. Async decouples "accept" from "process": the API always
+  <strong>returns in milliseconds</strong> and almost never drags your app; the worker can digest spikes <strong>in batches,
+  retryably, scaling by queue</strong>. The cost is that bit of processing lag — and Lesson 2's "preserve near-real-time debugging"
+  principle demands keeping Δ to seconds so observability stays "almost live". <strong>Trade a little lag for an ingestion layer that
+  never drags the business and survives spikes.</strong> This "lightweight accept + async process" trade recurs throughout Part 3 — it's
+  not one module's trick but the guiding idea across the whole ingestion path.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points · and the Part 1 recap</div>
+  <ul>
+    <li>A trace's life: <strong>SDK → public API (enqueue) → Redis → worker (merge·cost) → ClickHouse</strong> (write), then <strong>UI → tRPC → repository → ClickHouse</strong> (read).</li>
+    <li><strong>Writes are async</strong> (seconds of lag, eventual consistency), <strong>reads are real-time</strong>; the two paths converge on the ClickHouse wide table.</li>
+    <li><strong>S3</strong> stores the raw event manuscript for merge and replay; the <strong>Redis</strong> queue decouples accept from process.</li>
+    <li>Every leg maps to a later lesson: writing is Part 3 (L12–19), reading is Part 4 (L20–27).</li>
+    <li>Part 1 ends here: you now hold the master map — <strong>data model + repo map + design philosophy + end-to-end path</strong> — and we dive in leg by leg next.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why is Langfuse ingestion async (the API enqueues and returns, the worker processes in the background) rather than the API synchronously writing ClickHouse before returning?</div>
+  <ol class="opts">
+    <li>So the API always returns in ms and barely drags your app, and the queue buffers: spikes queue up, the worker consumes in batches retryably, and you scale out when overwhelmed</li>
+    <li>To deliberately add latency to save money</li>
+    <li>Because the API cannot access the database</li>
+    <li>Because ClickHouse doesn't support synchronous writes</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. If the API synchronously merged/costed/wrote, every LLM call is slowed and a downstream hiccup times out the API or bounces errors into your business. Async decouples accept from process: the API is featherweight and rarely slow; the worker digests spikes in batches, retryably, scalably. The cost is seconds of lag (eventual consistency).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Why does the worker re-read 'this id's prior events' from S3 and merge during processing?</div>
+  <ol class="opts">
+    <li>Because ClickHouse loses data and must restore from S3</li>
+    <li>Because merging must happen in the frontend</li>
+    <li>Because S3 is faster than the queue</li>
+    <li>Because one observation is often reported in multiple, possibly out-of-order events (create then update), and the worker must merge these fragments into one consistent final record</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. SDK reporting often isn't one-shot: a create ('I started') then an update ('output/usage') after the call returns. They arrive separately; the worker re-reads S3 to stitch the fragments into one row. This supports 'events arrive out of order, worker converges to final state' — the runtime realization of L03's parentObservationId design.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. What practical caveat does 'eventual consistency' imply when using Langfuse?</div>
+  <ol class="opts">
+    <li>Data will never appear</li>
+    <li>Just-instrumented data may take a second or two to appear in the UI; don't treat it as a strongly-consistent business DB, and when testing instrumentation, allow ingestion time to process</li>
+    <li>Traces are randomly lost</li>
+    <li>You must manually refresh the DB connection</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Async ingestion has seconds of processing lag — fine for after-the-fact triage/dashboards/eval, but it means 'written isn't instantly readable'. So don't treat it as a strongly-consistent store; when verifying instrumentation in tests, wait for ingestion or you'll falsely conclude 'no data arrived'.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Recap Part 1: in your own words, tell a colleague who's never used Langfuse the 'life of a trace' from SDK to UI. Which leg do you think is most overlooked yet most crucial?</li>
   </ul>
 </div>
 </div>

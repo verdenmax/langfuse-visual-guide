@@ -334,13 +334,14 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 4 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 5 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
   <li>可观测性 2.0 与宽事件</li>
   <li>三大支柱深入：trace/observation/score</li>
   <li>项目全景地图（monorepo 与窄腰）</li>
+  <li>一条 trace 的一生·鸟瞰</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -1411,6 +1412,197 @@ Turbo 会给每个任务的<strong>输入算一个指纹</strong>（源码 + 依
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>你自己的项目如果同时有“面向用户的服务”和“后台 worker”，你会把它们放一个仓还是分仓？参考 Langfuse 的窄腰，你会把哪些东西抽进一个共享层？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>一条 trace 的一生·鸟瞰</h1>
+
+<p class="lead">
+第一部分快收尾了。你已经知道<strong>数据长什么样</strong>（trace/observation/score）、<strong>代码住在哪</strong>（monorepo 与窄腰）、
+背后的<strong>设计哲学</strong>（宽事件）。这一课把它们<strong>串成一条线</strong>：跟着<strong>一条具体的 trace</strong>，从你应用里 <code>langfuse.trace(...)</code> 那一刻起，
+一路走到它出现在 UI 列表里、被你点开、甚至被自动评分。这是一支「<strong>预告片</strong>」——每一段路都标好了由后面哪一课详细展开，看完你就有了整张地图的<strong>行车路线</strong>。
+换句话说，前四课是把零件一个个拆给你看，这一课是把它们装回去、发动一次，让你看见数据<strong>真正流动起来</strong>的样子——有了这个动态全景，再去逐课深挖每个零件，就不会只见树木不见森林。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把一条 trace 的一生想成<strong>寄一件快递</strong>：你在家<strong>下单封箱</strong>（SDK 里创建 trace/observation）；快递员<strong>上门收件</strong>，扫码入袋
+  （公共 API 收下事件、快速入队）；包裹进了<strong>分拣中心</strong>排队，由后台<strong>分拣处理</strong>（worker 从队列取出、合并、算运费=成本）；
+  然后<strong>上架入库</strong>（写进 ClickHouse）；最后你打开手机<strong>查物流</strong>（在 UI 里看到这条 trace）。关键是——<strong>下单那一刻并不等于已入库</strong>，
+  中间隔着收件、分拣、上架几步，所以会有<strong>短暂的处理延迟</strong>。这正是 Langfuse 摄取「异步」的本质。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 360" role="img" aria-label="一条 trace 从 SDK 经 API、Redis 队列、worker 写入 ClickHouse，再由 repository、tRPC 回到 UI">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">写入：SDK → … → ClickHouse（上行）　读取：ClickHouse → … → UI（下行）</text>
+  <rect x="20" y="44" width="116" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">SDK / OTel</text><text x="78" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">你的应用</text>
+  <rect x="164" y="44" width="116" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="222" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">公共 API</text><text x="222" y="80" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · 校验入队</text>
+  <rect x="308" y="44" width="104" height="46" rx="9" fill="var(--red-soft)" stroke="var(--red)"/><text x="360" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Redis 队列</text><text x="360" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">BullMQ</text>
+  <rect x="440" y="44" width="116" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">worker</text><text x="498" y="80" text-anchor="middle" font-size="9" fill="var(--accent-ink)">合并·算成本</text>
+  <rect x="584" y="44" width="116" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="642" y="64" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="642" y="80" text-anchor="middle" font-size="9" fill="var(--muted)">宽事件表</text>
+  <line x1="136" y1="67" x2="162" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="162,67 153,62 153,72" fill="var(--faint)"/><text x="149" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L12</text>
+  <line x1="280" y1="67" x2="306" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="306,67 297,62 297,72" fill="var(--faint)"/><text x="293" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L14</text>
+  <line x1="412" y1="67" x2="438" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="438,67 429,62 429,72" fill="var(--faint)"/><text x="425" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L15</text>
+  <line x1="556" y1="67" x2="582" y2="67" stroke="var(--faint)" stroke-width="2"/><polygon points="582,67 573,62 573,72" fill="var(--faint)"/><text x="569" y="38" text-anchor="middle" font-size="8.5" fill="var(--blue)">L17</text>
+  <rect x="440" y="128" width="116" height="40" rx="9" fill="var(--panel)" stroke="var(--line)"/><text x="498" y="146" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">S3 / blob</text><text x="498" y="160" text-anchor="middle" font-size="8.5" fill="var(--muted)">事件日志·媒体 L19</text>
+  <line x1="498" y1="90" x2="498" y2="126" stroke="var(--faint)" stroke-width="1.6" stroke-dasharray="4 3"/><polygon points="498,126 493,117 503,117" fill="var(--faint)"/>
+  <line x1="642" y1="90" x2="642" y2="214" stroke="var(--purple)" stroke-width="1.8"/><polygon points="642,214 637,205 647,205" fill="var(--purple)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted)">— — — — — 数据已落库，下面是读取 — — — — —</text>
+  <rect x="584" y="218" width="116" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="642" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="642" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">同一张宽表</text>
+  <rect x="430" y="218" width="130" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">repository</text><text x="495" y="254" text-anchor="middle" font-size="9" fill="var(--accent-ink)">拼 SQL 查询 L22</text>
+  <rect x="270" y="218" width="130" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="335" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">tRPC</text><text x="335" y="254" text-anchor="middle" font-size="9" fill="var(--accent-ink)">类型安全 API L21</text>
+  <rect x="110" y="218" width="130" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="175" y="238" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">UI</text><text x="175" y="254" text-anchor="middle" font-size="9" fill="var(--muted)">列表·详情 L20·25</text>
+  <line x1="584" y1="241" x2="562" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="562,241 571,236 571,246" fill="var(--faint)"/>
+  <line x1="430" y1="241" x2="402" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="402,241 411,236 411,246" fill="var(--faint)"/>
+  <line x1="270" y1="241" x2="242" y2="241" stroke="var(--faint)" stroke-width="2"/><polygon points="242,241 251,236 251,246" fill="var(--faint)"/>
+  <text x="360" y="312" text-anchor="middle" font-size="10" fill="var(--faint)">上行写入异步（秒级延迟）· 下行读取实时（用户点一下就查）</text>
+</svg>
+<div class="figcap"><b>一条 trace 的完整旅程</b>：上半是<b>写入链路</b>（SDK→API→Redis→worker→ClickHouse，旁挂 S3），每段标了对应课号（第 12–19 课）；下半是<b>读取链路</b>（ClickHouse→repository→tRPC→UI，第 20–27 课）。两条链路在 ClickHouse 这张宽表上「碰头」：写入把数据放进去，读取把它取出来。</div>
+</div>
+
+<h2>上行 · 写：从 SDK 到 ClickHouse</h2>
+<p>先看包裹「寄出到入库」的全过程。它被刻意设计成<strong>异步</strong>的——API 只负责飞快地收下并入队，真正的重活交给 worker 慢慢做：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK 创建事件（第 6 课）</h4><p>你的应用调用 SDK 或发 OTel span，生成 trace-create / observation-create / score-create 等<strong>事件</strong>。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>公共 API 收件入队（第 12·14 课）</h4><p><code>web/src/pages/api/public/ingestion.ts</code> 鉴权、用 Zod 校验一批事件，然后<strong>快速塞进 Redis 队列</strong>就返回——不等处理完。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>worker 合并聚合（第 15 课）</h4><p><code>IngestionService</code> 从队列取出事件，<strong>从 S3 取这条记录的历史事件</strong>合并（同一个 observation 的多次 update 会合成一条），再决定最终长什么样。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>算 token 与成本（第 16 课）</h4><p>按模型名匹配定价表，把没上报的 usage/cost <strong>兜底算出来</strong>（还记得第 3 课的 provided vs computed 吗）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>ClickhouseWriter 批量写（第 17 课）</h4><p>把处理好的记录<strong>攒成批</strong>，一次性写进 ClickHouse 的 traces/observations/scores 表（ReplacingMergeTree 负责「同 id 后写覆盖先写」）。</p></div></div>
+</div>
+
+<p>这条链路里，<strong>S3 扮演了「事件原始底稿」的角色</strong>：每个进来的事件先落 S3，worker 合并时再回 S3 取历史。这样即使处理出错也能<strong>重放</strong>，
+而且让「同一条 observation 的多次更新」能被正确合并——这些细节在第 15–17 课会逐一拆开。现在你只需记住这条主干：<strong>收件 → 入队 → 合并 → 算钱 → 入库</strong>。</p>
+
+<p>这里要特别点出第 3 步「<strong>合并</strong>」为什么不可省。原因是：SDK 上报一个 observation 往往<strong>不是一次性</strong>的。比如一次 LLM 调用，SDK 可能先发一个
+「observation-create」说「我开始了，模型是 gpt-4o」，等调用返回后再发一个「observation-update」补上「输出是 X、用了 1240 token」。这两条事件<strong>分别到达</strong>，
+worker 必须把它们<strong>合并成同一条最终记录</strong>。这就是为什么要回 S3 取「这个 id 的历史事件」——把先后到达的碎片拼成完整的一行。理解了这一点，你就明白第 3 课说的
+「observation 靠 parentObservationId 乱序到达也没关系」是怎么在摄取里真正实现的：<strong>事件可以分多次、乱序到，worker 负责把它们收敛成一致的最终态。</strong></p>
+
+
+<h2>下行 · 读：从 UI 回到 ClickHouse</h2>
+<p>数据落库后，你在浏览器里看到它，走的是另一条更<strong>实时</strong>的链路——你点一下，它就去查：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>UI 发起查询（第 20 课）</h4><p>你打开 trace 列表页，前端通过 <strong>tRPC</strong> 的 hook（如 <code>api.traces.all.useQuery</code>）发起一次类型安全的请求。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>tRPC 鉴权分派（第 21 课）</h4><p>请求进 <code>web/src/server/api</code>，中间件先校验「你属于这个项目吗」（RBAC），再分派到对应的路由处理函数。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>仓储层拼查询（第 22·23 课）</h4><p>路由调用 <code>packages/shared/src/server/repositories</code> 里的函数，把你的过滤条件翻译成 <strong>ClickHouse SQL</strong>（带时间窗口、只选需要的列）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>ClickHouse 返回，UI 渲染（第 24·25 课）</h4><p>列表页只取<strong>紧凑的窄字段</strong>（快）；你点开某条 trace 时，才去拉完整的 input/output 大字段并拼出观测树。</p></div></div>
+</div>
+
+<p>注意写入和读取在 ClickHouse 这张表上<strong>会师</strong>：写入链路负责把宽事件放进去，读取链路负责用各种姿势把它查出来。第 2 课说的「列表只读窄字段、详情才读大字段」，
+正是在这条读取链路上落地的。</p>
+
+<h2>为什么要把「收件」和「处理」分开</h2>
+<p>这条链路最妙的一步，是 API「<strong>收下就返回</strong>」。它把整件事掰成了「快路」和「慢路」两半：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="API 收下事件后毫秒级返回给应用（快路），同时把事件入队由 worker 在后台批量处理（慢路）">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">快路：API 毫秒级返回　慢路：worker 后台慢慢处理</text>
+  <rect x="30" y="80" width="120" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="90" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">你的应用</text><text x="90" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">等不起</text>
+  <rect x="220" y="80" width="120" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="280" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">公共 API</text><text x="280" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">只校验+入队</text>
+  <line x1="150" y1="96" x2="218" y2="96" stroke="var(--faint)" stroke-width="1.8"/><polygon points="218,96 209,91 209,101" fill="var(--faint)"/><text x="184" y="88" text-anchor="middle" font-size="8.5" fill="var(--faint)">事件</text>
+  <line x1="218" y1="120" x2="152" y2="120" stroke="var(--accent)" stroke-width="2"/><polygon points="152,120 161,115 161,125" fill="var(--accent)"/><text x="185" y="138" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">毫秒级 200 OK（快路）</text>
+  <rect x="410" y="80" width="110" height="56" rx="10" fill="var(--red-soft)" stroke="var(--red)"/><text x="465" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Redis 队列</text><text x="465" y="122" text-anchor="middle" font-size="9" fill="var(--muted)">蓄水池</text>
+  <rect x="580" y="80" width="110" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="635" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">worker ×N</text><text x="635" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">批量·可重试</text>
+  <line x1="340" y1="108" x2="408" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="408,108 399,103 399,113" fill="var(--faint)"/>
+  <line x1="520" y1="108" x2="578" y2="108" stroke="var(--faint)" stroke-width="1.8"/><polygon points="578,108 569,103 569,113" fill="var(--faint)"/>
+  <text x="465" y="170" text-anchor="middle" font-size="9.5" fill="var(--faint)">慢路：洪峰先在队列排队，worker 按自己节奏消费、扛不住就加机器</text>
+</svg>
+<div class="figcap"><b>一刀切开</b>：应用和 API 之间是<b>快路</b>（毫秒级返回，几乎不可能慢）；API 之后是<b>慢路</b>（入队 → worker 后台批量处理）。队列像蓄水池，洪峰来了先排队，worker 扛不住就横向加机器。</div>
+</div>
+
+<p>想想看：一个高流量的 LLM 应用，每秒可能产生成千上万条 observation。如果 API 必须<strong>同步地</strong>合并、算成本、写 ClickHouse 才返回，那么两件坏事会发生：
+其一，你的应用每次调用都要<strong>多等</strong>这几百毫秒，平白被监控工具拖慢；其二，一旦 ClickHouse 抖动或洪峰打满，API 就会<strong>超时、甚至把错误反弹给你的业务</strong>。
+把「收件」和「处理」一刀切开，API 就退化成一个极轻的「<strong>只管校验 + 入队</strong>」端点——它几乎不可能慢，也几乎不可能因为下游问题而连累你的应用。</p>
+
+<p>队列则像一个<strong>蓄水池</strong>：洪峰来了先在队列里排队，worker 按自己的节奏<strong>批量</strong>消费，扛不住就<strong>加 worker</strong>（横向扩容）。
+Langfuse 甚至把摄取队列分成<strong>主/次两条</strong>（第 14 课），把高吞吐的大项目和普通项目隔开，避免一个项目的洪峰拖垮所有人。
+代价就是后面要说的那点延迟——但只要把 Δ 压到秒级，用户几乎无感。这也是为什么几乎所有高吞吐遥测系统（不只是 Langfuse）都长成这个样子：
+<strong>轻量接收 + 异步处理 + 批量落库</strong>。看懂了这条主干，你就能预判后面第三部分每一课在解决什么问题。</p>
+
+<h2>异步的代价：最终一致</h2>
+<p>把上下行拼起来，有一个你必须心里有数的事实：<strong>从 SDK 发出，到 UI 能查到，中间隔着队列处理，有秒级延迟</strong>。这叫<strong>最终一致</strong>。</p>
+
+<p>「最终一致」在实践中意味着什么？意味着你刚在应用里跑完一次调用、马上切到 Langfuse 界面刷新，<strong>可能还看不到它</strong>——再等一两秒、刷新一下，它就出现了。
+这对绝大多数可观测场景完全够用：你是<strong>事后</strong>来排查、来看板、来评估的，差几秒无所谓。但它也提醒你两件事：第一，<strong>别拿 Langfuse 当强一致的业务数据库</strong>——
+它是遥测系统，不保证「写完立刻可读」；第二，如果你写自动化测试去验证「埋点对不对」，要记得<strong>给摄取留出处理时间</strong>，否则会误判成「数据没上来」。
+理解这条边界，你就不会对那点延迟感到意外，反而会欣赏它背后「<strong>永不拖累业务</strong>」的取舍。</p>
+
+<div class="timeline">
+  <div class="lane"><span class="lane-label">t0</span><span class="tslot now">SDK 发出事件</span><span class="tslot">API 入队（毫秒级返回）</span></div>
+  <div class="lane"><span class="lane-label">t0 + Δ</span><span class="tslot span">worker 排队 → 合并 → 算成本 → 写 ClickHouse</span></div>
+  <div class="lane"><span class="lane-label">t0 + Δ′</span><span class="tslot now">UI 才能查到这条 trace</span></div>
+</div>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么宁可有这点延迟，也要异步？</strong> 因为摄取要扛<strong>极高的写入吞吐</strong>，而你的应用<strong>等不起</strong>。如果 API 同步地做完合并、算成本、写库才返回，
+  你的每次 LLM 调用都会被 Langfuse 拖慢、还可能因为下游抖动而失败。异步把「收件」和「处理」解耦：API 永远<strong>毫秒级返回</strong>、几乎不可能拖累你的应用；
+  worker 则能<strong>批量、可重试、按队列扩容</strong>地消化洪峰。代价就是那点处理延迟——而第 2 课提到的「保留近实时调试」原则，要求把这个 Δ 压到秒级，
+  让可观测性依然「几乎实时」。<strong>用一点延迟，换一个永不拖累业务、又扛得住洪峰的摄取层。</strong>
+这套「轻接收 + 异步处理」的取舍，会在第三部分被你反复看到——它不是某个模块的小聪明，而是贯穿整条摄取链路的指导思想。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点 · 也是第一部分小结</div>
+  <ul>
+    <li>一条 trace 的一生：<strong>SDK → 公共 API（入队）→ Redis → worker（合并·算成本）→ ClickHouse</strong>（写），再 <strong>UI → tRPC → repository → ClickHouse</strong>（读）。</li>
+    <li><strong>写入异步</strong>（秒级延迟、最终一致，刚埋点要稍等才可见），<strong>读取实时</strong>；两条链路在 ClickHouse 宽表上会师。</li>
+    <li><strong>S3</strong> 存事件原始底稿，支撑合并与重放（出错可重来）；<strong>Redis</strong> 队列解耦收件与处理、并能分主次隔离大项目。</li>
+    <li>每一段路都对应后面一课：写入是第三部分（第 12–19 课），读取是第四部分（第 20–27 课）。</li>
+    <li>第一部分到此结束：你已经有了<strong>数据模型 + 仓库地图 + 设计哲学 + 端到端链路</strong>这张总图，接下来就从第二部分的「前置基础」开始逐段深入。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的摄取为什么是异步的（API 收下就入队返回，由 worker 后台处理），而不是 API 同步写完 ClickHouse 才返回？</div>
+  <ol class="opts">
+    <li>为了让 API 永远毫秒级返回、几乎不拖累你的应用，并能用队列做缓冲：洪峰先排队、worker 批量可重试地消费、扛不住就横向扩容</li>
+    <li>为了故意增加延迟以省钱</li>
+    <li>因为 API 不能访问数据库</li>
+    <li>因为 ClickHouse 不支持同步写入</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。若 API 同步合并/算成本/写库，你每次 LLM 调用都被拖慢，且下游一抖动 API 就超时甚至把错误反弹给业务。异步把“收件”和“处理”解耦：API 极轻、几乎不可能慢；worker 批量、可重试、可扩容地消化洪峰。代价是秒级延迟（最终一致）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. worker 处理时为什么要回 S3 取“这个 id 的历史事件”再合并？</div>
+  <ol class="opts">
+    <li>因为 ClickHouse 会丢数据，要从 S3 恢复</li>
+    <li>因为合并必须在前端做</li>
+    <li>因为 S3 比队列快</li>
+    <li>因为一个 observation 常被分多次、可能乱序地上报（先 create 再 update），worker 必须把这些碎片合并成一条一致的最终记录</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。SDK 上报往往不是一次性的：先发 create（我开始了），调用返回后再发 update（输出/用量）。两条分别到达，worker 回 S3 取历史把碎片拼成完整一行。这也支撑了“事件可乱序到达、worker 收敛成最终态”，正是第 3 课 parentObservationId 设计的运行时体现。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. “最终一致”对使用 Langfuse 意味着什么实践注意点？</div>
+  <ol class="opts">
+    <li>数据永远不会出现</li>
+    <li>刚埋点的数据可能要等一两秒才在 UI 出现；别把它当强一致业务库，写自动化测试验证埋点时要给摄取留处理时间</li>
+    <li>trace 会随机丢失</li>
+    <li>必须手动刷新数据库连接</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。异步摄取有秒级处理延迟，对“事后排查/看板/评估”完全够用，但意味着“写完不一定立刻可读”。所以别拿它当强一致库；自动化验证埋点时要等摄取处理完，否则会误判“数据没上来”。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>回顾第一部分：用你自己的话，把“一条 trace 的一生”讲给一个没用过 Langfuse 的同事听（从 SDK 到 UI）。你觉得哪一段最容易被忽略、但其实最关键？</li>
   </ul>
 </div>
 </div>

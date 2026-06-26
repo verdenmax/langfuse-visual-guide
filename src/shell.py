@@ -57,6 +57,8 @@ PAGES = [
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
     ("04-project-map-monorepo.html", "项目全景地图（monorepo 与窄腰）", "Project map (monorepo & narrow waist)",
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
+    ("05-life-of-a-trace.html", "一条 trace 的一生·鸟瞰", "Life of a trace (bird's-eye)",
+     "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
 ]
 
 
@@ -548,6 +550,8 @@ SUBTITLES = {
                                    "thin trace; heavy observation (10 types, tree); score 2-D; three CH tables"),
     "04-project-map-monorepo.html": ("monorepo · 四工作区 · 窄腰依赖 · Turbo 编排 · 高频目录速查",
                                      "monorepo; four workspaces; narrow-waist deps; Turbo; hot-dir cheat-sheet"),
+    "05-life-of-a-trace.html": ("写：SDK→API→队列→worker→CH · 读：UI→tRPC→仓储→CH · 异步·最终一致",
+                                "write: SDK→API→queue→worker→CH; read: UI→tRPC→repo→CH; async; eventual consistency"),
 }
 
 
