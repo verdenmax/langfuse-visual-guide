@@ -62,4 +62,5 @@ CONTENT = {
     "44-automations-webhooks.html": part9.LESSON_44,
     "45-slack-and-notifications.html": part9.LESSON_45,
     "46-analytics-integrations.html": part9.LESSON_46,
+    "47-batch-exports-and-actions.html": part9.LESSON_47,
 }

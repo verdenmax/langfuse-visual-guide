@@ -840,3 +840,278 @@ _EN46.append(r"""
 """)
 
 LESSON_46 = {"zh": "\n".join(_ZH46), "en": "\n".join(_EN46)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L47 · 批量导出与批量操作 / Batch exports & actions
+# ══════════════════════════════════════════════════════════════════════
+_ZH47 = []
+_EN47 = []
+
+# (L47 sections below)
+
+_ZH47.append(r"""
+<p class="lead">
+你在 trace 列表里筛出「过去 7 天、出错的、来自某用户的」5 万条 trace，想<strong>一次性导成 CSV</strong>，或者<strong>一键全删</strong>。这种「对一票筛出来的数据，整体干一件事」的需求，就是这一课的主角：<strong>批量导出（Batch Export）</strong>和<strong>批量操作（Batch Action）</strong>。它俩看着不同——一个是只读地产出文件、一个是危险地批量改数据——骨子里却共享同一套工程姿态：都基于一个<strong>可能命中海量行的查询/过滤条件</strong>，都因为<strong>耗时太长不能卡在请求里</strong>而扔进队列异步跑，都用<strong>流式 + 分块</strong>避免一次性把几万行塞进内存。
+作为「自动化与集成」这一部分的收官课，它把前面攒下的<strong>流式导出（第46课）、任务状态机（第30/35课）、签名 URL 与对象存储（第46课）</strong>又一次组装起来，还会讲清楚一个批量改数据时绕不开的硬约束：<strong>幂等</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  想象一个<strong>巨型图书馆</strong>，你下了一道指令：「把所有 2020 年前、关于天文的、已破损的书<strong>找出来</strong>」。接下来要么<strong>导出</strong>（把这些书的清单<strong>誊抄成一份目录</strong>交给你——只读，产出一份文件），要么<strong>操作</strong>（把这些书<strong>全部销毁或搬到别的馆</strong>——动真格地改变馆藏）。
+  这么大的活，图书管理员不会让你在前台<strong>干等着</strong>（耗时太长 → 交给后台慢慢办，办完通知你 = <strong>队列异步</strong>）；也不会<strong>把几万本书一次搬到桌上</strong>（桌子塌 = 内存爆 → <strong>一推车一推车地搬</strong> = 流式分块）。而「销毁/搬运」这种改变馆藏的操作还有个讲究：万一中途断电了要<strong>重来</strong>，已经销毁的书可不能被「再销毁一次」搞出乱子——所以每一步都得设计成<strong>「重复做也不出错」</strong>（幂等）。导出那份目录则没这顾虑（誊抄两遍只是浪费纸）。这一课讲的，就是图书馆怎么把这两类「批量大活」办得又稳又安全。
+</div>
+""")
+
+# (L47 sec1 below)
+
+_ZH47.append(r"""
+<h2>一个查询，两条路：只读导出 vs 改数据操作</h2>
+<p>两者都从同一个起点出发：一个<strong>过滤/查询条件</strong>（和第 23 课列表筛选同源），它可能命中成千上万行。然后分叉：<strong>批量导出</strong>是<strong>只读</strong>的——把命中的行流式查出、转成 CSV/JSON、写进对象存储、给你一个<strong>限时下载链接</strong>。<strong>批量操作</strong>是<strong>会改数据</strong>的——把命中的行的 id 流式取出、<strong>每 1000 个一块</strong>地执行删除 / 加进标注队列 / 加进数据集 / 重新评估。共同点是：都<strong>耗时</strong>（所以走队列异步、有状态机可追踪）、都<strong>数据量大</strong>（所以流式 + 分块、绝不全装内存）。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="一个查询两条路：过滤条件命中海量行，分叉成批量导出(只读：流式查→转CSV/JSON→写对象存储→限时签名URL→邮件)和批量操作(改数据：流式取id→每1000一块→删除/加队列/加数据集/重评)，两者都走队列异步、有状态机">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">同一个过滤条件，命中海量行 → 分两条路处理</text>
+  <rect x="40" y="100" width="150" height="60" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="115" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">过滤/查询条件</text><text x="115" y="140" text-anchor="middle" font-size="6.4" fill="var(--muted)">第23课同款筛选</text><text x="115" y="152" text-anchor="middle" font-size="6.2" fill="var(--faint)">可能命中数万行</text>
+  <rect x="270" y="44" width="190" height="74" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)" stroke-width="2"/><text x="365" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">批量导出（只读）</text><text x="365" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">流式查 → 转 CSV/JSON</text><text x="365" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ 写对象存储</text><text x="365" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ 限时签名URL → 邮件</text>
+  <rect x="270" y="142" width="190" height="84" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">批量操作（改数据）</text><text x="365" y="178" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">流式取 id → 每 1000 一块</text><text x="365" y="190" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">删除 / 加标注队列 / 加数据集</text><text x="365" y="202" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">/ 重新评估（eval-create）</text><text x="365" y="216" text-anchor="middle" font-size="6.0" fill="var(--accent)">⚠ 必须幂等（重试会重跑已处理块）</text>
+  <rect x="540" y="92" width="160" height="76" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="620" y="112" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">共同骨架</text><text x="620" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">耗时 → 队列异步</text><text x="620" y="140" text-anchor="middle" font-size="6.2" fill="var(--muted)">有状态机可追踪</text><text x="620" y="152" text-anchor="middle" font-size="6.2" fill="var(--muted)">量大 → 流式 + 分块</text><text x="620" y="162" text-anchor="middle" font-size="6.0" fill="var(--faint)">绝不全装内存</text>
+  <line x1="190" y1="120" x2="268" y2="90" stroke="var(--teal)" stroke-width="1.4"/><polygon points="268,90 259,90 263,98" fill="var(--teal)"/>
+  <line x1="190" y1="140" x2="268" y2="175" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,175 259,171 260,179" fill="var(--accent)"/>
+  <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>同源分叉</b>：批量导出 <code>worker/src/features/batchExport/handleBatchExportJob.ts</code>（只读产文件）；批量操作 <code>worker/src/features/batchAction/handleBatchActionJob.ts</code>（<code>CHUNK_SIZE=1000</code>，switch 分发到 trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create 等处理器）。两者都基于第 23 课的过滤条件、都走 BullMQ 队列。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>维度</th><th>批量导出 Batch Export</th><th>批量操作 Batch Action</th></tr></thead>
+  <tbody>
+    <tr><td>本质</td><td><b>只读</b>：产出一份文件</td><td><b>改数据</b>：删除/修改海量行</td></tr>
+    <tr><td>产物</td><td>对象存储里的 CSV/JSON + 限时签名 URL（邮件发你）</td><td>无文件；副作用落在数据上</td></tr>
+    <tr><td>大数据策略</td><td>流式 pipeline（逐行转格式写出）</td><td>流式取 id + 每 1000 一块处理</td></tr>
+    <tr><td>关键约束</td><td>签名 URL 限时过期（不长期公开）</td><td><b>必须幂等</b>（重试会重跑已处理的块）</td></tr>
+    <tr><td>状态机</td><td>QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED</td><td>同样有 BatchActionStatus 追踪</td></tr>
+  </tbody>
+</table>
+""")
+
+# (L47 sec2 below)
+
+_ZH47.append(r"""
+<h2>批量导出：流式 → 文件 → 限时链接 → 邮件</h2>
+<p>导出任务是一台<strong>状态机</strong>（<code>BatchExportStatus</code>：QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED），和第 30 课 eval 的 JobExecution、第 35 课数据集运行同根同源。一进来先<strong>校验状态</strong>（已取消就跳过、非 QUEUED 也跳过——幂等防重复执行），置为 PROCESSING。核心是<strong>流式管道</strong>：<code>getDatabaseReadStreamPaginated</code> 分页读出命中的行，<code>pipeline</code> 一行行经 <code>streamTransformations[format]</code> 转成 CSV/JSON，<code>uploadFileBuffered</code> 分片传进对象存储（和第 46 课同一个 StorageService）。传完生成一个<strong>限时签名 URL</strong>（<code>getSignedUrl(expiresInSeconds)</code>），把状态置 COMPLETED、记下 <code>url</code> 和 <code>expiresAt</code>，最后<strong>发邮件</strong>把下载链接送到用户邮箱。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>校验状态 + 置 PROCESSING</h4><p>已 CANCELLED → 跳过；非 QUEUED → 跳过（防同一任务被重复执行）。否则 <code>update({status: PROCESSING})</code> 占住它。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>流式查 + 转格式</h4><p><code>getDatabaseReadStreamPaginated</code> 分页读命中行；<code>pipeline</code> 逐行经 <code>streamTransformations[format]</code> 转 CSV/JSON——内存恒定，几万行也不撑爆。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>传对象存储 + 签名 URL</h4><p><code>uploadFileBuffered</code> 分片传进 S3/GCS；<code>getSignedUrl(expiresInSeconds)</code> 生成<strong>限时</strong>下载链接——不长期公开数据。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>置 COMPLETED + 发邮件</h4><p><code>update({status: COMPLETED, url, finishedAt, expiresAt})</code>；<code>sendBatchExportSuccessEmail</code> 把 downloadLink 发到用户邮箱。</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/batchExport/handleBatchExportJob.ts</span><span class="ln">流式导出 + 限时链接</span></div>
+  <pre class="code"><span class="cm">// 1) 状态机校验：幂等防重复执行</span>
+<span class="kw">if</span> (jobDetails.status === BatchExportStatus.CANCELLED) <span class="kw">return</span>;       <span class="cm">// 已取消，跳过</span>
+<span class="kw">if</span> (jobDetails.status !== BatchExportStatus.QUEUED)   <span class="kw">return</span>;       <span class="cm">// 已被处理，跳过</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: { status: BatchExportStatus.PROCESSING } });
+
+<span class="cm">// 2) 流式管道：分页读 → 逐行转 CSV/JSON（内存恒定）</span>
+<span class="kw">const</span> fileStream = <span class="fn">pipeline</span>(
+  <span class="kw">await</span> <span class="fn">getDatabaseReadStreamPaginated</span>({ ...streamParams }),
+  streamTransformations[jobDetails.format](),                  <span class="cm">// CSV / JSON / JSONL</span>
+);
+
+<span class="cm">// 3) 传对象存储 → 生成限时签名 URL</span>
+<span class="kw">await</span> storageService.<span class="fn">uploadFileBuffered</span>({ fileName, data: fileStream, ... });
+<span class="kw">const</span> signedUrl = <span class="kw">await</span> storageService.<span class="fn">getSignedUrl</span>(fileName, expiresInSeconds);
+
+<span class="cm">// 4) 置完成 + 记过期时间 + 发邮件</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: {
+  status: BatchExportStatus.COMPLETED, url: signedUrl,
+  finishedAt: <span class="kw">new</span> Date(), expiresAt: <span class="kw">new</span> Date(Date.now() + expiresInSeconds*<span class="st">1000</span>) } });
+<span class="kw">await</span> <span class="fn">sendBatchExportSuccessEmail</span>({ receiverEmail: user.email, downloadLink: signedUrl, ... });</pre>
+</div>
+""")
+
+# (L47 sec3 below)
+
+_ZH47.append(r"""
+<h2>批量操作：分块 1000，且必须幂等</h2>
+<p>批量操作要<strong>改</strong>数据，分块流程是：用过滤条件 + 一个 <code>cutoffCreatedAt</code> 截止时间（<strong>快照边界</strong>——任务启动后才新建的行不算进来，目标集合稳定）流式取出命中行的 id，攒够 <strong>1000 个一块</strong>，交给 <code>processActionChunk</code> 按 actionId 分发：<code>trace-delete</code> 删 trace、<code>*-add-to-annotation-queue</code> 加进第 32 课的标注队列、<code>dataset-delete</code> 删数据集、<code>eval-create</code> 给历史数据补跑第 29 课的评估……源码在这里留了一句<strong>醒目的红线注释</strong>：「所有操作必须幂等。任务失败会重试，重试时已处理过的块可能被再处理一遍。」这不是建议，是<strong>硬约束</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="批量操作分块处理：过滤+cutoffCreatedAt快照边界流式取命中id，攒够1000一块交processActionChunk按actionId分发到trace-delete/add-to-queue/dataset-delete/eval-create处理器；红线注释：所有操作必须幂等，重试会重跑已处理块">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">流式取 id → 每 1000 一块 → 分发处理（且必须幂等）</text>
+  <rect x="30" y="56" width="140" height="66" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="100" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">流式取命中 id</text><text x="100" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">过滤 + cutoffCreatedAt</text><text x="100" y="104" text-anchor="middle" font-size="6.0" fill="var(--faint)">快照边界：固定目标集</text><text x="100" y="115" text-anchor="middle" font-size="6.0" fill="var(--faint)">不卷入任务后新建的行</text>
+  <rect x="205" y="50" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">块 1·1000</text>
+  <rect x="205" y="80" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="96" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">块 2·1000</text>
+  <rect x="205" y="110" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="126" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">块 3 …</text>
+  <rect x="315" y="50" width="150" height="84" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="390" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">processActionChunk</text><text x="390" y="82" text-anchor="middle" font-size="6.0" fill="var(--muted)">switch(actionId)</text><text x="390" y="94" text-anchor="middle" font-size="6.0" fill="var(--muted)">逐块分发</text><text x="390" y="108" text-anchor="middle" font-size="5.8" fill="var(--faint)">CHUNK_SIZE=1000：保护</text><text x="390" y="118" text-anchor="middle" font-size="5.8" fill="var(--faint)">数据库不被一次性巨量冲击</text>
+  <rect x="500" y="40" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="55" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace-delete（删 trace）</text>
+  <rect x="500" y="66" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="81" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">*-add-to-annotation-queue（第32课）</text>
+  <rect x="500" y="92" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="107" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">dataset-delete / add-to-dataset</text>
+  <rect x="500" y="118" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="133" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">eval-create（补跑第29课评估）</text>
+  <line x1="170" y1="89" x2="203" y2="70" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="92" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="120" stroke="var(--blue)" stroke-width="1.2"/>
+  <line x1="275" y1="92" x2="313" y2="92" stroke="var(--accent)" stroke-width="1.3"/><polygon points="313,92 304,88 304,96" fill="var(--accent)"/>
+  <line x1="465" y1="92" x2="498" y2="80" stroke="var(--faint)" stroke-width="1"/>
+  <rect x="120" y="160" width="480" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⚠ 红线：所有操作必须幂等</text><text x="360" y="196" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">任务失败会整体重试 → 已处理过的块可能被再跑一遍</text><text x="360" y="208" text-anchor="middle" font-size="6.6" fill="var(--muted)">所以「删一个已删的」「加一个已加的」都不能报错或副作用翻倍</text>
+</svg>
+<div class="figcap"><b>分块 + 幂等</b>：<code>handleBatchActionJob.ts:46</code> <code>CHUNK_SIZE=1000</code>；<code>:61 processActionChunk</code> switch 分发（trace-delete / *-add-to-annotation-queue / score-delete / dataset-delete / eval-create）；<code>:57-60</code> 的注释明确「所有操作必须幂等……重试时已处理块可能被再处理」。<code>cutoffCreatedAt</code> 作快照边界固定目标集合。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">取数</span><span class="name">流式 + 快照边界</span></div><div class="ld">用过滤条件 + <code>cutoffCreatedAt</code> 流式取命中行的 id。<code>cutoffCreatedAt</code> 是关键：把目标集合<strong>钉死在任务启动那一刻</strong>，任务跑的几分钟里新写入的行不会被卷进来，避免「边删边新增、永远删不完」。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">分块</span><span class="name">CHUNK_SIZE = 1000</span></div><div class="ld">不一次性对几万行下手，而是攒 1000 个 id 一块、逐块处理。既<strong>保护数据库</strong>不被一条巨型语句冲击，也让失败时的<strong>重试粒度</strong>停在「块」而非「整个任务从零再来」。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">铁律</span><span class="name">幂等（idempotent）</span></div><div class="ld">队列任务失败会<strong>整体重试</strong>，重试时前面已成功的块会<strong>被再跑一遍</strong>。所以每种操作都必须「重复执行不出错、副作用不翻倍」：删一个已删的 = 静默成功，加一个已在队列里的 = 不重复加。这是批量改数据<strong>绕不过</strong>的硬约束。</div></div>
+</div>
+""")
+
+_ZH47.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么批量操作「必须幂等」是一条铁律，而不是「尽量做到」？</strong> 因为它和「队列会重试」这条现实<strong>正面相撞</strong>。一个删 5 万行的任务，分成 50 块跑，假设跑到第 30 块时 worker 崩了——BullMQ 会把<strong>整个任务</strong>重新派发（它不知道你内部跑到了第几块），于是前 29 块<strong>会被再执行一遍</strong>。如果「删除」不是幂等的（比如删一个不存在的 id 就抛异常），重试会直接失败、任务永远卡死；如果「加入队列」不是幂等的，同一批 trace 会被<strong>加两次</strong>。幂等不是锦上添花，而是「<strong>在一个会重试的系统里，正确性的前提</strong>」。源码作者把这句话写成醒目注释顶在函数上，就是在反复提醒每一个未来改这里的人：你写的每个 action，都活在「可能被重复调用」的世界里。这与第 43 课计量的「恰好一次」、第 30 课 eval 的去重，是同一种对「分布式世界不可靠」的清醒。<br><br>
+  <strong>为什么导出给的是「限时签名 URL」，而不是一个永久公开的下载地址？</strong> 因为导出的文件里往往是<strong>敏感数据</strong>（用户的 trace、输入输出、可能含 PII）。如果生成一个永久公开链接，它一旦被转发、被日志记录、被缓存，就等于把这批数据<strong>永久泄露</strong>到了一个谁拿到链接谁就能下载的地方。签名 URL 的设计是「<strong>临时授权</strong>」：链接里带着加密签名和过期时间，<code>expiresAt</code> 一到就自动失效。再配合 BatchExport 记录里的 <code>expiresAt</code>，平台对「这份导出还能不能下」始终有据可查。<strong>对敏感数据的访问，默认应该是有时限的、可收回的，而不是一次给出、永久敞开。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点（兼 Part 9 收官）</div>
+  <ul>
+    <li><strong>一个查询，两条路</strong>：批量导出（只读，产文件）与批量操作（改数据，删/加队列/加数据集/重评）都基于第 23 课的过滤条件，都因耗时长而走队列异步、有状态机追踪，都用流式 + 分块避免内存爆。</li>
+    <li><strong>批量导出 = 流式 → 文件 → 限时链接 → 邮件</strong>：<code>BatchExportStatus</code> 状态机（QUEUED→PROCESSING→COMPLETED）；<code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> 转 CSV/JSON；<code>uploadFileBuffered</code> 传对象存储；<code>getSignedUrl</code> 给<strong>限时</strong>下载链接；记 <code>expiresAt</code> 后发邮件。</li>
+    <li><strong>批量操作 = 分块 1000 + 幂等</strong>：<code>cutoffCreatedAt</code> 快照边界固定目标集；<code>CHUNK_SIZE=1000</code> 保护 DB、细化重试粒度；<code>processActionChunk</code> 按 actionId 分发（trace-delete / 加标注队列 / dataset-delete / eval-create）。</li>
+    <li><strong>幂等是铁律</strong>：队列失败会整体重试、已处理块会被重跑，所以每个 action 必须「重复执行不出错、副作用不翻倍」。这是分布式重试系统里正确性的前提，与第 43 课「恰好一次」、第 30 课去重同源。</li>
+    <li><strong>限时签名 URL</strong>：导出含敏感数据，给<strong>带过期时间</strong>的临时授权链接而非永久公开地址——对敏感数据的访问默认应有时限、可收回。</li>
+    <li><strong>第九部分收官</strong>：自动化（L44 webhook/SSRF）→ Slack（L45）→ 分析集成（L46 fan-out/增量/流式）→ 批量导出与操作（L47）。一条主线：<strong>把平台的数据安全、可靠、可控地与外部世界连接</strong>。</li>
+  </ul>
+</div>
+""")
+
+_EN47.append(r"""
+<p class="lead">
+In the trace list you filter down to "the past 7 days, errored, from a certain user" — 50,000 traces — and want to <strong>export them all to CSV</strong> in one go, or <strong>delete them all</strong> with one click. This "do one thing to a whole batch of filtered data" need is this lesson's lead: <strong>Batch Export</strong> and <strong>Batch Action</strong>. They look different — one read-only produces a file, the other dangerously mutates data in bulk — but at heart they share one engineering posture: both built on a <strong>query/filter that may match a huge number of rows</strong>, both thrown onto a queue to run async because they're <strong>too slow to block a request</strong>, both using <strong>streaming + chunking</strong> to avoid stuffing tens of thousands of rows into memory at once.
+As the closing lesson of "Automation & Integrations," it once again assembles the <strong>streaming export (Lesson 46), job state machine (Lessons 30/35), signed URLs and object storage (Lesson 46)</strong> accumulated earlier, and spells out a hard constraint unavoidable when mutating data in bulk: <strong>idempotency</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a <strong>giant library</strong> where you issue an order: "<strong>find</strong> all books before 2020, about astronomy, that are damaged." Then either <strong>export</strong> (copy a <strong>catalog</strong> of those books for you — read-only, produces a file) or <strong>act</strong> (<strong>destroy them all or move them to another branch</strong> — really changing the collection).
+  For such a big job, the librarian won't make you <strong>wait at the front desk</strong> (too slow → hand it to the back office, notify you when done = <strong>async queue</strong>); nor will they <strong>haul tens of thousands of books onto the desk at once</strong> (desk collapses = memory blows up → <strong>cart by cart</strong> = streaming chunks). And "destroy/move" — operations that change the collection — have a catch: if the power cuts mid-way and you must <strong>start over</strong>, an already-destroyed book mustn't cause chaos by being "destroyed again" — so every step must be designed to be <strong>"safe to repeat"</strong> (idempotent). Exporting a catalog has no such worry (copying twice just wastes paper). This lesson is about how the library does these two kinds of "bulk big jobs" steadily and safely.
+</div>
+
+<h2>One query, two paths: read-only export vs data-mutating action</h2>
+<p>Both start from the same point: a <strong>filter/query condition</strong> (same origin as Lesson 23's list filter) that may match thousands of rows. Then they fork: <strong>batch export</strong> is <strong>read-only</strong> — stream the matched rows out, transform to CSV/JSON, write to object storage, give you a <strong>time-limited download link</strong>. <strong>Batch action</strong> <strong>mutates data</strong> — stream out the matched rows' ids, <strong>1000 per chunk</strong>, executing delete / add-to-annotation-queue / add-to-dataset / re-evaluate. The commonality: both are <strong>slow</strong> (so async via queue, with a trackable state machine) and <strong>large</strong> (so streaming + chunking, never all-in-memory).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="One query two paths: a filter matches massive rows, forking into batch export (read-only: stream query→transform CSV/JSON→write object storage→time-limited signed URL→email) and batch action (mutate: stream ids→1000 per chunk→delete/add-to-queue/add-to-dataset/re-eval); both go async via queue with a state machine">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One filter, matching massive rows → handled in two paths</text>
+  <rect x="40" y="100" width="150" height="60" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="115" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">filter/query condition</text><text x="115" y="140" text-anchor="middle" font-size="6.4" fill="var(--muted)">same as Lesson 23 filter</text><text x="115" y="152" text-anchor="middle" font-size="6.2" fill="var(--faint)">may match tens of thousands</text>
+  <rect x="270" y="44" width="190" height="74" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)" stroke-width="2"/><text x="365" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">batch export (read-only)</text><text x="365" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">stream query → CSV/JSON</text><text x="365" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ write object storage</text><text x="365" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ time-limited signed URL → email</text>
+  <rect x="270" y="142" width="190" height="84" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">batch action (mutate)</text><text x="365" y="178" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">stream ids → 1000 per chunk</text><text x="365" y="190" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">delete / add-to-annotation-queue / dataset</text><text x="365" y="202" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">/ re-evaluate (eval-create)</text><text x="365" y="216" text-anchor="middle" font-size="6.0" fill="var(--accent)">⚠ must be idempotent (retry reruns processed chunks)</text>
+  <rect x="540" y="92" width="160" height="76" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="620" y="112" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">shared skeleton</text><text x="620" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">slow → async queue</text><text x="620" y="140" text-anchor="middle" font-size="6.2" fill="var(--muted)">trackable state machine</text><text x="620" y="152" text-anchor="middle" font-size="6.2" fill="var(--muted)">large → streaming + chunking</text><text x="620" y="162" text-anchor="middle" font-size="6.0" fill="var(--faint)">never all-in-memory</text>
+  <line x1="190" y1="120" x2="268" y2="90" stroke="var(--teal)" stroke-width="1.4"/><polygon points="268,90 259,90 263,98" fill="var(--teal)"/>
+  <line x1="190" y1="140" x2="268" y2="175" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,175 259,171 260,179" fill="var(--accent)"/>
+  <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on Lesson 23's filter, both via BullMQ queues.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>Dimension</th><th>Batch Export</th><th>Batch Action</th></tr></thead>
+  <tbody>
+    <tr><td>Essence</td><td><b>read-only</b>: produces a file</td><td><b>mutates data</b>: delete/modify massive rows</td></tr>
+    <tr><td>Output</td><td>CSV/JSON in object storage + time-limited signed URL (emailed to you)</td><td>no file; side effects land on the data</td></tr>
+    <tr><td>Big-data strategy</td><td>streaming pipeline (transform format row by row)</td><td>stream ids + process 1000 per chunk</td></tr>
+    <tr><td>Key constraint</td><td>signed URL expires (not public forever)</td><td><b>must be idempotent</b> (retry reruns processed chunks)</td></tr>
+    <tr><td>State machine</td><td>QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED</td><td>also tracked via BatchActionStatus</td></tr>
+  </tbody>
+</table>
+""")
+
+_EN47.append(r"""
+<h2>Batch export: stream → file → time-limited link → email</h2>
+<p>An export job is a <strong>state machine</strong> (<code>BatchExportStatus</code>: QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED), of the same lineage as Lesson 30's eval JobExecution and Lesson 35's dataset runs. On entry it first <strong>validates status</strong> (skip if CANCELLED, skip if not QUEUED — idempotent guard against re-execution), sets PROCESSING. The core is a <strong>streaming pipeline</strong>: <code>getDatabaseReadStreamPaginated</code> reads the matched rows by page, <code>pipeline</code> transforms them row by row through <code>streamTransformations[format]</code> into CSV/JSON, <code>uploadFileBuffered</code> multipart-uploads into object storage (the same StorageService as Lesson 46). After upload it generates a <strong>time-limited signed URL</strong> (<code>getSignedUrl(expiresInSeconds)</code>), sets status COMPLETED, records <code>url</code> and <code>expiresAt</code>, and finally <strong>emails</strong> the download link to the user.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Validate status + set PROCESSING</h4><p>CANCELLED → skip; not QUEUED → skip (guard against re-executing the same job). Otherwise <code>update({status: PROCESSING})</code> claims it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Stream query + transform format</h4><p><code>getDatabaseReadStreamPaginated</code> reads matched rows by page; <code>pipeline</code> transforms row by row through <code>streamTransformations[format]</code> into CSV/JSON — constant memory, no blowup at tens of thousands of rows.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Upload to object storage + signed URL</h4><p><code>uploadFileBuffered</code> multipart-uploads to S3/GCS; <code>getSignedUrl(expiresInSeconds)</code> generates a <strong>time-limited</strong> download link — data isn't public forever.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Set COMPLETED + email</h4><p><code>update({status: COMPLETED, url, finishedAt, expiresAt})</code>; <code>sendBatchExportSuccessEmail</code> sends the downloadLink to the user's inbox.</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/batchExport/handleBatchExportJob.ts</span><span class="ln">streaming export + time-limited link</span></div>
+  <pre class="code"><span class="cm">// 1) state-machine guard: idempotent against re-execution</span>
+<span class="kw">if</span> (jobDetails.status === BatchExportStatus.CANCELLED) <span class="kw">return</span>;       <span class="cm">// cancelled, skip</span>
+<span class="kw">if</span> (jobDetails.status !== BatchExportStatus.QUEUED)   <span class="kw">return</span>;       <span class="cm">// already handled, skip</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: { status: BatchExportStatus.PROCESSING } });
+
+<span class="cm">// 2) streaming pipeline: paginated read → transform to CSV/JSON row by row (constant memory)</span>
+<span class="kw">const</span> fileStream = <span class="fn">pipeline</span>(
+  <span class="kw">await</span> <span class="fn">getDatabaseReadStreamPaginated</span>({ ...streamParams }),
+  streamTransformations[jobDetails.format](),                  <span class="cm">// CSV / JSON / JSONL</span>
+);
+
+<span class="cm">// 3) upload to object storage → generate a time-limited signed URL</span>
+<span class="kw">await</span> storageService.<span class="fn">uploadFileBuffered</span>({ fileName, data: fileStream, ... });
+<span class="kw">const</span> signedUrl = <span class="kw">await</span> storageService.<span class="fn">getSignedUrl</span>(fileName, expiresInSeconds);
+
+<span class="cm">// 4) set completed + record expiry + send email</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: {
+  status: BatchExportStatus.COMPLETED, url: signedUrl,
+  finishedAt: <span class="kw">new</span> Date(), expiresAt: <span class="kw">new</span> Date(Date.now() + expiresInSeconds*<span class="st">1000</span>) } });
+<span class="kw">await</span> <span class="fn">sendBatchExportSuccessEmail</span>({ receiverEmail: user.email, downloadLink: signedUrl, ... });</pre>
+</div>
+""")
+
+_EN47.append(r"""
+<h2>Batch action: chunks of 1000, and must be idempotent</h2>
+<p>A batch action <strong>mutates</strong> data; the chunking flow is: using the filter + a <code>cutoffCreatedAt</code> cutoff time (a <strong>snapshot boundary</strong> — rows created after the job starts aren't included, so the target set is stable), stream out the matched rows' ids, accumulate <strong>1000 per chunk</strong>, and hand each to <code>processActionChunk</code>, which dispatches by actionId: <code>trace-delete</code> deletes traces, <code>*-add-to-annotation-queue</code> adds to Lesson 32's annotation queue, <code>dataset-delete</code> deletes datasets, <code>eval-create</code> backfills Lesson 29's evaluation on historic data… The source leaves a <strong>conspicuous red-line comment</strong> here: "All operations must be idempotent. The job is retried on failure, and on retry chunks already processed may be processed again." This isn't a suggestion — it's a <strong>hard constraint</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Batch action chunked processing: filter + cutoffCreatedAt snapshot boundary streams matched ids, accumulates 1000 per chunk to processActionChunk dispatched by actionId to trace-delete/add-to-queue/dataset-delete/eval-create processors; red-line comment: all operations must be idempotent, retry reruns processed chunks">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Stream ids → 1000 per chunk → dispatch (and must be idempotent)</text>
+  <rect x="30" y="56" width="140" height="66" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="100" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">stream matched ids</text><text x="100" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">filter + cutoffCreatedAt</text><text x="100" y="104" text-anchor="middle" font-size="6.0" fill="var(--faint)">snapshot boundary: fixed set</text><text x="100" y="115" text-anchor="middle" font-size="6.0" fill="var(--faint)">excludes rows born after job</text>
+  <rect x="205" y="50" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 1·1000</text>
+  <rect x="205" y="80" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="96" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 2·1000</text>
+  <rect x="205" y="110" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="126" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 3 …</text>
+  <rect x="315" y="50" width="150" height="84" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="390" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">processActionChunk</text><text x="390" y="82" text-anchor="middle" font-size="6.0" fill="var(--muted)">switch(actionId)</text><text x="390" y="94" text-anchor="middle" font-size="6.0" fill="var(--muted)">dispatch per chunk</text><text x="390" y="108" text-anchor="middle" font-size="5.8" fill="var(--faint)">CHUNK_SIZE=1000: protects</text><text x="390" y="118" text-anchor="middle" font-size="5.8" fill="var(--faint)">the DB from one giant hit</text>
+  <rect x="500" y="40" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="55" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace-delete (delete traces)</text>
+  <rect x="500" y="66" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="81" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">*-add-to-annotation-queue (Lesson 32)</text>
+  <rect x="500" y="92" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="107" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">dataset-delete / add-to-dataset</text>
+  <rect x="500" y="118" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="133" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">eval-create (backfill Lesson 29 eval)</text>
+  <line x1="170" y1="89" x2="203" y2="70" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="92" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="120" stroke="var(--blue)" stroke-width="1.2"/>
+  <line x1="275" y1="92" x2="313" y2="92" stroke="var(--accent)" stroke-width="1.3"/><polygon points="313,92 304,88 304,96" fill="var(--accent)"/>
+  <line x1="465" y1="92" x2="498" y2="80" stroke="var(--faint)" stroke-width="1"/>
+  <rect x="120" y="160" width="480" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⚠ red line: all operations must be idempotent</text><text x="360" y="196" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">job failure retries the whole thing → already-processed chunks may run again</text><text x="360" y="208" text-anchor="middle" font-size="6.6" fill="var(--muted)">so "delete an already-deleted" / "add an already-added" must not error or double side effects</text>
+</svg>
+<div class="figcap"><b>Chunking + idempotency</b>: <code>handleBatchActionJob.ts:46</code> <code>CHUNK_SIZE=1000</code>; <code>:61 processActionChunk</code> switch dispatches (trace-delete / *-add-to-annotation-queue / score-delete / dataset-delete / eval-create); the comment at <code>:57-60</code> states clearly "all operations must be idempotent… on retry processed chunks may be re-processed." <code>cutoffCreatedAt</code> serves as the snapshot boundary fixing the target set.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">fetch</span><span class="name">stream + snapshot boundary</span></div><div class="ld">Stream the matched rows' ids using the filter + <code>cutoffCreatedAt</code>. <code>cutoffCreatedAt</code> is key: it <strong>pins the target set to the instant the job started</strong>, so rows written during the job's few-minute run aren't swept in — avoiding "delete while new ones keep arriving, never finishing."</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">chunk</span><span class="name">CHUNK_SIZE = 1000</span></div><div class="ld">Rather than hitting tens of thousands of rows at once, accumulate 1000 ids per chunk and process chunk by chunk. This both <strong>protects the database</strong> from one giant statement and keeps the <strong>retry granularity</strong> at "chunk" rather than "the whole job from scratch."</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">iron rule</span><span class="name">idempotency</span></div><div class="ld">A failed queue job <strong>retries the whole thing</strong>, and on retry already-succeeded chunks <strong>run again</strong>. So every operation must "not error on repeat, not double side effects": deleting an already-deleted = silent success, adding an already-queued one = no duplicate add. This is the <strong>unavoidable</strong> hard constraint for bulk data mutation.</div></div>
+</div>
+""")
+
+_EN47.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why is "batch actions must be idempotent" an iron rule, not "try your best"?</strong> Because it <strong>collides head-on</strong> with the reality that "queues retry." A job deleting 50,000 rows runs in 50 chunks; say the worker crashes at chunk 30 — BullMQ re-dispatches the <strong>whole job</strong> (it has no idea which chunk you reached internally), so the first 29 chunks <strong>run again</strong>. If "delete" isn't idempotent (e.g. deleting a nonexistent id throws), the retry fails outright and the job is stuck forever; if "add to queue" isn't idempotent, the same batch of traces gets <strong>added twice</strong>. Idempotency isn't a nicety but "<strong>the precondition for correctness in a system that retries</strong>." The author pinned this sentence as a conspicuous comment atop the function precisely to remind every future editor: every action you write lives in a world where "it may be called more than once." This is the same clarity about "the distributed world is unreliable" as Lesson 43's metering "exactly once" and Lesson 30's eval dedup.<br><br>
+  <strong>Why does export give a "time-limited signed URL" rather than a permanently-public download address?</strong> Because the export file often holds <strong>sensitive data</strong> (users' traces, inputs/outputs, possibly PII). Generating a permanent public link means that once forwarded, logged, or cached, it <strong>permanently leaks</strong> this data to a place where anyone with the link can download it. A signed URL is "<strong>temporary authorization</strong>": the link carries a cryptographic signature and an expiry, auto-invalidating once <code>expiresAt</code> passes. Combined with the <code>expiresAt</code> on the BatchExport record, the platform always has an auditable answer to "can this export still be downloaded." <strong>Access to sensitive data should default to time-bound and revocable, not given-once and open-forever.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points (Part 9 finale)</div>
+  <ul>
+    <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on Lesson 23's filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
+    <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>
+    <li><strong>Batch action = chunks of 1000 + idempotency</strong>: <code>cutoffCreatedAt</code> snapshot boundary fixes the target set; <code>CHUNK_SIZE=1000</code> protects the DB and refines retry granularity; <code>processActionChunk</code> dispatches by actionId (trace-delete / add-to-annotation-queue / dataset-delete / eval-create).</li>
+    <li><strong>Idempotency is the iron rule</strong>: queue failure retries the whole job, processed chunks rerun, so every action must "not error on repeat, not double side effects." It's the precondition for correctness in a distributed retry system, of the same origin as Lesson 43's "exactly once" and Lesson 30's dedup.</li>
+    <li><strong>Time-limited signed URL</strong>: exports hold sensitive data, so give a temporary-authorization link <strong>with an expiry</strong> rather than a permanently-public address — access to sensitive data should default to time-bound and revocable.</li>
+    <li><strong>Part 9 finale</strong>: Automation (L44 webhook/SSRF) → Slack (L45) → analytics integrations (L46 fan-out/incremental/streaming) → batch export & actions (L47). One through-line: <strong>connecting the platform's data to the outside world securely, reliably, and controllably</strong>.</li>
+  </ul>
+</div>
+""")
+
+LESSON_47 = {"zh": "\n".join(_ZH47), "en": "\n".join(_EN47)}

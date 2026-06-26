@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 46 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 47 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -383,6 +383,7 @@ details[open] > summary { list-style: none; }
   <li>Automations & webhooks</li>
   <li>Slack & notifications</li>
   <li>Analytics integrations</li>
+  <li>Batch exports & actions</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -9517,6 +9518,181 @@ By the end you'll see: a mature platform "exporting data out" is far more than "
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>This lesson's analytics integration embodies the trio for 'exporting data out': two-level fan-out (isolation+parallelism+observability), lastSyncAt incremental watermark (only new data, leave buffer, chunk by day), streaming export (memory safety). Imagine: if you designed a 'periodically sync data to external' feature for a system, how would you weigh and combine these three? Which scenarios let you drop one or two (e.g. tiny data volume, or strong real-time requirement)? And if the incremental watermark meets 'data may be retroactively modified' (not just appended), what new difficulty arises?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Batch exports & actions</h1>
+
+<p class="lead">
+In the trace list you filter down to "the past 7 days, errored, from a certain user" — 50,000 traces — and want to <strong>export them all to CSV</strong> in one go, or <strong>delete them all</strong> with one click. This "do one thing to a whole batch of filtered data" need is this lesson's lead: <strong>Batch Export</strong> and <strong>Batch Action</strong>. They look different — one read-only produces a file, the other dangerously mutates data in bulk — but at heart they share one engineering posture: both built on a <strong>query/filter that may match a huge number of rows</strong>, both thrown onto a queue to run async because they're <strong>too slow to block a request</strong>, both using <strong>streaming + chunking</strong> to avoid stuffing tens of thousands of rows into memory at once.
+As the closing lesson of "Automation & Integrations," it once again assembles the <strong>streaming export (Lesson 46), job state machine (Lessons 30/35), signed URLs and object storage (Lesson 46)</strong> accumulated earlier, and spells out a hard constraint unavoidable when mutating data in bulk: <strong>idempotency</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a <strong>giant library</strong> where you issue an order: "<strong>find</strong> all books before 2020, about astronomy, that are damaged." Then either <strong>export</strong> (copy a <strong>catalog</strong> of those books for you — read-only, produces a file) or <strong>act</strong> (<strong>destroy them all or move them to another branch</strong> — really changing the collection).
+  For such a big job, the librarian won't make you <strong>wait at the front desk</strong> (too slow → hand it to the back office, notify you when done = <strong>async queue</strong>); nor will they <strong>haul tens of thousands of books onto the desk at once</strong> (desk collapses = memory blows up → <strong>cart by cart</strong> = streaming chunks). And "destroy/move" — operations that change the collection — have a catch: if the power cuts mid-way and you must <strong>start over</strong>, an already-destroyed book mustn't cause chaos by being "destroyed again" — so every step must be designed to be <strong>"safe to repeat"</strong> (idempotent). Exporting a catalog has no such worry (copying twice just wastes paper). This lesson is about how the library does these two kinds of "bulk big jobs" steadily and safely.
+</div>
+
+<h2>One query, two paths: read-only export vs data-mutating action</h2>
+<p>Both start from the same point: a <strong>filter/query condition</strong> (same origin as Lesson 23's list filter) that may match thousands of rows. Then they fork: <strong>batch export</strong> is <strong>read-only</strong> — stream the matched rows out, transform to CSV/JSON, write to object storage, give you a <strong>time-limited download link</strong>. <strong>Batch action</strong> <strong>mutates data</strong> — stream out the matched rows' ids, <strong>1000 per chunk</strong>, executing delete / add-to-annotation-queue / add-to-dataset / re-evaluate. The commonality: both are <strong>slow</strong> (so async via queue, with a trackable state machine) and <strong>large</strong> (so streaming + chunking, never all-in-memory).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="One query two paths: a filter matches massive rows, forking into batch export (read-only: stream query→transform CSV/JSON→write object storage→time-limited signed URL→email) and batch action (mutate: stream ids→1000 per chunk→delete/add-to-queue/add-to-dataset/re-eval); both go async via queue with a state machine">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One filter, matching massive rows → handled in two paths</text>
+  <rect x="40" y="100" width="150" height="60" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="115" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">filter/query condition</text><text x="115" y="140" text-anchor="middle" font-size="6.4" fill="var(--muted)">same as Lesson 23 filter</text><text x="115" y="152" text-anchor="middle" font-size="6.2" fill="var(--faint)">may match tens of thousands</text>
+  <rect x="270" y="44" width="190" height="74" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)" stroke-width="2"/><text x="365" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">batch export (read-only)</text><text x="365" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">stream query → CSV/JSON</text><text x="365" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ write object storage</text><text x="365" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">→ time-limited signed URL → email</text>
+  <rect x="270" y="142" width="190" height="84" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="365" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">batch action (mutate)</text><text x="365" y="178" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">stream ids → 1000 per chunk</text><text x="365" y="190" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">delete / add-to-annotation-queue / dataset</text><text x="365" y="202" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">/ re-evaluate (eval-create)</text><text x="365" y="216" text-anchor="middle" font-size="6.0" fill="var(--accent)">⚠ must be idempotent (retry reruns processed chunks)</text>
+  <rect x="540" y="92" width="160" height="76" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="620" y="112" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">shared skeleton</text><text x="620" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">slow → async queue</text><text x="620" y="140" text-anchor="middle" font-size="6.2" fill="var(--muted)">trackable state machine</text><text x="620" y="152" text-anchor="middle" font-size="6.2" fill="var(--muted)">large → streaming + chunking</text><text x="620" y="162" text-anchor="middle" font-size="6.0" fill="var(--faint)">never all-in-memory</text>
+  <line x1="190" y1="120" x2="268" y2="90" stroke="var(--teal)" stroke-width="1.4"/><polygon points="268,90 259,90 263,98" fill="var(--teal)"/>
+  <line x1="190" y1="140" x2="268" y2="175" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,175 259,171 260,179" fill="var(--accent)"/>
+  <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on Lesson 23's filter, both via BullMQ queues.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>Dimension</th><th>Batch Export</th><th>Batch Action</th></tr></thead>
+  <tbody>
+    <tr><td>Essence</td><td><b>read-only</b>: produces a file</td><td><b>mutates data</b>: delete/modify massive rows</td></tr>
+    <tr><td>Output</td><td>CSV/JSON in object storage + time-limited signed URL (emailed to you)</td><td>no file; side effects land on the data</td></tr>
+    <tr><td>Big-data strategy</td><td>streaming pipeline (transform format row by row)</td><td>stream ids + process 1000 per chunk</td></tr>
+    <tr><td>Key constraint</td><td>signed URL expires (not public forever)</td><td><b>must be idempotent</b> (retry reruns processed chunks)</td></tr>
+    <tr><td>State machine</td><td>QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED</td><td>also tracked via BatchActionStatus</td></tr>
+  </tbody>
+</table>
+
+
+<h2>Batch export: stream → file → time-limited link → email</h2>
+<p>An export job is a <strong>state machine</strong> (<code>BatchExportStatus</code>: QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED), of the same lineage as Lesson 30's eval JobExecution and Lesson 35's dataset runs. On entry it first <strong>validates status</strong> (skip if CANCELLED, skip if not QUEUED — idempotent guard against re-execution), sets PROCESSING. The core is a <strong>streaming pipeline</strong>: <code>getDatabaseReadStreamPaginated</code> reads the matched rows by page, <code>pipeline</code> transforms them row by row through <code>streamTransformations[format]</code> into CSV/JSON, <code>uploadFileBuffered</code> multipart-uploads into object storage (the same StorageService as Lesson 46). After upload it generates a <strong>time-limited signed URL</strong> (<code>getSignedUrl(expiresInSeconds)</code>), sets status COMPLETED, records <code>url</code> and <code>expiresAt</code>, and finally <strong>emails</strong> the download link to the user.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Validate status + set PROCESSING</h4><p>CANCELLED → skip; not QUEUED → skip (guard against re-executing the same job). Otherwise <code>update({status: PROCESSING})</code> claims it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Stream query + transform format</h4><p><code>getDatabaseReadStreamPaginated</code> reads matched rows by page; <code>pipeline</code> transforms row by row through <code>streamTransformations[format]</code> into CSV/JSON — constant memory, no blowup at tens of thousands of rows.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Upload to object storage + signed URL</h4><p><code>uploadFileBuffered</code> multipart-uploads to S3/GCS; <code>getSignedUrl(expiresInSeconds)</code> generates a <strong>time-limited</strong> download link — data isn't public forever.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Set COMPLETED + email</h4><p><code>update({status: COMPLETED, url, finishedAt, expiresAt})</code>; <code>sendBatchExportSuccessEmail</code> sends the downloadLink to the user's inbox.</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/batchExport/handleBatchExportJob.ts</span><span class="ln">streaming export + time-limited link</span></div>
+  <pre class="code"><span class="cm">// 1) state-machine guard: idempotent against re-execution</span>
+<span class="kw">if</span> (jobDetails.status === BatchExportStatus.CANCELLED) <span class="kw">return</span>;       <span class="cm">// cancelled, skip</span>
+<span class="kw">if</span> (jobDetails.status !== BatchExportStatus.QUEUED)   <span class="kw">return</span>;       <span class="cm">// already handled, skip</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: { status: BatchExportStatus.PROCESSING } });
+
+<span class="cm">// 2) streaming pipeline: paginated read → transform to CSV/JSON row by row (constant memory)</span>
+<span class="kw">const</span> fileStream = <span class="fn">pipeline</span>(
+  <span class="kw">await</span> <span class="fn">getDatabaseReadStreamPaginated</span>({ ...streamParams }),
+  streamTransformations[jobDetails.format](),                  <span class="cm">// CSV / JSON / JSONL</span>
+);
+
+<span class="cm">// 3) upload to object storage → generate a time-limited signed URL</span>
+<span class="kw">await</span> storageService.<span class="fn">uploadFileBuffered</span>({ fileName, data: fileStream, ... });
+<span class="kw">const</span> signedUrl = <span class="kw">await</span> storageService.<span class="fn">getSignedUrl</span>(fileName, expiresInSeconds);
+
+<span class="cm">// 4) set completed + record expiry + send email</span>
+<span class="kw">await</span> prisma.batchExport.<span class="fn">update</span>({ ..., data: {
+  status: BatchExportStatus.COMPLETED, url: signedUrl,
+  finishedAt: <span class="kw">new</span> Date(), expiresAt: <span class="kw">new</span> Date(Date.now() + expiresInSeconds*<span class="st">1000</span>) } });
+<span class="kw">await</span> <span class="fn">sendBatchExportSuccessEmail</span>({ receiverEmail: user.email, downloadLink: signedUrl, ... });</pre>
+</div>
+
+
+<h2>Batch action: chunks of 1000, and must be idempotent</h2>
+<p>A batch action <strong>mutates</strong> data; the chunking flow is: using the filter + a <code>cutoffCreatedAt</code> cutoff time (a <strong>snapshot boundary</strong> — rows created after the job starts aren't included, so the target set is stable), stream out the matched rows' ids, accumulate <strong>1000 per chunk</strong>, and hand each to <code>processActionChunk</code>, which dispatches by actionId: <code>trace-delete</code> deletes traces, <code>*-add-to-annotation-queue</code> adds to Lesson 32's annotation queue, <code>dataset-delete</code> deletes datasets, <code>eval-create</code> backfills Lesson 29's evaluation on historic data… The source leaves a <strong>conspicuous red-line comment</strong> here: "All operations must be idempotent. The job is retried on failure, and on retry chunks already processed may be processed again." This isn't a suggestion — it's a <strong>hard constraint</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Batch action chunked processing: filter + cutoffCreatedAt snapshot boundary streams matched ids, accumulates 1000 per chunk to processActionChunk dispatched by actionId to trace-delete/add-to-queue/dataset-delete/eval-create processors; red-line comment: all operations must be idempotent, retry reruns processed chunks">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Stream ids → 1000 per chunk → dispatch (and must be idempotent)</text>
+  <rect x="30" y="56" width="140" height="66" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="100" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">stream matched ids</text><text x="100" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">filter + cutoffCreatedAt</text><text x="100" y="104" text-anchor="middle" font-size="6.0" fill="var(--faint)">snapshot boundary: fixed set</text><text x="100" y="115" text-anchor="middle" font-size="6.0" fill="var(--faint)">excludes rows born after job</text>
+  <rect x="205" y="50" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 1·1000</text>
+  <rect x="205" y="80" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="96" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 2·1000</text>
+  <rect x="205" y="110" width="70" height="24" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="126" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">chunk 3 …</text>
+  <rect x="315" y="50" width="150" height="84" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="390" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">processActionChunk</text><text x="390" y="82" text-anchor="middle" font-size="6.0" fill="var(--muted)">switch(actionId)</text><text x="390" y="94" text-anchor="middle" font-size="6.0" fill="var(--muted)">dispatch per chunk</text><text x="390" y="108" text-anchor="middle" font-size="5.8" fill="var(--faint)">CHUNK_SIZE=1000: protects</text><text x="390" y="118" text-anchor="middle" font-size="5.8" fill="var(--faint)">the DB from one giant hit</text>
+  <rect x="500" y="40" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="55" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace-delete (delete traces)</text>
+  <rect x="500" y="66" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="81" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">*-add-to-annotation-queue (Lesson 32)</text>
+  <rect x="500" y="92" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="107" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">dataset-delete / add-to-dataset</text>
+  <rect x="500" y="118" width="195" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="597" y="133" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">eval-create (backfill Lesson 29 eval)</text>
+  <line x1="170" y1="89" x2="203" y2="70" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="92" stroke="var(--blue)" stroke-width="1.2"/><line x1="170" y1="89" x2="203" y2="120" stroke="var(--blue)" stroke-width="1.2"/>
+  <line x1="275" y1="92" x2="313" y2="92" stroke="var(--accent)" stroke-width="1.3"/><polygon points="313,92 304,88 304,96" fill="var(--accent)"/>
+  <line x1="465" y1="92" x2="498" y2="80" stroke="var(--faint)" stroke-width="1"/>
+  <rect x="120" y="160" width="480" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">⚠ red line: all operations must be idempotent</text><text x="360" y="196" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">job failure retries the whole thing → already-processed chunks may run again</text><text x="360" y="208" text-anchor="middle" font-size="6.6" fill="var(--muted)">so "delete an already-deleted" / "add an already-added" must not error or double side effects</text>
+</svg>
+<div class="figcap"><b>Chunking + idempotency</b>: <code>handleBatchActionJob.ts:46</code> <code>CHUNK_SIZE=1000</code>; <code>:61 processActionChunk</code> switch dispatches (trace-delete / *-add-to-annotation-queue / score-delete / dataset-delete / eval-create); the comment at <code>:57-60</code> states clearly "all operations must be idempotent… on retry processed chunks may be re-processed." <code>cutoffCreatedAt</code> serves as the snapshot boundary fixing the target set.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">fetch</span><span class="name">stream + snapshot boundary</span></div><div class="ld">Stream the matched rows' ids using the filter + <code>cutoffCreatedAt</code>. <code>cutoffCreatedAt</code> is key: it <strong>pins the target set to the instant the job started</strong>, so rows written during the job's few-minute run aren't swept in — avoiding "delete while new ones keep arriving, never finishing."</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">chunk</span><span class="name">CHUNK_SIZE = 1000</span></div><div class="ld">Rather than hitting tens of thousands of rows at once, accumulate 1000 ids per chunk and process chunk by chunk. This both <strong>protects the database</strong> from one giant statement and keeps the <strong>retry granularity</strong> at "chunk" rather than "the whole job from scratch."</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">iron rule</span><span class="name">idempotency</span></div><div class="ld">A failed queue job <strong>retries the whole thing</strong>, and on retry already-succeeded chunks <strong>run again</strong>. So every operation must "not error on repeat, not double side effects": deleting an already-deleted = silent success, adding an already-queued one = no duplicate add. This is the <strong>unavoidable</strong> hard constraint for bulk data mutation.</div></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why is "batch actions must be idempotent" an iron rule, not "try your best"?</strong> Because it <strong>collides head-on</strong> with the reality that "queues retry." A job deleting 50,000 rows runs in 50 chunks; say the worker crashes at chunk 30 — BullMQ re-dispatches the <strong>whole job</strong> (it has no idea which chunk you reached internally), so the first 29 chunks <strong>run again</strong>. If "delete" isn't idempotent (e.g. deleting a nonexistent id throws), the retry fails outright and the job is stuck forever; if "add to queue" isn't idempotent, the same batch of traces gets <strong>added twice</strong>. Idempotency isn't a nicety but "<strong>the precondition for correctness in a system that retries</strong>." The author pinned this sentence as a conspicuous comment atop the function precisely to remind every future editor: every action you write lives in a world where "it may be called more than once." This is the same clarity about "the distributed world is unreliable" as Lesson 43's metering "exactly once" and Lesson 30's eval dedup.<br><br>
+  <strong>Why does export give a "time-limited signed URL" rather than a permanently-public download address?</strong> Because the export file often holds <strong>sensitive data</strong> (users' traces, inputs/outputs, possibly PII). Generating a permanent public link means that once forwarded, logged, or cached, it <strong>permanently leaks</strong> this data to a place where anyone with the link can download it. A signed URL is "<strong>temporary authorization</strong>": the link carries a cryptographic signature and an expiry, auto-invalidating once <code>expiresAt</code> passes. Combined with the <code>expiresAt</code> on the BatchExport record, the platform always has an auditable answer to "can this export still be downloaded." <strong>Access to sensitive data should default to time-bound and revocable, not given-once and open-forever.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points (Part 9 finale)</div>
+  <ul>
+    <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on Lesson 23's filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
+    <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>
+    <li><strong>Batch action = chunks of 1000 + idempotency</strong>: <code>cutoffCreatedAt</code> snapshot boundary fixes the target set; <code>CHUNK_SIZE=1000</code> protects the DB and refines retry granularity; <code>processActionChunk</code> dispatches by actionId (trace-delete / add-to-annotation-queue / dataset-delete / eval-create).</li>
+    <li><strong>Idempotency is the iron rule</strong>: queue failure retries the whole job, processed chunks rerun, so every action must "not error on repeat, not double side effects." It's the precondition for correctness in a distributed retry system, of the same origin as Lesson 43's "exactly once" and Lesson 30's dedup.</li>
+    <li><strong>Time-limited signed URL</strong>: exports hold sensitive data, so give a temporary-authorization link <strong>with an expiry</strong> rather than a permanently-public address — access to sensitive data should default to time-bound and revocable.</li>
+    <li><strong>Part 9 finale</strong>: Automation (L44 webhook/SSRF) → Slack (L45) → analytics integrations (L46 fan-out/incremental/streaming) → batch export & actions (L47). One through-line: <strong>connecting the platform's data to the outside world securely, reliably, and controllably</strong>.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Batch export and batch action look quite different (one produces a file, one mutates data), yet this lesson stresses they share one engineering skeleton. What is that shared skeleton?</div>
+  <ol class="opts">
+    <li>both only work in self-host</li>
+    <li>both require paid unlock</li>
+    <li>both encrypt data before storing</li>
+    <li>both build on a filter that may match massive rows, both go async via queue for being slow (with a trackable state machine), both use streaming + chunking to avoid loading tens of thousands of rows into memory at once—the only difference is 'read-only produces a file' vs 'mutates data'</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Recognizing 'the shared skeleton of different features' is this lesson's core. Batch export (read-only) and batch action (mutating) look very different but face the same two engineering realities: ① data volume may be enormous (matching tens of thousands of rows) → must stream + chunk, not all-in-memory; ② processing is slow → can't block an HTTP request, must run async on a queue, with a state machine (BatchExportStatus / BatchActionStatus) so users can track progress. See through this commonality and you know: any 'do one thing to a whole batch of data' need should map onto this skeleton.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. The batch action source pins a conspicuous comment atop processActionChunk: 'All operations must be idempotent. The job retries on failure, and on retry chunks already processed may be processed again.' Why is idempotency a 'hard constraint' here, not 'nice to have'?</div>
+  <ol class="opts">
+    <li>because the database requires all writes to be idempotent</li>
+    <li>because it collides head-on with 'queues retry': deleting 50k rows in 50 chunks, crash at chunk 30, BullMQ re-dispatches the whole job (it doesn't know which chunk you reached), the first 29 rerun—if delete/add-to-queue isn't idempotent, either the retry fails outright and the job sticks, or the same batch gets added twice</li>
+    <li>because idempotency makes the job run faster</li>
+    <li>because idempotency saves storage space</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. A queue's 'retry on failure' is the source of reliability, but meeting 'bulk data mutation' yields a sharp consequence: a retry re-dispatches the whole job, and the chunks already done inside it—the queue doesn't know, and reruns them too. So every action lives in a world where 'it may be called again.' Without idempotency: deleting an already-deleted id throws → the retry fails forever, job stuck; re-adding a batch of traces to the annotation queue → data polluted. So idempotency is the precondition for 'correctness in a retrying system', not optional. Same clarity about 'distributed unreliability' as Lesson 43's 'exactly once' and Lesson 30's eval dedup.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. After a batch export completes, the user gets a time-limited 'signed URL' rather than a permanently-public download address. What does this design mainly guard against?</div>
+  <ol class="opts">
+    <li>guards against permanent leakage of sensitive data: export files often contain users' traces/inputs-outputs/PII; a permanent public link, once forwarded/logged/cached, opens the data forever to anyone with the link; a signed URL is temporary authorization with a cryptographic signature and expiry, auto-invalidating once expiresAt passes</li>
+    <li>prevents slow download speed</li>
+    <li>prevents files from using too much storage</li>
+    <li>prevents users downloading repeatedly</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. An export essentially packages a batch of (often sensitive) data into a downloadable file. A permanent public URL becomes a 'long-term backdoor' to that data: it may be pasted into chats, written to logs, cached by proxies, and anyone who later gets it can download—effectively a permanent leak. A signed URL is 'temporary, revocable authorization': the URL embeds a cryptographic signature and expiresAt, invalidating on expiry, and the BatchExport record stores expiresAt for audit. The security principle: access to sensitive data should default to time-bound and revocable, not given-once and open-forever.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson closes Part 9 (Automation & Integrations): from webhook/SSRF (L44), Slack (L45), analytics integrations (L46) to batch export & actions (L47), the through-line is 'connecting platform data to the outside world securely, reliably, controllably.' Reviewing these four lessons, can you distill a few recurring engineering principles for 'dealing with the outside world' (e.g.: untrusted input needs defense-in-depth, sensitive credentials/data need encryption and time-limits, slow big jobs need queue+streaming, anything that retries must be idempotent)? In your own 'integrate with external systems' work, which were honored, and which were ignored and caused problems?</li>
   </ul>
 </div>
 </div>

@@ -3265,6 +3265,76 @@ QUIZZES = {
             },
         ],
     },
+    "47-batch-exports-and-actions.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "批量导出和批量操作看着很不同（一个产文件、一个改数据），但这一课强调它们共享同一套工程骨架。这套共同骨架是什么？",
+                    "en": "Batch export and batch action look quite different (one produces a file, one mutates data), yet this lesson stresses they share one engineering skeleton. What is that shared skeleton?",
+                },
+                "opts": [
+                    {
+                        "zh": "都基于一个可能命中海量行的过滤条件、都因耗时长而走队列异步(有状态机可追踪)、都用流式+分块避免一次性把几万行装进内存——区别只在『只读产文件』vs『改数据』",
+                        "en": "both build on a filter that may match massive rows, both go async via queue for being slow (with a trackable state machine), both use streaming + chunking to avoid loading tens of thousands of rows into memory at once—the only difference is 'read-only produces a file' vs 'mutates data'",
+                    },
+                    {"zh": "都把数据加密后存储", "en": "both encrypt data before storing"},
+                    {"zh": "都只能在自托管版使用", "en": "both only work in self-host"},
+                    {"zh": "都需要用户付费解锁", "en": "both require paid unlock"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "识别「不同功能的共同骨架」是这一课的核心。批量导出（只读）和批量操作（改数据）表面差异大，但都面对同样两个工程现实：① 数据量可能极大（命中几万行）→ 必须流式 + 分块，不能全装内存；② 处理耗时长 → 不能卡在 HTTP 请求里，必须扔进队列异步跑，并用状态机（BatchExportStatus / BatchActionStatus）让用户能追踪进度。看穿这层共性，你就知道：凡是『对一大票数据整体做一件事』的需求，都该往这个骨架上套。",
+                    "en": "Recognizing 'the shared skeleton of different features' is this lesson's core. Batch export (read-only) and batch action (mutating) look very different but face the same two engineering realities: ① data volume may be enormous (matching tens of thousands of rows) → must stream + chunk, not all-in-memory; ② processing is slow → can't block an HTTP request, must run async on a queue, with a state machine (BatchExportStatus / BatchActionStatus) so users can track progress. See through this commonality and you know: any 'do one thing to a whole batch of data' need should map onto this skeleton.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "批量操作的源码在 processActionChunk 上方顶着一句醒目注释：「所有操作必须幂等。任务失败会重试，重试时已处理过的块可能被再处理一遍。」为什么幂等在这里是「硬约束」而非「最好做到」？",
+                    "en": "The batch action source pins a conspicuous comment atop processActionChunk: 'All operations must be idempotent. The job retries on failure, and on retry chunks already processed may be processed again.' Why is idempotency a 'hard constraint' here, not 'nice to have'?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为它和「队列会重试」正面相撞：删5万行分50块，跑到第30块崩了，BullMQ 会重发整个任务(它不知道内部跑到第几块)，前29块会被再执行一遍——若删除/加队列不幂等，要么重试直接失败任务卡死，要么同批数据被加两次",
+                        "en": "because it collides head-on with 'queues retry': deleting 50k rows in 50 chunks, crash at chunk 30, BullMQ re-dispatches the whole job (it doesn't know which chunk you reached), the first 29 rerun—if delete/add-to-queue isn't idempotent, either the retry fails outright and the job sticks, or the same batch gets added twice",
+                    },
+                    {"zh": "因为幂等能让任务跑得更快", "en": "because idempotency makes the job run faster"},
+                    {"zh": "因为数据库要求所有写操作幂等", "en": "because the database requires all writes to be idempotent"},
+                    {"zh": "因为幂等能节省存储空间", "en": "because idempotency saves storage space"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "队列的「失败重试」是可靠性的来源，但它和「批量改数据」相遇时产生一个尖锐后果：重试是把整个任务重发，而任务内部已经跑完的块，队列并不知道、也会跟着重跑。于是每个 action 都活在「可能被重复调用」的世界里。如果不幂等：删一个已删的 id 抛异常 → 重试永远失败、任务卡死；把一批 trace 重复加进标注队列 → 数据被污染。所以幂等是「在会重试的系统里保证正确」的前提，不是可选项。这与第43课计量「恰好一次」、第30课 eval 去重，都是对『分布式不可靠』的同一种清醒。",
+                    "en": "A queue's 'retry on failure' is the source of reliability, but meeting 'bulk data mutation' yields a sharp consequence: a retry re-dispatches the whole job, and the chunks already done inside it—the queue doesn't know, and reruns them too. So every action lives in a world where 'it may be called again.' Without idempotency: deleting an already-deleted id throws → the retry fails forever, job stuck; re-adding a batch of traces to the annotation queue → data polluted. So idempotency is the precondition for 'correctness in a retrying system', not optional. Same clarity about 'distributed unreliability' as Lesson 43's 'exactly once' and Lesson 30's eval dedup.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "批量导出完成后，给用户的是一个带过期时间的「签名 URL」，而不是一个永久公开的下载地址。这个设计主要在防什么？",
+                    "en": "After a batch export completes, the user gets a time-limited 'signed URL' rather than a permanently-public download address. What does this design mainly guard against?",
+                },
+                "opts": [
+                    {
+                        "zh": "防敏感数据被永久泄露：导出文件常含用户trace/输入输出/PII，永久公开链接一旦被转发/记日志/缓存，就等于把数据永久敞开给任何拿到链接的人；签名URL是带加密签名和过期时间的临时授权，expiresAt一到自动失效",
+                        "en": "guards against permanent leakage of sensitive data: export files often contain users' traces/inputs-outputs/PII; a permanent public link, once forwarded/logged/cached, opens the data forever to anyone with the link; a signed URL is temporary authorization with a cryptographic signature and expiry, auto-invalidating once expiresAt passes",
+                    },
+                    {"zh": "防止文件占用太多存储", "en": "prevents files from using too much storage"},
+                    {"zh": "防止下载速度太慢", "en": "prevents slow download speed"},
+                    {"zh": "防止用户重复下载", "en": "prevents users downloading repeatedly"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "导出的本质是把一批（往往敏感的）数据打包成一个可下载文件。如果给的是永久公开 URL，这个链接就成了数据的「长期后门」：它可能被贴进聊天、写进日志、被代理缓存，之后任何拿到它的人都能下载——相当于把这批数据永久泄露。签名 URL 的设计是「临时、可收回的授权」：URL 里嵌入加密签名和 expiresAt，过期即失效，BatchExport 记录也存着 expiresAt 备查。背后的安全原则是：对敏感数据的访问，默认应该是有时限、可收回的，而不是一次给出、永久敞开。",
+                    "en": "An export essentially packages a batch of (often sensitive) data into a downloadable file. A permanent public URL becomes a 'long-term backdoor' to that data: it may be pasted into chats, written to logs, cached by proxies, and anyone who later gets it can download—effectively a permanent leak. A signed URL is 'temporary, revocable authorization': the URL embeds a cryptographic signature and expiresAt, invalidating on expiry, and the BatchExport record stores expiresAt for audit. The security principle: access to sensitive data should default to time-bound and revocable, not given-once and open-forever.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课是第九部分（自动化与集成）的收官：从 webhook/SSRF（L44）、Slack（L45）、分析集成（L46）到批量导出与操作（L47），主线是「把平台数据安全、可靠、可控地与外部世界连接」。回看这四课，你能总结出几条反复出现的『与外部世界打交道』的工程原则吗（如：不可信输入要纵深防御、敏感凭据/数据要加密与限时、耗时大活要队列+流式、会重试就必须幂等）？这些原则在你自己做过的『对接外部系统』里，哪些被遵守了、哪些被忽略并酿成过问题？",
+                "en": "This lesson closes Part 9 (Automation & Integrations): from webhook/SSRF (L44), Slack (L45), analytics integrations (L46) to batch export & actions (L47), the through-line is 'connecting platform data to the outside world securely, reliably, controllably.' Reviewing these four lessons, can you distill a few recurring engineering principles for 'dealing with the outside world' (e.g.: untrusted input needs defense-in-depth, sensitive credentials/data need encryption and time-limits, slow big jobs need queue+streaming, anything that retries must be idempotent)? In your own 'integrate with external systems' work, which were honored, and which were ignored and caused problems?",
+            },
+        ],
+    },
 }
 
 
