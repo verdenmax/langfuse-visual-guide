@@ -1512,3 +1512,411 @@ mind now and the rest gets much easier.</p>
 """)
 
 LESSON_03 = {"zh": "\n".join(_ZH3), "en": "\n".join(_EN3)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L04 · 项目全景地图（monorepo 与窄腰）/ Project map (monorepo & narrow waist)
+# ══════════════════════════════════════════════════════════════════════
+_ZH4 = []
+_EN4 = []
+
+_ZH4.append(r"""
+<p class="lead">
+前三课讲的是「数据长什么样」，这一课换个维度：<strong>代码住在哪里</strong>。Langfuse 是一个 <strong>monorepo</strong>（单仓库多工程），
+所有东西都在 <code>langfuse/langfuse</code> 一个仓库里，但内部分成几个各司其职的「工作区」。把这张地图记在心里，后面任何一课说「打开
+<code>web/src/...</code>」或「这段逻辑在 <code>worker</code> 里」，你都能立刻知道它在哪、为什么在那。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把这个仓库想成<strong>一座大型购物中心</strong>：整座楼是<strong>一个 monorepo</strong>，里面有几家独立店铺——
+  <strong>web</strong> 是面向顾客的<strong>门店</strong>（人来人往、要快、随时营业），<strong>worker</strong> 是后场的<strong>加工车间</strong>（埋头干重活、可以排队慢慢做）。
+  而 <strong>packages/shared</strong> 是<strong>中央仓库</strong>：所有店铺的货（数据模型、数据库访问、队列契约）都从这里取，但中央仓库<strong>从不反过来依赖</strong>某家店铺。
+  大家在<strong>同一栋楼</strong>里，共用水电（构建工具），却又边界清晰、各自营业。逛这座楼之前先拿到这张「楼层导览图」，后面无论去哪家店，你都不会迷路。
+</div>
+""")
+
+_ZH4.append(r"""
+<div class="fig">
+<svg viewBox="0 0 720 320" role="img" aria-label="Langfuse 仓库顶层目录：web、worker、packages/shared、ee、fern、generated 各自的职责">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">langfuse/langfuse 顶层目录地图</text>
+  <rect x="40" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="140" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web/</text>
+  <text x="140" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">Next.js 应用</text>
+  <text x="140" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">UI · tRPC · 公共 REST API</text>
+  <rect x="260" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="360" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker/</text>
+  <text x="360" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">BullMQ 队列消费</text>
+  <text x="360" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">摄取·评估·导出·删除…</text>
+  <rect x="480" y="40" width="200" height="74" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="580" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee/</text>
+  <text x="580" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">企业版功能</text>
+  <text x="580" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">license 校验</text>
+  <rect x="150" y="150" width="420" height="78" rx="11" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+  <text x="360" y="174" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared/ · 共享内核（窄腰）</text>
+  <text x="360" y="194" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain 领域模型 · server 仓储/CH/队列 · prisma schema · clickhouse 迁移</text>
+  <text x="360" y="212" text-anchor="middle" font-size="9.5" fill="var(--muted)">被 web 与 worker 共用，自己谁都不依赖</text>
+  <line x1="140" y1="114" x2="300" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="300,148 289,146 293,154" fill="var(--purple)"/>
+  <line x1="360" y1="114" x2="360" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="360,148 355,138 365,138" fill="var(--purple)"/>
+  <line x1="580" y1="114" x2="420" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="420,148 431,146 427,154" fill="var(--purple)"/>
+  <rect x="40" y="252" width="320" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="200" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">fern/ · 公共 API 契约定义</text>
+  <text x="200" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">用 Fern 描述 REST API，生成 generated/ 客户端</text>
+  <rect x="380" y="252" width="300" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="530" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">generated/ · 自动生成（勿手改）</text>
+  <text x="530" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">由 Fern 生成的 API 客户端</text>
+</svg>
+<div class="figcap"><b>顶层就这几块</b>：<b>web</b>（门店）和 <b>worker</b>（车间）是两个运行时容器，都向上依赖 <b>packages/shared</b>（中央仓库 / 窄腰）；<b>ee</b> 是企业功能、被 web 引用；<b>fern</b> 定义公共 API 契约并生成 <b>generated</b> 客户端。记住这张图，后面所有「文件在哪」的问题都有了坐标系。</div>
+</div>
+
+<p>稍微展开一下两个运行时各自在忙什么，你会更有体感。<strong>web</strong> 是那个你浏览器里打开的 Next.js 应用，它干三件事：渲染<strong>界面</strong>、
+给界面提供类型安全的内部 API（<strong>tRPC</strong>，第 21 课）、以及给外部 SDK 提供<strong>公共 REST API</strong>（<code>web/src/pages/api/public</code>，第 27 课）——
+摄取事件的入口就在这里。<strong>worker</strong> 则是个没有界面的后台进程，它订阅几十个 <strong>BullMQ 队列</strong>，把所有<strong>重活、慢活、可重试的活</strong>都揽下来：
+把摄取的事件合并写进 ClickHouse、跑 LLM 评估、导出数据、删除项目……（第三部分起逐个讲）。一句话：<strong>web 负责「快进快出」，worker 负责「埋头苦干」</strong>，
+两者通过中间的 Redis 队列解耦——这也正是下一课「双存储」和第三部分「摄取链路」要展开的主线。</p>
+
+<h2>一个仓库，四个工作区</h2>
+<p>Langfuse 用 <strong>pnpm workspaces</strong> 把一个仓库切成几个独立可构建的包。根目录的 <code>pnpm-workspace.yaml</code> 一行行列出了它们：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">pnpm-workspace.yaml</span><span class="ln">workspaces</span></div>
+  <pre class="code">packages:
+  - <span class="st">"web"</span>          <span class="cm"># Next.js 应用（UI + tRPC + 公共 REST API）</span>
+  - <span class="st">"worker"</span>       <span class="cm"># 队列消费者，后台处理</span>
+  - <span class="st">"packages/**"</span>  <span class="cm"># 共享包，主要是 packages/shared</span>
+  - <span class="st">"ee"</span>           <span class="cm"># 企业版功能</span></pre>
+</div>
+
+<p><code>packages/**</code> 下其实不止 <code>shared</code> 一个，还有 <code>config-eslint</code>、<code>config-typescript</code>、
+<code>eslint-plugin</code> 这些「工具配置包」；但真正承载业务的<strong>共享内核是 <code>packages/shared</code></strong>——它就是上图里的中央仓库。
+为什么要拆成工作区而不是一个大文件夹？因为这样每个包能<strong>独立声明依赖、独立构建、独立测试</strong>，pnpm 还能在它们之间做<strong>符号链接</strong>，
+让 web 直接 <code>import ... from "@langfuse/shared"</code> 用上最新代码，不必发版。
+这点对开发体验影响很大：你在 <code>packages/shared</code> 里改一个类型，<code>web</code> 和 <code>worker</code> 的编辑器会<strong>立刻飘红</strong>提示哪里要跟着改——
+等于把「契约变更」的影响在<strong>编码阶段</strong>就暴露出来，而不是等到运行时才报错。</p>
+""")
+
+_ZH4.append(r"""
+<h2>依赖方向：为什么是「窄腰」</h2>
+<p>四个工作区之间不是随便互相引用的，而是有一条<strong>严格单向</strong>的依赖规则（写在 <code>.agents/AGENTS.md</code> 里）：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.agents/AGENTS.md</span><span class="ln">Dependency direction</span></div>
+  <pre class="code">- <span class="nb">web</span>    -> @langfuse/shared, @langfuse/ee
+- <span class="nb">worker</span> -> @langfuse/shared
+- <span class="nb">ee</span>     -> @langfuse/shared
+- <span class="nb">@langfuse/shared</span> -> <span class="kw">no imports from</span> web, worker, or ee</pre>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="web、worker、ee 都单向依赖 shared，shared 不依赖任何一方，形成窄腰">
+  <text x="360" y="24" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">窄腰：所有依赖箭头都指向 shared，没有回头箭头</text>
+  <rect x="60" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="135" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web</text>
+  <rect x="285" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker</text>
+  <rect x="510" y="50" width="150" height="48" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="585" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee</text>
+  <rect x="210" y="168" width="300" height="56" rx="12" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2.5"/>
+  <text x="360" y="192" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared</text>
+  <text x="360" y="210" text-anchor="middle" font-size="9.5" fill="var(--muted)">领域模型 · 仓储 · 队列契约 · DB 访问</text>
+  <line x1="135" y1="98" x2="285" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="285,166 273,162 277,172" fill="var(--faint)"/>
+  <line x1="360" y1="98" x2="360" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="360,166 355,156 365,156" fill="var(--faint)"/>
+  <line x1="585" y1="98" x2="435" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="435,166 447,162 443,172" fill="var(--faint)"/>
+  <text x="360" y="244" text-anchor="middle" font-size="10" fill="var(--purple)">shared 不依赖上面任何一个 → 它是地基，不是消费者</text>
+</svg>
+<div class="figcap"><b>「窄腰」（narrow waist）</b>：把所有人都要用的东西收进一个<b>谁都不反向依赖</b>的薄层。web/worker/ee 像沙漏的上半，shared 是中间最细的「腰」，再往下是数据库。好处是：两个容器各自独立演进、独立部署，却共用同一套领域模型与队列契约，<b>契约不会漂移</b>。</div>
+</div>
+
+<p>这条纪律为什么重要？因为 web 和 worker 是<strong>两种完全不同的负载</strong>：web 要面向用户、低延迟、可随时重启；worker 要啃重活、可重试、按队列伸缩。
+如果让它们<strong>互相直接引用</strong>，改一个就可能牵连另一个，部署也会绑死。把共享的东西收进 shared、并规定<strong>只能向下依赖</strong>，
+就等于在两个容器之间立了一道清晰的<strong>契约墙</strong>：队列里传什么、数据库表长什么样，都由 shared 这一处定义（比如队列负载就归
+<code>packages/shared/src/server/queues.ts</code> 管）。两边照着同一份契约各干各的，互不踩脚。</p>
+
+<p>举个这条规则<strong>挡住的真实 bug</strong>：假设没有窄腰，worker 里图省事直接 <code>import</code> 了 web 的某个工具函数。某天 web 为了改界面重构了那个函数、
+顺手改了它的参数——结果 <strong>worker 在毫不知情的情况下被改坏了</strong>，可能要到线上摄取出错才发现。而在窄腰规则下，worker 根本<strong>不允许</strong>依赖 web；
+两边唯一的「共同语言」是 shared 里那份明确的契约。想共享逻辑？那就把它<strong>下沉</strong>到 shared，让它成为受契约约束的一等公民，而不是从隔壁悄悄借用。
+<strong>「依赖只能向下」这一条，本质是在用编译器帮你挡住跨容器的隐式耦合。</strong></p>
+
+<h2>Turbo 怎么把它们编排起来</h2>
+<p>多个工作区的构建、测试、lint 由 <strong>Turbo</strong> 统一编排（根目录 <code>turbo.json</code>）。它最有用的两件事是<strong>任务依赖图</strong>和<strong>缓存</strong>：</p>
+
+<div class="flow">
+  <div class="node"><div class="nt">db:generate</div><div class="nd">先生成 Prisma 客户端</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">^build</div><div class="nd">先构建被依赖的包</div></div>
+  <div class="arrow">→</div>
+  <div class="node hl"><div class="nt">build</div><div class="nd">再构建本包</div></div>
+  <div class="arrow">⚡</div>
+  <div class="node"><div class="nt">cache</div><div class="nd">没变就直接命中缓存</div></div>
+</div>
+
+<p>看 <code>turbo.json</code> 里 <code>build</code> 任务的定义：<code>"dependsOn": ["db:generate", "^build"]</code>——意思是「构建任何一个包之前，
+先生成数据库客户端、并先把它依赖的包（<code>^</code> 表示上游依赖）构建好」。于是你只要 <code>pnpm build</code>，Turbo 就会自动算出正确顺序、
+把能并行的并行、能缓存的<strong>跳过</strong>（<code>"cache": true</code>）。这就是为什么在一个有几十个包的大仓库里，改一行代码也不必全量重建。</p>
+
+<p>把窄腰和 Turbo 合起来，看一个<strong>具体的连锁反应</strong>：假设你要给 trace 加一个字段。你只需在
+<code>packages/shared/prisma/schema.prisma</code> 改一处、再在 <code>domain/traces.ts</code> 改一处——一次 <code>db:generate</code> 重新生成
+Prisma 客户端，<strong>web 和 worker 立刻都看到新字段</strong>，因为它们都从同一个 <code>@langfuse/shared</code> 取类型。整件事在<strong>一个 PR</strong> 里完成，
+CI 一起跑通。要是分成三个仓库，这同一个改动得发三次版、改三处依赖、还要祈祷三边版本对得上——这就是「原子地一起改」的实际意义。</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 polyrepo（分仓）</h4><p>web/worker/shared 各一个仓。改一个共享结构 → 跨仓发版、对版本、易漂移。好处是各仓更小、更独立。</p></div>
+  <div class="col"><h4>📦 monorepo（Langfuse 的选择）</h4><p>一个仓装下全部。共享改动一个 PR 原子完成、CI 一起验。代价：仓更大、要靠 Turbo 管构建缓存。</p></div>
+</div>
+
+<p>缓存这件事对<strong>持续集成（CI）</strong>尤其值钱。一个几十包的大仓，如果每次 PR 都把所有包从头 build + lint + test 一遍，CI 会慢到没法用。
+Turbo 会给每个任务的<strong>输入算一个指纹</strong>（源码 + 依赖 + 配置），只要指纹没变，就直接<strong>复用上次的输出</strong>、整段跳过。于是改了 <code>worker</code> 的一个文件，
+<code>web</code> 那些没被波及的构建/测试就<strong>命中缓存、秒过</strong>。配上远端缓存，团队成员之间还能共享构建结果。这就是大仓也能保持 CI 快的秘诀——
+也是「用 monorepo」这个选择能成立的<strong>工程前提</strong>：没有好的缓存，monorepo 的构建成本会劝退所有人。</p>
+
+<h2>每个工作区里有什么</h2>
+<p>最后给你一张「高频目录速查表」，后面的课会反复回到这些位置：</p>
+
+<table class="t">
+  <tr><th>位置</th><th>放什么</th></tr>
+  <tr><td class="mono">web/src/pages</td><td>Next.js 页面 + API 路由（含 <code>api/public</code> 公共 REST、<code>api/trpc</code>）</td></tr>
+  <tr><td class="mono">web/src/server/api</td><td>tRPC 的 root 路由、context、中间件（第 21 课）</td></tr>
+  <tr><td class="mono">web/src/features</td><td>按功能切分的「纵切片」目录（traces、evals、prompts…约几十个）</td></tr>
+  <tr><td class="mono">worker/src/queues</td><td>各个 BullMQ 队列的消费者（ingestion、eval、export…）</td></tr>
+  <tr><td class="mono">worker/src/services</td><td>核心服务（IngestionService、ClickhouseWriter）</td></tr>
+  <tr><td class="mono">packages/shared/src/domain</td><td>领域模型（traces/observations/scores…）</td></tr>
+  <tr><td class="mono">packages/shared/src/server</td><td>仓储层、ClickHouse/Redis/S3 客户端、队列契约</td></tr>
+  <tr><td class="mono">packages/shared/prisma</td><td>Postgres schema 与迁移</td></tr>
+  <tr><td class="mono">packages/shared/clickhouse</td><td>ClickHouse 迁移（宽事件表）</td></tr>
+</table>
+
+<p>表里没列、但值得单独一提的是 <code>fern/</code> 和 <code>generated/</code>。Langfuse 的公共 REST API 不是手写的，而是先在 <code>fern/</code> 里用
+<strong>Fern</strong> 把「有哪些端点、收什么参数、返回什么」<strong>声明</strong>出来，再自动<strong>生成</strong> <code>generated/</code> 下的 API 客户端代码。
+所以 <code>generated/</code> 是<strong>构建产物，绝不能手改</strong>——改了下次生成就被覆盖。这也是为什么改公共 API 时要同步更新 <code>fern/</code> 源（第 27 课）。
+这种「契约先行、代码生成」的做法，保证了 API 文档、服务端、各语言 SDK 三者始终对得上。带着这张全景地图，下一课我们就深入支撑这一切的<strong>双存储</strong>：为什么偏要 Postgres 加 ClickHouse 一起上。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么用 monorepo + 窄腰，而不是把 web/worker/shared 拆成三个独立仓库（polyrepo）？</strong> 因为 web 和 worker 高度共享领域模型与队列契约，
+  如果分仓，每次改一个数据结构就要<strong>跨仓发版、对版本</strong>，极易出现「web 以为字段叫 A、worker 还在用 B」的漂移。monorepo 让三者<strong>原子地一起改</strong>——
+  一个 PR 同时改 shared 的契约和两边的用法，CI 一起验。代价是仓库更大、构建工具（Turbo）更复杂，  但对一个契约高度耦合的系统，这笔账划算。换个角度说：分仓省的是「单仓的复杂度」，monorepo 省的是「跨仓协调的复杂度」——而后者往往才是真正拖慢团队的那个。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>Langfuse 是 <strong>pnpm + Turbo 的 monorepo</strong>：<code>web</code>（门店）、<code>worker</code>（后场车间）两个运行时 + <code>packages/shared</code>（中央仓库）+ <code>ee</code>。</li>
+    <li><strong>窄腰</strong>：依赖严格单向 <code>web/worker/ee → shared</code>，而 <code>shared</code> 谁都不依赖；契约（领域模型、队列）集中在 shared。</li>
+    <li><strong>Turbo</strong> 用任务依赖图（<code>build</code> 依赖 <code>db:generate</code> + <code>^build</code>）+ 缓存，让大仓也能快速、增量构建。</li>
+    <li>记住高频目录：<code>web/src/{pages,server,features}</code>、<code>worker/src/{queues,services}</code>、<code>packages/shared/src/{domain,server}</code>——这是后面查代码的速查表。</li>
+    <li>选 monorepo 是为了让契约高度耦合的 web/worker/shared 能<strong>原子地一起改</strong>，避免跨仓版本漂移与协调成本。</li>
+  </ul>
+</div>
+""")
+
+_EN4.append(r"""
+<p class="lead">
+The first three lessons covered "what the data looks like"; this one switches axes: <strong>where the code lives</strong>. Langfuse
+is a <strong>monorepo</strong> (one repo, many projects) — everything sits in the single <code>langfuse/langfuse</code> repo, split
+internally into a few purpose-built "workspaces". Hold this map in mind and whenever a later lesson says "open
+<code>web/src/...</code>" or "this logic is in <code>worker</code>", you'll instantly know where it is and why.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of the repo as <strong>one big shopping mall</strong>: the whole building is <strong>one monorepo</strong> housing a few
+  independent shops — <strong>web</strong> is the customer-facing <strong>storefront</strong> (busy, fast, always open),
+  <strong>worker</strong> is the back-of-house <strong>workshop</strong> (heads-down heavy lifting, can queue and take its time). And
+  <strong>packages/shared</strong> is the <strong>central warehouse</strong>: every shop draws its goods (domain models, DB access,
+  queue contracts) from here, but the warehouse <strong>never depends back</strong> on any shop. All under <strong>one roof</strong>,
+  sharing utilities (build tools), yet cleanly bounded and independently run. Grab this "floor directory" before you wander the mall
+  and you won't get lost no matter which shop you visit.
+</div>
+""")
+
+_EN4.append(r"""
+<div class="fig">
+<svg viewBox="0 0 720 320" role="img" aria-label="Top-level dirs of the Langfuse repo: web, worker, packages/shared, ee, fern, generated and their roles">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">langfuse/langfuse top-level map</text>
+  <rect x="40" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="140" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web/</text>
+  <text x="140" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">Next.js app</text>
+  <text x="140" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">UI · tRPC · public REST API</text>
+  <rect x="260" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="360" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker/</text>
+  <text x="360" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">BullMQ queue consumer</text>
+  <text x="360" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">ingest·eval·export·delete…</text>
+  <rect x="480" y="40" width="200" height="74" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="580" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee/</text>
+  <text x="580" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">enterprise features</text>
+  <text x="580" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">license check</text>
+  <rect x="150" y="150" width="420" height="78" rx="11" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+  <text x="360" y="174" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared/ · shared core (narrow waist)</text>
+  <text x="360" y="194" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain models · server repos/CH/queues · prisma schema · clickhouse migrations</text>
+  <text x="360" y="212" text-anchor="middle" font-size="9.5" fill="var(--muted)">used by web & worker; depends on neither</text>
+  <line x1="140" y1="114" x2="300" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="300,148 289,146 293,154" fill="var(--purple)"/>
+  <line x1="360" y1="114" x2="360" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="360,148 355,138 365,138" fill="var(--purple)"/>
+  <line x1="580" y1="114" x2="420" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="420,148 431,146 427,154" fill="var(--purple)"/>
+  <rect x="40" y="252" width="320" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="200" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">fern/ · public API contract</text>
+  <text x="200" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">describes the REST API; generates generated/ clients</text>
+  <rect x="380" y="252" width="300" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="530" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">generated/ · auto-generated (don't edit)</text>
+  <text x="530" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">API clients produced by Fern</text>
+</svg>
+<div class="figcap"><b>Just a few top-level blocks</b>: <b>web</b> (storefront) and <b>worker</b> (workshop) are two runtime containers, both depending up on <b>packages/shared</b> (central warehouse / narrow waist); <b>ee</b> holds enterprise features used by web; <b>fern</b> defines the public API contract and generates the <b>generated</b> clients. Remember this and every "where is file X" question has a coordinate system.</div>
+</div>
+
+<p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does
+three things: render the <strong>UI</strong>, serve that UI a type-safe internal API (<strong>tRPC</strong>, L21), and serve external
+SDKs a <strong>public REST API</strong> (<code>web/src/pages/api/public</code>, L27) — the ingestion entry point lives here.
+<strong>worker</strong> is a headless background process that subscribes to dozens of <strong>BullMQ queues</strong> and takes on all
+the <strong>heavy, slow, retryable</strong> work: merge ingested events into ClickHouse, run LLM evals, export data, delete projects…
+(covered from Part 3 on). In a line: <strong>web does "fast in, fast out", worker does "heads-down grind"</strong>, decoupled by a
+Redis queue in the middle — exactly the through-line of the next lesson ("dual store") and Part 3 ("the ingestion path").</p>
+
+<h2>One repo, four workspaces</h2>
+<p>Langfuse uses <strong>pnpm workspaces</strong> to slice one repo into independently buildable packages. The root
+<code>pnpm-workspace.yaml</code> lists them line by line:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">pnpm-workspace.yaml</span><span class="ln">workspaces</span></div>
+  <pre class="code">packages:
+  - <span class="st">"web"</span>          <span class="cm"># Next.js app (UI + tRPC + public REST API)</span>
+  - <span class="st">"worker"</span>       <span class="cm"># queue consumer, background processing</span>
+  - <span class="st">"packages/**"</span>  <span class="cm"># shared packages, mainly packages/shared</span>
+  - <span class="st">"ee"</span>           <span class="cm"># enterprise features</span></pre>
+</div>
+
+<p>Under <code>packages/**</code> there's more than just <code>shared</code> — also "tooling config" packages like
+<code>config-eslint</code>, <code>config-typescript</code>, <code>eslint-plugin</code>; but the real business <strong>shared core is
+<code>packages/shared</code></strong> — the central warehouse in the figure. Why split into workspaces instead of one big folder?
+Because each package can then <strong>declare deps, build and test independently</strong>, and pnpm <strong>symlinks</strong> them so
+web can simply
+<code>import ... from "@langfuse/shared"</code> against the latest code with no publishing step. This hugely helps the dev experience:
+change a type in <code>packages/shared</code> and the editors in <code>web</code> and <code>worker</code> <strong>light up red
+immediately</strong> showing what must follow — surfacing the impact of a "contract change" at <strong>coding time</strong> rather than
+at runtime.</p>
+""")
+
+_EN4.append(r"""
+<h2>Dependency direction: why a "narrow waist"</h2>
+<p>The four workspaces don't reference each other freely — there's a <strong>strictly one-way</strong> dependency rule (written in
+<code>.agents/AGENTS.md</code>):</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.agents/AGENTS.md</span><span class="ln">Dependency direction</span></div>
+  <pre class="code">- <span class="nb">web</span>    -> @langfuse/shared, @langfuse/ee
+- <span class="nb">worker</span> -> @langfuse/shared
+- <span class="nb">ee</span>     -> @langfuse/shared
+- <span class="nb">@langfuse/shared</span> -> <span class="kw">no imports from</span> web, worker, or ee</pre>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="web, worker and ee all depend one-way on shared; shared depends on none, forming a narrow waist">
+  <text x="360" y="24" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">narrow waist: every arrow points to shared, none come back</text>
+  <rect x="60" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="135" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web</text>
+  <rect x="285" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker</text>
+  <rect x="510" y="50" width="150" height="48" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="585" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee</text>
+  <rect x="210" y="168" width="300" height="56" rx="12" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2.5"/>
+  <text x="360" y="192" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared</text>
+  <text x="360" y="210" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain · repositories · queue contracts · DB access</text>
+  <line x1="135" y1="98" x2="285" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="285,166 273,162 277,172" fill="var(--faint)"/>
+  <line x1="360" y1="98" x2="360" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="360,166 355,156 365,156" fill="var(--faint)"/>
+  <line x1="585" y1="98" x2="435" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="435,166 447,162 443,172" fill="var(--faint)"/>
+  <text x="360" y="244" text-anchor="middle" font-size="10" fill="var(--purple)">shared depends on none above → it's the foundation, not a consumer</text>
+</svg>
+<div class="figcap"><b>The "narrow waist"</b>: collect what everyone needs into a thin layer that <b>nothing depends on backwards</b>. web/worker/ee are the top of an hourglass, shared is the thin "waist", and below is the database. The payoff: the two containers evolve and deploy independently while sharing one set of domain models and queue contracts, so <b>the contract can't drift</b>.</div>
+</div>
+
+<p>Why does this discipline matter? Because web and worker are <strong>two very different workloads</strong>: web faces users, wants
+low latency, must restart anytime; worker chews heavy jobs, must be retryable, scales by queue. Let them <strong>import each other
+directly</strong> and changing one can entangle the other, binding their deployments. Collecting shared things into shared and
+allowing <strong>only downward dependencies</strong> erects a clean <strong>contract wall</strong> between the two containers: what
+goes through queues, what the DB tables look like — all defined in one place (queue payloads, for instance, belong to
+<code>packages/shared/src/server/queues.ts</code>). Both sides work to the same contract without stepping on each other.</p>
+
+<p>A concrete bug this rule <strong>blocks</strong>: imagine no narrow waist, and worker lazily <code>import</code>s a utility function
+from web. One day web refactors that function to change the UI and tweaks its parameters — and <strong>worker breaks without anyone
+knowing</strong>, maybe surfacing only as a production ingestion error. Under the narrow-waist rule, worker simply <strong>cannot</strong>
+depend on web; their only "shared language" is the explicit contract in shared. Want to share logic? <strong>Sink it down</strong> into
+shared so it becomes a contract-bound first-class citizen, not something borrowed quietly from next door. <strong>"Dependencies only go
+down" is really using the compiler to block implicit cross-container coupling.</strong></p>
+
+<h2>How Turbo orchestrates them</h2>
+<p>Build, test and lint across workspaces are orchestrated by <strong>Turbo</strong> (root <code>turbo.json</code>). Its two most
+useful tricks are the <strong>task dependency graph</strong> and <strong>caching</strong>:</p>
+
+<div class="flow">
+  <div class="node"><div class="nt">db:generate</div><div class="nd">generate Prisma client first</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">^build</div><div class="nd">build upstream deps first</div></div>
+  <div class="arrow">→</div>
+  <div class="node hl"><div class="nt">build</div><div class="nd">then build this package</div></div>
+  <div class="arrow">⚡</div>
+  <div class="node"><div class="nt">cache</div><div class="nd">unchanged → cache hit</div></div>
+</div>
+
+<p>Look at the <code>build</code> task in <code>turbo.json</code>: <code>"dependsOn": ["db:generate", "^build"]</code> — meaning "before
+building any package, generate the DB client and first build the packages it depends on (<code>^</code> = upstream deps)". So a single
+<code>pnpm build</code> lets Turbo compute the right order, parallelize what it can, and <strong>skip</strong> what's cached
+(<code>"cache": true</code>). That's why, in a big repo of dozens of packages, changing one line doesn't force a full rebuild.</p>
+
+<p>Put the narrow waist and Turbo together and watch a <strong>concrete chain reaction</strong>: say you add a field to the trace. You
+edit one spot in <code>packages/shared/prisma/schema.prisma</code> and one in <code>domain/traces.ts</code> — one
+<code>db:generate</code> regenerates the Prisma client and <strong>both web and worker immediately see the new field</strong>, because
+both pull types from the same <code>@langfuse/shared</code>. The whole thing lands in <strong>one PR</strong>, verified together by CI.
+Split into three repos and this same change needs three releases, three dependency bumps, and a prayer that versions line up — that's
+the practical meaning of "change atomically".</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 polyrepo (split)</h4><p>web/worker/shared each a repo. Change a shared structure → cross-repo releases, version juggling, easy drift. Upside: smaller, more independent repos.</p></div>
+  <div class="col"><h4>📦 monorepo (Langfuse's choice)</h4><p>one repo holds it all. A shared change is one atomic PR, verified together by CI. Cost: bigger repo, Turbo to manage build caching.</p></div>
+</div>
+
+<p>Caching is especially valuable for <strong>CI</strong>. In a dozens-of-packages repo, rebuilding + linting + testing everything on
+every PR would make CI unusably slow. Turbo computes a <strong>fingerprint of each task's inputs</strong> (source + deps + config) and,
+if the fingerprint is unchanged, <strong>reuses last time's output</strong> and skips the whole step. So editing one file in
+<code>worker</code> lets the unaffected <code>web</code> builds/tests <strong>hit cache and pass instantly</strong>. With a remote
+cache, teammates even share build results. That's the secret to keeping CI fast in a big repo — and the <strong>engineering
+precondition</strong> that makes "use a monorepo" viable: without good caching, monorepo build cost scares everyone off.</p>
+
+<h2>What's inside each workspace</h2>
+<p>Finally, a "hot directory cheat-sheet" — later lessons return to these spots again and again:</p>
+
+<table class="t">
+  <tr><th>Location</th><th>What's there</th></tr>
+  <tr><td class="mono">web/src/pages</td><td>Next.js pages + API routes (incl. <code>api/public</code> REST, <code>api/trpc</code>)</td></tr>
+  <tr><td class="mono">web/src/server/api</td><td>tRPC root router, context, middleware (L21)</td></tr>
+  <tr><td class="mono">web/src/features</td><td>feature "vertical slices" (traces, evals, prompts… dozens)</td></tr>
+  <tr><td class="mono">worker/src/queues</td><td>BullMQ queue consumers (ingestion, eval, export…)</td></tr>
+  <tr><td class="mono">worker/src/services</td><td>core services (IngestionService, ClickhouseWriter)</td></tr>
+  <tr><td class="mono">packages/shared/src/domain</td><td>domain models (traces/observations/scores…)</td></tr>
+  <tr><td class="mono">packages/shared/src/server</td><td>repositories, ClickHouse/Redis/S3 clients, queue contracts</td></tr>
+  <tr><td class="mono">packages/shared/prisma</td><td>Postgres schema & migrations</td></tr>
+  <tr><td class="mono">packages/shared/clickhouse</td><td>ClickHouse migrations (wide-event tables)</td></tr>
+</table>
+
+<p>Not in the table but worth a separate mention: <code>fern/</code> and <code>generated/</code>. Langfuse's public REST API isn't
+hand-written — it's first <strong>declared</strong> in <code>fern/</code> with <strong>Fern</strong> ("which endpoints, what params,
+what responses"), then API client code is <strong>generated</strong> into <code>generated/</code>. So <code>generated/</code> is a
+<strong>build artifact you must never hand-edit</strong> — edits get overwritten on the next generation. That's why changing the
+public API means updating the <code>fern/</code> sources too (L27). This "contract-first, code-generated" approach keeps the API docs,
+the server, and the per-language SDKs always in sync.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why a monorepo + narrow waist instead of three separate repos (polyrepo) for web/worker/shared?</strong> Because web and
+  worker share domain models and queue contracts heavily; split into repos and every data-structure change means
+  <strong>cross-repo releases and version juggling</strong>, inviting drift ("web thinks the field is A, worker still uses B"). A
+  monorepo lets all three <strong>change atomically</strong> — one PR edits the shared contract and both usages, and CI verifies them
+  together. The cost is a bigger repo and a more complex build tool (Turbo), but for a tightly contract-coupled system, the trade
+  wins. Put differently: polyrepo saves "single-repo complexity", monorepo saves "cross-repo coordination complexity" — and the latter
+  is usually what actually slows a team down.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Langfuse is a <strong>pnpm + Turbo monorepo</strong>: <code>web</code> (storefront), <code>worker</code> (workshop) two runtimes + <code>packages/shared</code> (central warehouse) + <code>ee</code>.</li>
+    <li><strong>Narrow waist</strong>: dependencies are strictly one-way <code>web/worker/ee → shared</code>, and <code>shared</code> depends on none; contracts (domain models, queues) live in shared.</li>
+    <li><strong>Turbo</strong> uses a task graph (<code>build</code> depends on <code>db:generate</code> + <code>^build</code>) + caching, so even a big repo builds fast and incrementally.</li>
+    <li>Memorize the hot dirs: <code>web/src/{pages,server,features}</code>, <code>worker/src/{queues,services}</code>, <code>packages/shared/src/{domain,server}</code>.</li>
+    <li>Monorepo is chosen so the contract-coupled web/worker/shared can <strong>change atomically</strong>, avoiding cross-repo version drift.</li>
+  </ul>
+</div>
+""")
+
+LESSON_04 = {"zh": "\n".join(_ZH4), "en": "\n".join(_EN4)}

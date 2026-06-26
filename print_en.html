@@ -334,12 +334,13 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 3 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 4 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
   <li>Observability 2.0 & wide events</li>
   <li>The three pillars in depth</li>
+  <li>Project map (monorepo & narrow waist)</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -1251,6 +1252,267 @@ mind now and the rest gets much easier.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>If you designed the score 'source' enum, would you also forbid external API callers from submitting EVAL-sourced scores like Langfuse does? Discuss what this means for trusting 'who scored'.</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Project map (monorepo & narrow waist)</h1>
+
+<p class="lead">
+The first three lessons covered "what the data looks like"; this one switches axes: <strong>where the code lives</strong>. Langfuse
+is a <strong>monorepo</strong> (one repo, many projects) — everything sits in the single <code>langfuse/langfuse</code> repo, split
+internally into a few purpose-built "workspaces". Hold this map in mind and whenever a later lesson says "open
+<code>web/src/...</code>" or "this logic is in <code>worker</code>", you'll instantly know where it is and why.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of the repo as <strong>one big shopping mall</strong>: the whole building is <strong>one monorepo</strong> housing a few
+  independent shops — <strong>web</strong> is the customer-facing <strong>storefront</strong> (busy, fast, always open),
+  <strong>worker</strong> is the back-of-house <strong>workshop</strong> (heads-down heavy lifting, can queue and take its time). And
+  <strong>packages/shared</strong> is the <strong>central warehouse</strong>: every shop draws its goods (domain models, DB access,
+  queue contracts) from here, but the warehouse <strong>never depends back</strong> on any shop. All under <strong>one roof</strong>,
+  sharing utilities (build tools), yet cleanly bounded and independently run. Grab this "floor directory" before you wander the mall
+  and you won't get lost no matter which shop you visit.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 320" role="img" aria-label="Top-level dirs of the Langfuse repo: web, worker, packages/shared, ee, fern, generated and their roles">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">langfuse/langfuse top-level map</text>
+  <rect x="40" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="140" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web/</text>
+  <text x="140" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">Next.js app</text>
+  <text x="140" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">UI · tRPC · public REST API</text>
+  <rect x="260" y="40" width="200" height="74" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="360" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker/</text>
+  <text x="360" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">BullMQ queue consumer</text>
+  <text x="360" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">ingest·eval·export·delete…</text>
+  <rect x="480" y="40" width="200" height="74" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/>
+  <text x="580" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee/</text>
+  <text x="580" y="83" text-anchor="middle" font-size="9.5" fill="var(--muted)">enterprise features</text>
+  <text x="580" y="100" text-anchor="middle" font-size="9.5" fill="var(--muted)">license check</text>
+  <rect x="150" y="150" width="420" height="78" rx="11" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+  <text x="360" y="174" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared/ · shared core (narrow waist)</text>
+  <text x="360" y="194" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain models · server repos/CH/queues · prisma schema · clickhouse migrations</text>
+  <text x="360" y="212" text-anchor="middle" font-size="9.5" fill="var(--muted)">used by web & worker; depends on neither</text>
+  <line x1="140" y1="114" x2="300" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="300,148 289,146 293,154" fill="var(--purple)"/>
+  <line x1="360" y1="114" x2="360" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="360,148 355,138 365,138" fill="var(--purple)"/>
+  <line x1="580" y1="114" x2="420" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="420,148 431,146 427,154" fill="var(--purple)"/>
+  <rect x="40" y="252" width="320" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="200" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">fern/ · public API contract</text>
+  <text x="200" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">describes the REST API; generates generated/ clients</text>
+  <rect x="380" y="252" width="300" height="50" rx="10" fill="var(--panel)" stroke="var(--line)"/>
+  <text x="530" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">generated/ · auto-generated (don't edit)</text>
+  <text x="530" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">API clients produced by Fern</text>
+</svg>
+<div class="figcap"><b>Just a few top-level blocks</b>: <b>web</b> (storefront) and <b>worker</b> (workshop) are two runtime containers, both depending up on <b>packages/shared</b> (central warehouse / narrow waist); <b>ee</b> holds enterprise features used by web; <b>fern</b> defines the public API contract and generates the <b>generated</b> clients. Remember this and every "where is file X" question has a coordinate system.</div>
+</div>
+
+<p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does
+three things: render the <strong>UI</strong>, serve that UI a type-safe internal API (<strong>tRPC</strong>, L21), and serve external
+SDKs a <strong>public REST API</strong> (<code>web/src/pages/api/public</code>, L27) — the ingestion entry point lives here.
+<strong>worker</strong> is a headless background process that subscribes to dozens of <strong>BullMQ queues</strong> and takes on all
+the <strong>heavy, slow, retryable</strong> work: merge ingested events into ClickHouse, run LLM evals, export data, delete projects…
+(covered from Part 3 on). In a line: <strong>web does "fast in, fast out", worker does "heads-down grind"</strong>, decoupled by a
+Redis queue in the middle — exactly the through-line of the next lesson ("dual store") and Part 3 ("the ingestion path").</p>
+
+<h2>One repo, four workspaces</h2>
+<p>Langfuse uses <strong>pnpm workspaces</strong> to slice one repo into independently buildable packages. The root
+<code>pnpm-workspace.yaml</code> lists them line by line:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">pnpm-workspace.yaml</span><span class="ln">workspaces</span></div>
+  <pre class="code">packages:
+  - <span class="st">"web"</span>          <span class="cm"># Next.js app (UI + tRPC + public REST API)</span>
+  - <span class="st">"worker"</span>       <span class="cm"># queue consumer, background processing</span>
+  - <span class="st">"packages/**"</span>  <span class="cm"># shared packages, mainly packages/shared</span>
+  - <span class="st">"ee"</span>           <span class="cm"># enterprise features</span></pre>
+</div>
+
+<p>Under <code>packages/**</code> there's more than just <code>shared</code> — also "tooling config" packages like
+<code>config-eslint</code>, <code>config-typescript</code>, <code>eslint-plugin</code>; but the real business <strong>shared core is
+<code>packages/shared</code></strong> — the central warehouse in the figure. Why split into workspaces instead of one big folder?
+Because each package can then <strong>declare deps, build and test independently</strong>, and pnpm <strong>symlinks</strong> them so
+web can simply
+<code>import ... from "@langfuse/shared"</code> against the latest code with no publishing step. This hugely helps the dev experience:
+change a type in <code>packages/shared</code> and the editors in <code>web</code> and <code>worker</code> <strong>light up red
+immediately</strong> showing what must follow — surfacing the impact of a "contract change" at <strong>coding time</strong> rather than
+at runtime.</p>
+
+
+<h2>Dependency direction: why a "narrow waist"</h2>
+<p>The four workspaces don't reference each other freely — there's a <strong>strictly one-way</strong> dependency rule (written in
+<code>.agents/AGENTS.md</code>):</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.agents/AGENTS.md</span><span class="ln">Dependency direction</span></div>
+  <pre class="code">- <span class="nb">web</span>    -> @langfuse/shared, @langfuse/ee
+- <span class="nb">worker</span> -> @langfuse/shared
+- <span class="nb">ee</span>     -> @langfuse/shared
+- <span class="nb">@langfuse/shared</span> -> <span class="kw">no imports from</span> web, worker, or ee</pre>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="web, worker and ee all depend one-way on shared; shared depends on none, forming a narrow waist">
+  <text x="360" y="24" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">narrow waist: every arrow points to shared, none come back</text>
+  <rect x="60" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="135" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">web</text>
+  <rect x="285" y="50" width="150" height="48" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-ink)">worker</text>
+  <rect x="510" y="50" width="150" height="48" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="585" y="79" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">ee</text>
+  <rect x="210" y="168" width="300" height="56" rx="12" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2.5"/>
+  <text x="360" y="192" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared</text>
+  <text x="360" y="210" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain · repositories · queue contracts · DB access</text>
+  <line x1="135" y1="98" x2="285" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="285,166 273,162 277,172" fill="var(--faint)"/>
+  <line x1="360" y1="98" x2="360" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="360,166 355,156 365,156" fill="var(--faint)"/>
+  <line x1="585" y1="98" x2="435" y2="166" stroke="var(--faint)" stroke-width="1.8"/><polygon points="435,166 447,162 443,172" fill="var(--faint)"/>
+  <text x="360" y="244" text-anchor="middle" font-size="10" fill="var(--purple)">shared depends on none above → it's the foundation, not a consumer</text>
+</svg>
+<div class="figcap"><b>The "narrow waist"</b>: collect what everyone needs into a thin layer that <b>nothing depends on backwards</b>. web/worker/ee are the top of an hourglass, shared is the thin "waist", and below is the database. The payoff: the two containers evolve and deploy independently while sharing one set of domain models and queue contracts, so <b>the contract can't drift</b>.</div>
+</div>
+
+<p>Why does this discipline matter? Because web and worker are <strong>two very different workloads</strong>: web faces users, wants
+low latency, must restart anytime; worker chews heavy jobs, must be retryable, scales by queue. Let them <strong>import each other
+directly</strong> and changing one can entangle the other, binding their deployments. Collecting shared things into shared and
+allowing <strong>only downward dependencies</strong> erects a clean <strong>contract wall</strong> between the two containers: what
+goes through queues, what the DB tables look like — all defined in one place (queue payloads, for instance, belong to
+<code>packages/shared/src/server/queues.ts</code>). Both sides work to the same contract without stepping on each other.</p>
+
+<p>A concrete bug this rule <strong>blocks</strong>: imagine no narrow waist, and worker lazily <code>import</code>s a utility function
+from web. One day web refactors that function to change the UI and tweaks its parameters — and <strong>worker breaks without anyone
+knowing</strong>, maybe surfacing only as a production ingestion error. Under the narrow-waist rule, worker simply <strong>cannot</strong>
+depend on web; their only "shared language" is the explicit contract in shared. Want to share logic? <strong>Sink it down</strong> into
+shared so it becomes a contract-bound first-class citizen, not something borrowed quietly from next door. <strong>"Dependencies only go
+down" is really using the compiler to block implicit cross-container coupling.</strong></p>
+
+<h2>How Turbo orchestrates them</h2>
+<p>Build, test and lint across workspaces are orchestrated by <strong>Turbo</strong> (root <code>turbo.json</code>). Its two most
+useful tricks are the <strong>task dependency graph</strong> and <strong>caching</strong>:</p>
+
+<div class="flow">
+  <div class="node"><div class="nt">db:generate</div><div class="nd">generate Prisma client first</div></div>
+  <div class="arrow">→</div>
+  <div class="node"><div class="nt">^build</div><div class="nd">build upstream deps first</div></div>
+  <div class="arrow">→</div>
+  <div class="node hl"><div class="nt">build</div><div class="nd">then build this package</div></div>
+  <div class="arrow">⚡</div>
+  <div class="node"><div class="nt">cache</div><div class="nd">unchanged → cache hit</div></div>
+</div>
+
+<p>Look at the <code>build</code> task in <code>turbo.json</code>: <code>"dependsOn": ["db:generate", "^build"]</code> — meaning "before
+building any package, generate the DB client and first build the packages it depends on (<code>^</code> = upstream deps)". So a single
+<code>pnpm build</code> lets Turbo compute the right order, parallelize what it can, and <strong>skip</strong> what's cached
+(<code>"cache": true</code>). That's why, in a big repo of dozens of packages, changing one line doesn't force a full rebuild.</p>
+
+<p>Put the narrow waist and Turbo together and watch a <strong>concrete chain reaction</strong>: say you add a field to the trace. You
+edit one spot in <code>packages/shared/prisma/schema.prisma</code> and one in <code>domain/traces.ts</code> — one
+<code>db:generate</code> regenerates the Prisma client and <strong>both web and worker immediately see the new field</strong>, because
+both pull types from the same <code>@langfuse/shared</code>. The whole thing lands in <strong>one PR</strong>, verified together by CI.
+Split into three repos and this same change needs three releases, three dependency bumps, and a prayer that versions line up — that's
+the practical meaning of "change atomically".</p>
+
+<div class="cols">
+  <div class="col"><h4>🧩 polyrepo (split)</h4><p>web/worker/shared each a repo. Change a shared structure → cross-repo releases, version juggling, easy drift. Upside: smaller, more independent repos.</p></div>
+  <div class="col"><h4>📦 monorepo (Langfuse's choice)</h4><p>one repo holds it all. A shared change is one atomic PR, verified together by CI. Cost: bigger repo, Turbo to manage build caching.</p></div>
+</div>
+
+<p>Caching is especially valuable for <strong>CI</strong>. In a dozens-of-packages repo, rebuilding + linting + testing everything on
+every PR would make CI unusably slow. Turbo computes a <strong>fingerprint of each task's inputs</strong> (source + deps + config) and,
+if the fingerprint is unchanged, <strong>reuses last time's output</strong> and skips the whole step. So editing one file in
+<code>worker</code> lets the unaffected <code>web</code> builds/tests <strong>hit cache and pass instantly</strong>. With a remote
+cache, teammates even share build results. That's the secret to keeping CI fast in a big repo — and the <strong>engineering
+precondition</strong> that makes "use a monorepo" viable: without good caching, monorepo build cost scares everyone off.</p>
+
+<h2>What's inside each workspace</h2>
+<p>Finally, a "hot directory cheat-sheet" — later lessons return to these spots again and again:</p>
+
+<table class="t">
+  <tr><th>Location</th><th>What's there</th></tr>
+  <tr><td class="mono">web/src/pages</td><td>Next.js pages + API routes (incl. <code>api/public</code> REST, <code>api/trpc</code>)</td></tr>
+  <tr><td class="mono">web/src/server/api</td><td>tRPC root router, context, middleware (L21)</td></tr>
+  <tr><td class="mono">web/src/features</td><td>feature "vertical slices" (traces, evals, prompts… dozens)</td></tr>
+  <tr><td class="mono">worker/src/queues</td><td>BullMQ queue consumers (ingestion, eval, export…)</td></tr>
+  <tr><td class="mono">worker/src/services</td><td>core services (IngestionService, ClickhouseWriter)</td></tr>
+  <tr><td class="mono">packages/shared/src/domain</td><td>domain models (traces/observations/scores…)</td></tr>
+  <tr><td class="mono">packages/shared/src/server</td><td>repositories, ClickHouse/Redis/S3 clients, queue contracts</td></tr>
+  <tr><td class="mono">packages/shared/prisma</td><td>Postgres schema & migrations</td></tr>
+  <tr><td class="mono">packages/shared/clickhouse</td><td>ClickHouse migrations (wide-event tables)</td></tr>
+</table>
+
+<p>Not in the table but worth a separate mention: <code>fern/</code> and <code>generated/</code>. Langfuse's public REST API isn't
+hand-written — it's first <strong>declared</strong> in <code>fern/</code> with <strong>Fern</strong> ("which endpoints, what params,
+what responses"), then API client code is <strong>generated</strong> into <code>generated/</code>. So <code>generated/</code> is a
+<strong>build artifact you must never hand-edit</strong> — edits get overwritten on the next generation. That's why changing the
+public API means updating the <code>fern/</code> sources too (L27). This "contract-first, code-generated" approach keeps the API docs,
+the server, and the per-language SDKs always in sync.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why a monorepo + narrow waist instead of three separate repos (polyrepo) for web/worker/shared?</strong> Because web and
+  worker share domain models and queue contracts heavily; split into repos and every data-structure change means
+  <strong>cross-repo releases and version juggling</strong>, inviting drift ("web thinks the field is A, worker still uses B"). A
+  monorepo lets all three <strong>change atomically</strong> — one PR edits the shared contract and both usages, and CI verifies them
+  together. The cost is a bigger repo and a more complex build tool (Turbo), but for a tightly contract-coupled system, the trade
+  wins. Put differently: polyrepo saves "single-repo complexity", monorepo saves "cross-repo coordination complexity" — and the latter
+  is usually what actually slows a team down.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Langfuse is a <strong>pnpm + Turbo monorepo</strong>: <code>web</code> (storefront), <code>worker</code> (workshop) two runtimes + <code>packages/shared</code> (central warehouse) + <code>ee</code>.</li>
+    <li><strong>Narrow waist</strong>: dependencies are strictly one-way <code>web/worker/ee → shared</code>, and <code>shared</code> depends on none; contracts (domain models, queues) live in shared.</li>
+    <li><strong>Turbo</strong> uses a task graph (<code>build</code> depends on <code>db:generate</code> + <code>^build</code>) + caching, so even a big repo builds fast and incrementally.</li>
+    <li>Memorize the hot dirs: <code>web/src/{pages,server,features}</code>, <code>worker/src/{queues,services}</code>, <code>packages/shared/src/{domain,server}</code>.</li>
+    <li>Monorepo is chosen so the contract-coupled web/worker/shared can <strong>change atomically</strong>, avoiding cross-repo version drift.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse mandates that dependencies go only web/worker/ee → shared, and shared depends on none. What's the main benefit of this 'narrow waist' rule?</div>
+  <ol class="opts">
+    <li>It lets shared call web's React components directly</li>
+    <li>It slows builds so caching kicks in</li>
+    <li>The two containers evolve/deploy independently yet share one set of domain models and queue contracts, defined in one place so they can't drift</li>
+    <li>It forces web and worker into one process</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. web (low-latency, user-facing) and worker (heavy, retryable) are different workloads; letting them depend on each other entangles them. Collecting shared content into a shared that nothing depends on backwards, with only-downward deps, erects a contract wall — what goes through queues and what tables look like are defined in one place.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. In turbo.json the build task says "dependsOn": ["db:generate", "^build"]. What does that mean?</div>
+  <ol class="opts">
+    <li>Before building any package, generate the Prisma client and first build its upstream deps (^ = upstream); Turbo computes order, parallelizes, and skips cache hits</li>
+    <li>db:generate must be run manually after build</li>
+    <li>The build task can never be cached</li>
+    <li>^build means build the downstream packages</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. dependsOn declares the task graph: db:generate before build (need Prisma types first), ^build means build upstream dep packages first. So one pnpm build lets Turbo order, parallelize, and cache-hit unchanged packages — incremental builds even in a big repo.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Adding a field to the trace in Langfuse's monorepo roughly takes what steps?</div>
+  <ol class="opts">
+    <li>Release three separate repos and manually align versions</li>
+    <li>Edit prisma/schema.prisma and domain/traces.ts; after db:generate both web and worker pick up the new type from the same @langfuse/shared, in one PR verified together by CI</li>
+    <li>You must first drop the old ClickHouse table</li>
+    <li>Only web changes; worker is unaffected</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. This is exactly the monorepo + narrow-waist payoff: change the shared structure once, both web/worker pull from @langfuse/shared, done atomically in one PR through CI together. Polyrepo would need cross-repo releases and version alignment, inviting drift.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>If your own project had both a 'user-facing service' and a 'background worker', would you keep them in one repo or split? Borrowing Langfuse's narrow waist, what would you pull into a shared layer?</li>
   </ul>
 </div>
 </div>

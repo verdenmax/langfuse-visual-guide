@@ -55,6 +55,8 @@ PAGES = [
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
     ("03-three-pillars-deep.html", "三大支柱深入：trace/observation/score", "The three pillars in depth",
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
+    ("04-project-map-monorepo.html", "项目全景地图（monorepo 与窄腰）", "Project map (monorepo & narrow waist)",
+     "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
 ]
 
 
@@ -544,6 +546,8 @@ SUBTITLES = {
                                                 "the 1.0 trouble; wide events; the principles; unknown unknowns"),
     "03-three-pillars-deep.html": ("trace 薄 · observation 厚（10 型·树）· score 两维 · 落到三张 CH 表",
                                    "thin trace; heavy observation (10 types, tree); score 2-D; three CH tables"),
+    "04-project-map-monorepo.html": ("monorepo · 四工作区 · 窄腰依赖 · Turbo 编排 · 高频目录速查",
+                                     "monorepo; four workspaces; narrow-waist deps; Turbo; hot-dir cheat-sheet"),
 }
 
 
