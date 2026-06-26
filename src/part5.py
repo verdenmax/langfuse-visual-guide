@@ -1180,3 +1180,318 @@ _EN31.append(r"""
 """)
 
 LESSON_31 = {"zh": "\n".join(_ZH31), "en": "\n".join(_EN31)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L32 · 人工标注 / Human annotation
+# ══════════════════════════════════════════════════════════════════════
+_ZH32 = []
+_EN32 = []
+
+_ZH32.append(r"""
+<p class="lead">
+前三课让机器自动打分——LLM 当裁判、代码做确定性检查。但有些判断<strong>离不开人</strong>：建立可信的 ground truth（基准答案）、审核「AI 到底判得对不对」、处理 AI 拿不准的边界情形、给训练/对齐采人类偏好。这一课讲第 28 课埋下的<strong>第三种 score 来源——人工标注（source=ANNOTATION）</strong>，以及把「请人评审」这件本质上<strong>无序又易冲突</strong>的事，组织成有序流程的工具：<strong>标注队列（annotation queue）</strong>。
+重点有三：队列的<strong>数据模型</strong>（绑一组 score config、装一批待评对象）、一个有意思的<strong>5 分钟时间锁</strong>（人类尺度的并发控制），以及人工分如何和前两课的 EVAL 分<strong>同表汇合</strong>——从而成为校准 AI 裁判的标尺。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  标注队列像医院的<strong>待会诊病历筐</strong>。每份需要人来看的病历（一条 trace、一次 observation、或整个 session）被放进筐里排队；筐口贴着一张<strong>统一的评分表</strong>（队列绑定的 score config，决定医生要填哪几项、每项什么刻度）。
+  医生从筐里<strong>取一份</strong>来看，系统立刻给这份病历<strong>上锁 5 分钟</strong>——这样另一位医生同时来取时，不会拿到同一份重复会诊；而要是这位医生中途走开了，锁会自动过期，病历重新可领，<strong>不会被永久占住</strong>。
+  看完，医生<strong>填表打分、可附一句评语</strong>，把病历标成「已会诊」，并记下<strong>是谁看的</strong>。这些人工评分和前两课 AI 评的分<strong>进同一本病案室</strong>（scores 表）——于是你能把「人怎么判的」和「AI 怎么判的」摆在一起对照，看 AI 靠不靠谱。
+</div>
+""")
+
+_ZH32.append(r"""
+<h2>合上闭环：第三种来源，也是「标尺的标尺」</h2>
+<p>第 28 课说 score 有三种来源：API、EVAL、ANNOTATION。前面几课讲完了 EVAL（裁判与代码），这一课补上 ANNOTATION。三者<strong>同表、同 config、同一把尺</strong>——但人工分有个独特角色：它常被当作 <strong>ground truth</strong>，用来回答第 29 课留下的问题「<strong>AI 裁判靠不靠谱</strong>」。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="三种 score 来源 API、EVAL、ANNOTATION 汇入同一张 scores 表；人工标注的分常作为 ground truth，与 EVAL 的 AI 裁判分在同一批对象上对照，用来校准裁判是否可信">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三来源汇合，人工分还兼任「裁判的标尺」</text>
+  <rect x="30" y="40" width="150" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="105" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API（你亲手提交）</text>
+  <rect x="30" y="84" width="150" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="105" y="105" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL（AI 裁判 / 代码）</text>
+  <rect x="30" y="128" width="150" height="34" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="105" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ANNOTATION（人工·本课）</text>
+  <rect x="250" y="78" width="150" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="325" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores 表（第 8 课宽表）</text><text x="325" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">同名同 config → 可比</text>
+  <rect x="468" y="44" width="232" height="58" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="584" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">人工分 = ground truth</text><text x="584" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">在同一批 trace 上</text><text x="584" y="93" text-anchor="middle" font-size="7" fill="var(--accent-ink)">和 EVAL 分对照</text>
+  <rect x="468" y="116" width="232" height="44" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="584" y="134" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">→ 校准 AI 裁判是否可信</text><text x="584" y="150" text-anchor="middle" font-size="6.8" fill="var(--muted)">人机不一致处，正是裁判要改进的地方</text>
+  <line x1="180" y1="57" x2="248" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="180" y1="101" x2="248" y2="104" stroke="var(--accent)" stroke-width="1.3"/><line x1="180" y1="145" x2="248" y2="118" stroke="var(--accent)" stroke-width="1.6"/>
+  <line x1="400" y1="98" x2="466" y2="78" stroke="var(--accent)" stroke-width="1.4"/><polygon points="466,78 457,77 460,85" fill="var(--accent)"/>
+  <line x1="584" y1="102" x2="584" y2="114" stroke="var(--faint)" stroke-width="1.3"/><polygon points="584,116 580,107 588,107" fill="var(--accent)"/>
+  <text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--faint)">人工标注又慢又贵，所以通常只评一小撮关键样本——但这一小撮是衡量 AI 裁判的「金标准」</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">三来源各取所长：API 灵活、EVAL 可扩展、ANNOTATION 最权威</text>
+</svg>
+<div class="figcap"><b>第三种来源，闭合第 28 课的环</b>：人工分与 API、EVAL 分写进同一张 scores 表（<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>，<code>scores.ts:4</code>），享受同一 config 校验。它最大的价值是当 <b>ground truth</b>——在同一批对象上和 AI 裁判分对照，量出裁判的可信度。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">建基准</span><span class="name">ground truth</span></div><div class="ld">很多评估要有「标准答案」才谈得上准不准。人类专家在一小撮代表性样本上打的分，就是这把<strong>金标准</strong>——AI 裁判、回归测试、模型对比都拿它当参照系。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">审裁判</span><span class="name">审核 AI 判得对不对</span></div><div class="ld">第 29 课问过「裁判自己靠不靠谱」。答案就在这：把同一批 trace 既让 AI 裁判评、又让人评，<strong>看两者一致不一致</strong>。不一致的地方，要么改 prompt、要么换模型——人工标注是<strong>校准裁判的反馈回路</strong>。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">啃边界</span><span class="name">AI 拿不准的情形</span></div><div class="ld">对那些 AI 反复打分摇摆、或明显需要领域知识/价值判断的样本，直接交给人。人工标注专攻<strong>机器最不擅长的长尾</strong>，把宝贵人力花在刀刃上。</div></div>
+</div>
+""")
+
+# (L32 sec2 model below)
+
+_ZH32.append(r"""
+<h2>队列的数据模型：一张评分表 + 一筐待评对象</h2>
+<p>标注队列的数据模型只有两个主角。<strong>AnnotationQueue</strong> 是「评审任务」本身：有名字、描述，最关键是一组 <code>scoreConfigIds</code>——它<strong>绑定第 28 课的 score config</strong>，规定这个队列里每位评审员要填哪几项分、每项什么刻度（统一了大家的尺）。<strong>AnnotationQueueItem</strong> 是「筐里的一份待评对象」：指向一条 trace/observation/session，带一个 PENDING→COMPLETED 的状态。</p>
+
+<table class="t">
+  <thead><tr><th>字段</th><th>含义</th><th>为什么重要</th></tr></thead>
+  <tbody>
+    <tr><td colspan="3" style="background:var(--purple-soft);font-weight:700">AnnotationQueue（评审任务）</td></tr>
+    <tr><td><code>name / description</code></td><td>队列名与说明</td><td>一个项目可有多个队列（如「事实性核查」「语气审查」）</td></tr>
+    <tr><td><code>scoreConfigIds[]</code></td><td>绑定的一组 score config</td><td><b>统一评分表</b>：所有评审员按同一组 config 打分，分数才可比（呼应第 28 课）</td></tr>
+    <tr><td colspan="3" style="background:var(--blue-soft);font-weight:700">AnnotationQueueItem（一份待评对象）</td></tr>
+    <tr><td><code>objectType / objectId</code></td><td>评的是什么：TRACE / OBSERVATION / SESSION</td><td>三种粒度都能评——整条对话、某一步、或整个会话</td></tr>
+    <tr><td><code>status</code></td><td>PENDING / COMPLETED</td><td>队列的进度就是「还剩多少 PENDING」</td></tr>
+    <tr><td><code>lockedAt / lockedByUserId</code></td><td>谁在看、何时锁的</td><td>下一节的 <b>5 分钟锁</b>，防两人重复标注</td></tr>
+    <tr><td><code>annotatorUserId / completedAt</code></td><td>谁评的、何时完成</td><td>可审计：每条人工分都知道出自谁手</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma:582-633</span><span class="ln">两个模型 + 两个枚举</span></div>
+  <pre class="code"><span class="kw">model</span> AnnotationQueue {
+  name           String
+  scoreConfigIds String[]   <span class="cm">// ← 绑定第28课的 score config，统一这个队列的评分表</span>
+  annotationQueueItem  AnnotationQueueItem[]
+  annotationQueueAssignment AnnotationQueueAssignment[]  <span class="cm">// 队列指派给哪些评审员</span>
+}
+<span class="kw">model</span> AnnotationQueueItem {
+  objectId   String;  objectType AnnotationQueueObjectType   <span class="cm">// 评的对象</span>
+  status     AnnotationQueueStatus @default(PENDING)          <span class="cm">// PENDING → COMPLETED</span>
+  lockedAt   DateTime?;  lockedByUserId  String?              <span class="cm">// ← 软锁（5分钟）</span>
+  annotatorUserId String?;  completedAt DateTime?            <span class="cm">// 谁评的、何时完成</span>
+}
+<span class="kw">enum</span> AnnotationQueueObjectType { TRACE  OBSERVATION  SESSION }
+<span class="kw">enum</span> AnnotationQueueStatus     { PENDING  COMPLETED }</pre>
+</div>
+
+<p>还有第三个模型 <code>AnnotationQueueAssignment</code>：把队列<strong>指派给特定评审员</strong>。于是「谁该评哪个队列」也是结构化的——不是发个链接全凭自觉，而是平台记录在案的分工。</p>
+""")
+
+# (L32 sec3 lock below)
+
+_ZH32.append(r"""
+<h2>5 分钟软锁：人类尺度的并发控制</h2>
+<p>多个评审员同时盯着一个队列，怎么避免两人评到同一份、白费功夫？数据库的事务锁太重、也不贴合「人看一会儿」的节奏。Langfuse 用一个轻巧的<strong>时间软锁</strong>：评审员打开一份 item，就写上 <code>lockedByUserId</code> 和 <code>lockedAt</code>；判断「是否被锁」时，只认<strong>最近 5 分钟内</strong>的锁。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="5 分钟软锁：评审员A 打开一份 item 写入 lockedAt，5 分钟内该 item 对评审员B 显示为已锁定、跳过；若 A 中途离开，锁超过 5 分钟自动过期，item 重新可领，不会被永久占住">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">软锁 = lockedByUserId + lockedAt，只在 5 分钟内有效</text>
+  <rect x="40" y="40" width="120" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="100" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">评审员 A 打开</text><text x="100" y="72" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">写 lockedAt=now</text>
+  <rect x="210" y="40" width="300" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">item 锁定中（lockedAt &gt; now − 5min）</text><text x="360" y="72" text-anchor="middle" font-size="6.8" fill="var(--muted)">其他人看到「已锁」，跳过这份</text>
+  <rect x="560" y="40" width="130" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="625" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">A 评完 → COMPLETED</text><text x="625" y="72" text-anchor="middle" font-size="6.6" fill="var(--muted)">记 annotatorUserId</text>
+  <rect x="210" y="110" width="300" height="44" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="5 3"/><text x="360" y="130" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">若 A 中途离开……</text><text x="360" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">5 分钟后锁自动过期，item 重新可领——不会被永久占住</text>
+  <rect x="40" y="112" width="120" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="100" y="130" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">评审员 B 来取</text><text x="100" y="144" text-anchor="middle" font-size="6.6" fill="var(--muted)">锁过期→可领</text>
+  <line x1="160" y1="60" x2="208" y2="60" stroke="var(--accent)" stroke-width="1.5"/><polygon points="208,60 199,56 199,64" fill="var(--accent)"/>
+  <line x1="510" y1="60" x2="558" y2="60" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,60 549,56 549,64" fill="var(--teal)"/>
+  <line x1="360" y1="80" x2="360" y2="108" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/>
+  <line x1="160" y1="132" x2="208" y2="132" stroke="var(--blue)" stroke-width="1.4"/><polygon points="208,132 199,128 199,136" fill="var(--blue)"/>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">不是数据库事务锁，而是一个「带过期时间的标记」——贴合人类「看几分钟」的节奏，且永不死锁</text>
+  <text x="360" y="201" text-anchor="middle" font-size="8" fill="var(--faint)">关掉浏览器、网断了都不要紧：锁会自己消失</text>
+</svg>
+<div class="figcap"><b>软锁，不是硬锁</b>：<code>isItemLocked</code> 只认 <code>lockedAt</code> 在最近 5 分钟内的锁（<code>annotationQueueItemsRouter.ts:34-36</code>）。它解决「人类并发」——多人同评一个队列不撞车，又因为<b>会自动过期</b>，绝不会因某人关了页面而把 item 永久占死。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">annotationQueueItemsRouter.ts:34 · scores/hooks/useScoreMutations.ts:39</span><span class="ln">软锁 + 出分</span></div>
+  <pre class="code"><span class="cm">// 软锁：只有「最近 5 分钟内被锁」才算锁定——超时自动失效</span>
+<span class="kw">const</span> <span class="fn">isItemLocked</span> = (item) =&gt;
+  item.lockedByUserId &amp;&amp; item.lockedAt &amp;&amp;
+  <span class="kw">new</span> Date(item.lockedAt) &gt; <span class="kw">new</span> Date(Date.now() - <span class="st">5 * 60 * 1000</span>);   <span class="cm">// 5 分钟窗口</span>
+
+<span class="cm">// 评完：item 标 COMPLETED 并记下评审员</span>
+{ status: AnnotationQueueStatus.COMPLETED, annotatorUserId: ctx.session.user.id }
+
+<span class="cm">// 评审员填的每个分：source=ANNOTATION，且带 authorUserId（谁打的）</span>
+createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUserId, name, value, dataType, comment });
+<span class="cm">// → 和第29课 EVAL 分一样，归一后经第12课摄取链路回流同一张 scores 表</span></pre>
+</div>
+
+<p>评审员填的分，<code>source</code> 标成 <code>ANNOTATION</code>、带上 <code>authorUserId</code>（哪位评审员），还能附 <code>comment</code> 写理由——和第 29 课 EVAL 分一样，最终都归一成 score、经第 12 课摄取链路回流<strong>同一张 scores 表</strong>。至此，第 28 课的三种来源全部到齐：<strong>API、EVAL、ANNOTATION 殊途同归，同表、同尺、可比</strong>。Part 5 的主线——「把『发生了什么』变成『做得多好』」——到这里画上闭环。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>进入被指派的队列</h4><p>评审员看到指派给自己的队列（<code>AnnotationQueueAssignment</code>）和里面待评的 PENDING item。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>领一份 → 自动上锁</h4><p>打开一份 item，系统写 <code>lockedByUserId/lockedAt</code>，5 分钟内别人看到「已锁」、跳过。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>看对象</h4><p>按 <code>objectType</code> 展开要评的 TRACE / OBSERVATION / SESSION——直接复用第 25、26 课的详情视图。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>按 config 打分 + 评语</h4><p>填队列绑定的每个 score config，可附 <code>comment</code>。分即时写成 <code>source=ANNOTATION</code>、带 <code>authorUserId</code>。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>提交 → 跳下一份</h4><p>item 标 <code>COMPLETED</code> + 记 <code>annotatorUserId/completedAt</code>，锁释放，自动推进队列里下一份 PENDING。</p></div></div>
+</div>
+""")
+
+# (L32 spark+key below)
+
+_ZH32.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么用「5 分钟时间软锁」，而不是数据库事务锁或永久占用标记？</strong> 因为这把锁要适配的是<strong>人</strong>，不是机器。数据库事务锁是毫秒级的、占着连接，根本扛不住「人看几分钟」的时长。而如果用永久标记（「A 正在看」直到 A 主动释放），一旦 A 关了浏览器、断了网、或干脆忘了——这份 item 就被<strong>永久占死</strong>，再没人能领。时间软锁两头讨好：5 分钟够一个人看完一份、避免并发撞车；又因为<strong>会自动过期</strong>，任何意外都只会让锁「自愈」，绝不死锁。这是一个把「乐观并发 + 租约（lease）」思想用在人类工作流上的漂亮小设计——<strong>锁的粒度，要匹配被锁者的节奏</strong>。<br><br>
+  <strong>为什么人工分一定要和 AI 评的分进同一张表、用同一套 config？</strong> 因为只有同尺，才能<strong>对照</strong>。把人评的「金标准」和 AI 裁判的分摆在同一批 trace 上，一减就知道裁判哪里偏了——这正是第 29 课「怎么信任 AI 裁判」的答案：<strong>用人工标注当裁判的标尺</strong>。如果两边各用各的存储、各打各的刻度，这种校准根本无从谈起。Langfuse 让三种来源（API/EVAL/ANNOTATION）共享一张 scores 表、一套 score config，本质上就是为了让<strong>「人怎么看」和「机器怎么看」永远可以放在一起比较</strong>——评估体系的可信度，最终落在这一点上。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>人工标注 = 第三种 score 来源（ANNOTATION）</strong>：补上第 28 课三来源的最后一块。它最贵也最权威，常用作 ground truth——既建基准、又审核「AI 裁判判得对不对」、还啃 AI 拿不准的长尾。</li>
+    <li><strong>标注队列把无序的评审变有序</strong>：<code>AnnotationQueue</code> 绑一组 <code>scoreConfigIds</code>（统一评分表）；<code>AnnotationQueueItem</code> 指向一个 TRACE/OBSERVATION/SESSION，带 PENDING→COMPLETED 状态；<code>AnnotationQueueAssignment</code> 把队列指派给评审员。</li>
+    <li><strong>5 分钟软锁 = 人类并发控制</strong>：打开即写 <code>lockedAt</code>，<code>isItemLocked</code> 只认最近 5 分钟内的锁。多人同评不撞车，又因自动过期而<strong>永不死锁</strong>——锁的粒度匹配人的节奏。</li>
+    <li><strong>出分同归</strong>：评审员按 config 打的分 <code>source=ANNOTATION</code>、带 <code>authorUserId</code> 与可选 <code>comment</code>，item 标 COMPLETED + 记 annotatorUserId；分经第 12 课摄取链路回流<strong>同一张 scores 表</strong>。</li>
+    <li><strong>闭环</strong>：API/EVAL/ANNOTATION 三来源同表、同尺、可比——人工分因此能当 AI 裁判的标尺。这正是评估可信度的基石，也为 Part 5「把发生变成做得多好」收尾。</li>
+  </ul>
+</div>
+""")
+
+_EN32.append(r"""
+<p class="lead">
+The last three lessons let machines score automatically—an LLM as judge, code for deterministic checks. But some judgments <strong>require a human</strong>: establishing trustworthy ground truth, auditing "is the AI actually right", handling edge cases the AI is unsure about, collecting human preferences for training/alignment. This lesson covers the <strong>third score source planted in Lesson 28—human annotation (source=ANNOTATION)</strong>, and the tool that turns the inherently <strong>unordered and collision-prone</strong> act of "asking people to review" into an orderly process: the <strong>annotation queue</strong>.
+Three focuses: the queue's <strong>data model</strong> (bound to a set of score configs, holding a batch of objects to review), an interesting <strong>5-minute time lock</strong> (human-scale concurrency control), and how human scores <strong>converge in the same table</strong> as the previous lessons' EVAL scores—becoming the yardstick to calibrate the AI judge.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  An annotation queue is like a hospital's <strong>basket of charts awaiting consultation</strong>. Each chart needing human eyes (a trace, an observation, or a whole session) queues in the basket; the basket bears a <strong>uniform scoring sheet</strong> (the queue's bound score configs, deciding which items each doctor must fill and on what scale).
+  A doctor <strong>takes one</strong> to review, and the system immediately <strong>locks that chart for 5 minutes</strong>—so another doctor taking one at the same time won't get the same chart twice; and if this doctor wanders off, the lock auto-expires and the chart becomes available again, <strong>never permanently held</strong>.
+  After reviewing, the doctor <strong>fills the sheet, may add a note</strong>, marks the chart "consulted", and records <strong>who reviewed it</strong>. These human scores go into the <strong>same records room</strong> (the scores table) as the AI scores from the last lessons—so you can lay "how the human judged" and "how the AI judged" side by side and see whether the AI is reliable.
+</div>
+""")
+
+_EN32.append(r"""
+<h2>Closing the loop: the third source, and the "yardstick for yardsticks"</h2>
+<p>Lesson 28 said a score has three sources: API, EVAL, ANNOTATION. The earlier lessons finished EVAL (judge and code); this one fills in ANNOTATION. All three are <strong>same-table, same-config, one ruler</strong>—but human scores have a unique role: they're often used as <strong>ground truth</strong>, answering the question Lesson 29 left open, "<strong>is the AI judge reliable</strong>".</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Three score sources API, EVAL, ANNOTATION converge into the same scores table; human-annotation scores often serve as ground truth, compared against the EVAL AI-judge scores on the same objects to calibrate the judge's trustworthiness">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">three sources converge; human scores also serve as "the judge's yardstick"</text>
+  <rect x="30" y="40" width="150" height="34" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="105" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API (you submit)</text>
+  <rect x="30" y="84" width="150" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="105" y="105" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL (AI judge / code)</text>
+  <rect x="30" y="128" width="150" height="34" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="105" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ANNOTATION (human·here)</text>
+  <rect x="250" y="78" width="150" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="325" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores table (L8 wide table)</text><text x="325" y="117" text-anchor="middle" font-size="7" fill="var(--muted)">same name+config → comparable</text>
+  <rect x="468" y="44" width="232" height="58" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="584" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">human scores = ground truth</text><text x="584" y="80" text-anchor="middle" font-size="7" fill="var(--accent-ink)">on the same traces</text><text x="584" y="93" text-anchor="middle" font-size="7" fill="var(--accent-ink)">compared with EVAL scores</text>
+  <rect x="468" y="116" width="232" height="44" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="584" y="134" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">→ calibrate if the AI judge is trustworthy</text><text x="584" y="150" text-anchor="middle" font-size="6.6" fill="var(--muted)">human-AI disagreements are where the judge must improve</text>
+  <line x1="180" y1="57" x2="248" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="180" y1="101" x2="248" y2="104" stroke="var(--accent)" stroke-width="1.3"/><line x1="180" y1="145" x2="248" y2="118" stroke="var(--accent)" stroke-width="1.6"/>
+  <line x1="400" y1="98" x2="466" y2="78" stroke="var(--accent)" stroke-width="1.4"/><polygon points="466,78 457,77 460,85" fill="var(--accent)"/>
+  <line x1="584" y1="102" x2="584" y2="114" stroke="var(--faint)" stroke-width="1.3"/><polygon points="584,116 580,107 588,107" fill="var(--accent)"/>
+  <text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--faint)">human annotation is slow and costly, so usually only a small key sample is reviewed—but that sample is the "gold standard" for the AI judge</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">three sources, each its strength: API flexible, EVAL scalable, ANNOTATION most authoritative</text>
+</svg>
+<div class="figcap"><b>The third source, closing Lesson 28's loop</b>: human scores join API and EVAL scores in the same scores table (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>, <code>scores.ts:4</code>), validated by the same config. Their biggest value is as <b>ground truth</b>—compared against AI-judge scores on the same objects to measure the judge's trustworthiness.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">baseline</span><span class="name">ground truth</span></div><div class="ld">Many evaluations need a "correct answer" before "how accurate" means anything. Scores from human experts on a small representative sample are that <strong>gold standard</strong>—AI judges, regression tests, and model comparisons all use it as their frame of reference.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">audit</span><span class="name">check if the AI is right</span></div><div class="ld">Lesson 29 asked "is the judge itself reliable". The answer is here: have both the AI judge and humans score the same traces and <strong>see whether they agree</strong>. Where they don't, fix the prompt or change the model—human annotation is the <strong>feedback loop that calibrates the judge</strong>.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">long tail</span><span class="name">cases the AI is unsure about</span></div><div class="ld">For samples where the AI's score keeps wavering, or that clearly need domain knowledge / value judgment, hand them straight to humans. Human annotation specializes in the <strong>long tail machines are worst at</strong>, spending scarce human effort where it matters most.</div></div>
+</div>
+""")
+
+# (en sec2/3/spark below)
+
+_EN32.append(r"""
+<h2>The queue's data model: one scoring sheet + a basket of objects</h2>
+<p>The annotation queue's data model has just two protagonists. <strong>AnnotationQueue</strong> is the "review task" itself: a name, a description, and crucially a set of <code>scoreConfigIds</code>—it <strong>binds Lesson 28's score configs</strong>, dictating which scores each reviewer in this queue must fill and on what scale (unifying everyone's ruler). <strong>AnnotationQueueItem</strong> is "one object to review in the basket": pointing at a trace/observation/session, with a PENDING→COMPLETED status.</p>
+
+<table class="t">
+  <thead><tr><th>field</th><th>meaning</th><th>why it matters</th></tr></thead>
+  <tbody>
+    <tr><td colspan="3" style="background:var(--purple-soft);font-weight:700">AnnotationQueue (review task)</td></tr>
+    <tr><td><code>name / description</code></td><td>queue name and notes</td><td>a project can have several queues (e.g. "fact-check", "tone review")</td></tr>
+    <tr><td><code>scoreConfigIds[]</code></td><td>the bound set of score configs</td><td><b>uniform scoring sheet</b>: all reviewers score by the same configs, so scores are comparable (echoing Lesson 28)</td></tr>
+    <tr><td colspan="3" style="background:var(--blue-soft);font-weight:700">AnnotationQueueItem (one object to review)</td></tr>
+    <tr><td><code>objectType / objectId</code></td><td>what's reviewed: TRACE / OBSERVATION / SESSION</td><td>three granularities—whole conversation, one step, or whole session</td></tr>
+    <tr><td><code>status</code></td><td>PENDING / COMPLETED</td><td>queue progress is "how many PENDING remain"</td></tr>
+    <tr><td><code>lockedAt / lockedByUserId</code></td><td>who's viewing, locked when</td><td>the next section's <b>5-minute lock</b>, preventing double-annotation</td></tr>
+    <tr><td><code>annotatorUserId / completedAt</code></td><td>who reviewed, finished when</td><td>auditable: every human score knows whose hand it came from</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma:582-633</span><span class="ln">two models + two enums</span></div>
+  <pre class="code"><span class="kw">model</span> AnnotationQueue {
+  name           String
+  scoreConfigIds String[]   <span class="cm">// ← binds Lesson 28's score configs, unifying this queue's sheet</span>
+  annotationQueueItem  AnnotationQueueItem[]
+  annotationQueueAssignment AnnotationQueueAssignment[]  <span class="cm">// which reviewers the queue is assigned to</span>
+}
+<span class="kw">model</span> AnnotationQueueItem {
+  objectId   String;  objectType AnnotationQueueObjectType   <span class="cm">// the reviewed object</span>
+  status     AnnotationQueueStatus @default(PENDING)          <span class="cm">// PENDING → COMPLETED</span>
+  lockedAt   DateTime?;  lockedByUserId  String?              <span class="cm">// ← soft lock (5 minutes)</span>
+  annotatorUserId String?;  completedAt DateTime?            <span class="cm">// who reviewed, finished when</span>
+}
+<span class="kw">enum</span> AnnotationQueueObjectType { TRACE  OBSERVATION  SESSION }
+<span class="kw">enum</span> AnnotationQueueStatus     { PENDING  COMPLETED }</pre>
+</div>
+
+<p>There's a third model, <code>AnnotationQueueAssignment</code>: it <strong>assigns a queue to specific reviewers</strong>. So "who should review which queue" is structured too—not a link shared on the honor system, but a division of labor the platform records.</p>
+""")
+
+_EN32.append(r"""
+<h2>The 5-minute soft lock: human-scale concurrency control</h2>
+<p>With several reviewers eyeing one queue, how do you stop two from annotating the same item and wasting effort? A database transaction lock is too heavy and ill-fitting for the "a person reads for a while" rhythm. Langfuse uses a light <strong>time-based soft lock</strong>: a reviewer opens an item and it stamps <code>lockedByUserId</code> and <code>lockedAt</code>; judging "is it locked" only counts a lock from the <strong>last 5 minutes</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="The 5-minute soft lock: reviewer A opens an item writing lockedAt; within 5 minutes the item shows as locked to reviewer B and is skipped; if A leaves, the lock expires after 5 minutes and the item becomes available again, never permanently held">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">soft lock = lockedByUserId + lockedAt, valid only within 5 minutes</text>
+  <rect x="40" y="40" width="120" height="40" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="100" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">reviewer A opens</text><text x="100" y="72" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">write lockedAt=now</text>
+  <rect x="210" y="40" width="300" height="40" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="58" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">item locked (lockedAt &gt; now − 5min)</text><text x="360" y="72" text-anchor="middle" font-size="6.8" fill="var(--muted)">others see "locked", skip this one</text>
+  <rect x="560" y="40" width="130" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="625" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">A done → COMPLETED</text><text x="625" y="72" text-anchor="middle" font-size="6.6" fill="var(--muted)">record annotatorUserId</text>
+  <rect x="210" y="110" width="300" height="44" rx="9" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="5 3"/><text x="360" y="130" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">if A leaves midway…</text><text x="360" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">lock auto-expires after 5 min, item available again—never permanently held</text>
+  <rect x="40" y="112" width="120" height="40" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="100" y="130" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">reviewer B takes</text><text x="100" y="144" text-anchor="middle" font-size="6.6" fill="var(--muted)">lock expired→available</text>
+  <line x1="160" y1="60" x2="208" y2="60" stroke="var(--accent)" stroke-width="1.5"/><polygon points="208,60 199,56 199,64" fill="var(--accent)"/>
+  <line x1="510" y1="60" x2="558" y2="60" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,60 549,56 549,64" fill="var(--teal)"/>
+  <line x1="360" y1="80" x2="360" y2="108" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/>
+  <line x1="160" y1="132" x2="208" y2="132" stroke="var(--blue)" stroke-width="1.4"/><polygon points="208,132 199,128 199,136" fill="var(--blue)"/>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">not a DB transaction lock but a "marker with an expiry"—fits the human "read for a few minutes" rhythm and never deadlocks</text>
+  <text x="360" y="201" text-anchor="middle" font-size="8" fill="var(--faint)">closing the browser or losing the network doesn't matter: the lock vanishes on its own</text>
+</svg>
+<div class="figcap"><b>A soft lock, not a hard one</b>: <code>isItemLocked</code> only counts a lock whose <code>lockedAt</code> is within the last 5 minutes (<code>annotationQueueItemsRouter.ts:34-36</code>). It solves "human concurrency"—several people on one queue don't collide—and because it <b>auto-expires</b>, it never holds an item permanently just because someone closed their tab.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">annotationQueueItemsRouter.ts:34 · scores/hooks/useScoreMutations.ts:39</span><span class="ln">soft lock + emit score</span></div>
+  <pre class="code"><span class="cm">// soft lock: only a "locked within the last 5 minutes" counts as locked—auto-expires</span>
+<span class="kw">const</span> <span class="fn">isItemLocked</span> = (item) =&gt;
+  item.lockedByUserId &amp;&amp; item.lockedAt &amp;&amp;
+  <span class="kw">new</span> Date(item.lockedAt) &gt; <span class="kw">new</span> Date(Date.now() - <span class="st">5 * 60 * 1000</span>);   <span class="cm">// 5-minute window</span>
+
+<span class="cm">// on finish: mark item COMPLETED and record the reviewer</span>
+{ status: AnnotationQueueStatus.COMPLETED, annotatorUserId: ctx.session.user.id }
+
+<span class="cm">// each score the reviewer fills: source=ANNOTATION, with authorUserId (who scored)</span>
+createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUserId, name, value, dataType, comment });
+<span class="cm">// → like Lesson 29's EVAL scores, normalized and flowed back via L12 ingestion into one scores table</span></pre>
+</div>
+
+<p>The scores a reviewer fills have <code>source</code> set to <code>ANNOTATION</code>, carry an <code>authorUserId</code> (which reviewer), and may attach a <code>comment</code> with the reasoning—just like Lesson 29's EVAL scores, all normalized into scores and flowed back through Lesson 12's ingestion path into <strong>the same scores table</strong>. With that, all three sources from Lesson 28 are present: <strong>API, EVAL, ANNOTATION all converge—same table, same ruler, comparable</strong>. Part 5's through-line—"turn what happened into how well"—comes full circle here.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>enter your assigned queue</h4><p>A reviewer sees the queues assigned to them (<code>AnnotationQueueAssignment</code>) and the PENDING items inside.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>take one → auto-lock</h4><p>Opening an item stamps <code>lockedByUserId/lockedAt</code>; for 5 minutes others see "locked" and skip it.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>review the object</h4><p>Per <code>objectType</code>, expand the TRACE / OBSERVATION / SESSION to review—reusing Lessons 25 & 26's detail views.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>score by config + comment</h4><p>Fill each of the queue's bound score configs, optionally with a <code>comment</code>. The scores are written as <code>source=ANNOTATION</code> with <code>authorUserId</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>submit → next item</h4><p>The item is marked <code>COMPLETED</code> with <code>annotatorUserId/completedAt</code>, the lock releases, and the next PENDING item in the queue advances automatically.</p></div></div>
+</div>
+""")
+
+_EN32.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why a "5-minute time-based soft lock" instead of a DB transaction lock or a permanent-hold marker?</strong> Because this lock must fit <strong>people</strong>, not machines. A DB transaction lock is millisecond-scale and ties up a connection—it can't survive "a person reading for minutes". And a permanent marker ("A is viewing" until A explicitly releases) means that once A closes the browser, loses network, or simply forgets, the item is <strong>held forever</strong> and no one can take it. The time-based soft lock pleases both ends: 5 minutes is enough for one person to finish one item and avoid collisions; and because it <strong>auto-expires</strong>, any mishap merely lets the lock "self-heal", never deadlocking. It's a neat application of "optimistic concurrency + a lease" to a human workflow—<strong>the granularity of a lock should match the rhythm of who it locks</strong>.<br><br>
+  <strong>Why must human scores go into the same table and use the same config as AI scores?</strong> Because only with one ruler can you <strong>compare</strong>. Lay the human "gold standard" and the AI judge's scores on the same batch of traces, and a subtraction tells you where the judge is biased—this is the answer to Lesson 29's "how to trust the AI judge": <strong>use human annotation as the judge's yardstick</strong>. If each side used its own storage and its own scale, such calibration would be impossible. Langfuse having the three sources (API/EVAL/ANNOTATION) share one scores table and one set of configs is, at heart, to keep <strong>"how humans see it" and "how machines see it" always comparable side by side</strong>—the trustworthiness of the whole evaluation system ultimately rests on this.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Human annotation = the third score source (ANNOTATION)</strong>: the last piece of Lesson 28's three sources. The most costly and most authoritative, often used as ground truth—setting baselines, auditing "is the AI judge right", and handling the AI's uncertain long tail.</li>
+    <li><strong>The annotation queue makes unordered review orderly</strong>: <code>AnnotationQueue</code> binds a set of <code>scoreConfigIds</code> (uniform sheet); <code>AnnotationQueueItem</code> points at a TRACE/OBSERVATION/SESSION with a PENDING→COMPLETED status; <code>AnnotationQueueAssignment</code> assigns queues to reviewers.</li>
+    <li><strong>The 5-minute soft lock = human concurrency control</strong>: opening stamps <code>lockedAt</code>, and <code>isItemLocked</code> only counts a lock from the last 5 minutes. Many can review one queue without colliding, and because it auto-expires it <strong>never deadlocks</strong>—the lock's granularity matches the human rhythm.</li>
+    <li><strong>Scores converge</strong>: a reviewer's config-driven scores carry <code>source=ANNOTATION</code>, an <code>authorUserId</code>, and an optional <code>comment</code>; the item is marked COMPLETED with annotatorUserId; the scores flow back through Lesson 12's ingestion into <strong>the same scores table</strong>.</li>
+    <li><strong>The loop closes</strong>: API/EVAL/ANNOTATION are same-table, same-ruler, comparable—so human scores can serve as the AI judge's yardstick. This is the bedrock of evaluation trust, and it caps Part 5's "turn what happened into how well".</li>
+  </ul>
+</div>
+""")
+
+LESSON_32 = {"zh": "\n".join(_ZH32), "en": "\n".join(_EN32)}

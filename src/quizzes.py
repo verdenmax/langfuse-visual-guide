@@ -2215,6 +2215,76 @@ QUIZZES = {
             },
         ],
     },
+    "32-human-annotation.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "人工标注是第 28 课三种 score 来源里的 ANNOTATION。除了「人比机器更准」，它在评估体系里还扮演一个独特角色，是什么？",
+                    "en": "Human annotation is the ANNOTATION of Lesson 28's three score sources. Beyond 'humans are more accurate than machines', it plays a unique role in the evaluation system. What is it?",
+                },
+                "opts": [
+                    {
+                        "zh": "充当 ground truth / 校准 AI 裁判：把人评的「金标准」和 AI 裁判分放在同一批 trace 上对照，量出裁判哪里偏了——这正是第 29 课「怎么信任 AI 裁判」的答案",
+                        "en": "serving as ground truth / calibrating the AI judge: laying the human 'gold standard' against AI-judge scores on the same traces measures where the judge is biased — the answer to Lesson 29's 'how to trust the AI judge'",
+                    },
+                    {"zh": "让评估跑得更快", "en": "makes evaluation run faster"},
+                    {"zh": "替代 LLM-as-judge", "en": "replaces LLM-as-judge"},
+                    {"zh": "降低标注成本", "en": "lowers annotation cost"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "人工分又慢又贵，通常只评一小撮关键样本，但这一小撮是衡量 AI 裁判的金标准。因为三来源同表同 config（ScoreSourceArray=[API,EVAL,ANNOTATION]），人评分和 AI 裁判分可在同一批对象上直接对照；不一致处正是裁判要改 prompt/换模型的地方。这把「人工标注当裁判的标尺」，正是评估可信度的基石。",
+                    "en": "Human scores are slow and costly, usually only on a small key sample—but that sample is the gold standard for the AI judge. Because the three sources share one table and config (ScoreSourceArray=[API,EVAL,ANNOTATION]), human and AI-judge scores compare directly on the same objects; disagreements are where the judge must fix its prompt/model. Using human annotation as the judge's yardstick is the bedrock of evaluation trust.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "多个评审员同时盯着一个标注队列。Langfuse 用一个「5 分钟时间软锁」防止两人评到同一份。相比数据库事务锁或永久占用标记，软锁的关键好处是？",
+                    "en": "Several reviewers eye one annotation queue at once. Langfuse uses a '5-minute time-based soft lock' to stop two from annotating the same item. Versus a DB transaction lock or a permanent-hold marker, the soft lock's key benefit is?",
+                },
+                "opts": [
+                    {
+                        "zh": "匹配人的节奏且永不死锁：5 分钟够看完一份、避免撞车；又因自动过期，关浏览器/断网都只会让锁自愈，绝不会把 item 永久占死",
+                        "en": "fits the human rhythm and never deadlocks: 5 minutes suffices to finish one item and avoid collisions; and because it auto-expires, closing the browser/losing network just lets the lock self-heal, never holding an item forever",
+                    },
+                    {"zh": "比事务锁查询更快", "en": "queries faster than a transaction lock"},
+                    {"zh": "能锁住整个队列", "en": "can lock the whole queue"},
+                    {"zh": "不需要数据库字段", "en": "needs no database fields"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "isItemLocked 只认 lockedAt 在最近 5 分钟内的锁。数据库事务锁是毫秒级、占连接，扛不住人看几分钟；永久标记一旦评审员关页面就把 item 占死。时间软锁两头讨好：5 分钟避免并发撞车，又因自动过期而自愈、永不死锁。这是「乐观并发 + 租约」用在人类工作流上——锁的粒度匹配被锁者的节奏。",
+                    "en": "isItemLocked only counts a lock whose lockedAt is within the last 5 minutes. A DB transaction lock is millisecond-scale and ties up a connection, unfit for minutes of human reading; a permanent marker holds the item forever once a reviewer closes the tab. The time-based soft lock pleases both: 5 minutes avoids collisions, and auto-expiry self-heals, never deadlocking. It's 'optimistic concurrency + a lease' applied to a human workflow — lock granularity matching the locked party's rhythm.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "一个 AnnotationQueue 上绑了一组 scoreConfigIds。这个绑定起什么作用？",
+                    "en": "An AnnotationQueue binds a set of scoreConfigIds. What does this binding do?",
+                },
+                "opts": [
+                    {
+                        "zh": "它是这个队列的「统一评分表」：规定所有评审员要按同一组 score config 打分（同名同刻度），分数才可比、才能聚合——直接复用第 28 课的 config",
+                        "en": "it's the queue's 'uniform scoring sheet': all reviewers must score by the same set of score configs (same name, same scale) so scores are comparable and aggregatable — directly reusing Lesson 28's configs",
+                    },
+                    {"zh": "决定队列指派给哪些评审员", "en": "decides which reviewers the queue is assigned to"},
+                    {"zh": "决定评哪些 trace", "en": "decides which traces to review"},
+                    {"zh": "控制 5 分钟锁的时长", "en": "controls the 5-minute lock duration"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "scoreConfigIds 绑定第 28 课的 score config，规定这个队列里每位评审员要填哪几项分、每项什么刻度（NUMERIC/CATEGORICAL/BOOLEAN）。统一了尺，不同评审员、不同 item 的分才可比可聚合。指派给谁是另一个模型 AnnotationQueueAssignment 的事，评哪些对象是 AnnotationQueueItem 的事——三者各司其职。",
+                    "en": "scoreConfigIds bind Lesson 28's score configs, dictating which scores each reviewer in this queue fills and on what scale (NUMERIC/CATEGORICAL/BOOLEAN). With a unified ruler, scores across reviewers and items are comparable and aggregatable. Who it's assigned to is the separate AnnotationQueueAssignment model; which objects to review is AnnotationQueueItem — each with its own job.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Part 5 走到这里，三种 score 来源（API/EVAL/ANNOTATION）全部汇入同一张 scores 表、同一套 config。回头看这条主线：为什么 Langfuse 不为「AI 评的分」和「人评的分」分别建表，而是执意让它们同表同尺？这种「统一数据模型」的设计，在可信度、可维护性、未来扩展上分别带来了什么？你能想到它的代价或局限吗？",
+                "en": "By this point in Part 5, all three score sources (API/EVAL/ANNOTATION) flow into one scores table, one set of configs. Looking back at this through-line: why does Langfuse refuse to build separate tables for 'AI-judged' and 'human-judged' scores, insisting on one table and one ruler? What does this 'unified data model' buy in trust, maintainability, and future extension? Can you think of its costs or limits?",
+            },
+        ],
+    },
 }
 
 

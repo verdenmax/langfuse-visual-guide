@@ -44,4 +44,5 @@ CONTENT = {
     "29-llm-as-a-judge.html": part5.LESSON_29,
     "30-eval-execution-pipeline.html": part5.LESSON_30,
     "31-code-based-evaluation.html": part5.LESSON_31,
+    "32-human-annotation.html": part5.LESSON_32,
 }
