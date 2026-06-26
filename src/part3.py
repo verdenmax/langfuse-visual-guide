@@ -1906,3 +1906,313 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 </div>
 """)
 LESSON_17 = {"zh": "\n".join(_ZH17), "en": "\n".join(_EN17)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L18 · OpenTelemetry 摄取 / OpenTelemetry ingestion
+# ══════════════════════════════════════════════════════════════════════
+_ZH18 = []
+_EN18 = []
+
+_ZH18.append(r"""
+<p class="lead">
+前面六课讲的都是 Langfuse 的<strong>原生摄取</strong>——你用它自己的 SDK、按它自己的事件 schema 上报。可现实里，很多团队早已用
+<strong>OpenTelemetry</strong>（业界可观测性标准）埋好了点。这一课讲 Langfuse 怎么<strong>张开双臂接住 OTLP</strong>：把五花八门的 OpenTelemetry span
+<strong>映射</strong>成自己的 observation 模型。关键洞察是——OTel 摄取本质是一个<strong>万能适配器</strong>：前端把各种约定翻译过来，翻译完<strong>汇入和原生完全相同</strong>的合并/算钱/落盘管道。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把 OTel 端点想成一个<strong>万能转换插头</strong>。你的设备（应用）来自世界各地，插头标准各不相同——有的是 OpenTelemetry 的 <code>gen_ai.*</code> 约定、
+  有的是 Vercel AI SDK 的 <code>ai.*</code>、有的是 OpenLLMetry 的 <code>llm.*</code>。万能适配器<strong>每个标准都认</strong>：它挨个去试「这个字段在你那套约定里叫什么」，
+  一旦认出来，就把电流接进<strong>同一个插座</strong>（Langfuse 的 observation 模型）。插座后面的电路（合并、算成本、写库）<strong>只有一套</strong>——
+  适配器只负责「把各种插头转成统一接口」，转完之后，谁来的都一样走。
+</div>
+""")
+
+# (L18 sections appended below)
+
+_ZH18.append(r"""
+<h2>OTLP 的一条路：解析 → 落 S3 → 专用队列 → 适配器</h2>
+<p>OTLP 数据从 <code>POST /api/public/otel/v1/traces</code> 进来。这个端点和第 12 课的原生入口<strong>性格一致</strong>——也是「鉴权 + 解析 + 入队，立即返回」，
+只是解析的是 OpenTelemetry 的 span 格式（支持 protobuf 和 JSON 两种编码、支持 gzip）。解析出 <code>resourceSpans</code> 后，走的还是第 14 课那套<strong>S3 存本体 + 队列递指针</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="OTLP span 从 otel/v1/traces 进入，解析后上传 S3、入 OtelIngestionQueue，worker 用 OtelIngestionProcessor 映射成 observation，汇入与原生相同的合并写库管道">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">OTLP 摄取：前端适配，后端归一</text>
+  <rect x="12" y="44" width="116" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="70" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">应用 + OTel SDK</text><text x="70" y="80" text-anchor="middle" font-size="7.5" fill="var(--muted)">POST otel/v1/traces</text>
+  <rect x="158" y="44" width="120" height="52" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="218" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">端点解析</text><text x="218" y="77" text-anchor="middle" font-size="7" fill="var(--accent-ink)">protobuf/JSON·gzip</text><text x="218" y="89" text-anchor="middle" font-size="7" fill="var(--accent-ink)">→ resourceSpans</text>
+  <rect x="308" y="20" width="120" height="38" rx="8" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="368" y="38" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3：span 本体</text><text x="368" y="51" text-anchor="middle" font-size="7" fill="var(--muted)">otel/&lt;proj&gt;/…json</text>
+  <rect x="308" y="78" width="120" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="368" y="96" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">OtelIngestionQueue</text><text x="368" y="109" text-anchor="middle" font-size="7" fill="var(--accent-ink)">指针 fileKey（+ 次队列）</text>
+  <rect x="458" y="44" width="130" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="523" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">OtelIngestion</text><text x="523" y="74" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Processor</text><text x="523" y="88" text-anchor="middle" font-size="7" fill="var(--muted)">span→ingestion 事件</text>
+  <rect x="610" y="44" width="100" height="52" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="660" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">同一管道</text><text x="660" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">第 15–17 课</text><text x="660" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">合并·算钱·写库</text>
+  <line x1="128" y1="70" x2="156" y2="70" stroke="var(--faint)" stroke-width="1.5"/><polygon points="156,70 148,66 148,74" fill="var(--faint)"/>
+  <line x1="278" y1="62" x2="306" y2="42" stroke="var(--amber)" stroke-width="1.4"/><line x1="278" y1="78" x2="306" y2="94" stroke="var(--accent)" stroke-width="1.4"/>
+  <line x1="428" y1="96" x2="456" y2="78" stroke="var(--faint)" stroke-width="1.4"/><polygon points="456,78 447,77 450,86" fill="var(--faint)"/>
+  <line x1="588" y1="70" x2="608" y2="70" stroke="var(--faint)" stroke-width="1.5"/><polygon points="608,70 600,66 600,74" fill="var(--faint)"/>
+  <text x="360" y="135" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">OTel 特异的只有「映射」这一段 ▲；其后与原生摄取共用一套后端</text>
+  <rect x="150" y="156" width="420" height="54" rx="9" fill="none" stroke="var(--teal)" stroke-dasharray="5 4"/><text x="360" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">processToIngestionEvents → IngestionEventType[]（第 13 课的事件格式）</text><text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--muted)">observation → IngestionService.mergeAndWrite；trace → processEventBatch</text>
+</svg>
+<div class="figcap"><b>边缘适配、核心归一</b>：端点解析 OTLP（protobuf/JSON）→ span 本体落 S3、指针入 <code>OtelIngestionQueue</code>（+次队列）→ worker 用 <code>OtelIngestionProcessor</code> 把 span 翻译成<strong>原生 ingestion 事件</strong>，再走第 15–17 课同一条合并/算钱/落盘管道。源码：<code>web/.../otel/v1/traces/index.ts</code>、<code>OtelIngestionProcessor.ts</code>、<code>worker/.../otelIngestionQueue.ts</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/otel/v1/traces/index.ts &amp; OtelIngestionProcessor.ts</span><span class="ln">端点+发布</span></div>
+  <pre class="code"><span class="cm">// 端点：按 content-type 解析 OTLP（protobuf 或 JSON），取出 resourceSpans</span>
+<span class="kw">const</span> resourceSpans = contentType.<span class="fn">includes</span>(<span class="st">"x-protobuf"</span>)
+  ? ExportTraceServiceRequest.<span class="fn">decode</span>(body).resourceSpans
+  : JSON.<span class="fn">parse</span>(body).resourceSpans;
+<span class="kw">return</span> <span class="kw">await</span> processor.<span class="fn">publishToOtelIngestionQueue</span>(resourceSpans);
+
+<span class="cm">// publishToOtelIngestionQueue：本体落 S3，指针入专用队列（同第 14 课模式）</span>
+<span class="kw">const</span> fileKey = <span class="st">`…otel/${projectId}/…/${randomUUID()}.json`</span>;
+<span class="kw">await</span> <span class="fn">getS3EventStorageClient</span>(bucket).<span class="fn">uploadJson</span>(fileKey, resourceSpans);
+OtelIngestionQueue.<span class="fn">getInstance</span>({ shardingKey: <span class="st">`${projectId}-${fileKey}`</span> })
+  .<span class="fn">add</span>(QueueJobs.OtelIngestionJob, { payload: { data: { fileKey } } });</pre>
+</div>
+""")
+
+# (mapping section below)
+
+_ZH18.append(r"""
+<h2>万能适配器：一个字段，试遍各种约定</h2>
+<p>映射的核心难点在于：同一个语义（比如「这次调用用了哪个模型」），不同的埋点库会写进<strong>不同的 span 属性键</strong>。<code>OtelIngestionProcessor</code> 的办法是
+为每个字段准备一份<strong>优先级列表</strong>，<strong>从上往下试</strong>，第一个有值的就采用。以提取模型名为例：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="extractModelName 按优先级依次尝试多套约定的 span 属性键，第一个有值的即作为模型名映射到 observation">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">extractModelName：按优先级试遍各家约定</text>
+  <rect x="20" y="40" width="250" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="32" y="55" font-size="8.5" fill="var(--accent-ink)">① langfuse.observation.model（原生）</text>
+  <rect x="20" y="66" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="81" font-size="8.5" fill="var(--ink)">② gen_ai.response.model（OTel 标准）</text>
+  <rect x="20" y="92" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="107" font-size="8.5" fill="var(--ink)">③ ai.model.id（Vercel AI SDK）</text>
+  <rect x="20" y="118" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="133" font-size="8.5" fill="var(--ink)">④ gen_ai.request.model</text>
+  <rect x="20" y="144" width="250" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="32" y="159" font-size="8.5" fill="var(--muted)">⑤ llm.response.model / llm.model_name</text>
+  <rect x="20" y="170" width="250" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="32" y="185" font-size="8.5" fill="var(--muted)">⑥ model（兜底通用键）</text>
+  <text x="290" y="112" font-size="13" fill="var(--faint)">▶</text>
+  <rect x="330" y="80" width="180" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="420" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">第一个有值的</text><text x="420" y="122" text-anchor="middle" font-size="8" fill="var(--accent-ink)">→ observation.model</text>
+  <text x="540" y="116" font-size="13" fill="var(--faint)">▶</text>
+  <rect x="566" y="80" width="140" height="64" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="636" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">进 provided_*</text><text x="636" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">交第 16 课</text><text x="636" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">匹配价格/算钱</text>
+  <text x="360" y="210" text-anchor="middle" font-size="8.5" fill="var(--faint)">usage、input/output、observation 类型……每个字段都有这样一份「试遍各家」的优先级列表</text>
+</svg>
+<div class="figcap"><b>优先级回退，认遍各家约定</b>：<code>extractModelName</code> 依次尝试 Langfuse 原生 → OTel <code>gen_ai.*</code> → Vercel <code>ai.*</code> → OpenLLMetry <code>llm.*</code> → 通用 <code>model</code>，第一个命中的即为模型名。usage/input/output 同理。提取出的 usage 进 <code>provided_usage_details</code>，再走第 16 课。源码：<code>OtelIngestionProcessor.ts:2232-2257</code>。</div>
+</div>
+
+<table class="t">
+  <tr><th>Langfuse 字段</th><th>依次尝试的 span 属性键（节选）</th><th>来自哪套约定</th></tr>
+  <tr><td><b>模型名</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · 通用</td></tr>
+  <tr><td><b>usage（token）</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai 的 token 计数 · Genkit 输出…</td><td>原生 · OTel · Genkit</td></tr>
+  <tr><td><b>input / output</b></td><td>span 属性 + span <strong>事件</strong>（<code>gen_ai.user.message</code>、<code>gen_ai.choice</code>）</td><td>OTel GenAI 语义约定</td></tr>
+  <tr><td><b>observation 类型</b></td><td><code>observationTypeMapper</code> 据属性判定 GENERATION / SPAN / …</td><td>映射器规则</td></tr>
+</table>
+
+<p>举个具体的：一段用 OpenLLMetry 埋点的 OpenAI 调用，会产生一个带这些属性的 span——<code>gen_ai.request.model="gpt-4o"</code>、
+若干 token 计数属性，外加两条 span <strong>事件</strong> <code>gen_ai.user.message</code>（用户输入）和 <code>gen_ai.choice</code>（模型输出）。适配器一一对上：
+模型名从 <code>gen_ai.request.model</code> 取到、usage 从 token 属性取到、input/output 从那两条事件取到、类型被判成 <strong>GENERATION</strong>。
+于是这个原本「OTel 味」的 span，就变成了一条结构完整、和你用 Langfuse SDK 上报<strong>别无二致</strong>的 generation observation。
+特别值得一提的是 input/output：它们常常不在 span 的属性里，而藏在 span 的<strong>事件</strong>流中——适配器必须连 span events 也一并翻译，才能把整段对话完整还原出来。</p>
+""")
+
+# (convergence + spark + key below)
+
+_ZH18.append(r"""
+<h2>映射完，殊途同归</h2>
+<p>worker 端的 <code>OtelIngestionProcessor.processToIngestionEvents</code> 把一批 span 翻译成 <code>IngestionEventType[]</code>——
+<strong>正是第 13 课那套原生事件格式</strong>。接着它把结果一分为二：<strong>observation</strong> 类直接交给 <code>IngestionService.mergeAndWrite</code>（第 15 课），
+<strong>trace</strong> 等非 observation 再走一遍 <code>processEventBatch</code>（第 12 课）。从这里开始，OTel 来的数据和原生 SDK 来的数据<strong>再无分别</strong>：
+同样的合并、同样的算 token/成本、同样的批量落盘。</p>
+
+<div class="cols">
+  <div class="col"><h4>🟦 原生摄取（第 12–13 课）</h4><p>你用 Langfuse SDK，<strong>直接说它的母语</strong>——事件就是它定义的 schema，字段精确、无需猜测。这是「精确通道」。</p></div>
+  <div class="col"><h4>🔌 OTel 摄取（本课）</h4><p>你用 OpenTelemetry，<strong>需要翻译</strong>——适配器从异构约定里<strong>尽力推断</strong>字段。灵活但有语义损耗，是「兼容通道」。两者最终汇入同一后端。</p></div>
+</div>
+
+<p>把 worker 端 OTel 任务的处理拆开，就能看清「翻译完汇入主管道」这件事是怎么发生的：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>取下 OTel 任务</h4><p>worker 从 <code>OtelIngestionQueue</code> 拿到任务，照 <code>fileKey</code> 去 S3 下载这批 span 本体。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>解析 span</h4><p>把 S3 里的 resourceSpans 解析成结构化的 span 列表，准备喂给适配器。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>适配器翻译</h4><p><code>processToIngestionEvents(spans)</code> 用优先级属性键把每个 span 映射成<strong>原生 ingestion 事件</strong>（第 13 课格式）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>分流</h4><p>按实体类型一分为二：<strong>observation</strong> 直接交 <code>IngestionService</code>，<strong>trace</strong> 走 <code>processEventBatch</code>。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>汇入主管道</h4><p>从这步起，OTel 与原生<strong>共用</strong>第 15–17 课：合并、算 token/成本、<code>ClickhouseWriter</code> 批量落盘。</p></div></div>
+</div>
+
+<p>正因为映射是「尽力推断」，OTel 通道天然存在<strong>语义落差</strong>：某些埋点库没写、或用了适配器还不认的属性键，对应字段就可能缺失。
+这也是为什么模型名要试六七个键、usage 还要去翻 span 事件——<strong>适配器认得越多，落差越小</strong>。但无论怎么补，OTel 的「推断」终究不如原生的「明说」精确——
+这是拥抱开放标准必然付出的代价。好在这套适配器是<strong>持续演进</strong>的：每当社区冒出一种新的埋点约定，只要往优先级列表里<strong>再加几个属性键</strong>，
+老数据不受影响、新数据立刻被认得。这种「<strong>加键即兼容</strong>」的扩展方式，让 Langfuse 能跟着 OpenTelemetry GenAI 生态一起成长，而不必每次都大改一遍映射逻辑。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>既然原生通道更精确，为什么还要费力支持 OpenTelemetry？</strong> 因为<strong>要去用户所在的地方接住他们</strong>。OpenTelemetry 是可观测性的事实标准，
+  无数团队的应用早已用它埋好了点。如果 Langfuse 只认自己的 SDK，就等于要求用户<strong>为了它重新埋一遍点</strong>——这个门槛会劝退一大批人。
+  支持 OTLP，意味着「你<strong>不用改一行埋点</strong>，把 OTel 数据指过来就能用」。代价确实存在：一个要不断追各家约定、满是优先级回退的<strong>适配器</strong>，
+  以及推断带来的语义损耗。但这笔账算得过来——因为适配器只在<strong>最前端</strong>，翻译完就汇入和原生<strong>共享的核心</strong>（合并、算钱、落盘只有一套）。
+  <strong>把脏活、特例都收敛到边缘的一层适配器，让核心保持纯净统一</strong>——这正是「适配器模式」最经典的用法。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>Langfuse 提供 <strong>OTLP 端点</strong>（<code>/api/public/otel/v1/traces</code>），接收 OpenTelemetry span（protobuf/JSON、支持 gzip），让你<strong>无需改埋点</strong>即可接入。</li>
+    <li>OTLP 走和第 14 课<strong>相同的 S3 + 队列</strong>模式：span 本体落 S3，指针入<strong>专用</strong> <code>OtelIngestionQueue</code>（含主/次）。</li>
+    <li><code>OtelIngestionProcessor</code> 是<strong>万能适配器</strong>：每个字段备一份<strong>优先级属性键列表</strong>，试遍 OTel <code>gen_ai.*</code>、Vercel <code>ai.*</code>、OpenLLMetry <code>llm.*</code> 等约定，第一个有值的即采用。</li>
+    <li>映射产出<strong>原生 ingestion 事件</strong>（第 13 课格式），observation 入 <code>IngestionService</code>、trace 入 <code>processEventBatch</code>——之后与原生<strong>完全同路</strong>。</li>
+    <li>取舍：OTel 是「兼容通道」，靠推断、有语义落差；原生是「精确通道」。<strong>把适配特例收敛到边缘，核心保持统一</strong>——经典适配器模式。</li>
+  </ul>
+</div>
+""")
+
+_EN18.append(r"""
+<p class="lead">
+The last six lessons covered Langfuse's <strong>native ingestion</strong> — you use its own SDK, report in its own event schema. But in reality, many teams
+already instrument with <strong>OpenTelemetry</strong> (the industry observability standard). This lesson covers how Langfuse <strong>opens its arms to
+OTLP</strong>: mapping the motley assortment of OpenTelemetry spans onto its own observation model. The key insight — OTel ingestion is essentially a
+<strong>universal adapter</strong>: the front end translates the various conventions, and once translated, it <strong>flows into the exact same</strong>
+merge / cost / persist pipeline as native.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Think of the OTel endpoint as a <strong>universal travel adapter</strong>. Your devices (apps) come from all over, with different plug standards — some
+  OpenTelemetry's <code>gen_ai.*</code> convention, some Vercel AI SDK's <code>ai.*</code>, some OpenLLMetry's <code>llm.*</code>. The universal adapter
+  <strong>recognizes them all</strong>: it tries, one by one, "what's this field called in your convention", and once it recognizes it, routes the current
+  into the <strong>same socket</strong> (Langfuse's observation model). The circuitry behind the socket (merge, cost, write) is <strong>just one</strong> —
+  the adapter only "turns various plugs into one interface"; after that, everyone flows the same way.
+</div>
+""")
+
+_EN18.append(r"""
+<h2>OTLP's path: parse → land in S3 → dedicated queue → adapter</h2>
+<p>OTLP data arrives at <code>POST /api/public/otel/v1/traces</code>. This endpoint shares Lesson 12's native-entry <strong>character</strong> — also "auth +
+parse + enqueue, return immediately" — only it parses the OpenTelemetry span format (both protobuf and JSON encodings, plus gzip). After parsing out
+<code>resourceSpans</code>, it follows the same <strong>S3-stores-body + queue-passes-pointer</strong> pattern as Lesson 14:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="OTLP spans arrive at otel/v1/traces, get parsed, uploaded to S3 and enqueued to OtelIngestionQueue; the worker maps spans to observations via OtelIngestionProcessor, converging into the same merge/write pipeline as native">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">OTLP ingestion: adapt at the edge, unify at the core</text>
+  <rect x="12" y="44" width="116" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="70" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">app + OTel SDK</text><text x="70" y="80" text-anchor="middle" font-size="7.5" fill="var(--muted)">POST otel/v1/traces</text>
+  <rect x="158" y="44" width="120" height="52" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="218" y="62" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">endpoint parse</text><text x="218" y="77" text-anchor="middle" font-size="7" fill="var(--accent-ink)">protobuf/JSON·gzip</text><text x="218" y="89" text-anchor="middle" font-size="7" fill="var(--accent-ink)">→ resourceSpans</text>
+  <rect x="308" y="20" width="120" height="38" rx="8" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="368" y="38" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3: span body</text><text x="368" y="51" text-anchor="middle" font-size="7" fill="var(--muted)">otel/&lt;proj&gt;/…json</text>
+  <rect x="308" y="78" width="120" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="368" y="96" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">OtelIngestionQueue</text><text x="368" y="109" text-anchor="middle" font-size="7" fill="var(--accent-ink)">pointer fileKey (+ secondary)</text>
+  <rect x="458" y="44" width="130" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="523" y="62" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">OtelIngestion</text><text x="523" y="74" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Processor</text><text x="523" y="88" text-anchor="middle" font-size="7" fill="var(--muted)">span→ingestion event</text>
+  <rect x="610" y="44" width="100" height="52" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="660" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">same pipeline</text><text x="660" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">Lessons 15–17</text><text x="660" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">merge·cost·write</text>
+  <line x1="128" y1="70" x2="156" y2="70" stroke="var(--faint)" stroke-width="1.5"/><polygon points="156,70 148,66 148,74" fill="var(--faint)"/>
+  <line x1="278" y1="62" x2="306" y2="42" stroke="var(--amber)" stroke-width="1.4"/><line x1="278" y1="78" x2="306" y2="94" stroke="var(--accent)" stroke-width="1.4"/>
+  <line x1="428" y1="96" x2="456" y2="78" stroke="var(--faint)" stroke-width="1.4"/><polygon points="456,78 447,77 450,86" fill="var(--faint)"/>
+  <line x1="588" y1="70" x2="608" y2="70" stroke="var(--faint)" stroke-width="1.5"/><polygon points="608,70 600,66 600,74" fill="var(--faint)"/>
+  <text x="360" y="135" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Only the "mapping" stretch ▲ is OTel-specific; everything after is shared with native</text>
+  <rect x="150" y="156" width="420" height="54" rx="9" fill="none" stroke="var(--teal)" stroke-dasharray="5 4"/><text x="360" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">processToIngestionEvents → IngestionEventType[] (Lesson 13's event format)</text><text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--muted)">observation → IngestionService.mergeAndWrite; trace → processEventBatch</text>
+</svg>
+<div class="figcap"><b>Adapt at the edge, unify at the core</b>: the endpoint parses OTLP (protobuf/JSON) → span body to S3, pointer to <code>OtelIngestionQueue</code> (+ secondary) → the worker uses <code>OtelIngestionProcessor</code> to translate spans into <strong>native ingestion events</strong>, then runs the same Lesson 15–17 merge/cost/persist pipeline. Source: <code>web/.../otel/v1/traces/index.ts</code>, <code>OtelIngestionProcessor.ts</code>, <code>worker/.../otelIngestionQueue.ts</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/otel/v1/traces/index.ts &amp; OtelIngestionProcessor.ts</span><span class="ln">endpoint+publish</span></div>
+  <pre class="code"><span class="cm">// endpoint: parse OTLP by content-type (protobuf or JSON), extract resourceSpans</span>
+<span class="kw">const</span> resourceSpans = contentType.<span class="fn">includes</span>(<span class="st">"x-protobuf"</span>)
+  ? ExportTraceServiceRequest.<span class="fn">decode</span>(body).resourceSpans
+  : JSON.<span class="fn">parse</span>(body).resourceSpans;
+<span class="kw">return</span> <span class="kw">await</span> processor.<span class="fn">publishToOtelIngestionQueue</span>(resourceSpans);
+
+<span class="cm">// publishToOtelIngestionQueue: body to S3, pointer to the dedicated queue (Lesson 14 pattern)</span>
+<span class="kw">const</span> fileKey = <span class="st">`…otel/${projectId}/…/${randomUUID()}.json`</span>;
+<span class="kw">await</span> <span class="fn">getS3EventStorageClient</span>(bucket).<span class="fn">uploadJson</span>(fileKey, resourceSpans);
+OtelIngestionQueue.<span class="fn">getInstance</span>({ shardingKey: <span class="st">`${projectId}-${fileKey}`</span> })
+  .<span class="fn">add</span>(QueueJobs.OtelIngestionJob, { payload: { data: { fileKey } } });</pre>
+</div>
+""")
+
+_EN18.append(r"""
+<h2>The universal adapter: one field, try every convention</h2>
+<p>The core difficulty of mapping: the same semantic (say "which model did this call use") gets written into <strong>different span attribute keys</strong>
+by different instrumentation libraries. <code>OtelIngestionProcessor</code>'s approach is to keep a <strong>priority list</strong> per field and <strong>try top
+to bottom</strong>, taking the first one with a value. Take extracting the model name:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="extractModelName tries span attribute keys from multiple conventions in priority order, taking the first present one as the model name mapped to the observation">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">extractModelName: try each convention in priority order</text>
+  <rect x="20" y="40" width="250" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="32" y="55" font-size="8.5" fill="var(--accent-ink)">① langfuse.observation.model (native)</text>
+  <rect x="20" y="66" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="81" font-size="8.5" fill="var(--ink)">② gen_ai.response.model (OTel standard)</text>
+  <rect x="20" y="92" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="107" font-size="8.5" fill="var(--ink)">③ ai.model.id (Vercel AI SDK)</text>
+  <rect x="20" y="118" width="250" height="22" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="32" y="133" font-size="8.5" fill="var(--ink)">④ gen_ai.request.model</text>
+  <rect x="20" y="144" width="250" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="32" y="159" font-size="8.5" fill="var(--muted)">⑤ llm.response.model / llm.model_name</text>
+  <rect x="20" y="170" width="250" height="22" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="32" y="185" font-size="8.5" fill="var(--muted)">⑥ model (generic fallback)</text>
+  <text x="290" y="112" font-size="13" fill="var(--faint)">▶</text>
+  <rect x="330" y="80" width="180" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="420" y="104" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">first one present</text><text x="420" y="122" text-anchor="middle" font-size="8" fill="var(--accent-ink)">→ observation.model</text>
+  <text x="540" y="116" font-size="13" fill="var(--faint)">▶</text>
+  <rect x="566" y="80" width="140" height="64" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="636" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">into provided_*</text><text x="636" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">handed to Lesson 16</text><text x="636" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">price/cost</text>
+  <text x="360" y="210" text-anchor="middle" font-size="8.5" fill="var(--faint)">usage, input/output, observation type… each field has such a "try everyone" priority list</text>
+</svg>
+<div class="figcap"><b>Priority fallback, recognizing every convention</b>: <code>extractModelName</code> tries in turn Langfuse-native → OTel <code>gen_ai.*</code> → Vercel <code>ai.*</code> → OpenLLMetry <code>llm.*</code> → generic <code>model</code>, taking the first hit as the model name. usage/input/output likewise. The extracted usage goes into <code>provided_usage_details</code>, then Lesson 16. Source: <code>OtelIngestionProcessor.ts:2232-2257</code>.</div>
+</div>
+
+<table class="t">
+  <tr><th>Langfuse field</th><th>span attribute keys tried in order (excerpt)</th><th>from which convention</th></tr>
+  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
+  <tr><td><b>usage (tokens)</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai token counts · Genkit output…</td><td>native · OTel · Genkit</td></tr>
+  <tr><td><b>input / output</b></td><td>span attributes + span <strong>events</strong> (<code>gen_ai.user.message</code>, <code>gen_ai.choice</code>)</td><td>OTel GenAI semantic conventions</td></tr>
+  <tr><td><b>observation type</b></td><td><code>observationTypeMapper</code> decides GENERATION / SPAN / … by attributes</td><td>mapper rules</td></tr>
+</table>
+
+<p>Concretely: an OpenAI call instrumented with OpenLLMetry produces a span with attributes like <code>gen_ai.request.model="gpt-4o"</code>, several token
+counts, plus two span <strong>events</strong> <code>gen_ai.user.message</code> (the user input) and <code>gen_ai.choice</code> (the model output). The adapter
+matches them one by one: model name from <code>gen_ai.request.model</code>, usage from the token attributes, input/output from those two events, type judged
+as <strong>GENERATION</strong>. So that originally "OTel-flavored" span becomes a fully-structured generation observation, <strong>indistinguishable</strong>
+from one reported via the Langfuse SDK. Note input/output especially: they often aren't in the span's attributes but hide in the span's <strong>event</strong>
+stream — the adapter must translate span events too to fully reconstruct the conversation.</p>
+""")
+
+_EN18.append(r"""
+<h2>Once mapped, all roads converge</h2>
+<p>On the worker, <code>OtelIngestionProcessor.processToIngestionEvents</code> translates a batch of spans into <code>IngestionEventType[]</code> —
+<strong>exactly Lesson 13's native event format</strong>. It then splits the result in two: <strong>observation</strong> kinds go straight to
+<code>IngestionService.mergeAndWrite</code> (Lesson 15), <strong>trace</strong> and other non-observations run through <code>processEventBatch</code> (Lesson
+12). From here on, OTel-sourced data and native-SDK data are <strong>indistinguishable</strong>: the same merge, the same token/cost calculation, the same
+batched persistence.</p>
+
+<div class="cols">
+  <div class="col"><h4>🟦 native ingestion (L12–13)</h4><p>You use the Langfuse SDK and <strong>speak its mother tongue</strong> directly — events are exactly its schema, fields precise, no guessing. The "precise channel".</p></div>
+  <div class="col"><h4>🔌 OTel ingestion (this lesson)</h4><p>You use OpenTelemetry and <strong>need translation</strong> — the adapter <strong>infers</strong> fields from heterogeneous conventions. Flexible but with semantic loss, the "compatibility channel". Both converge into one backend.</p></div>
+</div>
+
+<p>Unpack the worker's OTel job and you see exactly how "translate then converge into the main pipeline" happens:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>take the OTel job</h4><p>The worker pulls a job from <code>OtelIngestionQueue</code> and downloads this batch of span bodies from S3 by <code>fileKey</code>.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>parse spans</h4><p>Parse the S3 resourceSpans into a structured span list, ready to feed the adapter.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>adapter translates</h4><p><code>processToIngestionEvents(spans)</code> maps each span into a <strong>native ingestion event</strong> (Lesson 13's format) via priority attribute keys.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>split</h4><p>By entity type: <strong>observation</strong> straight to <code>IngestionService</code>, <strong>trace</strong> via <code>processEventBatch</code>.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>converge into the main pipeline</h4><p>From here OTel <strong>shares</strong> Lessons 15–17 with native: merge, token/cost, <code>ClickhouseWriter</code> batched persistence.</p></div></div>
+</div>
+
+<p>Precisely because the mapping is "best-effort inference", the OTel channel inherently has a <strong>semantic gap</strong>: if a library didn't write a key,
+or used one the adapter doesn't yet recognize, that field may be missing. That's why the model name tries six or seven keys and usage even digs into span
+events — <strong>the more the adapter recognizes, the smaller the gap</strong>. But however much it backfills, OTel's "inference" is never as precise as
+native's "explicit statement" — the price of embracing an open standard. Happily the adapter <strong>keeps evolving</strong>: whenever the community spawns
+a new convention, just <strong>add a few attribute keys</strong> to the priority list — old data unaffected, new data instantly recognized. This
+"<strong>add a key, gain compatibility</strong>" extensibility lets Langfuse grow with the OpenTelemetry GenAI ecosystem without rewriting the mapping each
+time.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>If the native channel is more precise, why bother supporting OpenTelemetry?</strong> Because you <strong>meet users where they are</strong>.
+  OpenTelemetry is the de facto observability standard; countless teams' apps are already instrumented with it. If Langfuse only spoke its own SDK, it would
+  demand users <strong>re-instrument just for it</strong> — a barrier that turns many away. Supporting OTLP means "you <strong>change not one line of
+  instrumentation</strong>, just point your OTel data over and it works". The cost is real: an <strong>adapter</strong> that must keep chasing each
+  convention, full of priority fallbacks, plus the semantic loss of inference. But the math works out — because the adapter lives only at the
+  <strong>very front</strong>, and after translating it converges into the <strong>shared core</strong> (merge, cost, write is just one). <strong>Confine the
+  grunt work and special cases to one adapter layer at the edge, keep the core pure and unified</strong> — the most classic use of the "adapter pattern".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>Langfuse offers an <strong>OTLP endpoint</strong> (<code>/api/public/otel/v1/traces</code>) accepting OpenTelemetry spans (protobuf/JSON, gzip), letting you onboard <strong>without changing instrumentation</strong>.</li>
+    <li>OTLP uses the <strong>same S3 + queue</strong> pattern as Lesson 14: span body to S3, pointer to the <strong>dedicated</strong> <code>OtelIngestionQueue</code> (with primary/secondary).</li>
+    <li><code>OtelIngestionProcessor</code> is a <strong>universal adapter</strong>: a <strong>priority attribute-key list</strong> per field, trying OTel <code>gen_ai.*</code>, Vercel <code>ai.*</code>, OpenLLMetry <code>llm.*</code> and more, taking the first present.</li>
+    <li>Mapping yields <strong>native ingestion events</strong> (Lesson 13 format); observations to <code>IngestionService</code>, traces to <code>processEventBatch</code> — thereafter <strong>identical to native</strong>.</li>
+    <li>Tradeoff: OTel is the "compatibility channel", inferred and with a semantic gap; native is the "precise channel". <strong>Confine adapter special-cases to the edge, keep the core unified</strong> — the classic adapter pattern.</li>
+  </ul>
+</div>
+""")
+LESSON_18 = {"zh": "\n".join(_ZH18), "en": "\n".join(_EN18)}

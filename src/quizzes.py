@@ -1235,6 +1235,76 @@ QUIZZES = {
             },
         ],
     },
+    "18-opentelemetry-ingestion.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "OTLP 数据从 /otel/v1/traces 进来后，OtelIngestionProcessor 把 span 翻译成什么？之后又如何处理？",
+                    "en": "After OTLP data enters at /otel/v1/traces, what does OtelIngestionProcessor translate spans into, and what happens next?",
+                },
+                "opts": [
+                    {
+                        "zh": "翻译成原生的 IngestionEventType[]（第 13 课事件格式）：observation 交 IngestionService.mergeAndWrite，trace 走 processEventBatch——从此与原生 SDK 数据完全同路（合并/算钱/落盘共用一套）",
+                        "en": "into native IngestionEventType[] (Lesson 13's format): observations go to IngestionService.mergeAndWrite, traces to processEventBatch — thereafter identical to native-SDK data (one shared merge/cost/write)",
+                    },
+                    {"zh": "直接写进一张专门的 otel 表，不经过合并", "en": "straight into a dedicated otel table, skipping merge"},
+                    {"zh": "转成 SQL 语句执行", "en": "into SQL statements to execute"},
+                    {"zh": "原样存进 S3 就结束了", "en": "just stored verbatim in S3 and done"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "OTel 摄取本质是“边缘适配、核心归一”。OtelIngestionProcessor.processToIngestionEvents 把 span 映射成原生事件格式，按实体类型分流后汇入第 15–17 课同一条管道。OTel 特异的只有最前端的映射，后端与原生完全共享。",
+                    "en": "OTel ingestion is essentially 'adapt at the edge, unify at the core'. OtelIngestionProcessor.processToIngestionEvents maps spans into the native event format, splits by entity type, and converges into the same Lesson 15–17 pipeline. Only the front-end mapping is OTel-specific; the backend is fully shared with native.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "同一个“模型名”，OpenTelemetry 写在 gen_ai.response.model、Vercel AI SDK 写在 ai.model.id、OpenLLMetry 写在 llm.model_name。适配器怎么应对这种混乱？",
+                    "en": "The same 'model name' is written to gen_ai.response.model by OpenTelemetry, ai.model.id by Vercel AI SDK, llm.model_name by OpenLLMetry. How does the adapter cope with this mess?",
+                },
+                "opts": [
+                    {
+                        "zh": "为每个字段准备一份优先级属性键列表，从上往下试，第一个有值的就采用；新约定出现只需往列表里加几个键，老数据不受影响、新数据立刻被认得",
+                        "en": "it keeps a priority list of attribute keys per field, tries top to bottom, takes the first present; a new convention just needs a few keys added to the list — old data unaffected, new data instantly recognized",
+                    },
+                    {"zh": "要求所有用户统一改用一种约定", "en": "requires all users to standardize on one convention"},
+                    {"zh": "随机选一个键", "en": "picks a key at random"},
+                    {"zh": "只认 OpenTelemetry 官方约定，其他一律丢弃", "en": "only recognizes the official OpenTelemetry convention, discarding others"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "extractModelName 依次尝试 langfuse 原生 → gen_ai.response.model → ai.model.id → gen_ai.request.model → llm.* → 通用 model，第一个命中即用。usage、input/output 同理。这种“加键即兼容”的优先级回退，让 Langfuse 不必强迫用户改约定，也能跟着生态演进。",
+                    "en": "extractModelName tries in turn langfuse-native → gen_ai.response.model → ai.model.id → gen_ai.request.model → llm.* → generic model, using the first hit. usage and input/output likewise. This 'add a key, gain compatibility' priority fallback lets Langfuse avoid forcing users to change conventions while evolving with the ecosystem.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "原生摄取比 OTel 更精确，为什么 Langfuse 还要支持 OpenTelemetry？这个取舍的本质是什么？",
+                    "en": "Native ingestion is more precise than OTel — so why does Langfuse still support OpenTelemetry, and what's the essence of the tradeoff?",
+                },
+                "opts": [
+                    {
+                        "zh": "为了“去用户所在的地方接住他们”：OTel 是事实标准，无数应用早已埋好点；支持 OTLP 意味着用户不用改一行埋点就能接入。代价是一个满是回退的适配器+推断的语义损耗，但适配器只在最前端，翻完即汇入共享核心",
+                        "en": "to 'meet users where they are': OTel is the de facto standard and countless apps are already instrumented; supporting OTLP means users onboard without changing a line of instrumentation. The cost is a fallback-laden adapter + inference's semantic loss, but the adapter is only at the front, converging into the shared core after translation",
+                    },
+                    {"zh": "因为 OTel 比原生更快", "en": "because OTel is faster than native"},
+                    {"zh": "因为原生 SDK 即将废弃", "en": "because the native SDK is being deprecated"},
+                    {"zh": "纯粹为了营销噱头", "en": "purely a marketing gimmick"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是经典的适配器模式：把脏活、特例（追各家约定、处理语义落差）收敛到边缘的一层适配器，让核心（合并/算钱/落盘）保持纯净统一。降低接入门槛换来更广的用户覆盖，而复杂度被限制在最前端一层，不污染后端。",
+                    "en": "A classic adapter pattern: confine the grunt work and special cases (chasing conventions, handling the semantic gap) to one edge adapter, keeping the core (merge/cost/write) pure and unified. Lowering the onboarding barrier buys broader user coverage, while complexity is confined to the front layer without polluting the backend.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "“把适配各种外部格式的脏活收敛到边缘一层适配器，核心只认一种统一格式”——这条原则你在自己的系统里能用上吗？如果要同时支持多种输入协议/数据源，你会在哪里画那条“适配器 vs 核心”的边界？画错了会怎样？",
+                "en": "'Confine the grunt work of adapting various external formats to one edge adapter, and let the core know only one unified format' — can you apply this in your own systems? If you must support multiple input protocols/data sources, where would you draw the 'adapter vs core' boundary? What goes wrong if you draw it wrong?",
+            },
+        ],
+    },
 }
 
 

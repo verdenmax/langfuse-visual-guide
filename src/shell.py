@@ -83,6 +83,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("17-clickhouse-writer.html", "ClickhouseWriter：批量落盘", "ClickhouseWriter: batched persistence",
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
+    ("18-opentelemetry-ingestion.html", "OpenTelemetry 摄取", "OpenTelemetry ingestion",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -600,6 +602,8 @@ SUBTITLES = {
                                     "provided beats computed; findModel regex match; tokenizer counting; matchPricingTier; price×units; project price overrides global"),
     "17-clickhouse-writer.html": ("单例批写器 · 每表内存队列 · batchSize/writeInterval 双触发 · 批量 INSERT · 优雅排空 · 内存换吞吐(S3 兜底)",
                                   "singleton writer; per-table memory queues; batchSize/writeInterval triggers; bulk INSERT; graceful drain; memory-for-throughput (S3 backstop)"),
+    "18-opentelemetry-ingestion.html": ("OTLP 端点 · protobuf/JSON · 万能适配器 · 优先级属性键 gen_ai/ai/llm · 映射成原生事件 · 边缘适配核心归一",
+                                        "OTLP endpoint; protobuf/JSON; universal adapter; priority keys gen_ai/ai/llm; maps to native events; adapt-at-edge unify-at-core"),
 }
 
 
