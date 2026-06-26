@@ -117,6 +117,8 @@ PAGES = [
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
     ("34-datasets-and-items.html", "数据集与数据项", "Datasets & items",
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
+    ("35-dataset-runs.html", "数据集运行与运行项", "Dataset runs & run items",
+     "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
 ]
 
 
@@ -668,6 +670,8 @@ SUBTITLES = {
                                       "active evaluation: turn quality monitoring from pull (dashboard) to push (alert on crossing); a monitor reuses DashboardWidget's view/filters/metric; window/cadence/thresholds; severity state machine OK/WARNING/ALERT; emit only on change to avoid spam; publish to WebhookQueue for decoupled delivery"),
     "34-datasets-and-items.html": ("数据集=一组测试用例(item: input+expectedOutput+metadata) · 题可从真实 trace 提拔(sourceTraceId) · 数据项版本化主键(id,projectId,validFrom) · 改题=关旧版盖validTo+插新版(SCD Type2) · run 钉住 validFrom 保实验可复现",
                                    "a dataset = a set of test cases (item: input+expectedOutput+metadata); questions promotable from real traces (sourceTraceId); items versioned by key (id,projectId,validFrom); editing = close old (stamp validTo) + insert new (SCD Type 2); a run pins validFrom for reproducible experiments"),
+    "35-dataset-runs.html": ("run=一场考试(某配置跑整套题) · run item 把 runId+itemId→traceId 三元钉一起 · run 的 trace 就是普通 trace 复用前5部分 · 镜像 CH dataset_run_items_rmt 反范式快照题面(ReplacingMergeTree) · dataset-run-item-upsert 自动触发评分 · 按 run 聚合 agg_scores_avg",
+                             "a run = an exam sitting (a config runs the whole set); a run item pins runId+itemId→traceId three-way; a run's trace is an ordinary trace reusing the first five parts; mirrored to CH dataset_run_items_rmt with a denormalized question snapshot (ReplacingMergeTree); dataset-run-item-upsert auto-triggers scoring; aggregate by run via agg_scores_avg"),
 }
 
 

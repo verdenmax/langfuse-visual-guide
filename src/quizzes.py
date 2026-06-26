@@ -2425,6 +2425,76 @@ QUIZZES = {
             },
         ],
     },
+    "35-dataset-runs.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 用 DatasetRunItem 把 datasetRunId + datasetItemId 连到一个 traceId。为什么要专门建这个连接表，而不是直接给 trace 打个「属于哪场实验」的标签？",
+                    "en": "Langfuse's DatasetRunItem links datasetRunId + datasetItemId to a traceId. Why a dedicated junction table rather than just tagging a trace with 'which experiment it belongs to'?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为这是多对多关系且要支撑高效聚合：run/item/trace 各自独立演化，专门的连接表让三者解耦，又给了干净的聚合入口（扫这表 JOIN score 即可算「这场平均分」，不用在 trace 海里捞带标签的针）",
+                        "en": "because it's a many-to-many relation needing efficient aggregation: run/item/trace evolve independently, a dedicated junction table decouples them and gives a clean aggregation entry (scan it and JOIN scores to compute 'this run's average', not fish tagged needles in a trace ocean)",
+                    },
+                    {"zh": "因为 trace 不能加字段", "en": "because traces can't take extra fields"},
+                    {"zh": "为了把实验数据和生产数据隔离", "en": "to isolate experiment data from production data"},
+                    {"zh": "为了加密实验结果", "en": "to encrypt experiment results"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "一条 trace 概念上属于「某场 run 的某道题」，但 run、item、trace 都是独立演化的实体（题会改版、run 会重跑、trace 有完整生命周期）。用连接表承载三元关系，既让三者解耦，又给了聚合入口：算「这场考了哪些题、平均分多少」只需扫这表 JOIN score。关系独立建模是高效查询/聚合的前提。",
+                    "en": "A trace conceptually belongs to 'some question of some run', but run, item, and trace evolve independently (questions versioned, runs re-run, traces have full lifecycles). A junction table carrying the three-way relation decouples them and gives an aggregation entry: computing 'which questions this exam covered, what the average' just scans it and JOINs scores. Modeling the relation independently is the precondition for efficient query/aggregation.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "ClickHouse 的 dataset_run_items_rmt 镜像表里，除了 id/run/item/trace 的关系，还反范式地内联了 run 名、并把数据项的 input/expectedOutput「快照」了进去。快照题面解决了什么独特问题？",
+                    "en": "In ClickHouse's dataset_run_items_rmt mirror table, besides the id/run/item/trace relations it denormalizes the run name and 'snapshots' the item's input/expectedOutput. What unique problem does snapshotting the question text solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "记忆：题目会改版(第34课)，但快照让一场三月的实验永远记得当时考的是哪版题面——即便原题后来面目全非，实验语境分毫不失，给「可复现」再上一道保险",
+                        "en": "memory: questions get versioned (L34), but the snapshot lets a March experiment forever remember the question text it tested then—even if the original later changes beyond recognition, the experiment's context is preserved, doubly insuring reproducibility",
+                    },
+                    {"zh": "压缩存储空间", "en": "compressing storage"},
+                    {"zh": "加密题面", "en": "encrypting the question"},
+                    {"zh": "防止题目被删除", "en": "preventing question deletion"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "反范式有两重收益。聚合速度：内联 run 名/题面，省回表 JOIN（OLAP 老主题）。更微妙的是记忆：题会改版，但三月的实验理应永远记得三月那版题面。把 input/expectedOutput 在 run 时快照进 run item，即便原题后来变了，这场实验的语境也不失——第34课「可复现」的再加保险。快照不是冗余，是固化「当时的真相」。",
+                    "en": "Denormalization has two payoffs. Aggregation speed: inlining run name/question saves back-to-table JOINs (the OLAP theme). Subtler is memory: questions get versioned, but a March experiment should forever remember March's question text. Snapshotting input/expectedOutput into the run item at run time preserves the experiment's context even if the original later changes—doubly insuring L34's reproducibility. The snapshot isn't redundancy but freezing 'the truth as of then'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "在 Langfuse 里「跑一场 dataset run，分数会自动评出来」。这个自动评分是怎么被触发的？",
+                    "en": "In Langfuse, 'running a dataset run computes scores automatically'. How is this auto-scoring triggered?",
+                },
+                "opts": [
+                    {
+                        "zh": "创建 run item 会发出 dataset-run-item-upsert 事件，触发第30课的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-runs.ts JOIN scores 按名求平均(agg_scores_avg)",
+                        "en": "creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-runs.ts JOINs scores and averages by name (agg_scores_avg)",
+                    },
+                    {"zh": "前端每秒轮询打分", "en": "the frontend polls and scores every second"},
+                    {"zh": "run 结束时手动点击评分", "en": "manually clicking score when the run finishes"},
+                    {"zh": "ClickHouse 自动计算", "en": "ClickHouse computes it automatically"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "回想第30课：createEvalJobs 有三个触发源，其一就是 dataset-run-item-upsert。建 run item 发此事件 → 评估器按 filter 匹配这条 run 的 trace → 排 JobExecution → 裁判/代码/人工评出 score 经摄取链路挂回 trace。最后 dataset-runs.ts JOIN scores 按 score 名求平均得 agg_scores_avg（这场总评），交第36课对比。整条链全自动。",
+                    "en": "Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-runs.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "一次 dataset run 产生的 trace 和生产 trace「毫无二致」——同样的观测树、同样能挂 score、同样走摄取链路。这种「实验复用生产基础设施」的设计有什么好处？设想如果实验数据走一套完全独立的存储与查询栈，会带来哪些重复建设和不一致风险？",
+                "en": "The traces a dataset run produces are 'indistinguishable' from production traces—same observation tree, same scores, same ingestion path. What are the benefits of this 'experiments reuse production infrastructure' design? Imagine if experiment data went through a completely separate storage and query stack—what duplication and inconsistency risks would that bring?",
+            },
+        ],
+    },
 }
 
 

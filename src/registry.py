@@ -48,4 +48,5 @@ CONTENT = {
     "32-human-annotation.html": part5.LESSON_32,
     "33-monitors-and-alerting.html": part5.LESSON_33,
     "34-datasets-and-items.html": part6.LESSON_34,
+    "35-dataset-runs.html": part6.LESSON_35,
 }

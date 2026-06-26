@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 34 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 35 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -371,6 +371,7 @@ details[open] > summary { list-style: none; }
   <li>Human annotation</li>
   <li>Monitors & alerting</li>
   <li>Datasets & items</li>
+  <li>Dataset runs & run items</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -7349,6 +7350,181 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Datasets link 'production traces' and 'test cases' via sourceTraceId, and use versioning to keep experiments reproducible. Imagine maintaining a customer-service bot: how would you use these two mechanisms to build a 'continuous improvement' regression-test flow? Which production cases are worth promoting into a dataset? When should you version-up a question rather than create a new one?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Dataset runs & run items</h1>
+
+<p class="lead">
+The last lesson built the "exam paper" (the dataset). This lesson is about how to "<strong>sit an exam</strong>"—a <strong>dataset run</strong> takes the whole set and quizzes the app end to end. Two focuses: each question, run once, produces <strong>a real trace</strong>, and a <strong>dataset run item</strong> is the record that pins "which exam × which question → which answer sheet (trace)" together; and these run items are <strong>mirrored to ClickHouse</strong>, <strong>snapshotting</strong> the question text along with them, so that "aggregate all questions' scores for this exam" is both fast and reproducible.
+Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-item-upsert</code> eval trigger—<strong>run an experiment and the scores get computed automatically</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dataset is the <strong>exam paper</strong>; a run is <strong>one sitting of the exam</strong>: with a specific model / prompt config, answer every question on the paper. Each answered question leaves a complete <strong>answer sheet</strong> (a trace recording the full input/output and every step).
+  A <strong>run item</strong> is like an "<strong>answer-card stub</strong>": it doesn't store the answer itself, only a three-way correspondence—"<strong>this is exam #3, question #7, matching answer sheet #920</strong>". Once the graders (Lessons 29–32's scoring) score each sheet, <strong>aggregating all questions' scores for the same exam</strong> yields the exam's <strong>overall grade</strong> (this run averaged 0.82). So "swap a model, sit another exam—did the grade rise or fall" is obvious—exactly the basis for the next lesson's "experiment comparison".
+</div>
+
+
+<h2>The three-way link: which exam × which question → which answer sheet</h2>
+<p><strong>DatasetRuns</strong> is simple: a sitting has a name, description, metadata, belongs to a dataset; run names are unique within a dataset (<code>[datasetId, projectId, name]</code>). The real key is <strong>DatasetRunItems</strong>: it links <code>datasetRunId</code> + <code>datasetItemId</code> to a <code>traceId</code> (plus an optional <code>observationId</code>). In other words, <strong>every (run × item) pair maps to one real trace</strong>—the run item is the carrier of this three-way relation.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="dataset run model: a dataset's questions are each executed once in a run, each execution producing a trace; a DatasetRunItem links datasetRunId plus datasetItemId to a traceId, forming the run×item→trace three-way link; multiple runs quiz the same set with different configs">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">a run = quiz the whole set once, each question leaving a trace</text>
+  <rect x="20" y="46" width="120" height="150" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="80" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">dataset</text><rect x="34" y="74" width="92" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="91" text-anchor="middle" font-size="7" fill="var(--ink)">item 1</text><rect x="34" y="106" width="92" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="123" text-anchor="middle" font-size="7" fill="var(--ink)">item 2</text><rect x="34" y="138" width="92" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="80" y="155" text-anchor="middle" font-size="7" fill="var(--ink)">item 3</text><text x="80" y="184" text-anchor="middle" font-size="6.6" fill="var(--muted)">exam paper (L34)</text>
+  <rect x="300" y="40" width="150" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="375" y="59" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run "gpt-4o sitting"</text>
+  <rect x="290" y="80" width="170" height="116" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="375" y="98" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">run items (answer-card stubs)</text><text x="375" y="118" text-anchor="middle" font-size="6.6" fill="var(--muted)">run×item1 → trace A</text><text x="375" y="136" text-anchor="middle" font-size="6.6" fill="var(--muted)">run×item2 → trace B</text><text x="375" y="154" text-anchor="middle" font-size="6.6" fill="var(--muted)">run×item3 → trace C</text><text x="375" y="178" text-anchor="middle" font-size="6.2" fill="var(--faint)">datasetRunId+datasetItemId→traceId</text>
+  <rect x="560" y="74" width="140" height="40" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="630" y="91" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">trace A/B/C</text><text x="630" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">one real trace per question</text>
+  <rect x="560" y="128" width="140" height="36" rx="8" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="3 2"/><text x="630" y="145" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">run "claude sitting"…</text><text x="630" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">same set, new config</text>
+  <line x1="140" y1="120" x2="288" y2="120" stroke="var(--accent)" stroke-width="1.4"/><polygon points="288,120 279,116 279,124" fill="var(--accent)"/><text x="214" y="113" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">execute each question</text>
+  <line x1="460" y1="130" x2="558" y2="100" stroke="var(--teal)" stroke-width="1.4"/><polygon points="558,100 549,99 552,107" fill="var(--teal)"/>
+  <text x="360" y="222" text-anchor="middle" font-size="8" fill="var(--faint)">a run item stores no answer—only the "run×item→trace" correspondence; the answer is in the trace it points to</text>
+</svg>
+<div class="figcap"><b>run item = carrier of the three-way link</b>: <code>schema.prisma:719</code> DatasetRuns (unique [datasetId, projectId, name]), <code>:739</code> DatasetRunItems links <code>datasetRunId</code>+<code>datasetItemId</code> to <code>traceId</code>(+observationId). A run executes the whole set once, each producing a real trace; the run item records "which exam × which question → which trace".</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-part"><div class="lh"><span class="badge">an exam</span><span class="name">DatasetRuns</span></div><div class="ld">A run means "with a fixed config (model/prompt/version), run the whole dataset once". It has a name (e.g. "gpt-4o-2025-baseline"), description, metadata, belongs to a dataset. Run names are unique per dataset, so you can trace each experiment by name.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">answer-card stub</span><span class="name">DatasetRunItems</span></div><div class="ld">The connector: <code>datasetRunId</code> (which exam) + <code>datasetItemId</code> (which question) → <code>traceId</code> (which sheet). It stores no input/output—those are in the trace it points to. It only binds "experiment / question / execution record" together, letting you follow a run down to each question's full execution detail.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">reuse all</span><span class="name">the trace is an ordinary trace</span></div><div class="ld">The beauty: a run's traces are <strong>indistinguishable</strong> from production traces—same observation tree (Lessons 13, 25), same ability to attach scores (Lesson 28), same ingestion path (Lesson 12). Experiments aren't a separate system but "a batch of ordinary traces fed by a dataset", reusing all of the first five parts.</div></div>
+</div>
+
+
+<h2>Mirror to ClickHouse: snapshotting the question text too</h2>
+<p>A run item lives in Postgres (the relational truth), but to compute "what's this exam's average score, up or down from last time" you must aggregate over <strong>masses of run items × masses of scores</strong>—an OLAP job, belonging to ClickHouse (Lessons 17, 22). So run items are <strong>mirrored</strong> to CH's <code>dataset_run_items_rmt</code> table. The intriguing part: this table stores not just ids but <strong>denormalizes the run fields and snapshots the question text</strong> into it.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="run items mirrored to ClickHouse: a PG DatasetRunItem is synced into the CH dataset_run_items_rmt table, which denormalizes immutable run fields like name/description plus snapshots of the item's input/expectedOutput; deduped via ReplacingMergeTree; ordered by project/dataset/run for aggregation">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">mirror + denormalized snapshot: fast aggregation, and remembers the question</text>
+  <rect x="30" y="50" width="170" height="120" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="70" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">Postgres (truth)</text><text x="115" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">DatasetRunItem</text><text x="115" y="106" text-anchor="middle" font-size="6.6" fill="var(--muted)">runId + itemId + traceId</text><text x="115" y="124" text-anchor="middle" font-size="6.6" fill="var(--faint)">stores only relations, thin</text><text x="115" y="150" text-anchor="middle" font-size="6.4" fill="var(--muted)">transactional, consistent</text>
+  <rect x="290" y="36" width="200" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="390" y="56" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">CH: dataset_run_items_rmt</text><text x="390" y="76" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">id/run/item/trace_id …</text><rect x="304" y="86" width="172" height="40" rx="6" fill="var(--bg)" stroke="var(--accent)"/><text x="390" y="102" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">denormalized: run name/desc inlined</text><text x="390" y="118" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">+ item input/expectedOutput snapshot</text><text x="390" y="142" text-anchor="middle" font-size="6.4" fill="var(--muted)">ReplacingMergeTree(event_ts,is_deleted)</text><text x="390" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">ORDER BY project/dataset/run/id</text><text x="390" y="174" text-anchor="middle" font-size="6.4" fill="var(--faint)">built for aggregation, fat</text>
+  <rect x="560" y="64" width="140" height="56" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="630" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">aggregate by run</text><text x="630" y="100" text-anchor="middle" font-size="6.4" fill="var(--muted)">JOIN scores → avg</text><text x="630" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">this run averaged 0.82</text>
+  <line x1="200" y1="110" x2="288" y2="110" stroke="var(--accent)" stroke-width="1.5"/><polygon points="288,110 279,106 279,114" fill="var(--accent)"/><text x="244" y="103" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">mirror</text>
+  <line x1="490" y1="110" x2="558" y2="92" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,92 549,91 552,99" fill="var(--teal)"/>
+  <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">snapshot's payoff: even if the question is later versioned up (L34), this run item still remembers "what was actually tested then"—reproducibility, doubly insured</text>
+</svg>
+<div class="figcap"><b>denormalize = trade space for aggregation speed + memory</b>: the CH table inlines immutable run fields and <b>snapshots item input/expectedOutput</b> (the source comment: "denormalized … but snapshots are relevant"). Even if the question is later versioned up, this run still remembers the question text then—Lesson 34's reproducibility, doubly insured. Engine ReplacingMergeTree (same as Lesson 17). Source: <code>clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</span><span class="ln">CH mirror table</span></div>
+  <pre class="code"><span class="kw">CREATE TABLE</span> dataset_run_items_rmt (
+  id String, project_id String, dataset_run_id String,
+  dataset_item_id String, dataset_id String, trace_id String, observation_id Nullable(String),
+  <span class="cm">-- denormalized: immutable run fields inlined (saves a JOIN)</span>
+  dataset_run_name String, dataset_run_description Nullable(String), dataset_run_created_at DateTime64(3),
+  <span class="cm">-- snapshot: the question text "as of then" (remembers what was tested even after a version bump)</span>
+  dataset_item_input Nullable(String) CODEC(ZSTD(3)),
+  dataset_item_expected_output Nullable(String) CODEC(ZSTD(3)),
+  event_ts DateTime64(3), is_deleted UInt8
+) <span class="kw">ENGINE</span> = ReplicatedReplacingMergeTree(event_ts, is_deleted)   <span class="cm">-- many writes per id, keep latest (L17)</span>
+<span class="kw">ORDER BY</span> (project_id, dataset_id, dataset_run_id, id);   <span class="cm">-- sort key fits "aggregate by run"</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>dimension</th><th>Postgres (DatasetRunItem)</th><th>ClickHouse (dataset_run_items_rmt)</th></tr></thead>
+  <tbody>
+    <tr><td>role</td><td>relational truth, transactional</td><td>aggregation copy, built for OLAP</td></tr>
+    <tr><td>stores</td><td>thin: runId+itemId+traceId relations</td><td>fat: also inlines run name/desc + question snapshot</td></tr>
+    <tr><td>engine</td><td>row store, strongly consistent</td><td>ReplacingMergeTree(event_ts, is_deleted)</td></tr>
+    <tr><td>good at</td><td>exact single-row reads, FK constraints</td><td>"group by run, average" in one scan</td></tr>
+  </tbody>
+</table>
+<p>This is Lesson 22's "dual-store" pattern replayed in the experiment domain: <strong>Postgres as the authority, ClickHouse as the snapshot</strong>. The two don't compete but divide labor—one keeps it correct, one keeps it fast.</p>
+
+
+<h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
+<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-runs.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>create run item (pin the version)</h4><p>Record run×item→traceId, pinning the item's <code>validFrom</code> (L34). Mirror into CH, snapshot the question.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>auto-trigger evaluation</h4><p>Persisting the run item emits a <code>dataset-run-item-upsert</code> event → Lesson 30's createEvalJobs queues eval for this trace.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>scores flow back</h4><p>Judge / code / human (Lessons 29–32) produce scores, attached back to this trace via the ingestion path.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-runs.ts</span><span class="ln">aggregate scores by run</span></div>
+  <pre class="code"><span class="cm">// each run's average: JOIN scores, average by score name → agg_scores_avg</span>
+<span class="kw">type</span> DatasetRunRecord = {
+  agg_scores_avg: Array&lt;[string, number]&gt;;   <span class="cm">// e.g. [["helpfulness", 0.82], ["toxicity", 0.03]]</span>
+  scores: ScoreAggregate; …
+};
+<span class="cm">// scoresCte: aggregate numeric scores as (name, avg_value)</span>
+WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY name )
+<span class="cm">// so "gpt-4o sitting vs claude sitting" compares directly on agg_scores_avg — next lesson's comparison</span></pre>
+</div>
+
+<p>With that, Part 6's first two lessons assemble the full <strong>experiment skeleton</strong>: dataset (exam paper, L34) → run (a sitting) → run item (answer-card stub, pinning question to sheet) → trace (the sheet) → auto-scoring (Lessons 29–32) → aggregate by run (the exam's grade). The next lesson is the last step: place multiple runs' grades <strong>side by side</strong> and pick the best config—that's an "experiment".</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why build a dedicated run-item table rather than just tag a trace with "which experiment it belongs to"?</strong> Because it's a <strong>many-to-many</strong> relation that must support efficient aggregation. A trace conceptually belongs to "some question of some run", but "run", "item", and "trace" each evolve independently (questions get versioned, runs get re-run, traces have full lifecycles). A dedicated junction table (the run item) carrying this three-way relation both keeps the three decoupled and independent, and gives you a clean aggregation entry: to compute "which questions this exam covered, what the average is", just scan this table and JOIN scores—rather than fishing for tagged needles in a vast trace ocean. <strong>Modeling the relation independently is the precondition for efficient query and aggregation.</strong><br><br>
+  <strong>Why does the CH mirror table denormalize and "snapshot" the run fields and question text?</strong> Two compounding reasons. One is <strong>aggregation speed</strong> (Lessons 17, 22's old theme): inlining run name and question text saves repeated back-to-table JOINs when computing "average grouped by run"—OLAP thrives on this. The other is subtler, <strong>memory</strong>: questions get versioned (Lesson 34), but a March experiment ought to forever remember the question text it tested <strong>then</strong>. Snapshotting input/expectedOutput into the run item at run time doubly insures "reproducibility"—even if the original question later changes beyond recognition, this experiment's context is preserved intact. <strong>The snapshot isn't redundancy but freezing "the truth as of then".</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A run = an exam sitting</strong>: <code>DatasetRuns</code> runs the whole dataset with a fixed config; run names are unique per dataset, so each experiment is traceable by name.</li>
+    <li><strong>A run item = carrier of the three-way link</strong>: <code>DatasetRunItems</code> pins <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code>, storing no input/output—the answer is in the trace it points to. This keeps run/item/trace decoupled yet aggregatable.</li>
+    <li><strong>A run's trace is an ordinary trace</strong>: same observation tree, same scores, same ingestion path—experiments reuse all of the first five parts, not a separate system.</li>
+    <li><strong>Mirror to CH with a denormalized snapshot</strong>: <code>dataset_run_items_rmt</code> (ReplacingMergeTree) inlines run fields + <strong>snapshots question input/expectedOutput</strong>—both speeding "aggregate by run" and making an experiment forever remember what it tested (reproducibility, insured).</li>
+    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-runs.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's DatasetRunItem links datasetRunId + datasetItemId to a traceId. Why a dedicated junction table rather than just tagging a trace with 'which experiment it belongs to'?</div>
+  <ol class="opts">
+    <li>to encrypt experiment results</li>
+    <li>to isolate experiment data from production data</li>
+    <li>because traces can't take extra fields</li>
+    <li>because it's a many-to-many relation needing efficient aggregation: run/item/trace evolve independently, a dedicated junction table decouples them and gives a clean aggregation entry (scan it and JOIN scores to compute 'this run's average', not fish tagged needles in a trace ocean)</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. A trace conceptually belongs to 'some question of some run', but run, item, and trace evolve independently (questions versioned, runs re-run, traces have full lifecycles). A junction table carrying the three-way relation decouples them and gives an aggregation entry: computing 'which questions this exam covered, what the average' just scans it and JOINs scores. Modeling the relation independently is the precondition for efficient query/aggregation.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. In ClickHouse's dataset_run_items_rmt mirror table, besides the id/run/item/trace relations it denormalizes the run name and 'snapshots' the item's input/expectedOutput. What unique problem does snapshotting the question text solve?</div>
+  <ol class="opts">
+    <li>preventing question deletion</li>
+    <li>memory: questions get versioned (L34), but the snapshot lets a March experiment forever remember the question text it tested then—even if the original later changes beyond recognition, the experiment's context is preserved, doubly insuring reproducibility</li>
+    <li>encrypting the question</li>
+    <li>compressing storage</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Denormalization has two payoffs. Aggregation speed: inlining run name/question saves back-to-table JOINs (the OLAP theme). Subtler is memory: questions get versioned, but a March experiment should forever remember March's question text. Snapshotting input/expectedOutput into the run item at run time preserves the experiment's context even if the original later changes—doubly insuring L34's reproducibility. The snapshot isn't redundancy but freezing 'the truth as of then'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. In Langfuse, 'running a dataset run computes scores automatically'. How is this auto-scoring triggered?</div>
+  <ol class="opts">
+    <li>creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-runs.ts JOINs scores and averages by name (agg_scores_avg)</li>
+    <li>ClickHouse computes it automatically</li>
+    <li>the frontend polls and scores every second</li>
+    <li>manually clicking score when the run finishes</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-runs.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>The traces a dataset run produces are 'indistinguishable' from production traces—same observation tree, same scores, same ingestion path. What are the benefits of this 'experiments reuse production infrastructure' design? Imagine if experiment data went through a completely separate storage and query stack—what duplication and inconsistency risks would that bring?</li>
   </ul>
 </div>
 </div>
