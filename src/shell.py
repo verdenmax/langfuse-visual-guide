@@ -61,6 +61,8 @@ PAGES = [
      "第一部分 · 宏观全景", "Part 1 · The Big Picture"),
     ("06-instrumenting-an-llm-app.html", "给 LLM 应用埋点", "Instrumenting an LLM app",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("07-dual-store-architecture.html", "双存储架构", "The dual-store architecture",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -556,6 +558,8 @@ SUBTITLES = {
                                 "write: SDK→API→queue→worker→CH; read: UI→tRPC→repo→CH; async; eventual consistency"),
     "06-instrumenting-an-llm-app.html": ("两个入口：SDK 原生事件 / OTel · 事件信封 · create+update 增量",
                                          "two entries: native SDK events / OTel; the event envelope; incremental create+update"),
+    "07-dual-store-architecture.html": ("四存储分工：PG 配置 · CH 宽事件 · Redis 队列/缓存 · S3 真相之源 · OLTP vs OLAP",
+                                        "four stores: PG config; CH wide events; Redis queue/cache; S3 source-of-truth; OLTP vs OLAP"),
 }
 
 

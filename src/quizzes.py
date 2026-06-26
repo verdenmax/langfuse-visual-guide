@@ -465,6 +465,76 @@ QUIZZES = {
             },
         ],
     },
+    "07-dual-store-architecture.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "为什么 Langfuse 把配置/元数据放 Postgres、把 trace/observation/score 放 ClickHouse，而不是统一用一个库？",
+                    "en": "Why does Langfuse put config/metadata in Postgres and trace/observation/score in ClickHouse, rather than one database for all?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为两者是相反的负载：配置是 OLTP（小、精确单条读写、强一致），遥测是 OLAP（海量、按时间窗口+维度聚合）；没有哪个库能把两头都做到极致",
+                        "en": "Because they're opposite workloads: config is OLTP (small, precise single-row, strongly consistent), telemetry is OLAP (massive, time-window + dimensional aggregation); no single store nails both extremes",
+                    },
+                    {"zh": "因为 ClickHouse 不能存字符串", "en": "Because ClickHouse can't store strings"},
+                    {"zh": "因为 Postgres 不支持索引", "en": "Because Postgres has no indexes"},
+                    {"zh": "纯粹为了用更多技术", "en": "Purely to use more tech"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "配置要精确读写单条且强一致（创建即可用），是行存 Postgres 的主场；遥测海量、写多于改、按维度聚合，是列存 ClickHouse 的主场。硬塞进一个必然顾此失彼。这是“按访问模式选存储”。",
+                    "en": "Config needs precise single-row read/write and strong consistency (instantly usable) — row-store Postgres's turf; telemetry is massive, write-mostly, dimensionally aggregated — columnar ClickHouse's turf. Forcing one store loses both ways. This is 'choose storage by access pattern'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "在摄取链路里，S3 扮演的关键角色是什么？",
+                    "en": "What key role does S3 play in the ingestion path?",
+                },
+                "opts": [
+                    {
+                        "zh": "事件的“真相之源/原始日志”：事件先落 S3，worker 合并时回 S3 取历史；ClickHouse 的宽事件相当于其合并后的派生表，理论上可从 S3 重放重建",
+                        "en": "The events' 'source of truth / raw log': events land in S3 first, the worker re-reads S3 to merge; ClickHouse wide events are the merged derived table, in principle replayable from S3",
+                    },
+                    {"zh": "只是存上传的图片，和摄取无关", "en": "Just stores uploaded images, unrelated to ingestion"},
+                    {"zh": "代替 Redis 做队列", "en": "Replaces Redis as the queue"},
+                    {"zh": "存用户密码", "en": "Stores user passwords"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "S3 不只是大文件仓。事件先落 S3 作为不可变原始日志，worker 据此合并出 ClickHouse 宽事件（派生/物化）。这正是第 2 课“不可变/追加式事件”的体现，也让数据可重放重建。",
+                    "en": "S3 isn't just a big-file store. Events land in S3 as an immutable raw log, from which the worker merges ClickHouse wide events (derived/materialized). This is L02's 'immutable/append-oriented events', and makes data replayable.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 用四种存储，但第 2 课又说“把运维简单性当约束”。怎么调和？判断“该不该再加一个存储”的标准是什么？",
+                    "en": "Langfuse uses four stores, yet L02 says 'treat operational simplicity as a constraint'. How to reconcile? What's the test for 'should we add another store'?",
+                },
+                "opts": [
+                    {
+                        "zh": "每个存储都必须挣到自己的存在——它解决的硬问题是否值得它带来的长期运维成本（备份/监控/升级/容灾）",
+                        "en": "Each store must earn its existence — does the hard problem it solves justify its long-term ops cost (backup/monitoring/upgrade/DR)",
+                    },
+                    {"zh": "存储越多越好，多多益善", "en": "More stores are always better"},
+                    {"zh": "永远只能用一个数据库", "en": "You may only ever use one database"},
+                    {"zh": "由前端框架决定", "en": "The frontend framework decides"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "四存储不是“想加就加”：ClickHouse 解决海量聚合、Redis 解决异步抗洪峰、S3 解决大字段+重放，各自解决单库做不到的硬问题，所以挣到了存在。这也正是判断要不要再加存储的标准。",
+                    "en": "The four aren't 'add because we can': ClickHouse solves huge aggregation, Redis solves async spike absorption, S3 solves big fields + replay — each solving what one store can't, thus earning its place. That's exactly the test for adding another store.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "想象你在设计一个新的日志/监控系统，预算有限。你会从一个 Postgres 起步，还是一开始就上 ClickHouse？在什么规模/查询模式下，引入列存才真正“挣到存在”？",
+                "en": "Imagine designing a new logging/monitoring system on a tight budget. Would you start with one Postgres, or bring in ClickHouse from day one? At what scale/query pattern does a columnar store truly 'earn its existence'?",
+            },
+        ],
+    },
 }
 
 

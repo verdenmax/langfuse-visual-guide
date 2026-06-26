@@ -16,4 +16,5 @@ CONTENT = {
     "04-project-map-monorepo.html": part1.LESSON_04,
     "05-life-of-a-trace.html": part1.LESSON_05,
     "06-instrumenting-an-llm-app.html": part2.LESSON_06,
+    "07-dual-store-architecture.html": part2.LESSON_07,
 }

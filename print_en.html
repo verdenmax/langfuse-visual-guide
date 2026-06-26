@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 6 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 7 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -343,6 +343,7 @@ details[open] > summary { list-style: none; }
   <li>Project map (monorepo & narrow waist)</li>
   <li>Life of a trace (bird's-eye)</li>
   <li>Instrumenting an LLM app</li>
+  <li>The dual-store architecture</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -1925,6 +1926,184 @@ observability.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>If you were instrumenting your own app, would you pick the Langfuse native SDK or OpenTelemetry? How would your system's current state (already on OTel? need precise cost?) shape that choice?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The dual-store architecture</h1>
+
+<p class="lead">
+Last lesson, data left your app as "events". This lesson is about <strong>where it lands</strong>. Many assume one database suffices,
+but Langfuse uses <strong>four stores</strong> — <strong>Postgres, ClickHouse, Redis, S3</strong> — each for its own job. Not
+showing off: different data has wildly different <strong>access patterns</strong>, and the wrong store will crush the hot path.
+Understand the division of labor and you understand the <strong>foundation</strong> of Langfuse's performance and scalability.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture the four stores as a company's four "ways to keep things": <strong>Postgres</strong> is the <strong>filing cabinet</strong> —
+  important records (who's an employee, project config), needing to be <strong>accurate, editable, quick to look up</strong> but not
+  huge; <strong>ClickHouse</strong> is the <strong>giant warehouse</strong> — mountains of goods (hundreds of millions of events a day),
+  needing <strong>bulk stock-taking by category</strong>; <strong>Redis</strong> is the <strong>conveyor belt + staging table</strong> —
+  goods queue on the belt (queues), and frequently-used small items stay at hand (cache); <strong>S3</strong> is <strong>off-site
+  storage</strong> — big, rarely-flipped originals (event manuscripts, uploaded images, large exports). Each excels at its own; cram
+  them into one and you lose.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 280" role="img" aria-label="web and worker containers read/write the four stores Postgres, ClickHouse, Redis, S3">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two containers, four stores, each its own job</text>
+  <rect x="150" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="230" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">web</text><text x="230" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">UI · API</text>
+  <rect x="410" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="490" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">worker</text><text x="490" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">background</text>
+  <rect x="20" y="160" width="150" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--blue)">Postgres</text><text x="95" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">config/metadata</text><text x="95" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">txn·consistent·small</text>
+  <rect x="190" y="160" width="150" height="80" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="265" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="265" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">wide events</text><text x="265" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">columnar·huge·fast agg</text>
+  <rect x="360" y="160" width="150" height="80" rx="11" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--red)">Redis</text><text x="435" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">queue(BullMQ)+cache</text><text x="435" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">in-memory·fast·temp</text>
+  <rect x="530" y="160" width="160" height="80" rx="11" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="610" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--amber)">S3 / blob</text><text x="610" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">event log·media·export</text><text x="610" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">object store·big·cheap</text>
+  <line x1="210" y1="84" x2="120" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="225" y1="84" x2="255" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="245" y1="84" x2="425" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="470" y1="84" x2="280" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="485" y1="84" x2="440" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="510" y1="84" x2="610" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="262" text-anchor="middle" font-size="9.5" fill="var(--faint)">web mostly reads PG(config)+CH(analytics); worker mostly writes CH/S3, uses the Redis queue</text>
+</svg>
+<div class="figcap"><b>The four stores' division of labor</b>: <b>Postgres</b>=config/metadata (txn, consistent, small); <b>ClickHouse</b>=wide events (columnar, huge, fast aggregation); <b>Redis</b>=queue+cache (in-memory, fast, temporary); <b>S3</b>=event manuscript/media/exports (object store, big, cheap). web leans read, worker leans write, but both pick the store that fits the data.</div>
+</div>
+
+<h2>Why not just one</h2>
+<p>The core reason in one line: <strong>transactional (OLTP) and analytical (OLAP) workloads are opposite optimization targets</strong>,
+and no single store nails both extremes.</p>
+<ul>
+  <li><strong>Config/metadata</strong> (projects, users, API keys, prompt definitions) is classic <strong>OLTP</strong>: small, frequent <strong>precise single-row read/write</strong>, <strong>strong consistency</strong> (create a project, use it instantly), with foreign keys. Postgres's home turf.</li>
+  <li><strong>Telemetry</strong> (trace/observation/score) is classic <strong>OLAP</strong>: enormous (hundreds of millions/day), write-mostly, queries are mostly <strong>time-window + dimensional aggregation</strong> ("cost by model over 7 days"). Columnar ClickHouse's home turf.</li>
+</ul>
+
+<div class="cols">
+  <div class="col"><h4>🗄️ Postgres is good at (OLTP)</h4><p>precise single-row read/write, strong consistency, foreign keys, transactions. Fits <strong>small, important, must-be-instant</strong> config data. Bad at: aggregating scans over huge rows.</p></div>
+  <div class="col"><h4>📊 ClickHouse is good at (OLAP)</h4><p>time-window scans + aggregation over a few columns of huge rows, columnar + compressed. Fits <strong>massive, append-write, dimensional</strong> telemetry. Bad at: frequent single-row edits + strong consistency.</p></div>
+</div>
+
+<p>Cram telemetry into Postgres and huge rows + frequent aggregation overwhelm it; cram config into ClickHouse and its <strong>weak
+transactions, eventual consistency</strong> fail "instantly usable". So Langfuse isn't being greedy — it's <strong>letting each kind of
+data live in the store that fits it best</strong>, the storage-layer landing point of Lesson 2's "design around columnar access" and
+"denormalize carefully".</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="OLTP fetches one row by key; OLAP scans a slice of many rows and aggregates - opposite access patterns">
+  <text x="180" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">OLTP (Postgres): fetch one row</text>
+  <text x="540" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)">OLAP (ClickHouse): scan a slice + aggregate</text>
+  <g>
+    <rect x="40" y="44" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="72" width="280" height="22" rx="4" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+    <rect x="40" y="100" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="128" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <text x="180" y="88" text-anchor="middle" font-size="9.5" fill="var(--blue)">WHERE id = 'x' → hits this row</text>
+    <text x="180" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">one row · ms · strongly consistent</text>
+  </g>
+  <g>
+    <rect x="400" y="44" width="280" height="106" rx="6" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+    <line x1="420" y1="62" x2="660" y2="62" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="80" x2="660" y2="80" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="98" x2="660" y2="98" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="116" x2="660" y2="116" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="134" x2="660" y2="134" stroke="var(--purple)" stroke-width="1"/>
+    <text x="540" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">scan a few columns of millions of rows · aggregate · needs columnar</text>
+  </g>
+</svg>
+<div class="figcap"><b>Two opposite access patterns</b>: OLTP uses an index to <b>hit exactly one row</b> (read config, change settings); OLAP must <b>scan a few columns of a big slice of rows and aggregate</b> (cost by time/model). Row stores excel at the former, columnar at the latter — which is why config goes to Postgres and telemetry to ClickHouse.</div>
+</div>
+
+<h2>What each store holds</h2>
+<table class="t">
+  <tr><th>Store</th><th>Holds</th><th>Client in the repo</th></tr>
+  <tr><td class="mono">Postgres</td><td>org/project/user, API keys, prompts, eval config, pricing… (control plane)</td><td class="mono">packages/shared/src/db.ts (Prisma)</td></tr>
+  <tr><td class="mono">ClickHouse</td><td>traces / observations / scores — three wide-event tables (data plane)</td><td class="mono">.../server/clickhouse/client.ts</td></tr>
+  <tr><td class="mono">Redis</td><td>BullMQ queues (decouple ingestion) + cache (e.g. prompts, eval config)</td><td class="mono">.../server/redis/redis.ts</td></tr>
+  <tr><td class="mono">S3 / blob</td><td>raw event manuscript (for merge/replay), multimodal media, bulk exports</td><td class="mono">.../server/s3/index.ts</td></tr>
+</table>
+
+<p>One detail: S3 isn't just "big-file storage". In the ingestion path, each incoming event <strong>lands in S3 first</strong>, and the
+worker re-reads S3 when merging (L05, L15) — here S3 plays the <strong>"event log / source of truth"</strong> role. The wide events in
+ClickHouse are essentially a <strong>"materialized view" of the merged S3 manuscripts</strong>: if ClickHouse data ever needs rebuilding,
+it can in principle be <strong>replayed</strong> from the raw S3 events. This "raw log + derived table" split is Lesson 2's "immutable /
+append-oriented events" in action.</p>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">control plane</span><span class="name">Postgres</span></div><div class="ld">who can use it, configured how: org/project/user, API keys, prompts, eval config, pricing. Few but critical changes, needs strong consistency.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">data plane</span><span class="name">ClickHouse</span></div><div class="ld">the actual telemetry flood: traces/observations/scores wide-event tables. Huge, append, dimensional aggregation.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">transport</span><span class="name">Redis</span></div><div class="ld">the queue that makes ingestion async, plus a cache for hot config. In-memory, temporary, very fast.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">object store</span><span class="name">S3 / blob</span></div><div class="ld">the event source of truth, uploaded media, bulk exports. Big, rarely-flipped things live here — cheap and durable.</div></div>
+</div>
+
+<p>These four layers <strong>collaborate</strong> at runtime, not in isolation. Recall Lesson 5's path: on ingestion, events first enter the
+<strong>Redis queue</strong> and originals land in <strong>S3</strong>; after merging the worker writes <strong>ClickHouse</strong>; and to
+merge it must know "which prompt version this observation links to" and "what model pricing applies", so it reads config back from
+<strong>Postgres</strong>. One ingestion, four stores each pulling their weight. Reads are similar: the UI list queries
+<strong>ClickHouse</strong>, but "what's this project called, who has access" comes from <strong>Postgres</strong>, and hot config goes
+through the <strong>Redis</strong> cache. So understanding Langfuse is essentially understanding <strong>how data flows among these four
+stores</strong> — which is why Part 2 spends a whole lesson on the storage division of labor: it's the <strong>shared foundation</strong>
+of every later path lesson.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Four stores = four operational burdens, so why split this much?</strong> Lesson 2 has a principle: "treat cost and
+  operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
+  because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
+  slow; without the Redis queue, ingestion can't go async to absorb spikes; without S3, big fields and media bloat the database and you
+  can't replay. In other words, these four aren't "add because we can" — each <strong>earned its existence</strong>. That's also the
+  test for "should we add another store": does the problem it solves justify its long-term operational cost?
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Four stores, each its own job</strong>: Postgres (config/metadata·OLTP), ClickHouse (wide events·OLAP), Redis (queue+cache), S3 (event manuscript+media+exports).</li>
+    <li>Core reason: <strong>OLTP and OLAP are opposite targets</strong> — config needs precise single-row + strong consistency, telemetry needs massive scan + aggregation, so split stores.</li>
+    <li><strong>S3 is the "source of truth"</strong>: events land in S3 first; ClickHouse wide events are the merged derived table, replayable.</li>
+    <li>Control plane (Postgres) vs data plane (ClickHouse) is the macro version of Lesson 3's "domain shape vs physical storage".</li>
+    <li>Four stores aren't tech-stacking — each <strong>earned its existence</strong>, which is also the test for "should we add another store".</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse put config/metadata in Postgres and trace/observation/score in ClickHouse, rather than one database for all?</div>
+  <ol class="opts">
+    <li>Because ClickHouse can't store strings</li>
+    <li>Purely to use more tech</li>
+    <li>Because Postgres has no indexes</li>
+    <li>Because they're opposite workloads: config is OLTP (small, precise single-row, strongly consistent), telemetry is OLAP (massive, time-window + dimensional aggregation); no single store nails both extremes</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Config needs precise single-row read/write and strong consistency (instantly usable) — row-store Postgres's turf; telemetry is massive, write-mostly, dimensionally aggregated — columnar ClickHouse's turf. Forcing one store loses both ways. This is 'choose storage by access pattern'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. What key role does S3 play in the ingestion path?</div>
+  <ol class="opts">
+    <li>The events' 'source of truth / raw log': events land in S3 first, the worker re-reads S3 to merge; ClickHouse wide events are the merged derived table, in principle replayable from S3</li>
+    <li>Just stores uploaded images, unrelated to ingestion</li>
+    <li>Stores user passwords</li>
+    <li>Replaces Redis as the queue</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. S3 isn't just a big-file store. Events land in S3 as an immutable raw log, from which the worker merges ClickHouse wide events (derived/materialized). This is L02's 'immutable/append-oriented events', and makes data replayable.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse uses four stores, yet L02 says 'treat operational simplicity as a constraint'. How to reconcile? What's the test for 'should we add another store'?</div>
+  <ol class="opts">
+    <li>The frontend framework decides</li>
+    <li>You may only ever use one database</li>
+    <li>Each store must earn its existence — does the hard problem it solves justify its long-term ops cost (backup/monitoring/upgrade/DR)</li>
+    <li>More stores are always better</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. The four aren't 'add because we can': ClickHouse solves huge aggregation, Redis solves async spike absorption, S3 solves big fields + replay — each solving what one store can't, thus earning its place. That's exactly the test for adding another store.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Imagine designing a new logging/monitoring system on a tight budget. Would you start with one Postgres, or bring in ClickHouse from day one? At what scale/query pattern does a columnar store truly 'earn its existence'?</li>
   </ul>
 </div>
 </div>

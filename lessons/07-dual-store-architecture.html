@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>07 · 双存储架构 / The dual-store architecture - Langfuse 图解教程</title>
+<meta name="description" content="第二部分 · 前置基础｜双存储架构 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="07 · 双存储架构 / The dual-store architecture - Langfuse 图解教程">
+<meta property="og:description" content="第二部分 · 前置基础｜双存储架构 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="07 · 双存储架构 / The dual-store architecture - Langfuse 图解教程">
+<meta name="twitter:description" content="第二部分 · 前置基础｜双存储架构 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></span>
+    <span class="pill">07 / 07</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
+    <h1><span class="lang-zh">双存储架构</span><span class="lang-en">The dual-store architecture</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+上一课，数据以「事件」的形式离开了你的应用。这一课讲它们最终<strong>落在哪</strong>。很多人以为一个数据库就够了，但 Langfuse 用了<strong>四种存储</strong>——
+<strong>Postgres、ClickHouse、Redis、S3</strong>，各管一摊。这不是炫技，而是因为不同数据的<strong>访问模式</strong>天差地别：用错存储，热路径会被活活拖垮。
+看懂这四者的分工，你就理解了 Langfuse 性能与可扩展性的<strong>地基</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把这四种存储想成一家公司的四种「存放方式」：<strong>Postgres</strong> 是<strong>文件柜</strong>——放重要档案（谁是员工、项目配置），要求<strong>准、可改、查得快</strong>，但量不大；
+  <strong>ClickHouse</strong> 是<strong>巨型货仓</strong>——堆放海量货物（每天上亿条事件），要的是<strong>按品类批量盘点</strong>的能力；<strong>Redis</strong> 是<strong>传送带 + 暂存台</strong>——
+  货物先上传送带排队（队列），常用的小东西放手边随手取（缓存）；<strong>S3</strong> 是<strong>外部仓储</strong>——存又大又不常翻的原件（事件底稿、上传的图片、导出的大文件）。
+  四者各有所长，硬塞进一个，必然顾此失彼。看懂这四种存储分别擅长什么、为什么这么分，是理解后面摄取与查询两条链路的前提。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 280" role="img" aria-label="web 和 worker 两个容器分别读写 Postgres、ClickHouse、Redis、S3 四种存储">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">两个容器，四种存储，各司其职</text>
+  <rect x="150" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="230" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">web</text><text x="230" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">UI · API</text>
+  <rect x="410" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="490" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">worker</text><text x="490" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">后台处理</text>
+  <rect x="20" y="160" width="150" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--blue)">Postgres</text><text x="95" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">配置/元数据</text><text x="95" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">事务·强一致·量小</text>
+  <rect x="190" y="160" width="150" height="80" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="265" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="265" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">宽事件 trace/obs/score</text><text x="265" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">列存·海量·聚合快</text>
+  <rect x="360" y="160" width="150" height="80" rx="11" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--red)">Redis</text><text x="435" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">队列(BullMQ) + 缓存</text><text x="435" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">内存·极快·临时</text>
+  <rect x="530" y="160" width="160" height="80" rx="11" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="610" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--amber)">S3 / blob</text><text x="610" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">事件底稿·媒体·导出</text><text x="610" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">对象存储·大·便宜</text>
+  <line x1="210" y1="84" x2="120" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="225" y1="84" x2="255" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="245" y1="84" x2="425" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="470" y1="84" x2="280" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="485" y1="84" x2="440" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="510" y1="84" x2="610" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="262" text-anchor="middle" font-size="9.5" fill="var(--faint)">web 主要读 PG(配置)+CH(分析)；worker 主要写 CH/S3、用 Redis 队列</text>
+</svg>
+<div class="figcap"><b>四种存储的分工</b>：<b>Postgres</b>=配置/元数据（事务、强一致、量小）；<b>ClickHouse</b>=宽事件（列存、海量、聚合快）；<b>Redis</b>=队列+缓存（内存、极快、临时）；<b>S3</b>=事件底稿/媒体/导出（对象存储、大、便宜）。web 偏读、worker 偏写，但都按数据性质选对应的库。</div>
+</div>
+
+<h2>为什么不能只用一个</h2>
+<p>核心原因一句话：<strong>事务型负载（OLTP）和分析型负载（OLAP）是两种相反的优化目标</strong>，没有哪个库能同时把两头都做到极致。</p>
+<ul>
+  <li><strong>配置/元数据</strong>（项目、用户、API key、prompt 定义）是典型 <strong>OLTP</strong>：数据量小、要频繁<strong>精确读写单条</strong>、要<strong>强一致</strong>（创建了项目立刻就能用）、还有外键关系。这正是 <strong>Postgres</strong> 的主场。</li>
+  <li><strong>遥测数据</strong>（trace/observation/score）是典型 <strong>OLAP</strong>：数据量巨大（一天上亿）、写多于改、查询多是<strong>按时间窗口 + 某些维度做聚合</strong>（如「过去 7 天按模型看成本」）。这正是列存的 <strong>ClickHouse</strong> 的主场。</li>
+</ul>
+
+<div class="cols">
+  <div class="col"><h4>🗄️ Postgres 擅长（OLTP）</h4><p>精确读写单条、强一致、外键关系、事务。适合<strong>小而重要、要立刻可用</strong>的配置类数据。不适合：海量行的聚合扫描。</p></div>
+  <div class="col"><h4>📊 ClickHouse 擅长（OLAP）</h4><p>对海量行的某几列做时间窗口扫描 + 聚合，列存 + 压缩。适合<strong>巨量、追加写、按维度统计</strong>的遥测数据。不适合：频繁改单条 + 强一致。</p></div>
+</div>
+
+<p>如果硬把遥测塞进 Postgres，海量行 + 频繁聚合会让它不堪重负；反过来把配置塞进 ClickHouse，它的<strong>弱事务、最终一致</strong>又满足不了「创建即可用」。
+所以 Langfuse 的选择不是「贪多」，而是<strong>让每种数据待在最适合它的库里</strong>——这正是第 2 课「按列式访问设计」「谨慎反范式化」等原则在存储层的总落点。</p>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="OLTP 按主键精确取单条，OLAP 按时间窗口扫描海量行再聚合，两种访问模式相反">
+  <text x="180" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">OLTP（Postgres）：精确取单条</text>
+  <text x="540" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)">OLAP（ClickHouse）：扫一片再聚合</text>
+  <g>
+    <rect x="40" y="44" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="72" width="280" height="22" rx="4" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+    <rect x="40" y="100" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="128" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <text x="180" y="88" text-anchor="middle" font-size="9.5" fill="var(--blue)">WHERE id = 'x' → 命中这一行</text>
+    <text x="180" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">读一条 · 毫秒 · 强一致</text>
+  </g>
+  <g>
+    <rect x="400" y="44" width="280" height="106" rx="6" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+    <line x1="420" y1="62" x2="660" y2="62" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="80" x2="660" y2="80" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="98" x2="660" y2="98" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="116" x2="660" y2="116" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="134" x2="660" y2="134" stroke="var(--purple)" stroke-width="1"/>
+    <text x="540" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">扫上亿行的某几列 · 按维度聚合 · 列存才扛得住</text>
+  </g>
+</svg>
+<div class="figcap"><b>两种相反的访问模式</b>：OLTP 靠索引<b>精确命中一行</b>（读配置、改设置）；OLAP 要<b>扫一大片行的某几列再聚合</b>（按时间/模型统计成本）。行存数据库擅长前者，列存数据库擅长后者——这就是为什么配置归 Postgres、遥测归 ClickHouse。</div>
+</div>
+
+<h2>四个存储各管什么</h2>
+<table class="t">
+  <tr><th>存储</th><th>装什么</th><th>仓库里的客户端</th></tr>
+  <tr><td class="mono">Postgres</td><td>org/project/user、API key、prompt、eval 配置、定价…（控制面）</td><td class="mono">packages/shared/src/db.ts（Prisma）</td></tr>
+  <tr><td class="mono">ClickHouse</td><td>traces / observations / scores 三张宽事件表（数据面）</td><td class="mono">.../server/clickhouse/client.ts</td></tr>
+  <tr><td class="mono">Redis</td><td>BullMQ 队列（解耦摄取）+ 缓存（如 prompt、eval 配置）</td><td class="mono">.../server/redis/redis.ts</td></tr>
+  <tr><td class="mono">S3 / blob</td><td>事件原始底稿（支撑合并/重放）、多模态媒体、批量导出</td><td class="mono">.../server/s3/index.ts</td></tr>
+</table>
+
+<p>注意一个细节：S3 不只是「存大文件」。摄取链路里，每个进来的事件<strong>先落 S3</strong>，worker 合并时再回 S3 取历史（第 5、15 课）——S3 在这里扮演的是
+<strong>「事件日志 / 真相之源」</strong>的角色。ClickHouse 里的宽事件，本质上是 S3 事件底稿<strong>合并后的「物化视图」</strong>：万一 ClickHouse 数据需要重建，
+理论上可以从 S3 的原始事件<strong>重放</strong>出来。这种「原始日志 + 派生表」的分工，正是第 2 课「不可变 / 追加式事件」原则的体现。</p>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">控制面</span><span class="name">Postgres</span></div><div class="ld">谁能用、配置成什么样：org/project/user、API key、prompt、eval 配置、定价。改动少而关键，要强一致。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">数据面</span><span class="name">ClickHouse</span></div><div class="ld">实际的遥测洪流：trace/observation/score 三张宽事件表。海量、追加、按维度聚合。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">传输</span><span class="name">Redis</span></div><div class="ld">把摄取异步化的队列，加上热点配置的缓存。内存级、临时、极快。</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">对象存储</span><span class="name">S3 / blob</span></div><div class="ld">事件真相之源、上传媒体、批量导出。又大又不常翻的东西放这里，便宜耐放。</div></div>
+</div>
+
+<p>这四层在运行时是<strong>协作</strong>的，不是各自孤立。回想第 5 课那条链路：摄取时，事件先进 <strong>Redis 队列</strong>、原件落 <strong>S3</strong>，worker 合并后写 <strong>ClickHouse</strong>；
+而合并时要知道「这个 observation 关联哪版 prompt」「按什么模型定价」，又要回 <strong>Postgres</strong> 查配置。一次摄取，四种存储各出一份力。读取时也类似：UI 列表查 <strong>ClickHouse</strong>，
+但「这个项目叫什么、谁有权限」来自 <strong>Postgres</strong>，热点配置走 <strong>Redis</strong> 缓存。所以理解 Langfuse，本质上就是理解<strong>数据如何在这四种存储之间流动</strong>——
+这也是为什么本指南的第二部分要专门用一课讲存储分工：它是后面所有链路课的<strong>共同底座</strong>。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>四个存储 = 四份运维负担，为什么还要这么拆？</strong> 第 2 课有一条原则：「把成本与运维简单性当作架构约束」——多一个数据库就要多一份备份、监控、升级、容灾。
+  Langfuse 之所以仍坚持四存储，是因为<strong>每一个都在解决一个单一存储解决不了的硬问题</strong>：没有 ClickHouse，海量聚合查询会慢到不可用；没有 Redis 队列，摄取就无法异步抗洪峰；
+  没有 S3，大字段和媒体会把数据库撑爆、也无法重放。换句话说，这四个不是「想加就加」，而是<strong>各自挣到了自己的存在</strong>。这也是判断「该不该再加一个存储」的标准——
+  它解决的问题，是否值得它带来的长期运维成本。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>四种存储各管一摊</strong>：Postgres（配置/元数据·OLTP）、ClickHouse（宽事件·OLAP）、Redis（队列+缓存）、S3（事件底稿+媒体+导出）。</li>
+    <li>核心理由：<strong>OLTP 与 OLAP 是相反的优化目标</strong>，配置要精确单条+强一致，遥测要海量扫描+聚合，必须分库。</li>
+    <li><strong>S3 是「真相之源」</strong>：事件先落 S3，ClickHouse 的宽事件是其合并后的派生表，可重放。</li>
+    <li>控制面（Postgres）vs 数据面（ClickHouse）的划分，是第 3 课「领域形状 vs 物理存储」的宏观版。</li>
+    <li>四存储不是堆技术，而是各自<strong>挣到了存在</strong>——这也是「该不该再加一个存储」的判断标准。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 为什么 Langfuse 把配置/元数据放 Postgres、把 trace/observation/score 放 ClickHouse，而不是统一用一个库？</div>
+  <ol class="opts">
+    <li>因为 ClickHouse 不能存字符串</li>
+    <li>纯粹为了用更多技术</li>
+    <li>因为 Postgres 不支持索引</li>
+    <li>因为两者是相反的负载：配置是 OLTP（小、精确单条读写、强一致），遥测是 OLAP（海量、按时间窗口+维度聚合）；没有哪个库能把两头都做到极致</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。配置要精确读写单条且强一致（创建即可用），是行存 Postgres 的主场；遥测海量、写多于改、按维度聚合，是列存 ClickHouse 的主场。硬塞进一个必然顾此失彼。这是“按访问模式选存储”。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 在摄取链路里，S3 扮演的关键角色是什么？</div>
+  <ol class="opts">
+    <li>事件的“真相之源/原始日志”：事件先落 S3，worker 合并时回 S3 取历史；ClickHouse 的宽事件相当于其合并后的派生表，理论上可从 S3 重放重建</li>
+    <li>只是存上传的图片，和摄取无关</li>
+    <li>存用户密码</li>
+    <li>代替 Redis 做队列</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。S3 不只是大文件仓。事件先落 S3 作为不可变原始日志，worker 据此合并出 ClickHouse 宽事件（派生/物化）。这正是第 2 课“不可变/追加式事件”的体现，也让数据可重放重建。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse 用四种存储，但第 2 课又说“把运维简单性当约束”。怎么调和？判断“该不该再加一个存储”的标准是什么？</div>
+  <ol class="opts">
+    <li>由前端框架决定</li>
+    <li>永远只能用一个数据库</li>
+    <li>每个存储都必须挣到自己的存在——它解决的硬问题是否值得它带来的长期运维成本（备份/监控/升级/容灾）</li>
+    <li>存储越多越好，多多益善</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。四存储不是“想加就加”：ClickHouse 解决海量聚合、Redis 解决异步抗洪峰、S3 解决大字段+重放，各自解决单库做不到的硬问题，所以挣到了存在。这也正是判断要不要再加存储的标准。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>想象你在设计一个新的日志/监控系统，预算有限。你会从一个 Postgres 起步，还是一开始就上 ClickHouse？在什么规模/查询模式下，引入列存才真正“挣到存在”？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Last lesson, data left your app as "events". This lesson is about <strong>where it lands</strong>. Many assume one database suffices,
+but Langfuse uses <strong>four stores</strong> — <strong>Postgres, ClickHouse, Redis, S3</strong> — each for its own job. Not
+showing off: different data has wildly different <strong>access patterns</strong>, and the wrong store will crush the hot path.
+Understand the division of labor and you understand the <strong>foundation</strong> of Langfuse's performance and scalability.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture the four stores as a company's four "ways to keep things": <strong>Postgres</strong> is the <strong>filing cabinet</strong> —
+  important records (who's an employee, project config), needing to be <strong>accurate, editable, quick to look up</strong> but not
+  huge; <strong>ClickHouse</strong> is the <strong>giant warehouse</strong> — mountains of goods (hundreds of millions of events a day),
+  needing <strong>bulk stock-taking by category</strong>; <strong>Redis</strong> is the <strong>conveyor belt + staging table</strong> —
+  goods queue on the belt (queues), and frequently-used small items stay at hand (cache); <strong>S3</strong> is <strong>off-site
+  storage</strong> — big, rarely-flipped originals (event manuscripts, uploaded images, large exports). Each excels at its own; cram
+  them into one and you lose.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 280" role="img" aria-label="web and worker containers read/write the four stores Postgres, ClickHouse, Redis, S3">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two containers, four stores, each its own job</text>
+  <rect x="150" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="230" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">web</text><text x="230" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">UI · API</text>
+  <rect x="410" y="40" width="160" height="44" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="490" y="60" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">worker</text><text x="490" y="76" text-anchor="middle" font-size="9" fill="var(--accent-ink)">background</text>
+  <rect x="20" y="160" width="150" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--blue)">Postgres</text><text x="95" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">config/metadata</text><text x="95" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">txn·consistent·small</text>
+  <rect x="190" y="160" width="150" height="80" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="265" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="265" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">wide events</text><text x="265" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">columnar·huge·fast agg</text>
+  <rect x="360" y="160" width="150" height="80" rx="11" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--red)">Redis</text><text x="435" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">queue(BullMQ)+cache</text><text x="435" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">in-memory·fast·temp</text>
+  <rect x="530" y="160" width="160" height="80" rx="11" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="610" y="186" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--amber)">S3 / blob</text><text x="610" y="205" text-anchor="middle" font-size="9" fill="var(--muted)">event log·media·export</text><text x="610" y="221" text-anchor="middle" font-size="9" fill="var(--muted)">object store·big·cheap</text>
+  <line x1="210" y1="84" x2="120" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="225" y1="84" x2="255" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="245" y1="84" x2="425" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <line x1="470" y1="84" x2="280" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="485" y1="84" x2="440" y2="158" stroke="var(--faint)" stroke-width="1.4"/><line x1="510" y1="84" x2="610" y2="158" stroke="var(--faint)" stroke-width="1.4"/>
+  <text x="360" y="262" text-anchor="middle" font-size="9.5" fill="var(--faint)">web mostly reads PG(config)+CH(analytics); worker mostly writes CH/S3, uses the Redis queue</text>
+</svg>
+<div class="figcap"><b>The four stores' division of labor</b>: <b>Postgres</b>=config/metadata (txn, consistent, small); <b>ClickHouse</b>=wide events (columnar, huge, fast aggregation); <b>Redis</b>=queue+cache (in-memory, fast, temporary); <b>S3</b>=event manuscript/media/exports (object store, big, cheap). web leans read, worker leans write, but both pick the store that fits the data.</div>
+</div>
+
+<h2>Why not just one</h2>
+<p>The core reason in one line: <strong>transactional (OLTP) and analytical (OLAP) workloads are opposite optimization targets</strong>,
+and no single store nails both extremes.</p>
+<ul>
+  <li><strong>Config/metadata</strong> (projects, users, API keys, prompt definitions) is classic <strong>OLTP</strong>: small, frequent <strong>precise single-row read/write</strong>, <strong>strong consistency</strong> (create a project, use it instantly), with foreign keys. Postgres's home turf.</li>
+  <li><strong>Telemetry</strong> (trace/observation/score) is classic <strong>OLAP</strong>: enormous (hundreds of millions/day), write-mostly, queries are mostly <strong>time-window + dimensional aggregation</strong> ("cost by model over 7 days"). Columnar ClickHouse's home turf.</li>
+</ul>
+
+<div class="cols">
+  <div class="col"><h4>🗄️ Postgres is good at (OLTP)</h4><p>precise single-row read/write, strong consistency, foreign keys, transactions. Fits <strong>small, important, must-be-instant</strong> config data. Bad at: aggregating scans over huge rows.</p></div>
+  <div class="col"><h4>📊 ClickHouse is good at (OLAP)</h4><p>time-window scans + aggregation over a few columns of huge rows, columnar + compressed. Fits <strong>massive, append-write, dimensional</strong> telemetry. Bad at: frequent single-row edits + strong consistency.</p></div>
+</div>
+
+<p>Cram telemetry into Postgres and huge rows + frequent aggregation overwhelm it; cram config into ClickHouse and its <strong>weak
+transactions, eventual consistency</strong> fail "instantly usable". So Langfuse isn't being greedy — it's <strong>letting each kind of
+data live in the store that fits it best</strong>, the storage-layer landing point of Lesson 2's "design around columnar access" and
+"denormalize carefully".</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="OLTP fetches one row by key; OLAP scans a slice of many rows and aggregates - opposite access patterns">
+  <text x="180" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--blue)">OLTP (Postgres): fetch one row</text>
+  <text x="540" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--purple)">OLAP (ClickHouse): scan a slice + aggregate</text>
+  <g>
+    <rect x="40" y="44" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="72" width="280" height="22" rx="4" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+    <rect x="40" y="100" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <rect x="40" y="128" width="280" height="22" rx="4" fill="var(--panel-2)" stroke="var(--line)"/>
+    <text x="180" y="88" text-anchor="middle" font-size="9.5" fill="var(--blue)">WHERE id = 'x' → hits this row</text>
+    <text x="180" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">one row · ms · strongly consistent</text>
+  </g>
+  <g>
+    <rect x="400" y="44" width="280" height="106" rx="6" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
+    <line x1="420" y1="62" x2="660" y2="62" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="80" x2="660" y2="80" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="98" x2="660" y2="98" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="116" x2="660" y2="116" stroke="var(--purple)" stroke-width="1"/><line x1="420" y1="134" x2="660" y2="134" stroke="var(--purple)" stroke-width="1"/>
+    <text x="540" y="172" text-anchor="middle" font-size="9.5" fill="var(--muted)">scan a few columns of millions of rows · aggregate · needs columnar</text>
+  </g>
+</svg>
+<div class="figcap"><b>Two opposite access patterns</b>: OLTP uses an index to <b>hit exactly one row</b> (read config, change settings); OLAP must <b>scan a few columns of a big slice of rows and aggregate</b> (cost by time/model). Row stores excel at the former, columnar at the latter — which is why config goes to Postgres and telemetry to ClickHouse.</div>
+</div>
+
+<h2>What each store holds</h2>
+<table class="t">
+  <tr><th>Store</th><th>Holds</th><th>Client in the repo</th></tr>
+  <tr><td class="mono">Postgres</td><td>org/project/user, API keys, prompts, eval config, pricing… (control plane)</td><td class="mono">packages/shared/src/db.ts (Prisma)</td></tr>
+  <tr><td class="mono">ClickHouse</td><td>traces / observations / scores — three wide-event tables (data plane)</td><td class="mono">.../server/clickhouse/client.ts</td></tr>
+  <tr><td class="mono">Redis</td><td>BullMQ queues (decouple ingestion) + cache (e.g. prompts, eval config)</td><td class="mono">.../server/redis/redis.ts</td></tr>
+  <tr><td class="mono">S3 / blob</td><td>raw event manuscript (for merge/replay), multimodal media, bulk exports</td><td class="mono">.../server/s3/index.ts</td></tr>
+</table>
+
+<p>One detail: S3 isn't just "big-file storage". In the ingestion path, each incoming event <strong>lands in S3 first</strong>, and the
+worker re-reads S3 when merging (L05, L15) — here S3 plays the <strong>"event log / source of truth"</strong> role. The wide events in
+ClickHouse are essentially a <strong>"materialized view" of the merged S3 manuscripts</strong>: if ClickHouse data ever needs rebuilding,
+it can in principle be <strong>replayed</strong> from the raw S3 events. This "raw log + derived table" split is Lesson 2's "immutable /
+append-oriented events" in action.</p>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">control plane</span><span class="name">Postgres</span></div><div class="ld">who can use it, configured how: org/project/user, API keys, prompts, eval config, pricing. Few but critical changes, needs strong consistency.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">data plane</span><span class="name">ClickHouse</span></div><div class="ld">the actual telemetry flood: traces/observations/scores wide-event tables. Huge, append, dimensional aggregation.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">transport</span><span class="name">Redis</span></div><div class="ld">the queue that makes ingestion async, plus a cache for hot config. In-memory, temporary, very fast.</div></div>
+  <div class="layer l-app"><div class="lh"><span class="badge">object store</span><span class="name">S3 / blob</span></div><div class="ld">the event source of truth, uploaded media, bulk exports. Big, rarely-flipped things live here — cheap and durable.</div></div>
+</div>
+
+<p>These four layers <strong>collaborate</strong> at runtime, not in isolation. Recall Lesson 5's path: on ingestion, events first enter the
+<strong>Redis queue</strong> and originals land in <strong>S3</strong>; after merging the worker writes <strong>ClickHouse</strong>; and to
+merge it must know "which prompt version this observation links to" and "what model pricing applies", so it reads config back from
+<strong>Postgres</strong>. One ingestion, four stores each pulling their weight. Reads are similar: the UI list queries
+<strong>ClickHouse</strong>, but "what's this project called, who has access" comes from <strong>Postgres</strong>, and hot config goes
+through the <strong>Redis</strong> cache. So understanding Langfuse is essentially understanding <strong>how data flows among these four
+stores</strong> — which is why Part 2 spends a whole lesson on the storage division of labor: it's the <strong>shared foundation</strong>
+of every later path lesson.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Four stores = four operational burdens, so why split this much?</strong> Lesson 2 has a principle: "treat cost and
+  operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
+  because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
+  slow; without the Redis queue, ingestion can't go async to absorb spikes; without S3, big fields and media bloat the database and you
+  can't replay. In other words, these four aren't "add because we can" — each <strong>earned its existence</strong>. That's also the
+  test for "should we add another store": does the problem it solves justify its long-term operational cost?
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Four stores, each its own job</strong>: Postgres (config/metadata·OLTP), ClickHouse (wide events·OLAP), Redis (queue+cache), S3 (event manuscript+media+exports).</li>
+    <li>Core reason: <strong>OLTP and OLAP are opposite targets</strong> — config needs precise single-row + strong consistency, telemetry needs massive scan + aggregation, so split stores.</li>
+    <li><strong>S3 is the "source of truth"</strong>: events land in S3 first; ClickHouse wide events are the merged derived table, replayable.</li>
+    <li>Control plane (Postgres) vs data plane (ClickHouse) is the macro version of Lesson 3's "domain shape vs physical storage".</li>
+    <li>Four stores aren't tech-stacking — each <strong>earned its existence</strong>, which is also the test for "should we add another store".</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Why does Langfuse put config/metadata in Postgres and trace/observation/score in ClickHouse, rather than one database for all?</div>
+  <ol class="opts">
+    <li>Because ClickHouse can't store strings</li>
+    <li>Purely to use more tech</li>
+    <li>Because Postgres has no indexes</li>
+    <li>Because they're opposite workloads: config is OLTP (small, precise single-row, strongly consistent), telemetry is OLAP (massive, time-window + dimensional aggregation); no single store nails both extremes</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Config needs precise single-row read/write and strong consistency (instantly usable) — row-store Postgres's turf; telemetry is massive, write-mostly, dimensionally aggregated — columnar ClickHouse's turf. Forcing one store loses both ways. This is 'choose storage by access pattern'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. What key role does S3 play in the ingestion path?</div>
+  <ol class="opts">
+    <li>The events' 'source of truth / raw log': events land in S3 first, the worker re-reads S3 to merge; ClickHouse wide events are the merged derived table, in principle replayable from S3</li>
+    <li>Just stores uploaded images, unrelated to ingestion</li>
+    <li>Stores user passwords</li>
+    <li>Replaces Redis as the queue</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. S3 isn't just a big-file store. Events land in S3 as an immutable raw log, from which the worker merges ClickHouse wide events (derived/materialized). This is L02's 'immutable/append-oriented events', and makes data replayable.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse uses four stores, yet L02 says 'treat operational simplicity as a constraint'. How to reconcile? What's the test for 'should we add another store'?</div>
+  <ol class="opts">
+    <li>The frontend framework decides</li>
+    <li>You may only ever use one database</li>
+    <li>Each store must earn its existence — does the hard problem it solves justify its long-term ops cost (backup/monitoring/upgrade/DR)</li>
+    <li>More stores are always better</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. The four aren't 'add because we can': ClickHouse solves huge aggregation, Redis solves async spike absorption, S3 solves big fields + replay — each solving what one store can't, thus earning its place. That's exactly the test for adding another store.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Imagine designing a new logging/monitoring system on a tight budget. Would you start with one Postgres, or bring in ClickHouse from day one? At what scale/query pattern does a columnar store truly 'earn its existence'?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="06-instrumenting-an-llm-app.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">给 LLM 应用埋点</span><span class="lang-en">Instrumenting an LLM app</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>
