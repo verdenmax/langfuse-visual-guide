@@ -471,9 +471,9 @@ Langfuse 只在<strong>运行时</strong>把发生的事记下来；它也<stron
   </div>
   <div class="col">
     <h4>⭐ observation · 主角</h4>
-    <p>一<strong>步</strong>具体操作，分三型：<code>GENERATION</code>（一次 LLM 调用，带 model/token/cost）、
-    <code>SPAN</code>（一段有耗时的逻辑，如检索）、<code>EVENT</code>（一个瞬时事件）。它带着
-    input/output、时间、用量、成本等<strong>丰富属性</strong>，是查询与聚合的主体。</p>
+    <p>一<strong>步</strong>具体操作。最核心是三型：<code>GENERATION</code>（一次 LLM 调用，带 model/token/cost）、
+    <code>SPAN</code>（一段有耗时的逻辑，如检索）、<code>EVENT</code>（一个瞬时事件）；新版领域模型在此之上还细分出
+    <code>AGENT / TOOL / CHAIN / RETRIEVER</code> 等更具体的类型。它带着 input/output、时间、用量、成本等<strong>丰富属性</strong>，是查询与聚合的主体。</p>
   </div>
 </div>
 
@@ -484,8 +484,10 @@ Langfuse 只在<strong>运行时</strong>把发生的事记下来；它也<stron
 
 <div class="card detail">
   <div class="tag">🔬 源码细节</div>
-  observation 的三种类型在领域层是枚举（历史上叫 <code>LegacyPrismaObservationType</code>：<code>GENERATION / SPAN / EVENT</code>，见
-  <code>packages/shared/prisma/schema.prisma</code>）。ClickHouse 的 <code>observations</code> 表把 model、
+  observation 的类型在领域层是一个枚举：最初的 <code>LegacyPrismaObservationType</code> 只有
+  <code>SPAN / EVENT / GENERATION</code> 三种（见 <code>packages/shared/prisma/schema.prisma</code>），
+  而当前的领域模型 <code>packages/shared/src/domain/observations.ts</code> 的 <code>ObservationType</code> 已扩展到 <strong>10 种</strong>
+  （新增 <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>）。ClickHouse 的 <code>observations</code> 表把 model、
   <code>provided_usage_details</code>、<code>cost_details</code>、<code>prompt_id</code> 等都<strong>内联</strong>成一行的列与 Map——
   这正是「宽事件」的样子（下一节展开）。
 </div>
@@ -808,10 +810,11 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   </div>
   <div class="col">
     <h4>⭐ observation · the star</h4>
-    <p>One concrete <strong>step</strong>, in three types: <code>GENERATION</code> (an LLM call, with
-    model/token/cost), <code>SPAN</code> (a timed unit of logic, e.g. retrieval), <code>EVENT</code> (an
-    instantaneous event). It carries <strong>rich attributes</strong> — input/output, timing, usage, cost —
-    and is the subject of querying and aggregation.</p>
+    <p>One concrete <strong>step</strong>. The three core types are <code>GENERATION</code> (an LLM call, with
+    model/token/cost), <code>SPAN</code> (a timed unit of logic, e.g. retrieval) and <code>EVENT</code> (an instantaneous
+    event); the current domain model further specializes these into <code>AGENT / TOOL / CHAIN / RETRIEVER</code> and more. It
+    carries <strong>rich attributes</strong> — input/output, timing, usage, cost — and is the subject of querying and
+    aggregation.</p>
   </div>
 </div>
 
@@ -824,8 +827,10 @@ the scores themselves go into ClickHouse like traces/observations.</p>
 
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>
-  The three observation types are an enum in the domain layer (historically <code>LegacyPrismaObservationType</code>:
-  <code>GENERATION / SPAN / EVENT</code>, see <code>packages/shared/prisma/schema.prisma</code>). The ClickHouse
+  The observation type is an enum in the domain layer: the original <code>LegacyPrismaObservationType</code> had only
+  <code>SPAN / EVENT / GENERATION</code> (see <code>packages/shared/prisma/schema.prisma</code>), while the current domain model
+  <code>packages/shared/src/domain/observations.ts</code> defines an <code>ObservationType</code> with <strong>10 values</strong>
+  (adding <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>). The ClickHouse
   <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
   <code>cost_details</code>, <code>prompt_id</code> and more as columns and Maps on a single row — exactly what a
   "wide event" looks like (next section).

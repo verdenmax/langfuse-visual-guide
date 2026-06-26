@@ -470,10 +470,11 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   </div>
   <div class="col">
     <h4>⭐ observation · the star</h4>
-    <p>One concrete <strong>step</strong>, in three types: <code>GENERATION</code> (an LLM call, with
-    model/token/cost), <code>SPAN</code> (a timed unit of logic, e.g. retrieval), <code>EVENT</code> (an
-    instantaneous event). It carries <strong>rich attributes</strong> — input/output, timing, usage, cost —
-    and is the subject of querying and aggregation.</p>
+    <p>One concrete <strong>step</strong>. The three core types are <code>GENERATION</code> (an LLM call, with
+    model/token/cost), <code>SPAN</code> (a timed unit of logic, e.g. retrieval) and <code>EVENT</code> (an instantaneous
+    event); the current domain model further specializes these into <code>AGENT / TOOL / CHAIN / RETRIEVER</code> and more. It
+    carries <strong>rich attributes</strong> — input/output, timing, usage, cost — and is the subject of querying and
+    aggregation.</p>
   </div>
 </div>
 
@@ -486,8 +487,10 @@ the scores themselves go into ClickHouse like traces/observations.</p>
 
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>
-  The three observation types are an enum in the domain layer (historically <code>LegacyPrismaObservationType</code>:
-  <code>GENERATION / SPAN / EVENT</code>, see <code>packages/shared/prisma/schema.prisma</code>). The ClickHouse
+  The observation type is an enum in the domain layer: the original <code>LegacyPrismaObservationType</code> had only
+  <code>SPAN / EVENT / GENERATION</code> (see <code>packages/shared/prisma/schema.prisma</code>), while the current domain model
+  <code>packages/shared/src/domain/observations.ts</code> defines an <code>ObservationType</code> with <strong>10 values</strong>
+  (adding <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>). The ClickHouse
   <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
   <code>cost_details</code>, <code>prompt_id</code> and more as columns and Maps on a single row — exactly what a
   "wide event" looks like (next section).
