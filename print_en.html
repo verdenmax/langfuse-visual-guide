@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 26 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 27 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -363,6 +363,7 @@ details[open] > summary { list-style: none; }
   <li>Lists & tables</li>
   <li>Trace detail & the observation tree</li>
   <li>Sessions</li>
+  <li>The public REST API</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -5838,6 +5839,193 @@ shaped the next, where the conversation started to go off the rails.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'What you can compute from existing data, don't store again' — sessions derive from traces by GROUP BY, sparing a write-and-sync path. In your systems, is there a place where 'you stored a redundant copy for convenience and then had to worry about sync consistency'? Which would suit a derived view? How do you weigh the cost of deriving (computing on every query)?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The public REST API</h1>
+
+<p class="lead">
+Lesson 21 opened the "staff entrance" for the in-house UI (tRPC). This lesson opens <strong>the third and last door</strong> — the <strong>public REST API</strong> for
+external SDKs. Its priorities differ sharply from tRPC's: internally seek <strong>type-safety, fast to change</strong>; externally seek <strong>contract stability,
+holding up at scale</strong>. Four things to see: how a <strong>route factory</strong> unifies auth/rate-limit/validation across all endpoints, how auth <strong>uses a
+Redis cache</strong> to withstand massive traffic, how versions are managed <strong>by folder</strong>, and how a <strong>Fern contract</strong> generates multi-language
+SDKs. Finish this and Lesson 20's "three doors" are all open.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏛️ Analogy</div>
+  Think of the public REST API as a government building's <strong>public service hall</strong>. Whatever business you come for (query a trace, submit a score, pull a
+  dataset), you first go through <strong>the same security and queue process</strong> (the route factory: check ID, rate-limit, verify your form is filled right) — no
+  one skips it. Frequent visitors get their ID info <strong>cached at the front desk</strong>, no trip to the archives each time (Redis-cached auth). The hall's
+  <strong>procedures are printed into a manual</strong> and translated into your language (Fern generates multi-language SDKs); when procedures update, the <strong>old
+  manual still works</strong>, the new procedure ships as "v2", existing users unaffected (versioning by folder). <strong>Unified, stable, cacheable, versioned</strong> —
+  that's what an external API should look like.
+</div>
+
+
+<h2>One route factory, unifying every endpoint</h2>
+<p>Just as tRPC converges auth into procedure builders (Lesson 21), the public REST converges every endpoint's "mandatory moves" into one <strong>route factory</strong>
+<code>createAuthedProjectAPIRoute</code>. Each endpoint just declares its query/body/response schema and rate-limit resource, and the factory <strong>uniformly</strong>
+runs these gates:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="createAuthedProjectAPIRoute runs auth, access-level check, rate limit, Zod validation of query/body, the handler in an OTel context, response validation, and rejects oversized bodies">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">createAuthedProjectAPIRoute: every endpoint's unified pipeline</text>
+  <rect x="16" y="44" width="100" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="66" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">SDK request</text><text x="66" y="76" text-anchor="middle" font-size="7" fill="var(--muted)">Basic/Bearer</text>
+  <rect x="130" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="182" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">① auth</text><text x="182" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">key→project (cached)</text>
+  <rect x="248" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="300" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② access level</text><text x="300" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">project / scores</text>
+  <rect x="366" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="418" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ rate limit</text><text x="418" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">by resource/plan</text>
+  <rect x="484" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="536" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">④ Zod validate</text><text x="536" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">query/body</text>
+  <rect x="602" y="44" width="104" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="654" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⑤ your handler</text><text x="654" y="74" text-anchor="middle" font-size="6.4" fill="var(--muted)">OTel surface=publicapi</text>
+  <line x1="116" y1="64" x2="128" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="128,64 121,61 121,67" fill="var(--faint)"/>
+  <line x1="234" y1="64" x2="246" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="246,64 239,61 239,67" fill="var(--faint)"/>
+  <line x1="352" y1="64" x2="364" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="364,64 357,61 357,67" fill="var(--faint)"/>
+  <line x1="470" y1="64" x2="482" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="482,64 475,61 475,67" fill="var(--faint)"/>
+  <line x1="588" y1="64" x2="600" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="600,64 593,61 593,67" fill="var(--faint)"/>
+  <rect x="120" y="104" width="468" height="34" rx="8" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="354" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">the factory runs these five — endpoints just declare schema, never re-write auth/rate-limit/validation</text>
+  <rect x="160" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="250" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">oversized body</text><text x="250" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">→ PayloadTooLargeError</text>
+  <rect x="380" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="470" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">response validated (dev)</text><text x="470" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">prevents contract drift</text>
+</svg>
+<div class="figcap"><b>The unified pipeline for external endpoints</b>: <code>createAuthedProjectAPIRoute</code> runs auth (key→project, incl. access level) → rate limit → Zod-validate query/body → the handler in an OTel context (<code>surface=publicapi</code>) → validate the response (dev, anti contract-drift); oversized body → <code>PayloadTooLargeError</code>. Source: <code>web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</span><span class="ln">route factory</span></div>
+  <pre class="code"><span class="cm">// each endpoint only declares schema &amp; rate-limit resource; the factory runs auth/limit/validate/OTel</span>
+<span class="kw">export const</span> handler = <span class="fn">createAuthedProjectAPIRoute</span>({
+  name: <span class="st">"Get Traces"</span>,
+  querySchema: GetTracesV1Query,   bodySchema: z.<span class="fn">never</span>(),
+  responseSchema: GetTracesV1Response,
+  rateLimitResource: <span class="st">"public-api"</span>,
+  allowedAccessLevels: [<span class="st">"project"</span>],  <span class="cm">// this endpoint needs a project-level key</span>
+  fn: <span class="kw">async</span> ({ query, auth }) =&gt; { <span class="cm">/* business only: already authed + validated */</span> },
+});</pre>
+</div>
+
+<p>This is Lesson 21's "security by structure" on the REST side: auth, rate-limit, Zod validation <strong>don't rely on each endpoint author's diligence</strong> — the
+factory forces them all. The difference is priority — tRPC's set is internal; REST's adds <strong>rate limiting</strong> (against external abuse), <strong>response
+validation</strong> (against external contract drift), <strong>access levels</strong> (e.g. Bearer read-only scores) — gates only the <strong>public-facing</strong> side
+needs.</p>
+
+<table class="t">
+  <tr><th></th><th>tRPC (Lesson 21 · internal)</th><th>public REST (this lesson · external)</th></tr>
+  <tr><td><b>for whom</b></td><td>own UI (same repo, same team)</td><td>external SDK / user scripts (massive, long-lived)</td></tr>
+  <tr><td><b>top value</b></td><td>type-safety, <strong>fast to change</strong></td><td>contract stability, <strong>holds up at scale</strong></td></tr>
+  <tr><td><b>convergence</b></td><td>procedure builders (stacked middleware)</td><td>route factory <code>createAuthedProjectAPIRoute</code></td></tr>
+  <tr><td><b>extra gates</b></td><td>—</td><td>rate limit, response validation, access level</td></tr>
+  <tr><td><b>stability means</b></td><td>compile-time type checks (change → error)</td><td>folder versions + Fern contract + multi-language SDKs</td></tr>
+</table>
+
+
+<h2>Auth must scale: Redis cache + negative caching</h2>
+<p>An external API verifies a key on every request — and an SDK may send thousands per second. Hit Postgres for every key check and the database gets crushed by
+<strong>auth itself</strong>. So <code>ApiAuthService</code> wraps key verification in a <strong>Redis cache</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="auth checks Redis cache first and returns on hit, falls back to Postgres by fastHashedSecretKey and re-caches on miss; nonexistent keys are negatively cached with API_KEY_NON_EXISTENT to stop brute-force DB hits">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Cached auth: keep the DB from being crushed by "verify key"</text>
+  <rect x="20" y="44" width="120" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">API key arrives</text><text x="80" y="79" text-anchor="middle" font-size="7" fill="var(--muted)">check Redis first</text>
+  <rect x="180" y="34" width="180" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="270" y="53" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ hit → return scope directly</text>
+  <rect x="180" y="72" width="180" height="30" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="270" y="91" text-anchor="middle" font-size="8" fill="var(--ink)">❌ miss → fall back to Postgres</text>
+  <rect x="400" y="72" width="170" height="30" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="485" y="91" text-anchor="middle" font-size="7" fill="var(--ink)">look up by fastHashedSecretKey + re-cache</text>
+  <rect x="180" y="112" width="390" height="34" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="375" y="126" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">negative caching: even "key doesn't exist" is recorded (API_KEY_NON_EXISTENT)</text><text x="375" y="139" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">→ brute-forcing with fake keys is blocked by Redis from the 2nd hit, never touching Postgres</text>
+  <line x1="140" y1="58" x2="178" y2="49" stroke="var(--accent)" stroke-width="1.3"/><line x1="140" y1="70" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="360" y1="87" x2="398" y2="87" stroke="var(--faint)" stroke-width="1.3"/><polygon points="398,87 390,83 390,91" fill="var(--faint)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8.5" fill="var(--faint)">cache hit → near-zero-cost key check; negative cache → attackers with fake keys can't pound the DB</text>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">on key deletion the cache is actively invalidated — no "update" path, only "invalidate"</text>
+</svg>
+<div class="figcap"><b>Cache the positives, and the negatives too</b>: auth checks Redis first, returns on hit; on miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches. The key is <strong>negative caching</strong>: even "this key doesn't exist" is recorded (<code>API_KEY_NON_EXISTENT</code>), so attackers brute-forcing with fake keys can't pound the database. Source: <code>web/src/features/public-api/server/apiAuth.ts:75</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 no cache: every request hits the DB</h4><p>The SDK sends tens of thousands of requests a second, each verifying a key against Postgres — a big chunk of the DB's load is <strong>auth itself</strong>, slowing things before business even starts; attackers flooding with fake keys hit the DB directly.</p></div>
+  <div class="col"><h4>😀 cache + negative cache: the DB is barely touched</h4><p>Common keys hit Redis, key checks near-zero-cost; even "nonexistent keys" are stopped at the Redis layer by negative caching. <strong>Whether normal traffic or malicious flooding, Postgres is shielded behind</strong>, disturbed only on a cache miss.</p></div>
+</div>
+
+<h2>Versions by folder, contracts by Fern</h2>
+<p>An external API, once published, can't change freely — but needs keep evolving, so what? Langfuse's two moves: <strong>version by folder</strong>, <strong>generate SDKs
+with Fern</strong>.</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">version = folder</span><span class="name">v1 at root, v2/, v3/…</span></div><div class="ld">v1 sits at the <code>public/</code> root by default, new versions in <code>v2/</code>, <code>v3/</code> subfolders. <strong>Old paths never change</strong>, so your two-year-old integration still runs today; opt into new capability by explicitly switching version.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">new versions can subtract</span><span class="name">drop expensive features</span></div><div class="ld">A new version isn't only additive; it can <strong>cut costly old designs</strong>: e.g. <code>v3/scores</code> drops the userId/traceTags filters that need a trace JOIN and uses <strong>cursor pagination</strong> — writing "use v2 for that" straight into the docs.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">Fern contract</span><span class="name">one YAML → multi-language SDKs</span></div><div class="ld">The API contract is hand-written Fern YAML (<code>fern/apis/{server,client}/…</code>), which <strong>generates the Python and TypeScript SDKs</strong> (<code>generated/</code>) and exports OpenAPI. Define once, consistent everywhere.</div></div>
+</div>
+
+<p>Together these are Lesson 20's "externally seek contract stability" made real: <strong>versioning</strong> ensures "the old doesn't break", <strong>Fern
+generation</strong> ensures "multi-language consistency, contract-as-docs". Paired with dev-time response-schema validation (against the hand-written implementation
+silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
+  <strong>different audiences, different constraints</strong> (echoing Lesson 20). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
+  speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +
+  negative cache), or the DB gets crushed by key checks; long-lived, so the API must be <strong>versioned</strong> (folders + Fern), or one change breaks someone's
+  two-year-old integration. The same "converge cross-cutting concerns into one factory" pattern (Lessons 21, 22) takes on a <strong>public-facing</strong> new meaning
+  here: rate-limit against abuse, response-validate against drift, cache to take traffic, version to stay stable. <strong>Internally optimize "fast to change",
+  externally optimize "don't break" — the same data, two engineering value systems parting ways.</strong> With that, Lesson 20's "three doors" are all walked through:
+  tRPC for the UI, REST for the SDK, App-Router for streaming/webhooks — each divided and conquered by audience.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>One route factory</strong> <code>createAuthedProjectAPIRoute</code> unifies every public endpoint's auth → access level → rate limit → Zod-validate query/body → OTel(surface=publicapi) → response validation → oversized-body rejection.</li>
+    <li><strong>Auth uses a Redis cache</strong> to scale: hit returns directly, miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches; <strong>negative caching</strong> (<code>API_KEY_NON_EXISTENT</code>) blocks fake-key brute force.</li>
+    <li><strong>Versioning by folder</strong>: v1 at root, v2/v3 subfolders; old paths never change, new versions can subtract (e.g. v3 scores drops JOIN-needing filters, uses cursor pagination).</li>
+    <li><strong>Contract by Fern</strong>: hand-written Fern YAML → generated Python/TS SDKs + OpenAPI; dev-time response validation guards against the implementation drifting from the contract.</li>
+    <li>Tradeoff: internal (tRPC) optimizes type-safety and speed, external (REST) optimizes stability and scale — same data, two value systems. With this, Lesson 20's "three doors" are all open.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. The public REST API unifies all endpoints with one route factory createAuthedProjectAPIRoute. Compared to Lesson 21's tRPC procedure builders, what 'public-facing' gates does it add?</div>
+  <ol class="opts">
+    <li>faster database connections</li>
+    <li>it removes auth</li>
+    <li>rate limiting (against external abuse), response validation (against external contract drift), access levels (e.g. Bearer read-only scores) — gates the internal tRPC doesn't need but the external API must have</li>
+    <li>more complex type checking</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Both use the same 'factory/builder converges cross-cutting concerns' pattern, but with different priorities: tRPC seeks internal speed, REST external stability and scale, hence the added rate-limit, response validation, access levels. Auth and Zod validation are common to both — neither relies on endpoint-author diligence; the factory forces them.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. An external API verifies a key per request, and SDKs may send tens of thousands per second. Besides caching valid keys in Redis, Langfuse deliberately 'negatively caches' nonexistent keys. What does negative caching prevent?</div>
+  <ol class="opts">
+    <li>prevents version mismatch</li>
+    <li>brute-forcing the DB: attackers flood with many fake keys; without caching 'nonexistent', each fake key would hit Postgres; negative caching (API_KEY_NON_EXISTENT) blocks them at Redis from the 2nd hit, shielding the database</li>
+    <li>prevents oversized responses</li>
+    <li>prevents key leakage</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Caching only valid keys still lets attackers with floods of nonexistent keys punch through to Postgres each time. Negative caching records 'this key doesn't exist' in Redis too, so whether normal traffic or malicious flooding, the DB stays shielded behind the cache, disturbed only on a true miss. A 'cache the positives and the negatives' security consideration.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse manages the external API with 'versioning by folder' (v1 at root, v2/, v3/) + 'Fern contract generates SDKs'. What core tension does this combo resolve?</div>
+  <ol class="opts">
+    <li>the tension between 'needs evolve' and 'can't break existing users after release': folder versions keep old paths unchanged (old integrations run) while new versions opt-in and can even subtract; Fern's one contract generates multi-language SDKs ensuring consistency, with dev-time response validation against drift</li>
+    <li>makes API responses faster</li>
+    <li>reduces the number of endpoints</li>
+    <li>lets the frontend skip code</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. An external contract can't change freely once published, yet needs keep evolving. Folder versions keep v1 unbroken and put new capability in v2/v3 (even cutting costly old designs, e.g. v3 scores dropping JOIN-needing filters for cursor pagination); Fern generates Python/TS SDKs + OpenAPI from one hand-written YAML, define-once consistent everywhere. This realizes Lesson 20's 'externally seek contract stability'.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Internally optimize fast-to-change, externally optimize don't-break' — same data, UI via tRPC, SDK via versioned REST. In systems you've built or used, how were internal interfaces and external APIs handled against this tension? Designing an 'evolve without breaking' mechanism for an external API, how would you do versioning and prevent contract drift?</li>
   </ul>
 </div>
 </div>

@@ -101,6 +101,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("26-sessions.html", "sessions", "Sessions",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("27-public-rest-api.html", "公共 REST API", "The public REST API",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -636,6 +638,8 @@ SUBTITLES = {
                                   "byIdWithObservationsAndScores full tree fetch; parallel tree+scores; includeIO:false lazy-load; partition CORRECTION; verbosity cap; list/detail one discipline two scales"),
     "26-sessions.html": ("session = traces 按 session_id 分组聚合 · 派生视图非新实体 · user_ids/duration/总成本 · 复用第24课表格机制 · 永远一致零额外写",
                          "session = traces grouped by session_id; derived view not new entity; user_ids/duration/total cost; reuses L24 table machinery; always consistent zero extra writes"),
+    "27-public-rest-api.html": ("路由工厂统一鉴权/限流/校验 · Redis 缓存+负缓存扛量 · 文件夹版本 v1/v2/v3 · Fern 契约生成多语言 SDK · 对外求稳",
+                                "route factory unifies auth/rate-limit/validation; Redis cache+negative caching scales; folder versions v1/v2/v3; Fern contract generates multi-language SDKs; external stability"),
 }
 
 

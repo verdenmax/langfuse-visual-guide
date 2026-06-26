@@ -38,4 +38,5 @@ CONTENT = {
     "24-lists-and-tables.html": part4.LESSON_24,
     "25-trace-detail-tree.html": part4.LESSON_25,
     "26-sessions.html": part4.LESSON_26,
+    "27-public-rest-api.html": part4.LESSON_27,
 }

@@ -1865,6 +1865,76 @@ QUIZZES = {
             },
         ],
     },
+    "27-public-rest-api.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "公共 REST API 用一个路由工厂 createAuthedProjectAPIRoute 统一所有端点。和第 21 课 tRPC 的 procedure 构建器相比，它额外多了哪些「面向公众」的关卡？",
+                    "en": "The public REST API unifies all endpoints with one route factory createAuthedProjectAPIRoute. Compared to Lesson 21's tRPC procedure builders, what 'public-facing' gates does it add?",
+                },
+                "opts": [
+                    {
+                        "zh": "限流（防外部滥用）、响应校验（防对外契约漂移）、访问级别（如 Bearer 只读 score）——都是对内 tRPC 不需要、对外才必须的关卡",
+                        "en": "rate limiting (against external abuse), response validation (against external contract drift), access levels (e.g. Bearer read-only scores) — gates the internal tRPC doesn't need but the external API must have",
+                    },
+                    {"zh": "更复杂的类型检查", "en": "more complex type checking"},
+                    {"zh": "更快的数据库连接", "en": "faster database connections"},
+                    {"zh": "去掉了鉴权", "en": "it removes auth"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "两套都用「工厂/构建器把横切关注收敛到一处」的同一模式，但优先级不同：tRPC 对内求速度，REST 对外求稳定与扛量，故多了限流、响应校验、访问级别。鉴权、Zod 校验则是两者共有——都不靠端点作者自觉，由工厂强制跑。",
+                    "en": "Both use the same 'factory/builder converges cross-cutting concerns' pattern, but with different priorities: tRPC seeks internal speed, REST external stability and scale, hence the added rate-limit, response validation, access levels. Auth and Zod validation are common to both — neither relies on endpoint-author diligence; the factory forces them.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "对外 API 每个请求都要验 key，SDK 可能每秒上万条。Langfuse 的鉴权除了用 Redis 缓存命中的 key，还特意「负缓存」不存在的 key。负缓存防的是什么？",
+                    "en": "An external API verifies a key per request, and SDKs may send tens of thousands per second. Besides caching valid keys in Redis, Langfuse deliberately 'negatively caches' nonexistent keys. What does negative caching prevent?",
+                },
+                "opts": [
+                    {
+                        "zh": "暴力打库：攻击者拿大量假 key 来刷，若不缓存「不存在」，每个假 key 都会回 Postgres 查一遍；负缓存（API_KEY_NON_EXISTENT）让第二次起就被 Redis 挡回，保护数据库",
+                        "en": "brute-forcing the DB: attackers flood with many fake keys; without caching 'nonexistent', each fake key would hit Postgres; negative caching (API_KEY_NON_EXISTENT) blocks them at Redis from the 2nd hit, shielding the database",
+                    },
+                    {"zh": "防止 key 泄露", "en": "prevents key leakage"},
+                    {"zh": "防止响应太大", "en": "prevents oversized responses"},
+                    {"zh": "防止版本不一致", "en": "prevents version mismatch"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "只缓存有效 key 时，攻击者用海量不存在的 key 仍能让每次都穿透到 Postgres。负缓存把「这个 key 不存在」也记进 Redis，于是无论正常流量还是恶意刷量，数据库都被保护在缓存后面，只在真正缓存未命中时才被惊动。这是「缓存正例也缓存反例」的安全考量。",
+                    "en": "Caching only valid keys still lets attackers with floods of nonexistent keys punch through to Postgres each time. Negative caching records 'this key doesn't exist' in Redis too, so whether normal traffic or malicious flooding, the DB stays shielded behind the cache, disturbed only on a true miss. A 'cache the positives and the negatives' security consideration.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 用「文件夹做版本」（v1 在根、v2/、v3/）+「Fern 契约生成 SDK」来管理对外 API。这套组合解决的核心矛盾是？",
+                    "en": "Langfuse manages the external API with 'versioning by folder' (v1 at root, v2/, v3/) + 'Fern contract generates SDKs'. What core tension does this combo resolve?",
+                },
+                "opts": [
+                    {
+                        "zh": "「需求要演进」与「发布后不能破坏老用户」的矛盾：文件夹版本让老路径永不改（旧集成照跑）、新版可显式切换甚至做减法；Fern 一份契约生成多语言 SDK、保证一致，开发期响应校验防实现与契约漂移",
+                        "en": "the tension between 'needs evolve' and 'can't break existing users after release': folder versions keep old paths unchanged (old integrations run) while new versions opt-in and can even subtract; Fern's one contract generates multi-language SDKs ensuring consistency, with dev-time response validation against drift",
+                    },
+                    {"zh": "让 API 响应更快", "en": "makes API responses faster"},
+                    {"zh": "减少端点数量", "en": "reduces the number of endpoints"},
+                    {"zh": "让前端不用写代码", "en": "lets the frontend skip code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "对外契约一旦发布就不能随意改，但需求总在变。文件夹版本让 v1 永不破、新能力进 v2/v3（甚至砍掉昂贵旧设计，如 v3 scores 去掉需 JOIN 的过滤、改游标分页）；Fern 用一份手写 YAML 生成 Python/TS SDK + OpenAPI，一处定义处处一致。这正是第 20 课「对外求契约稳定」的落地。",
+                    "en": "An external contract can't change freely once published, yet needs keep evolving. Folder versions keep v1 unbroken and put new capability in v2/v3 (even cutting costly old designs, e.g. v3 scores dropping JOIN-needing filters for cursor pagination); Fern generates Python/TS SDKs + OpenAPI from one hand-written YAML, define-once consistent everywhere. This realizes Lesson 20's 'externally seek contract stability'.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「对内优化『改得快』、对外优化『不破坏』」——同一份数据，UI 用 tRPC、SDK 用版本化 REST。你做过或用过的系统里，内部接口和对外 API 是怎么处理这对矛盾的？如果让你给一个对外 API 设计「演进而不破坏」的机制，你会怎么做版本、怎么防契约漂移？",
+                "en": "'Internally optimize fast-to-change, externally optimize don't-break' — same data, UI via tRPC, SDK via versioned REST. In systems you've built or used, how were internal interfaces and external APIs handled against this tension? Designing an 'evolve without breaking' mechanism for an external API, how would you do versioning and prevent contract drift?",
+            },
+        ],
+    },
 }
 
 

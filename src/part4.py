@@ -1982,3 +1982,284 @@ shaped the next, where the conversation started to go off the rails.</p>
 </div>
 """)
 LESSON_26 = {"zh": "\n".join(_ZH26), "en": "\n".join(_EN26)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L27 · 公共 REST API / The public REST API
+# ══════════════════════════════════════════════════════════════════════
+_ZH27 = []
+_EN27 = []
+
+_ZH27.append(r"""
+<p class="lead">
+第 21 课开的是给自家 UI 的「员工通道」（tRPC）。这一课开<strong>第三道门也是最后一道</strong>——给外部 SDK 的<strong>公共 REST API</strong>。它的优先级和 tRPC 截然不同：对内求<strong>类型安全、改得快</strong>，
+对外求<strong>契约稳定、扛得住量</strong>。这一课看四件事：一个<strong>路由工厂</strong>怎么统一所有端点的鉴权/限流/校验，鉴权怎么<strong>用 Redis 缓存</strong>扛住海量请求，
+版本怎么<strong>靠文件夹</strong>管理，以及一份 <strong>Fern 契约</strong>怎么生成多语言 SDK。看完这一课，第 20 课「三道门」就全开齐了。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏛️ 生活类比</div>
+  把公共 REST API 想成一座政府大楼的<strong>对外服务大厅</strong>。不管你来办哪种业务（查 trace、提交 score、拉 dataset），都先走<strong>同一道安检与叫号流程</strong>（路由工厂：验证件、限流、查表格填得对不对）——
+  没人能绕开。常来的人，证件信息被<strong>前台缓存</strong>下来，下次不必每回都回档案室核查（Redis 缓存鉴权）。大厅的<strong>办事规程印成了手册</strong>，还翻译成各种语言发给你（Fern 生成多语言 SDK）；
+  规程更新时，<strong>旧版手册仍然有效</strong>，新规程发布成「v2」，老用户不受影响（按文件夹版本化）。<strong>统一、稳定、可缓存、带版本</strong>——这就是一个对外 API 该有的样子。
+</div>
+""")
+
+# (L27 sections appended below)
+
+_ZH27.append(r"""
+<h2>一个路由工厂，统一所有端点</h2>
+<p>就像 tRPC 用 procedure 构建器把鉴权收敛到一处（第 21 课），公共 REST 用一个<strong>路由工厂</strong> <code>createAuthedProjectAPIRoute</code> 把所有端点的「规定动作」收敛到一处。
+每个端点只需声明自己的 query/body/response schema 和限流资源，工厂就<strong>统一</strong>把这几关跑完：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="createAuthedProjectAPIRoute 路由工厂依次跑鉴权、访问级别检查、限流、Zod 校验 query/body、在 OTel 上下文里跑 handler、校验响应、超大请求体拒绝">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">createAuthedProjectAPIRoute：每个端点的统一流水线</text>
+  <rect x="16" y="44" width="100" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="66" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">SDK 请求</text><text x="66" y="76" text-anchor="middle" font-size="7" fill="var(--muted)">Basic/Bearer</text>
+  <rect x="130" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="182" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">① 鉴权</text><text x="182" y="74" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">key→project (缓存)</text>
+  <rect x="248" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="300" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② 访问级别</text><text x="300" y="74" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">project / scores</text>
+  <rect x="366" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="418" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ 限流</text><text x="418" y="74" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">按资源/计划</text>
+  <rect x="484" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="536" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">④ Zod 校验</text><text x="536" y="74" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">query/body</text>
+  <rect x="602" y="44" width="104" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="654" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⑤ 你的 handler</text><text x="654" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">OTel surface=publicapi</text>
+  <line x1="116" y1="64" x2="128" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="128,64 121,61 121,67" fill="var(--faint)"/>
+  <line x1="234" y1="64" x2="246" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="246,64 239,61 239,67" fill="var(--faint)"/>
+  <line x1="352" y1="64" x2="364" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="364,64 357,61 357,67" fill="var(--faint)"/>
+  <line x1="470" y1="64" x2="482" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="482,64 475,61 475,67" fill="var(--faint)"/>
+  <line x1="588" y1="64" x2="600" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="600,64 593,61 593,67" fill="var(--faint)"/>
+  <rect x="120" y="104" width="468" height="34" rx="8" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="354" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">这五关由工厂统一跑——端点只声明 schema，不重复写鉴权/限流/校验</text>
+  <rect x="160" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="250" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">超大请求体</text><text x="250" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">→ PayloadTooLargeError</text>
+  <rect x="380" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="470" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">响应也校验（开发期）</text><text x="470" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">防契约漂移</text>
+</svg>
+<div class="figcap"><b>对外端点的统一流水线</b>：<code>createAuthedProjectAPIRoute</code> 依次跑鉴权（key→project，含访问级别）→ 限流 → Zod 校验 query/body → 在 OTel 上下文（<code>surface=publicapi</code>）里跑你的 handler → 校验响应（开发期防契约漂移）；请求体过大 → <code>PayloadTooLargeError</code>。源码：<code>web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</span><span class="ln">路由工厂</span></div>
+  <pre class="code"><span class="cm">// 每个端点只声明 schema 与限流资源，工厂统一跑鉴权/限流/校验/OTel</span>
+<span class="kw">export const</span> handler = <span class="fn">createAuthedProjectAPIRoute</span>({
+  name: <span class="st">"Get Traces"</span>,
+  querySchema: GetTracesV1Query,   bodySchema: z.<span class="fn">never</span>(),
+  responseSchema: GetTracesV1Response,
+  rateLimitResource: <span class="st">"public-api"</span>,
+  allowedAccessLevels: [<span class="st">"project"</span>],  <span class="cm">// 这个端点要 project 级 key</span>
+  fn: <span class="kw">async</span> ({ query, auth }) =&gt; { <span class="cm">/* 只写业务：此时已鉴权+校验完毕 */</span> },
+});</pre>
+</div>
+
+<p>这正是第 21 课「安全靠结构」在 REST 侧的翻版：鉴权、限流、Zod 校验<strong>不靠每个端点作者自觉</strong>，而是工厂强制跑完。
+区别在优先级——tRPC 那套是给内部的，REST 这套多了<strong>限流</strong>（防外部滥用）、<strong>响应校验</strong>（防对外契约漂移）、<strong>访问级别</strong>（如 Bearer 只读 score）这些<strong>面向公众</strong>才需要的关卡。</p>
+
+<table class="t">
+  <tr><th></th><th>tRPC（第 21 课 · 对内）</th><th>公共 REST（本课 · 对外）</th></tr>
+  <tr><td><b>给谁</b></td><td>自家 UI（同仓库、同团队）</td><td>外部 SDK / 用户脚本（海量、长期）</td></tr>
+  <tr><td><b>首要价值</b></td><td>类型安全、<strong>改得快</strong></td><td>契约稳定、<strong>扛得住量</strong></td></tr>
+  <tr><td><b>收敛方式</b></td><td>procedure 构建器（叠中间件）</td><td>路由工厂 <code>createAuthedProjectAPIRoute</code></td></tr>
+  <tr><td><b>额外关卡</b></td><td>—</td><td>限流、响应校验、访问级别</td></tr>
+  <tr><td><b>稳定手段</b></td><td>编译期类型检查（改了即报错）</td><td>文件夹版本 + Fern 契约 + 多语言 SDK</td></tr>
+</table>
+""")
+
+# (auth cache + versioning + fern section below)
+
+_ZH27.append(r"""
+<h2>鉴权要扛量：Redis 缓存 + 负缓存</h2>
+<p>对外 API 每一个请求都要先验 key——而 SDK 可能每秒打来成千上万条。要是每条都回 Postgres 查 key，数据库会被<strong>鉴权本身</strong>压垮。
+于是 <code>ApiAuthService</code> 给 key 验证套了一层 <strong>Redis 缓存</strong>：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="鉴权先查 Redis 缓存命中即返回，未命中回 Postgres 按 fastHashedSecretKey 查再回填；不存在的 key 用负缓存 API_KEY_NON_EXISTENT 记下防暴力打库">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">缓存鉴权：让数据库别为「验 key」累垮</text>
+  <rect x="20" y="44" width="120" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">收到 API key</text><text x="80" y="79" text-anchor="middle" font-size="7" fill="var(--muted)">先查 Redis</text>
+  <rect x="180" y="34" width="180" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="270" y="53" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ 命中 → 直接返回 scope</text>
+  <rect x="180" y="72" width="180" height="30" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="270" y="91" text-anchor="middle" font-size="8" fill="var(--ink)">❌ 未命中 → 回 Postgres 查</text>
+  <rect x="400" y="72" width="170" height="30" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="485" y="91" text-anchor="middle" font-size="7.5" fill="var(--ink)">按 fastHashedSecretKey 查 + 回填 Redis</text>
+  <rect x="180" y="112" width="390" height="34" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="375" y="126" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">负缓存：key 不存在也记一笔（API_KEY_NON_EXISTENT）</text><text x="375" y="139" text-anchor="middle" font-size="7" fill="var(--accent-ink)">→ 用假 key 暴力打库时，第二次起直接被 Redis 挡回，不碰 Postgres</text>
+  <line x1="140" y1="58" x2="178" y2="49" stroke="var(--accent)" stroke-width="1.3"/><line x1="140" y1="70" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="360" y1="87" x2="398" y2="87" stroke="var(--faint)" stroke-width="1.3"/><polygon points="398,87 390,83 390,91" fill="var(--faint)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8.5" fill="var(--faint)">缓存命中 → 验 key 几乎零成本；负缓存 → 攻击者用不存在的 key 刷不动数据库</text>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">删除 key 时主动失效缓存——没有「更新」路径，只有「失效」</text>
+</svg>
+<div class="figcap"><b>缓存正例、也缓存反例</b>：鉴权先查 Redis，命中即返回；未命中回 Postgres 按 <code>fastHashedSecretKey</code> 查再回填。关键是<strong>负缓存</strong>：连「这个 key 不存在」也记下（<code>API_KEY_NON_EXISTENT</code>），让攻击者拿假 key 暴力打库时打不动数据库。源码：<code>web/src/features/public-api/server/apiAuth.ts:75</code>。</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 不缓存：每请求都查库</h4><p>SDK 每秒上万条请求，每条都回 Postgres 验一次 key——数据库的负载里很大一块是<strong>鉴权本身</strong>，业务还没开始就先被拖慢；攻击者拿一堆假 key 来刷，更是直接打在库上。</p></div>
+  <div class="col"><h4>😀 缓存 + 负缓存：库几乎不碰</h4><p>常用 key 命中 Redis，验 key 几乎零成本；连「不存在的 key」也被负缓存挡在 Redis 这一层。<strong>无论正常流量还是恶意刷量，Postgres 都被保护在后面</strong>，只在缓存未命中时才被惊动。</p></div>
+</div>
+
+<h2>版本靠文件夹，契约靠 Fern</h2>
+<p>对外 API 一旦发布就不能随意改——可需求总在变，怎么办？Langfuse 的两招：<strong>用文件夹做版本</strong>、<strong>用 Fern 生成 SDK</strong>。</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">版本=文件夹</span><span class="name">v1 在根，v2/、v3/…</span></div><div class="ld">默认 v1 在 <code>public/</code> 根，新版放进 <code>v2/</code>、<code>v3/</code> 子文件夹。<strong>老路径永不改</strong>，你两年前的集成今天照跑；想要新能力就显式切到新版本。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">新版可做减法</span><span class="name">去掉昂贵特性</span></div><div class="ld">新版本不只是加功能，也能<strong>砍掉代价大的旧设计</strong>：比如 <code>v3/scores</code> 去掉了需要 JOIN trace 的 userId/traceTags 过滤、改用<strong>游标分页</strong>——把「该用 v2」的话直接写进文档。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">Fern 契约</span><span class="name">一份 YAML → 多语言 SDK</span></div><div class="ld">API 契约是手写的 Fern YAML（<code>fern/apis/{server,client}/…</code>），由它<strong>生成 Python 与 TypeScript SDK</strong>（<code>generated/</code>），还导出 OpenAPI。一处定义、处处一致。</div></div>
+</div>
+
+<p>这两招合起来，正是第 20 课说的「对外求契约稳定」的落地：<strong>版本化</strong>保证「旧的不破」，<strong>Fern 生成</strong>保证「多语言一致、契约即文档」。
+配合开发期的响应 schema 校验（防手写实现和 Fern 契约悄悄漂移），整条对外通道既稳又不会偷偷变样。</p>
+""")
+
+# (spark + key below)
+
+_ZH27.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>同样是「把数据查出来」，为什么 UI 走 tRPC、SDK 却要这一整套 REST 工厂 + 缓存 + 版本 + Fern？</strong> 因为<strong>受众不同，约束就不同</strong>（呼应第 20 课）。
+  UI 是自家的、同仓库的，所以 tRPC 用<strong>类型贯穿</strong>换迭代速度，接口天天改也无妨。而 SDK 面向<strong>外部、海量、长期</strong>的用户：海量，所以鉴权必须<strong>能缓存</strong>（Redis + 负缓存），否则数据库被验 key 拖垮；
+  长期，所以接口必须<strong>带版本</strong>（文件夹 + Fern），否则一改就破坏别人两年前写的集成。同一个「把横切关注收敛到一处」的工厂模式（第 21、22 课），
+  在这里被赋予了<strong>面向公众</strong>的新内涵：限流防滥用、响应校验防契约漂移、缓存扛流量、版本保稳定。<strong>对内优化「改得快」，对外优化「不破坏」——这是同一套数据，两种工程价值观的分野。</strong>
+  至此，第 20 课的「三道门」全部走完：tRPC 给 UI、REST 给 SDK、App-Router 给流式/webhook，各按受众分而治之。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>一个路由工厂</strong> <code>createAuthedProjectAPIRoute</code> 统一所有公共端点的鉴权 → 访问级别 → 限流 → Zod 校验 query/body → OTel(surface=publicapi) → 响应校验 → 超大体拒绝。</li>
+    <li><strong>鉴权用 Redis 缓存</strong>扛海量请求：命中即返回、未命中回 Postgres 按 <code>fastHashedSecretKey</code> 查再回填；<strong>负缓存</strong>（<code>API_KEY_NON_EXISTENT</code>）挡住假 key 暴力打库。</li>
+    <li><strong>版本靠文件夹</strong>：v1 在根、v2/v3 子文件夹；老路径永不改，新版可做减法（如 v3 scores 去掉需 JOIN 的过滤、改游标分页）。</li>
+    <li><strong>契约靠 Fern</strong>：手写 Fern YAML → 生成 Python/TS SDK + OpenAPI；开发期响应校验防手写实现与契约漂移。</li>
+    <li>取舍：对内（tRPC）优化类型安全与速度，对外（REST）优化稳定与扛量——同一份数据、两种价值观。至此第 20 课「三道门」全开齐。</li>
+  </ul>
+</div>
+""")
+
+_EN27.append(r"""
+<p class="lead">
+Lesson 21 opened the "staff entrance" for the in-house UI (tRPC). This lesson opens <strong>the third and last door</strong> — the <strong>public REST API</strong> for
+external SDKs. Its priorities differ sharply from tRPC's: internally seek <strong>type-safety, fast to change</strong>; externally seek <strong>contract stability,
+holding up at scale</strong>. Four things to see: how a <strong>route factory</strong> unifies auth/rate-limit/validation across all endpoints, how auth <strong>uses a
+Redis cache</strong> to withstand massive traffic, how versions are managed <strong>by folder</strong>, and how a <strong>Fern contract</strong> generates multi-language
+SDKs. Finish this and Lesson 20's "three doors" are all open.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🏛️ Analogy</div>
+  Think of the public REST API as a government building's <strong>public service hall</strong>. Whatever business you come for (query a trace, submit a score, pull a
+  dataset), you first go through <strong>the same security and queue process</strong> (the route factory: check ID, rate-limit, verify your form is filled right) — no
+  one skips it. Frequent visitors get their ID info <strong>cached at the front desk</strong>, no trip to the archives each time (Redis-cached auth). The hall's
+  <strong>procedures are printed into a manual</strong> and translated into your language (Fern generates multi-language SDKs); when procedures update, the <strong>old
+  manual still works</strong>, the new procedure ships as "v2", existing users unaffected (versioning by folder). <strong>Unified, stable, cacheable, versioned</strong> —
+  that's what an external API should look like.
+</div>
+""")
+
+_EN27.append(r"""
+<h2>One route factory, unifying every endpoint</h2>
+<p>Just as tRPC converges auth into procedure builders (Lesson 21), the public REST converges every endpoint's "mandatory moves" into one <strong>route factory</strong>
+<code>createAuthedProjectAPIRoute</code>. Each endpoint just declares its query/body/response schema and rate-limit resource, and the factory <strong>uniformly</strong>
+runs these gates:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="createAuthedProjectAPIRoute runs auth, access-level check, rate limit, Zod validation of query/body, the handler in an OTel context, response validation, and rejects oversized bodies">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">createAuthedProjectAPIRoute: every endpoint's unified pipeline</text>
+  <rect x="16" y="44" width="100" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="66" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">SDK request</text><text x="66" y="76" text-anchor="middle" font-size="7" fill="var(--muted)">Basic/Bearer</text>
+  <rect x="130" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="182" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">① auth</text><text x="182" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">key→project (cached)</text>
+  <rect x="248" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="300" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② access level</text><text x="300" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">project / scores</text>
+  <rect x="366" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="418" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ rate limit</text><text x="418" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">by resource/plan</text>
+  <rect x="484" y="44" width="104" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="536" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">④ Zod validate</text><text x="536" y="74" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">query/body</text>
+  <rect x="602" y="44" width="104" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="654" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">⑤ your handler</text><text x="654" y="74" text-anchor="middle" font-size="6.4" fill="var(--muted)">OTel surface=publicapi</text>
+  <line x1="116" y1="64" x2="128" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="128,64 121,61 121,67" fill="var(--faint)"/>
+  <line x1="234" y1="64" x2="246" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="246,64 239,61 239,67" fill="var(--faint)"/>
+  <line x1="352" y1="64" x2="364" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="364,64 357,61 357,67" fill="var(--faint)"/>
+  <line x1="470" y1="64" x2="482" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="482,64 475,61 475,67" fill="var(--faint)"/>
+  <line x1="588" y1="64" x2="600" y2="64" stroke="var(--faint)" stroke-width="1.4"/><polygon points="600,64 593,61 593,67" fill="var(--faint)"/>
+  <rect x="120" y="104" width="468" height="34" rx="8" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="354" y="124" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">the factory runs these five — endpoints just declare schema, never re-write auth/rate-limit/validation</text>
+  <rect x="160" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="250" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">oversized body</text><text x="250" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">→ PayloadTooLargeError</text>
+  <rect x="380" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="470" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">response validated (dev)</text><text x="470" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">prevents contract drift</text>
+</svg>
+<div class="figcap"><b>The unified pipeline for external endpoints</b>: <code>createAuthedProjectAPIRoute</code> runs auth (key→project, incl. access level) → rate limit → Zod-validate query/body → the handler in an OTel context (<code>surface=publicapi</code>) → validate the response (dev, anti contract-drift); oversized body → <code>PayloadTooLargeError</code>. Source: <code>web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</span><span class="ln">route factory</span></div>
+  <pre class="code"><span class="cm">// each endpoint only declares schema &amp; rate-limit resource; the factory runs auth/limit/validate/OTel</span>
+<span class="kw">export const</span> handler = <span class="fn">createAuthedProjectAPIRoute</span>({
+  name: <span class="st">"Get Traces"</span>,
+  querySchema: GetTracesV1Query,   bodySchema: z.<span class="fn">never</span>(),
+  responseSchema: GetTracesV1Response,
+  rateLimitResource: <span class="st">"public-api"</span>,
+  allowedAccessLevels: [<span class="st">"project"</span>],  <span class="cm">// this endpoint needs a project-level key</span>
+  fn: <span class="kw">async</span> ({ query, auth }) =&gt; { <span class="cm">/* business only: already authed + validated */</span> },
+});</pre>
+</div>
+
+<p>This is Lesson 21's "security by structure" on the REST side: auth, rate-limit, Zod validation <strong>don't rely on each endpoint author's diligence</strong> — the
+factory forces them all. The difference is priority — tRPC's set is internal; REST's adds <strong>rate limiting</strong> (against external abuse), <strong>response
+validation</strong> (against external contract drift), <strong>access levels</strong> (e.g. Bearer read-only scores) — gates only the <strong>public-facing</strong> side
+needs.</p>
+
+<table class="t">
+  <tr><th></th><th>tRPC (Lesson 21 · internal)</th><th>public REST (this lesson · external)</th></tr>
+  <tr><td><b>for whom</b></td><td>own UI (same repo, same team)</td><td>external SDK / user scripts (massive, long-lived)</td></tr>
+  <tr><td><b>top value</b></td><td>type-safety, <strong>fast to change</strong></td><td>contract stability, <strong>holds up at scale</strong></td></tr>
+  <tr><td><b>convergence</b></td><td>procedure builders (stacked middleware)</td><td>route factory <code>createAuthedProjectAPIRoute</code></td></tr>
+  <tr><td><b>extra gates</b></td><td>—</td><td>rate limit, response validation, access level</td></tr>
+  <tr><td><b>stability means</b></td><td>compile-time type checks (change → error)</td><td>folder versions + Fern contract + multi-language SDKs</td></tr>
+</table>
+""")
+
+_EN27.append(r"""
+<h2>Auth must scale: Redis cache + negative caching</h2>
+<p>An external API verifies a key on every request — and an SDK may send thousands per second. Hit Postgres for every key check and the database gets crushed by
+<strong>auth itself</strong>. So <code>ApiAuthService</code> wraps key verification in a <strong>Redis cache</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="auth checks Redis cache first and returns on hit, falls back to Postgres by fastHashedSecretKey and re-caches on miss; nonexistent keys are negatively cached with API_KEY_NON_EXISTENT to stop brute-force DB hits">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Cached auth: keep the DB from being crushed by "verify key"</text>
+  <rect x="20" y="44" width="120" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">API key arrives</text><text x="80" y="79" text-anchor="middle" font-size="7" fill="var(--muted)">check Redis first</text>
+  <rect x="180" y="34" width="180" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="270" y="53" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">✅ hit → return scope directly</text>
+  <rect x="180" y="72" width="180" height="30" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="270" y="91" text-anchor="middle" font-size="8" fill="var(--ink)">❌ miss → fall back to Postgres</text>
+  <rect x="400" y="72" width="170" height="30" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="485" y="91" text-anchor="middle" font-size="7" fill="var(--ink)">look up by fastHashedSecretKey + re-cache</text>
+  <rect x="180" y="112" width="390" height="34" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="375" y="126" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">negative caching: even "key doesn't exist" is recorded (API_KEY_NON_EXISTENT)</text><text x="375" y="139" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">→ brute-forcing with fake keys is blocked by Redis from the 2nd hit, never touching Postgres</text>
+  <line x1="140" y1="58" x2="178" y2="49" stroke="var(--accent)" stroke-width="1.3"/><line x1="140" y1="70" x2="178" y2="86" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="360" y1="87" x2="398" y2="87" stroke="var(--faint)" stroke-width="1.3"/><polygon points="398,87 390,83 390,91" fill="var(--faint)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8.5" fill="var(--faint)">cache hit → near-zero-cost key check; negative cache → attackers with fake keys can't pound the DB</text>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--muted)">on key deletion the cache is actively invalidated — no "update" path, only "invalidate"</text>
+</svg>
+<div class="figcap"><b>Cache the positives, and the negatives too</b>: auth checks Redis first, returns on hit; on miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches. The key is <strong>negative caching</strong>: even "this key doesn't exist" is recorded (<code>API_KEY_NON_EXISTENT</code>), so attackers brute-forcing with fake keys can't pound the database. Source: <code>web/src/features/public-api/server/apiAuth.ts:75</code>.</div>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>😖 no cache: every request hits the DB</h4><p>The SDK sends tens of thousands of requests a second, each verifying a key against Postgres — a big chunk of the DB's load is <strong>auth itself</strong>, slowing things before business even starts; attackers flooding with fake keys hit the DB directly.</p></div>
+  <div class="col"><h4>😀 cache + negative cache: the DB is barely touched</h4><p>Common keys hit Redis, key checks near-zero-cost; even "nonexistent keys" are stopped at the Redis layer by negative caching. <strong>Whether normal traffic or malicious flooding, Postgres is shielded behind</strong>, disturbed only on a cache miss.</p></div>
+</div>
+
+<h2>Versions by folder, contracts by Fern</h2>
+<p>An external API, once published, can't change freely — but needs keep evolving, so what? Langfuse's two moves: <strong>version by folder</strong>, <strong>generate SDKs
+with Fern</strong>.</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">version = folder</span><span class="name">v1 at root, v2/, v3/…</span></div><div class="ld">v1 sits at the <code>public/</code> root by default, new versions in <code>v2/</code>, <code>v3/</code> subfolders. <strong>Old paths never change</strong>, so your two-year-old integration still runs today; opt into new capability by explicitly switching version.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">new versions can subtract</span><span class="name">drop expensive features</span></div><div class="ld">A new version isn't only additive; it can <strong>cut costly old designs</strong>: e.g. <code>v3/scores</code> drops the userId/traceTags filters that need a trace JOIN and uses <strong>cursor pagination</strong> — writing "use v2 for that" straight into the docs.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">Fern contract</span><span class="name">one YAML → multi-language SDKs</span></div><div class="ld">The API contract is hand-written Fern YAML (<code>fern/apis/{server,client}/…</code>), which <strong>generates the Python and TypeScript SDKs</strong> (<code>generated/</code>) and exports OpenAPI. Define once, consistent everywhere.</div></div>
+</div>
+
+<p>Together these are Lesson 20's "externally seek contract stability" made real: <strong>versioning</strong> ensures "the old doesn't break", <strong>Fern
+generation</strong> ensures "multi-language consistency, contract-as-docs". Paired with dev-time response-schema validation (against the hand-written implementation
+silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
+  <strong>different audiences, different constraints</strong> (echoing Lesson 20). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
+  speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +
+  negative cache), or the DB gets crushed by key checks; long-lived, so the API must be <strong>versioned</strong> (folders + Fern), or one change breaks someone's
+  two-year-old integration. The same "converge cross-cutting concerns into one factory" pattern (Lessons 21, 22) takes on a <strong>public-facing</strong> new meaning
+  here: rate-limit against abuse, response-validate against drift, cache to take traffic, version to stay stable. <strong>Internally optimize "fast to change",
+  externally optimize "don't break" — the same data, two engineering value systems parting ways.</strong> With that, Lesson 20's "three doors" are all walked through:
+  tRPC for the UI, REST for the SDK, App-Router for streaming/webhooks — each divided and conquered by audience.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>One route factory</strong> <code>createAuthedProjectAPIRoute</code> unifies every public endpoint's auth → access level → rate limit → Zod-validate query/body → OTel(surface=publicapi) → response validation → oversized-body rejection.</li>
+    <li><strong>Auth uses a Redis cache</strong> to scale: hit returns directly, miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches; <strong>negative caching</strong> (<code>API_KEY_NON_EXISTENT</code>) blocks fake-key brute force.</li>
+    <li><strong>Versioning by folder</strong>: v1 at root, v2/v3 subfolders; old paths never change, new versions can subtract (e.g. v3 scores drops JOIN-needing filters, uses cursor pagination).</li>
+    <li><strong>Contract by Fern</strong>: hand-written Fern YAML → generated Python/TS SDKs + OpenAPI; dev-time response validation guards against the implementation drifting from the contract.</li>
+    <li>Tradeoff: internal (tRPC) optimizes type-safety and speed, external (REST) optimizes stability and scale — same data, two value systems. With this, Lesson 20's "three doors" are all open.</li>
+  </ul>
+</div>
+""")
+LESSON_27 = {"zh": "\n".join(_ZH27), "en": "\n".join(_EN27)}
