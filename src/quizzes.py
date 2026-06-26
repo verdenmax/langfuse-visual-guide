@@ -2145,6 +2145,76 @@ QUIZZES = {
             },
         ],
     },
+    "31-code-based-evaluation.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 同时有 LLM-as-judge（第 29 课）和代码 eval（本课）两种评估。下面哪种说法最准确地刻画了它们的关系？",
+                    "en": "Langfuse has both LLM-as-judge (Lesson 29) and code eval (this lesson). Which statement most accurately characterizes their relationship?",
+                },
+                "opts": [
+                    {
+                        "zh": "互补：代码 eval 确定、适合客观/规则信号（合法 JSON、含 PII、长度）；LLM-as-judge 概率、适合主观/语义信号（有用性、语气）。两者都接同一条调度流水线，只是「执行」步不同",
+                        "en": "complementary: code eval is deterministic, for objective/rule signals (valid JSON, has PII, length); LLM-as-judge is probabilistic, for subjective/semantic signals (helpfulness, tone). Both attach to the same scheduling pipeline, differing only at the 'execution' step",
+                    },
+                    {"zh": "代码 eval 是 LLM-as-judge 的升级替代品", "en": "code eval is an upgraded replacement for LLM-as-judge"},
+                    {"zh": "两者用完全独立的调度与存储", "en": "they use entirely separate scheduling and storage"},
+                    {"zh": "代码 eval 只能产出布尔分", "en": "code eval can only produce boolean scores"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "两者是同一个 score 的两种生产方式，都挂在第 30 课调度流水线后，区别只在「执行」那一步：LLM-as-judge 调模型、代码 eval 跑函数。结果都归一成 source=EVAL 的 score 回流同一张表、走同一个 JobExecution 状态机。能用规则说清的交给代码 eval（确定、免费），要语义理解的交给 LLM-as-judge。",
+                    "en": "Both are two ways of producing the same score, hanging off Lesson 30's pipeline, differing only at the 'execution' step: LLM-as-judge calls a model, code eval runs a function. Both normalize into source=EVAL scores flowing into the same table via the same JobExecution state machine. Rule-expressible goes to code eval (deterministic, free); semantic goes to LLM-as-judge.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "代码 eval 要执行用户写的代码。Langfuse 的本地派发器在源码里直接命名为 \"insecure-local\"。这个命名透露了什么？",
+                    "en": "Code eval executes user-written code. Langfuse's local dispatcher is named \"insecure-local\" right in the source. What does this naming reveal?",
+                },
+                "opts": [
+                    {
+                        "zh": "诚实的警告：它用 node 的 vm 模块，而 vm 不是真正的安全沙箱（可被逃逸）；命名即文档，明示这条路只配本地开发，生产要用 Lambda 那种真隔离",
+                        "en": "an honest warning: it uses node's vm module, and vm is not a real security sandbox (escapable); naming as documentation, signaling this path is for local dev only, with production needing real isolation like Lambda",
+                    },
+                    {"zh": "本地运行速度慢", "en": "local execution is slow"},
+                    {"zh": "本地只支持 Python", "en": "local only supports Python"},
+                    {"zh": "它会泄露环境变量", "en": "it leaks environment variables"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "node 的 vm 模块能创建隔离 context 跑代码，但业界共识是它不足以安全运行不可信代码（有已知逃逸手法）。Langfuse 不粉饰，把 insecure 写进 dispatcher 的 name，相当于在源码里贴警告条：本地开发可用，生产请切到 AwsLambdaCodeEvalDispatcher（ephemeral、强隔离、按语言调 python/node 函数）。",
+                    "en": "Node's vm can create an isolated context to run code, but the consensus is it's insufficient for safely running untrusted code (known escapes exist). Langfuse doesn't gloss over it—writing insecure into the dispatcher's name is a source-level warning: fine for local dev, switch to AwsLambdaCodeEvalDispatcher (ephemeral, strong isolation, per-language python/node functions) in production.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "代码 eval 的沙箱有一条铁律：评估器代码不准发任何网络请求。为什么这条「禁网络」被认为一箭双雕？",
+                    "en": "The code-eval sandbox has an iron rule: evaluator code may make no network requests. Why is this 'no network' considered to kill two birds?",
+                },
+                "opts": [
+                    {
+                        "zh": "既保安全（用户代码联网就能外泄你递进去的 trace 数据、或拿沙箱打内网 SSRF），又保确定性（网络天生不确定、会抖会超时甚至可能永不返回，破坏「同输入恒同分」）",
+                        "en": "it preserves security (networked user code could exfiltrate the trace data you fed it, or use the sandbox for SSRF into your internal network) and determinism (network is inherently nondeterministic—flaky, timing out, even may-never-return, breaking 'same input, same score')",
+                    },
+                    {"zh": "只是为了省带宽", "en": "just to save bandwidth"},
+                    {"zh": "让评估跑得更快", "en": "to make eval run faster"},
+                    {"zh": "防止评估器调用 LLM", "en": "to stop the evaluator from calling an LLM"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "安全上：一旦能联网，用户代码可把含敏感信息的 trace 数据偷传出去，或以沙箱为跳板访问内网服务（SSRF）。确定性上：评估的灵魂是「同输入恒同分」，而网络请求会抖、超时、返回不同结果，源码原话甚至说「可能永不返回」。掐断网络同时焊死了安全口子和不确定性源头——一条约束，两重收益。",
+                    "en": "Security: once networked, user code can smuggle out sensitive trace data or use the sandbox as a springboard to internal services (SSRF). Determinism: the soul of eval is 'same input, same score', yet network requests flake, time out, return different results—the source even says 'may never return'. Cutting the network welds shut both the security hole and the nondeterminism source — one constraint, two payoffs.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "想象你要给一个客服机器人写 5 个评估器。哪些你会用代码 eval（确定/规则），哪些用 LLM-as-judge（概率/语义）？请各举几个，并说说为什么——以及如果某个信号「看起来客观但其实有灰区」（比如「回答是否礼貌」），你会怎么权衡？",
+                "en": "Imagine writing 5 evaluators for a customer-service bot. Which would you do with code eval (deterministic/rule) and which with LLM-as-judge (probabilistic/semantic)? Give a few of each and say why—and if a signal 'looks objective but has a gray zone' (e.g. 'is the reply polite'), how would you weigh it?",
+            },
+        ],
+    },
 }
 
 

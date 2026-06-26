@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 30 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 31 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -367,6 +367,7 @@ details[open] > summary { list-style: none; }
   <li>The scoring model</li>
   <li>LLM-as-a-judge</li>
   <li>The eval execution pipeline</li>
+  <li>Code-based evaluation</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -6595,6 +6596,192 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>The eval system offers three gates: dedup, sampling, delay. Suppose your production handles a million traces/day, each eval calling GPT-4 at ~$0.007. How would you configure these gates (sample rate, delay) to balance 'cost' against 'timeliness/representativeness of the quality signal'? What problems arise from setting delay too short or sampling too low?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Code-based evaluation</h1>
+
+<p class="lead">
+Not every "is it good" needs an LLM to judge. Many quality signals are <strong>objective and deterministic</strong>: is the answer valid JSON? did it leak an email address? is it over the length limit? are the fields complete? These need no daydreaming judge—just <strong>a piece of code</strong> to compute, deterministic, fast, and free of LLM cost. This is <strong>code-based evaluation</strong>.
+But there's a sharp problem here: the evaluator code is <strong>written by users</strong>, and the platform must <strong>execute someone else's code</strong>—an enormous security risk. So this lesson's protagonists are two things: a <strong>dispatcher</strong> that abstracts away "where and how it runs", and a <strong>sandbox</strong> that runs user code under lock and key.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Last lesson's LLM-as-judge is like hiring a <strong>human judge</strong>: subjective, with judgment, but may score differently each time and charges an appearance fee. Code eval is like using a <strong>standard gauge / caliper</strong>: objective, the same reading a hundred times on the same part, nearly free.
+  A gauge suits <strong>deterministic</strong> things like "is the dimension within spec", a judge suits <strong>subjective</strong> things like "is the design beautiful"—complementary, not substitutes.
+  But there's a catch: this caliper was <strong>mailed in by someone else</strong>, and you dare not plug it straight into the control machine (what if it hides malicious instructions?). The safe move is to run it in an <strong>isolated inspection room</strong> (sandbox), door shut, phone line cut (no network)—it can only measure the part you hand in and hand the reading back, <strong>touching nothing outside</strong>.
+</div>
+
+
+<h2>Two judges: deterministic code vs probabilistic LLM</h2>
+<p>Lessons 29 and 31 are really <strong>two ways of producing the same score</strong>. Both hang off Lesson 30's scheduling pipeline—the only difference is the "execution" step: LLM-as-judge calls a model, code eval runs a function. Which to pick depends on whether what you're evaluating is <strong>subjective</strong> or <strong>objective</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="One trace can take two judging paths: LLM-as-judge calls a model for subjective, semantic judgment; code eval runs a deterministic function in a sandbox for objective, rule-based judgment; both paths produce a source=EVAL score into the same scores table">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one trace, two judges, same destination</text>
+  <rect x="290" y="36" width="140" height="40" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="55" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">a trace's input/output</text><text x="360" y="69" text-anchor="middle" font-size="6.8" fill="var(--muted)">the answer to judge</text>
+  <rect x="40" y="96" width="280" height="62" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="180" y="115" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">LLM-as-judge (Lesson 29)</text><text x="180" y="132" text-anchor="middle" font-size="7.2" fill="var(--accent-ink)">probabilistic · subjective/semantic · costs LLM</text><text x="180" y="147" text-anchor="middle" font-size="6.8" fill="var(--muted)">helpfulness / tone / off-topic?</text>
+  <rect x="400" y="96" width="280" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="540" y="115" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">code eval (this lesson)</text><text x="540" y="132" text-anchor="middle" font-size="7.2" fill="var(--muted)">deterministic · objective/rule · nearly free</text><text x="540" y="147" text-anchor="middle" font-size="6.8" fill="var(--faint)">valid JSON / has email / length / exact match</text>
+  <rect x="270" y="176" width="180" height="28" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="194" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">both produce a source=EVAL score</text>
+  <line x1="320" y1="66" x2="200" y2="94" stroke="var(--accent)" stroke-width="1.4"/><polygon points="200,94 209,90 205,86" fill="var(--accent)"/>
+  <line x1="400" y1="66" x2="520" y2="94" stroke="var(--blue)" stroke-width="1.4"/><polygon points="520,94 515,86 511,90" fill="var(--blue)"/>
+  <line x1="180" y1="158" x2="300" y2="176" stroke="var(--faint)" stroke-width="1.3"/><polygon points="300,176 291,173 294,181" fill="var(--faint)"/>
+  <line x1="540" y1="158" x2="420" y2="176" stroke="var(--faint)" stroke-width="1.3"/><polygon points="420,176 429,173 426,181" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>Complementary, not substitutes</b>: what rules can express (format, length, keywords, exact match) goes to code eval—deterministic, fast, free; what needs semantic understanding (helpfulness, tone, relevance) goes to LLM-as-judge. Both attach to Lesson 30's scheduling pipeline, differing only at the "execution" step.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>dimension</th><th>LLM-as-judge (Lesson 29)</th><th>code eval (this lesson)</th></tr></thead>
+  <tbody>
+    <tr><td>how it judges</td><td>calls a model for semantic judgment</td><td>runs a function you wrote</td></tr>
+    <tr><td>determinism</td><td>probabilistic (same input may differ)</td><td><b>deterministic</b> (same input, same score)</td></tr>
+    <tr><td>good at</td><td>subjective: helpfulness, tone, relevance</td><td>objective: valid JSON, has PII, length, exact/regex match</td></tr>
+    <tr><td>cost/speed</td><td>one LLM call each, slow, costs money</td><td>one function run, fast, nearly free</td></tr>
+    <tr><td>risk</td><td>the model misjudges, has biases</td><td>must execute <b>user code</b> → must sandbox</td></tr>
+  </tbody>
+</table>
+
+
+<h2>The dispatcher: a strategy pattern that abstracts away "where it runs"</h2>
+<p>The worker shouldn't care whether user code runs on AWS Lambda or locally—it just wants to say "run this code with this input and give me scores". That is the <strong>dispatcher interface</strong>: a minimal contract <code>{ name, dispatch(input) }</code>. Two implementations hang beneath it, and <code>resolveConfiguredCodeEvalDispatcher()</code> picks one by env var—a textbook <strong>strategy pattern</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="Code eval's strategy pattern: the worker calls the unified CodeEvalDispatcher interface's dispatch method; underneath, resolveConfiguredCodeEvalDispatcher picks by env var the AwsLambda dispatcher (invoking per-language python/node Lambda sandboxes) or the local vm dispatcher (named insecure-local, TS/JS only)">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">one interface, two execution backends (strategy pattern)</text>
+  <rect x="280" y="34" width="160" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="53" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">worker exec step</text><text x="360" y="68" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">dispatcher.dispatch(payload)</text>
+  <rect x="250" y="92" width="220" height="34" rx="8" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.6"/><text x="360" y="108" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">interface CodeEvalDispatcher</text><text x="360" y="120" text-anchor="middle" font-size="6.6" fill="var(--muted)">{ name; dispatch(input): Promise&lt;{scores}&gt; }</text>
+  <rect x="40" y="150" width="300" height="56" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="190" y="169" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">AwsLambdaCodeEvalDispatcher</text><text x="190" y="185" text-anchor="middle" font-size="6.8" fill="var(--muted)">name="aws-lambda" · per-language Lambda sandbox</text><text x="190" y="198" text-anchor="middle" font-size="6.4" fill="var(--faint)">python→executor-python · TS→executor-node (prod)</text>
+  <rect x="380" y="150" width="300" height="56" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="530" y="169" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">LocalCodeEvalDispatcher</text><text x="530" y="185" text-anchor="middle" font-size="6.8" fill="var(--muted)">name="insecure-local" · runs on node vm</text><text x="530" y="198" text-anchor="middle" font-size="6.4" fill="var(--faint)">TS/JS only · name admits "insecure", local dev only</text>
+  <line x1="360" y1="78" x2="360" y2="90" stroke="var(--faint)" stroke-width="1.4"/><polygon points="360,92 356,83 364,83" fill="var(--faint)"/>
+  <line x1="300" y1="126" x2="190" y2="148" stroke="var(--blue)" stroke-width="1.4"/><polygon points="190,148 199,144 195,140" fill="var(--blue)"/>
+  <line x1="420" y1="126" x2="530" y2="148" stroke="var(--accent)" stroke-width="1.4"/><polygon points="530,148 525,140 521,144" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>Strategy pattern</b>: the worker depends only on the <code>CodeEvalDispatcher</code> interface (<code>codeEvalDispatcherTypes.ts:119-121</code>). <code>resolveConfiguredCodeEvalDispatcher</code> (<code>codeEvalDispatchers.ts:13</code>) picks by <code>env.LANGFUSE_CODE_EVAL_DISPATCHER</code>: Lambda (production, strong isolation) or local vm (dev, <b>literally named insecure-local</b>). Swapping backends changes not a line of the worker.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/evals/codeEvalDispatcherTypes.ts · codeEvalDispatchers.ts</span><span class="ln">interface + selection</span></div>
+  <pre class="code"><span class="cm">// minimal contract: a name + one dispatch method returning { scores:[…] }</span>
+<span class="kw">export interface</span> <span class="fn">CodeEvalDispatcher</span> {
+  name: string;
+  dispatch(input: DispatchInput): Promise&lt;DispatchResult&gt;;   <span class="cm">// DispatchResult = { scores: at least 1 }</span>
+}
+
+<span class="cm">// pick the impl by env var — the strategy pattern's "selection point"</span>
+<span class="kw">export function</span> <span class="fn">resolveConfiguredCodeEvalDispatcher</span>(): CodeEvalDispatcher | null {
+  <span class="kw">if</span> (dispatcher === <span class="st">"local"</span>)   <span class="kw">return new</span> LocalCodeEvalDispatcher();      <span class="cm">// node vm, TS/JS only</span>
+  <span class="kw">if</span> (dispatcher === <span class="st">"aws-lambda"</span>) <span class="kw">return new</span> AwsLambdaCodeEvalDispatcher({
+    functionNameByLanguage: { PYTHON: <span class="st">"…-python"</span>, TYPESCRIPT: <span class="st">"…-node"</span> } });
+}</pre>
+</div>
+
+
+<h2>The sandbox's iron rules: no network, size caps, time limit</h2>
+<p>Since it runs user code, the platform must box it in with <strong>hard constraints</strong>. These aren't UI hints—they're <strong>enforced at the execution layer</strong>: exceed one and you get a specific error code. The most intriguing is "no network": it <strong>kills two birds</strong>, blocking security risk and preserving determinism.</p>
+
+<table class="t">
+  <thead><tr><th>iron rule</th><th>the limit</th><th>why</th></tr></thead>
+  <tbody>
+    <tr><td><b>no network</b></td><td>evaluator code <b>may make no network requests</b> (stated in the TIMEOUT error)</td><td>① security: prevent data exfiltration & SSRF ② determinism: network = nondeterministic + may never return</td></tr>
+    <tr><td>time limit</td><td>must finish within the configured runtime, else TIMEOUT</td><td>prevent infinite loops / hangs holding the sandbox</td></tr>
+    <tr><td>source size</td><td>≤ 256 KB (SOURCE_TOO_LARGE)</td><td>an evaluator should be small, not a whole program</td></tr>
+    <tr><td>input size</td><td>≤ 5.5 MB (PAYLOAD_TOO_LARGE, source + variables)</td><td>cap per-run feed, protect the dispatch path</td></tr>
+    <tr><td>result size</td><td>≤ 256 KB (RESULT_TOO_LARGE)</td><td>it returns scores, not bulk data</td></tr>
+    <tr><td>result shape</td><td>must be <code>{ scores: [≥1] }</code>, each with name/dataType/value of matching type (INVALID_RESULT)</td><td>malformed can't normalize into a score</td></tr>
+  </tbody>
+</table>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">codeEvalDispatcherTypes.ts · localCodeEvalDispatcher.ts</span><span class="ln">limit constants + sandbox run</span></div>
+  <pre class="code"><span class="cm">// three size red-lines (bytes), enforced at the execution layer (codeEvalDispatcherTypes.ts:4-6)</span>
+CODE_EVAL_SOURCE_MAX_BYTES          = 256 * 1024;        <span class="cm">// source ≤256KB</span>
+CODE_EVAL_DISPATCH_PAYLOAD_MAX_BYTES = 5.5 * 1024 * 1024; <span class="cm">// input ≤5.5MB</span>
+CODE_EVAL_DISPATCH_RESULT_MAX_BYTES  = 256 * 1024;        <span class="cm">// result ≤256KB</span>
+
+<span class="cm">// local dispatcher: runs on node's vm with a timeout; honestly named "insecure-local"</span>
+<span class="kw">import</span> * <span class="kw">as</span> vm <span class="kw">from</span> <span class="st">"node:vm"</span>;
+<span class="kw">const</span> context = vm.createContext({ <span class="cm">/* restricted globals, no fetch/require */</span> });
+vm.runInContext(<span class="st">"evaluate(payload)"</span>, context, { timeout });  <span class="cm">// run user's evaluate(), result must be {scores}</span></pre>
+</div>
+
+<p>And after it runs? <strong>Exactly like Lesson 29</strong>: the returned <code>{scores:[…]}</code> normalizes into scores tagged <code>source=EVAL</code> and flows back through Lesson 12's ingestion path into the scores table. Code eval starts no new machinery—it just swaps Lesson 30's "execution" step from "call the LLM" to "dispatch to the sandbox". <strong>Same scheduling, same score, same flow-back</strong>, only the judge changes from "a probabilistic model" to "a deterministic function". That's why Langfuse fits both evaluation kinds into the same JobExecution state machine.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>extract variables</h4><p>Same origin as the judge pipeline: pull input/output etc. from the trace/observation per the variable mapping (<code>extractObservationVariables</code>).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>build payload</h4><p>Pack the user's evaluator source + extracted variables + <code>runtime.language</code> into a <code>CodeEvalPayload</code>, first checking size red-lines (source ≤256KB, total ≤5.5MB).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>dispatch to sandbox</h4><p><code>dispatcher.dispatch(payload)</code>: Lambda invokes the per-language python/node function, or the local vm runs it—no network, time-limited.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>validate result</h4><p>The return must be <code>{scores:[≥1]}</code>, each score's name/dataType/value validated with matching type, result ≤256KB (<code>parseDispatchResult</code>).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>normalize + flow back</h4><p>Just like Lesson 29: tag <code>source=EVAL</code>, write back to the scores table via the ingestion path, mark the ticket COMPLETED.</p></div></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why the dispatcher abstraction instead of calling Lambda directly?</strong> Because "where to run user code" is a decision that changes: cloud uses Lambda (strong isolation, on-demand scaling), while self-hosters may lack Lambda and just want to run locally. Hiding the execution backend behind a <code>{name, dispatch}</code> interface keeps the worker's logic <strong>oblivious to the backend</strong>—swapping impls or adding a new sandbox (say a future WASM runtime) changes not a line of the caller. That's the value of the strategy pattern: <strong>make "how" replaceable while "what" stays stable</strong>.<br><br>
+  <strong>Why name the local dispatcher "insecure-local"?</strong> A rare bit of <strong>honesty</strong>. Node's <code>vm</code> module is <strong>not a real security sandbox</strong>—the experienced can escape a vm context. Langfuse doesn't hide it; it writes "insecure" right into the name, like a warning sticker in the source: <strong>this path is fit only for local dev; for production use real isolation like Lambda</strong>. Naming as documentation, putting the risk where it's most visible.<br><br>
+  <strong>Why is "no network" the most crucial iron rule?</strong> It solves two problems at a stroke. <strong>On security</strong>: once user code can reach the network, it could quietly exfiltrate the trace data you fed it (possibly sensitive) or use the sandbox as a springboard into your internal network (SSRF). <strong>On determinism</strong>: the soul of evaluation is "same input, same score", yet network requests are <strong>inherently nondeterministic</strong>—endpoints flake, time out, return different results, even "may never return" (the source's own words). Cutting the network welds shut both the security hole and the source of nondeterminism. <strong>One constraint, two payoffs</strong>—good restrictions often are.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Code eval = deterministic evaluation</strong>: a function computes the score, suited to objective/rule signals (valid JSON, has PII, length, exact/regex match); complementary to LLM-as-judge (probabilistic/subjective), not a substitute.</li>
+    <li><strong>Same pipeline</strong>: it attaches to Lesson 30's scheduling pipeline, swapping only the "execution" step from "call the LLM" to "dispatch to the sandbox"; results likewise normalize into <code>source=EVAL</code> scores that flow back—the same JobExecution state machine.</li>
+    <li><strong>Dispatcher strategy pattern</strong>: the worker depends only on the <code>{name, dispatch}</code> interface; <code>resolveConfiguredCodeEvalDispatcher</code> picks by env var <code>AwsLambda</code> (production, per-language python/node sandbox) or local <code>vm</code>. Swapping backends doesn't touch the caller.</li>
+    <li><strong>The local dispatcher is named "insecure-local"</strong>: node's <code>vm</code> isn't a real sandbox, and the name says so—fit only for local dev; production uses real Lambda isolation. Naming as warning.</li>
+    <li><strong>Sandbox iron rules</strong>: no network, time limit, source ≤256KB, input ≤5.5MB, result ≤256KB, result must be <code>{scores:[≥1]}</code>. "No network" kills two birds—blocking exfiltration/SSRF and preserving "same input, same score" determinism.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse has both LLM-as-judge (Lesson 29) and code eval (this lesson). Which statement most accurately characterizes their relationship?</div>
+  <ol class="opts">
+    <li>they use entirely separate scheduling and storage</li>
+    <li>code eval can only produce boolean scores</li>
+    <li>code eval is an upgraded replacement for LLM-as-judge</li>
+    <li>complementary: code eval is deterministic, for objective/rule signals (valid JSON, has PII, length); LLM-as-judge is probabilistic, for subjective/semantic signals (helpfulness, tone). Both attach to the same scheduling pipeline, differing only at the 'execution' step</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Both are two ways of producing the same score, hanging off Lesson 30's pipeline, differing only at the 'execution' step: LLM-as-judge calls a model, code eval runs a function. Both normalize into source=EVAL scores flowing into the same table via the same JobExecution state machine. Rule-expressible goes to code eval (deterministic, free); semantic goes to LLM-as-judge.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Code eval executes user-written code. Langfuse's local dispatcher is named "insecure-local" right in the source. What does this naming reveal?</div>
+  <ol class="opts">
+    <li>local only supports Python</li>
+    <li>local execution is slow</li>
+    <li>it leaks environment variables</li>
+    <li>an honest warning: it uses node's vm module, and vm is not a real security sandbox (escapable); naming as documentation, signaling this path is for local dev only, with production needing real isolation like Lambda</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Node's vm can create an isolated context to run code, but the consensus is it's insufficient for safely running untrusted code (known escapes exist). Langfuse doesn't gloss over it—writing insecure into the dispatcher's name is a source-level warning: fine for local dev, switch to AwsLambdaCodeEvalDispatcher (ephemeral, strong isolation, per-language python/node functions) in production.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. The code-eval sandbox has an iron rule: evaluator code may make no network requests. Why is this 'no network' considered to kill two birds?</div>
+  <ol class="opts">
+    <li>it preserves security (networked user code could exfiltrate the trace data you fed it, or use the sandbox for SSRF into your internal network) and determinism (network is inherently nondeterministic—flaky, timing out, even may-never-return, breaking 'same input, same score')</li>
+    <li>just to save bandwidth</li>
+    <li>to make eval run faster</li>
+    <li>to stop the evaluator from calling an LLM</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Security: once networked, user code can smuggle out sensitive trace data or use the sandbox as a springboard to internal services (SSRF). Determinism: the soul of eval is 'same input, same score', yet network requests flake, time out, return different results—the source even says 'may never return'. Cutting the network welds shut both the security hole and the nondeterminism source — one constraint, two payoffs.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Imagine writing 5 evaluators for a customer-service bot. Which would you do with code eval (deterministic/rule) and which with LLM-as-judge (probabilistic/semantic)? Give a few of each and say why—and if a signal 'looks objective but has a gray zone' (e.g. 'is the reply polite'), how would you weigh it?</li>
   </ul>
 </div>
 </div>

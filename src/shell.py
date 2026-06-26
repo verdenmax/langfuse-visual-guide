@@ -109,6 +109,8 @@ PAGES = [
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
     ("30-eval-execution-pipeline.html", "eval 执行流水线", "The eval execution pipeline",
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
+    ("31-code-based-evaluation.html", "代码 eval", "Code-based evaluation",
+     "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
 ]
 
 
@@ -652,6 +654,8 @@ SUBTITLES = {
                                "use one LLM to score another; three pieces template/evaluator/execution; variable mapping fills trace columns into {{placeholders}}; structured output {score,reasoning}; reasoning→comment; source=EVAL flows back via SCORE_CREATE through L12 ingestion"),
     "30-eval-execution-pipeline.html": ("事件驱动 createEvalJobs 扇出到 ACTIVE 评估器 · 两级队列创建/执行解耦 · 三道闸去重/采样/延迟 · JobExecution 状态机 PENDING→COMPLETED/ERROR/CANCELLED/DELAYED · langfuse- 前缀防无限循环",
                                         "event-driven createEvalJobs fans out to ACTIVE evaluators; two-stage queues decouple create/execute; three gates dedup/sampling/delay; JobExecution state machine PENDING→COMPLETED/ERROR/CANCELLED/DELAYED; langfuse- prefix guards against infinite loops"),
+    "31-code-based-evaluation.html": ("确定性评估：写函数算分 vs LLM 概率判断 · dispatcher 策略模式 {name,dispatch} · Lambda 沙箱(按语言)/本地 vm(insecure-local) · 沙箱铁律禁网络+限大小256KB/5.5MB/256KB+超时 · 同回流 source=EVAL",
+                                      "deterministic eval: a function computes the score vs LLM's probabilistic judgment; dispatcher strategy pattern {name,dispatch}; Lambda sandbox (per-language)/local vm (insecure-local); sandbox iron rules no-network+size caps 256KB/5.5MB/256KB+timeout; same flow-back source=EVAL"),
 }
 
 
