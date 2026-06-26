@@ -478,12 +478,14 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   </div>
 </div>
 
-<p><strong>And the third pillar, score?</strong> It is a <strong>rating</strong> attached to a trace or an observation, in three
-value types — <strong>numeric</strong> (e.g. 0.9), <strong>categorical</strong> (e.g. "correct / wrong"), <strong>boolean</strong>;
-from three sources — <strong>LLM auto-judge</strong>, <strong>human annotation</strong>, <strong>custom code</strong>. Score is what
-upgrades "observable" into "evaluable": with comparable numbers you can quantify "did this change actually make the app
-better" instead of guessing. A score's config (numeric range, categories) lives in Postgres as <code>ScoreConfig</code>, while
-the scores themselves go into ClickHouse like traces/observations.</p>
+<p><strong>And the third pillar, score?</strong> It is a <strong>rating</strong> attached to a trace or an observation. Its value
+is <strong>mainly</strong> one of three types — <code>NUMERIC</code> (e.g. 0.9), <code>CATEGORICAL</code> (e.g. "correct / wrong"),
+<code>BOOLEAN</code> (the domain model also has <code>CORRECTION</code> and <code>TEXT</code>); from three sources —
+<code>EVAL</code> (auto-judge), <code>ANNOTATION</code> (human), <code>API</code> (submitted via SDK), see
+<code>packages/shared/src/domain/scores.ts</code>. Score is what upgrades "observable" into "evaluable": with comparable numbers
+you can quantify "did this change actually make the app better" instead of guessing. A score's config (numeric range,
+categories) lives in Postgres as <code>ScoreConfig</code>, while the scores themselves go into ClickHouse like
+traces/observations.</p>
 
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>

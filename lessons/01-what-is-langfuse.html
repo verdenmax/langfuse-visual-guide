@@ -477,8 +477,9 @@ Langfuse 只在<strong>运行时</strong>把发生的事记下来；它也<stron
   </div>
 </div>
 
-<p><strong>那第三支柱 score 呢？</strong>它是<strong>评分</strong>，可挂在 trace 或某个 observation 上，取值有三类——<strong>数值</strong>（如 0.9）、
-<strong>分类</strong>（如「正确 / 错误」）、<strong>布尔</strong>；来源也有三种——<strong>LLM 自动评审</strong>、<strong>人工标注</strong>、<strong>自定义代码</strong>。
+<p><strong>那第三支柱 score 呢？</strong>它是<strong>评分</strong>，可挂在 trace 或某个 observation 上。取值<strong>主要</strong>有三类——
+<code>NUMERIC</code> 数值（如 0.9）、<code>CATEGORICAL</code> 分类（如「正确 / 错误」）、<code>BOOLEAN</code> 布尔（领域模型里还有 <code>CORRECTION</code>、<code>TEXT</code>）；
+来源有三种——<code>EVAL</code>（自动评审）、<code>ANNOTATION</code>（人工标注）、<code>API</code>（SDK 直接提交），见 <code>packages/shared/src/domain/scores.ts</code>。
 正是 score 把「可观测」升级成「可评估」：有了可比较的分数，你才能量化「这次改动到底有没有让应用变好」，而不是凭感觉。score 的配置（数值范围、分类项）
 存在 Postgres 的 <code>ScoreConfig</code> 里，分数本身则和 trace/observation 一样进 ClickHouse。</p>
 
@@ -818,12 +819,14 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   </div>
 </div>
 
-<p><strong>And the third pillar, score?</strong> It is a <strong>rating</strong> attached to a trace or an observation, in three
-value types — <strong>numeric</strong> (e.g. 0.9), <strong>categorical</strong> (e.g. "correct / wrong"), <strong>boolean</strong>;
-from three sources — <strong>LLM auto-judge</strong>, <strong>human annotation</strong>, <strong>custom code</strong>. Score is what
-upgrades "observable" into "evaluable": with comparable numbers you can quantify "did this change actually make the app
-better" instead of guessing. A score's config (numeric range, categories) lives in Postgres as <code>ScoreConfig</code>, while
-the scores themselves go into ClickHouse like traces/observations.</p>
+<p><strong>And the third pillar, score?</strong> It is a <strong>rating</strong> attached to a trace or an observation. Its value
+is <strong>mainly</strong> one of three types — <code>NUMERIC</code> (e.g. 0.9), <code>CATEGORICAL</code> (e.g. "correct / wrong"),
+<code>BOOLEAN</code> (the domain model also has <code>CORRECTION</code> and <code>TEXT</code>); from three sources —
+<code>EVAL</code> (auto-judge), <code>ANNOTATION</code> (human), <code>API</code> (submitted via SDK), see
+<code>packages/shared/src/domain/scores.ts</code>. Score is what upgrades "observable" into "evaluable": with comparable numbers
+you can quantify "did this change actually make the app better" instead of guessing. A score's config (numeric range,
+categories) lives in Postgres as <code>ScoreConfig</code>, while the scores themselves go into ClickHouse like
+traces/observations.</p>
 
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>
