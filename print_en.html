@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 36 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 37 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -373,6 +373,7 @@ details[open] > summary { list-style: none; }
   <li>Datasets & items</li>
   <li>Dataset runs & run items</li>
   <li>Experiments & comparison</li>
+  <li>Prompt management</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -7692,6 +7693,194 @@ modelParams = { provider: config.provider, model: config.model, ...config.model_
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Experiments turn 'verify before changing a prompt' into a scientific method. But it rests on premises: your dataset represents real traffic, and your scoring reflects real quality. Imagine one premise fails (e.g. a narrow dataset, or an LLM judge with systematic bias)—how would the comparison's conclusions mislead you? How would you guard against this 'the evaluation system itself is unreliable' risk? (Hint: revisit Lesson 32's human annotation as ground truth.)</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Prompt management</h1>
+
+<p class="lead">
+The previous part kept "examining" one thing—the <strong>prompt</strong>. It's the "script" of your conversation with the model, the <strong>most frequently changed</strong> part of an LLM app: rewording one word, adding or removing one instruction, can swing the outcome wildly. This lesson is about how Langfuse manages prompts like <strong>git manages code</strong>: <strong>immutable versions</strong>, <strong>movable labels</strong>, a commit message per change, plus dependency composition that lets one prompt <strong>reference another</strong>.
+Grasp this "version control" model and you hold the key to "<strong>changing prompts safely</strong>"—you can release, roll back instantly, and reproduce any historical version exactly, all without touching a line of application code.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Prompt management is almost <strong>git tailored for prompts</strong>. Each time you edit a prompt and save, it creates a <strong>new version</strong> (like a commit—an auto-incrementing number, content <strong>never changed again</strong>), with an optional <strong>change note</strong> (commitMessage).
+  And labels like "<code>production</code>" / "<code>staging</code>" are like git's <strong>branches / tags</strong>—they're <strong>movable pointers</strong>, each pointing to one version. Point <code>production</code> at v5 and you've "<strong>released</strong>" v5; if something's wrong, point it back at v4 for an "<strong>instant rollback</strong>"—and your application code <strong>doesn't change one character</strong>, because it asks for "the production one", not a specific version number.
+  You can even have one prompt <strong>reference</strong> another (a dependency), like <code>import</code>-ing a shared module in code—write the shared preamble once, reuse it everywhere.
+</div>
+
+
+<h2>Immutable versions + movable labels</h2>
+<p>A prompt is uniquely identified by <code>(name, version)</code> (<code>@@unique([projectId, name, version])</code>). On creating a version, version = <strong>previous + 1</strong>—the number auto-increments, and once written the content is <strong>never changed again</strong>. <code>labels</code> is a string array, with the key rule: <strong>a given label can point to only one version under a name</strong>. So when you tag a new version with <code>production</code>, the system <strong>automatically strips that label from the old version</strong>—the label thus "moves" to the new one.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="The git-style prompt model: versions v1 v2 v3 increment immutably along a timeline; labels like production and latest are movable pointers; moving production from v2 to v3 is a release, moving it back to v2 is a rollback, with app code only knowing the label not the version number">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">versions immutable (auto-increment), labels movable (unique pointers)</text>
+  <line x1="40" y1="150" x2="690" y2="150" stroke="var(--faint)" stroke-width="1.5"/><polygon points="690,150 682,146 682,154" fill="var(--faint)"/><text x="688" y="168" text-anchor="end" font-size="7" fill="var(--muted)">time / version</text>
+  <rect x="70" y="116" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="130" y="137" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">v1 (old)</text>
+  <rect x="290" y="116" width="120" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="137" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">v2 (old)</text>
+  <rect x="510" y="116" width="120" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="570" y="137" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">v3 (latest)</text>
+  <rect x="500" y="40" width="140" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="570" y="59" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">label: latest</text><line x1="570" y1="70" x2="570" y2="114" stroke="var(--blue)" stroke-width="1.3"/><polygon points="570,114 566,105 574,105" fill="var(--blue)"/>
+  <rect x="280" y="76" width="140" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="350" y="95" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">label: production</text><line x1="350" y1="106" x2="350" y2="114" stroke="var(--accent)" stroke-width="1.3"/><polygon points="350,114 346,105 354,105" fill="var(--accent)"/>
+  <path d="M 410 91 Q 480 70 560 105" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="560,105 551,103 553,111" fill="var(--accent)"/><text x="492" y="74" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">release: move production to v3</text>
+  <text x="360" y="196" text-anchor="middle" font-size="8" fill="var(--faint)">app code just says "give me the production one"—release = move the label to v3, rollback = move it back to v2, no code change</text>
+</svg>
+<div class="figcap"><b>git-style version control</b>: version auto-increments and is immutable (<code>latestPrompt.version + 1</code>); a label is unique and movable—tagging a new version with <code>production</code> auto-strips it from the old one (<code>removeLabelsFromPreviousPromptVersions</code>). A new version always gets the <code>latest</code> label. Source: <code>createPrompt.ts:88-181</code>, <code>constants.ts:1-2</code> (<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/prompts/server/actions/createPrompt.ts</span><span class="ln">version increment + label move</span></div>
+  <pre class="code"><span class="cm">// find the current latest version; new = it + 1 (first is 1)—number auto-increments, content immutable</span>
+<span class="kw">const</span> latestPrompt = <span class="kw">await</span> prisma.prompt.findFirst({ where: {…name}, orderBy: [{ version: <span class="st">"desc"</span> }] });
+version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
+
+<span class="cm">// a newly created prompt always gets the 'latest' label</span>
+<span class="kw">const</span> finalLabels = [...labels, <span class="st">LATEST_PROMPT_LABEL</span>];   <span class="cm">// "latest"</span>
+
+<span class="cm">// key: a label is unique per name — labels put on the new version must be stripped from old ones</span>
+<span class="kw">await</span> removeLabelsFromPreviousPromptVersions({ …, labelsToRemove: finalLabels });
+<span class="cm">// so the production pointer "moves" to the new version; old versions no longer carry it</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>git concept</th><th>prompt management counterpart</th><th>note</th></tr></thead>
+  <tbody>
+    <tr><td>commit</td><td><code>version</code></td><td>immutable snapshot, auto-incrementing number, content never changed</td></tr>
+    <tr><td>commit message</td><td><code>commitMessage</code></td><td>a note per change, leaving a traceable trail</td></tr>
+    <tr><td>branch / tag</td><td><code>labels</code> (production/latest…)</td><td>movable pointers, unique per name, pointing to a version</td></tr>
+    <tr><td>repo-level labels</td><td><code>tags</code></td><td>consistent across all versions (on the name, not a version)</td></tr>
+    <tr><td>import a module</td><td><code>PromptDependency</code></td><td>one prompt references another, composition reuse</td></tr>
+  </tbody>
+</table>
+<p>Keep this mapping in mind and prompt management is no longer a new concept—it's the git you already know, just managing not code but "the script of your conversation with the model".</p>
+
+
+<h2>Fetch by label: fully divorce "releasing" from "writing code"</h2>
+<p>This git-style model's biggest practical value hides in <strong>how the app fetches a prompt</strong>. Production code <strong>shouldn't</strong> hardcode "give me v5"—it should say "give me the <code>production</code> one". So the decision of "which version to use" is lifted out of <strong>code deployment</strong> into a <strong>label-moving operations action</strong>. Releases and rollbacks thus become second-scale, and <strong>bypass any code change, CI, or deploy flow</strong>.</p>
+
+<div class="cols">
+  <div class="col"><h4>fetch by label (production-preferred)</h4><p><code>get("greeting", label="production")</code>: the app only ever knows the <code>production</code> pointer, using whatever it points to. Switching versions is operations moving a label in the UI, with the app <strong>oblivious</strong>. A textbook of "config-code separation".</p></div>
+  <div class="col"><h4>fetch by version (pinned)</h4><p><code>get("greeting", version=5)</code>: locks exactly to version 5, never drifting. Suits absolute-reproducibility scenarios (a formal experiment, reproducing a paper).</p></div>
+  <div class="col"><h4>protected labels (against fat-fingering)</h4><p><code>PromptProtectedLabels</code> lets you mark key labels like <code>production</code> as "protected"—moving it needs higher permission, preventing a newcomer from accidentally shipping an untested version.</p></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 180" role="img" aria-label="Fetch-by-label decoupling: app code fixedly requests the production label, with which version it currently points to decided by operations in the UI; a release moves production from v4 to v5, a rollback moves it back to v4, all without code change or redeploy">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">"which version" lifted out of code deploy into a label-move ops action</text>
+  <rect x="30" y="50" width="180" height="80" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="120" y="72" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">app code (unchanged)</text><text x="120" y="92" text-anchor="middle" font-size="7.2" fill="var(--muted)">get("greeting",</text><text x="120" y="106" text-anchor="middle" font-size="7.2" fill="var(--muted)">  label="production")</text><text x="120" y="122" text-anchor="middle" font-size="6.4" fill="var(--faint)">knows the pointer, not the version</text>
+  <rect x="280" y="56" width="160" height="68" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="78" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">production pointer</text><text x="360" y="97" text-anchor="middle" font-size="7" fill="var(--accent-ink)">operations moves it in the UI</text><text x="360" y="111" text-anchor="middle" font-size="6.4" fill="var(--muted)">currently → v5</text>
+  <rect x="510" y="40" width="180" height="44" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="600" y="58" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">v4 (old · rollback target)</text><text x="600" y="74" text-anchor="middle" font-size="6.4" fill="var(--faint)">move back = instant rollback</text>
+  <rect x="510" y="96" width="180" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="114" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">v5 (new · active)</text><text x="600" y="130" text-anchor="middle" font-size="6.4" fill="var(--muted)">production points here now</text>
+  <line x1="210" y1="90" x2="278" y2="90" stroke="var(--blue)" stroke-width="1.5"/><polygon points="278,90 269,86 269,94" fill="var(--blue)"/>
+  <line x1="440" y1="100" x2="508" y2="115" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,115 499,113 501,121" fill="var(--teal)"/>
+  <line x1="440" y1="86" x2="508" y2="65" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 2"/><polygon points="508,65 499,65 502,72" fill="var(--faint)"/><text x="474" y="70" text-anchor="middle" font-size="6" fill="var(--muted)">rollback</text>
+</svg>
+<div class="figcap"><b>config-code separation</b>: the app fetches by <code>label="production"</code>, with which version the pointer targets decided by operations in the UI. Release = move the label to v5; rollback = move it back to v4—second-scale, zero-code, zero-deploy. Key labels can be gated via <code>PromptProtectedLabels</code>.</div>
+</div>
+
+
+<h2>Dependencies: let one prompt reference another</h2>
+<p>With many prompts comes duplication—the same "You are a friendly support assistant…" preamble might appear in ten prompts. Editing it once means editing ten places, easy to miss. <code>PromptDependency</code> solves this: a prompt (parent) can <strong>reference</strong> another prompt (child), either <strong>pinned by version</strong> (<code>childVersion</code>) or <strong>floating by label</strong> (<code>childLabel</code>). It's like <code>import</code>-ing a shared module in code—write the shared snippet once, reuse it everywhere.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 195" role="img" aria-label="Prompt dependency graph: parent prompts reference a shared system-preamble child prompt; references can pin a version or float by label; pinning is stable, while following a label means the parent auto-updates when the child upgrades">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">prompt composition: write the shared snippet once, reference everywhere</text>
+  <rect x="40" y="44" width="180" height="56" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="130" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">parent: support-refund</text><text x="130" y="82" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">references "system preamble"</text><text x="130" y="94" text-anchor="middle" font-size="6.4" fill="var(--muted)">+ its own refund logic</text>
+  <rect x="40" y="116" width="180" height="56" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="130" y="136" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">parent: support-complaint</text><text x="130" y="154" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">also references "system preamble"</text><text x="130" y="166" text-anchor="middle" font-size="6.4" fill="var(--muted)">+ its own complaint logic</text>
+  <rect x="380" y="80" width="200" height="56" rx="10" fill="var(--bg)" stroke="var(--blue)" stroke-width="2"/><text x="480" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">child: system preamble</text><text x="480" y="118" text-anchor="middle" font-size="6.8" fill="var(--muted)">"You are a friendly support assistant…"</text><text x="480" y="130" text-anchor="middle" font-size="6.4" fill="var(--faint)">written once, referenced by many</text>
+  <line x1="220" y1="72" x2="378" y2="100" stroke="var(--accent)" stroke-width="1.4"/><polygon points="378,100 369,98 371,106" fill="var(--accent)"/><text x="300" y="78" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">childLabel=production (floating)</text>
+  <line x1="220" y1="144" x2="378" y2="116" stroke="var(--accent)" stroke-width="1.4"/><polygon points="378,116 369,116 372,124" fill="var(--accent)"/><text x="300" y="148" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">childVersion=3 (pinned)</text>
+  <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">follow a label: child upgrades, parent auto-gets new preamble · pin a version: parent always uses preamble v3, unaffected by upgrades</text>
+</svg>
+<div class="figcap"><b>composition is reuse</b>: <code>schema.prisma:864</code>'s PromptDependency uses <code>parentId</code> + <code>childName</code> + <code>childLabel</code> (floating) <b>or</b> <code>childVersion</code> (pinned). Floating makes a shared snippet update everywhere on one edit; pinning shields a parent from a child upgrade—mirroring the first section's label/version trade-off.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/prisma/schema.prisma:864 · createPrompt.ts</span><span class="ln">dependency: floating or pinned</span></div>
+  <pre class="code"><span class="kw">model</span> PromptDependency {
+  parentId  String   <span class="cm">// the referrer (parent prompt)</span>
+  childName String   <span class="cm">// the referenced prompt's name</span>
+  childLabel   String?  <span class="cm">// one of: float by label (e.g. "production"), parent follows child upgrades</span>
+  childVersion Int?     <span class="cm">// or: pin by version (e.g. 3), parent always uses this, no drift</span>
+}
+<span class="cm">// on create, dep.type decides which to pin (createPrompt.ts)</span>
+...(dep.type === <span class="st">"version"</span> ? { childVersion: dep.version } : { childLabel: dep.label })</pre>
+</div>
+
+<p>String this mechanism together and "changing a prompt safely" becomes a clear pipeline—dovetailing with the next lessons' Playground (L39) and all of Part 6's experiments:</p>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>edit → save as a new version</h4><p>Saving an edit creates a new version (auto-incrementing, with a commitMessage); the old version is preserved intact.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>try in the Playground</h4><p>Try the new version on a few cases in the Playground (L39), or pull it into a dataset to run an experiment (L36) for a quantitative comparison.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>satisfied → move the production label</h4><p>Confirmed better, move the <code>production</code> pointer to the new version—the production app's next prompt fetch picks it up, zero-deploy.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>trouble → instant rollback</h4><p>If production misbehaves, move <code>production</code> back to the old version—the old one is always there, rollback loses no data and waits for no release.</p></div></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why are versions immutable while labels are movable?</strong> This "immutable entity + movable pointer" is the essence of version control—git is so, Lesson 34's dataset items are so, prompts here too. <strong>Immutability</strong> guarantees "reproducibility": v5 is forever v5, and the version you ran in production three months ago can be pulled up today, word for word, for a post-mortem. <strong>Movable labels</strong> provide "evolvability": reality needs a stable name (<code>production</code>) to denote "the current active one", and the active one changes. Together, you can both <strong>iterate boldly</strong> (every edit safely preserved) and <strong>operate calmly</strong> (switch smoothly via labels, roll back anytime). Cleanly assigning the immutable/mutable tension onto the two concepts "version" and "label" is the elegance of data modeling.<br><br>
+  <strong>Why is "fetch by label" the key to production decoupling?</strong> Because it <strong>fully moves the decision "which prompt version to use" out of the code</strong>. If the app hardcodes <code>version=5</code>, switching prompts means changing code, passing CI, redeploying—slow, heavy, and needs an engineer present. With <code>label="production"</code>, switching becomes operations clicking a pointer-move in the UI: <strong>second-scale, rollback-able, doable by non-engineers</strong>. This is the power of "config-code separation"—lifting <strong>the frequently-changing thing (prompt content)</strong> out of <strong>the slowly-changing thing (app code)</strong>, each evolving at its own pace. <code>PromptProtectedLabels</code> then gates key labels, keeping "second-scale releases" flexible without losing control.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A prompt = git tailored for prompts</strong>: <code>(name, version)</code> unique; the version number <strong>auto-increments, content immutable</strong>, with a commitMessage—every edit safely preserved and exactly reproducible.</li>
+    <li><strong>A label is a movable pointer</strong>: <code>production</code>/<code>latest</code> labels are unique per name, pointing to one version; tagging a new version auto-strips the label from the old one (<code>removeLabelsFromPreviousPromptVersions</code>)—moving a label = release / rollback.</li>
+    <li><strong>Fetch by label = config-code separation</strong>: production does <code>get(label="production")</code>, switching versions just needs operations moving a pointer—second-scale, zero-code, zero-deploy, rollback-able; fetch by <code>version</code> is for absolute reproducibility.</li>
+    <li><strong>Protected labels against fat-fingering</strong>: <code>PromptProtectedLabels</code> gates key labels like <code>production</code> with permissions, preventing an untested version from being shipped by accident.</li>
+    <li><strong>Dependencies = prompt composition reuse</strong>: <code>PromptDependency</code> lets a parent reference a child by <code>childLabel</code> (floating) or <code>childVersion</code> (pinned)—write a shared snippet once, reuse everywhere, with trade-off logic mirroring label/version.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse designs a prompt's version as immutable (auto-incrementing, content never changed) and a label (like production) as a movable pointer. The core benefit of this 'immutable entity + movable pointer' combo is?</div>
+  <ol class="opts">
+    <li>encrypting prompt content</li>
+    <li>auto-optimizing prompts</li>
+    <li>saving database space</li>
+    <li>getting both 'reproducibility' and 'evolvability': immutable versions let any historical version be replayed exactly, movable labels let a stable name like production switch/roll back smoothly—cleanly assigning the tension to two concepts</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. This is the essence of version control—git, Lesson 34's items, prompts alike. Immutability guarantees reproducibility: v5 is forever v5, the version in production three months ago is replayable word-for-word today. Movable labels provide evolvability: reality needs a stable name like production for 'the current active', which changes. Together you iterate boldly (each version preserved) and operate calmly (smooth switch/instant rollback via labels).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse recommends production code fetch a prompt via get(label="production") rather than get(version=5). The biggest operational value of this is?</div>
+  <ol class="opts">
+    <li>fetching by label is faster</li>
+    <li>lifting 'which version' out of code: switching versions becomes operations moving a pointer in the UI—second-scale, rollback-able, doable by non-engineers, no code change/CI/redeploy (config-code separation)</li>
+    <li>fetching by label saves tokens</li>
+    <li>fetching by version can't get old versions</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. If the app hardcodes version=5, switching means changing code, passing CI, redeploying—slow, heavy, needs an engineer. With label="production", switching is operations clicking a pointer-move in the UI: second-scale, rollback-able, non-engineer-doable. This lifts the frequently-changing thing (prompt content) out of the slowly-changing thing (app code), each evolving at its own pace. Protected labels then gate key labels.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. PromptDependency lets a parent prompt reference a child, either floating by childLabel (e.g. production) or pinned by childVersion (e.g. 3). What does each reference style suit?</div>
+  <ol class="opts">
+    <li>pinning auto-upgrades</li>
+    <li>floating (label): the parent auto-gets updates when the child upgrades, suiting 'edit the shared snippet once, effective everywhere'; pinned (version): the parent always uses that version, unaffected by child upgrades, suiting stability—the same trade-off as fetching prompts by label/version</li>
+    <li>the two are equivalent</li>
+    <li>floating is safer, pinning is risky</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. PromptDependency describes a reference by either childLabel or childVersion. Floating (childLabel): follows the label, the parent auto-gets new content on child upgrade—suiting a shared preamble's 'edit once, update everywhere'. Pinned (childVersion): locks a specific version, the parent unaffected by upgrades—suiting absolute stability/reproducibility. This mirrors the first section's 'fetch by label vs version': float for convenience, pin for stability.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Prompt management ports the whole idea of 'software version control' (immutable versions, movable labels, dependencies, commit messages) onto prompts. Recall your git experience: which git workflows (branch strategy, code review, rollback drills) do you think are worth porting to prompt management? Conversely, how do prompts differ fundamentally from code, making some git practices not necessarily applicable?</li>
   </ul>
 </div>
 </div>

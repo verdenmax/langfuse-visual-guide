@@ -2565,6 +2565,76 @@ QUIZZES = {
             },
         ],
     },
+    "37-prompt-management.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 把 prompt 的 version 设计成不可变（自增、内容不再改），而 label（如 production）设计成可移动指针。这种「不可变实体 + 可移动指针」组合的核心好处是？",
+                    "en": "Langfuse designs a prompt's version as immutable (auto-incrementing, content never changed) and a label (like production) as a movable pointer. The core benefit of this 'immutable entity + movable pointer' combo is?",
+                },
+                "opts": [
+                    {
+                        "zh": "同时获得「可复现」与「可演进」：不可变版本让任意历史版精确复盘，可移动 label 让 production 这个稳定名字平滑切换/回滚——把矛盾干净分配到两个概念上",
+                        "en": "getting both 'reproducibility' and 'evolvability': immutable versions let any historical version be replayed exactly, movable labels let a stable name like production switch/roll back smoothly—cleanly assigning the tension to two concepts",
+                    },
+                    {"zh": "节省数据库空间", "en": "saving database space"},
+                    {"zh": "让 prompt 自动优化", "en": "auto-optimizing prompts"},
+                    {"zh": "加密 prompt 内容", "en": "encrypting prompt content"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是版本控制的精髓，git、第34课数据项、prompt 皆然。不可变保证可复现：v5 永远是 v5，三个月前生产那版今天一字不差可复盘。可移动 label 提供可演进：现实需要 production 这个稳定名字指代「当前现役」，而现役会变。两者结合既能大胆迭代（每版安全留存）又能安心运营（label 平滑切换/秒回滚）。",
+                    "en": "This is the essence of version control—git, Lesson 34's items, prompts alike. Immutability guarantees reproducibility: v5 is forever v5, the version in production three months ago is replayable word-for-word today. Movable labels provide evolvability: reality needs a stable name like production for 'the current active', which changes. Together you iterate boldly (each version preserved) and operate calmly (smooth switch/instant rollback via labels).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 推荐生产代码用 get(label=\"production\") 而不是 get(version=5) 来取 prompt。这么做最大的运营价值是？",
+                    "en": "Langfuse recommends production code fetch a prompt via get(label=\"production\") rather than get(version=5). The biggest operational value of this is?",
+                },
+                "opts": [
+                    {
+                        "zh": "把「用哪一版」从代码里搬走：换版本变成运营在 UI 移指针——秒级生效、可回滚、非工程师也能做，无需改代码/过CI/重新部署（配置与代码分离）",
+                        "en": "lifting 'which version' out of code: switching versions becomes operations moving a pointer in the UI—second-scale, rollback-able, doable by non-engineers, no code change/CI/redeploy (config-code separation)",
+                    },
+                    {"zh": "按 label 取更快", "en": "fetching by label is faster"},
+                    {"zh": "按 label 取更省 token", "en": "fetching by label saves tokens"},
+                    {"zh": "version 取不到旧版", "en": "fetching by version can't get old versions"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "若应用写死 version=5，换 prompt 就得改代码、过 CI、重新部署——慢重且要工程师在场。写 label=\"production\"，换版本就是运营在 UI 点一下移指针：秒级、可回滚、非工程师可做。这把变化频繁的东西(prompt 内容)从变化缓慢的东西(应用代码)里剥离，各自用最适合的节奏演进。protected labels 再给关键 label 加权限门。",
+                    "en": "If the app hardcodes version=5, switching means changing code, passing CI, redeploying—slow, heavy, needs an engineer. With label=\"production\", switching is operations clicking a pointer-move in the UI: second-scale, rollback-able, non-engineer-doable. This lifts the frequently-changing thing (prompt content) out of the slowly-changing thing (app code), each evolving at its own pace. Protected labels then gate key labels.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "PromptDependency 让一个父 prompt 引用子 prompt，可以按 childLabel（如 production）浮动，也可以按 childVersion（如 3）钉死。这两种引用方式分别适合什么？",
+                    "en": "PromptDependency lets a parent prompt reference a child, either floating by childLabel (e.g. production) or pinned by childVersion (e.g. 3). What does each reference style suit?",
+                },
+                "opts": [
+                    {
+                        "zh": "浮动(label)：子 prompt 升级时父自动获得更新，适合「公共片段一改处处生效」；钉死(version)：父永远用那一版、不受子升级影响，适合需要稳定的场景——和按 label/version 取 prompt 同一种取舍",
+                        "en": "floating (label): the parent auto-gets updates when the child upgrades, suiting 'edit the shared snippet once, effective everywhere'; pinned (version): the parent always uses that version, unaffected by child upgrades, suiting stability—the same trade-off as fetching prompts by label/version",
+                    },
+                    {"zh": "浮动更安全，钉死有风险", "en": "floating is safer, pinning is risky"},
+                    {"zh": "两者完全等价", "en": "the two are equivalent"},
+                    {"zh": "钉死会自动升级", "en": "pinning auto-upgrades"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "PromptDependency 用 childLabel 或 childVersion 二选一描述引用。浮动(childLabel)：跟着 label 走，子升级父自动获得新内容——适合公共开场白这种「改一次处处更新」。钉死(childVersion)：锁定具体版本，父不受子升级影响——适合要绝对稳定/可复现。这和第一节「按 label 取 vs 按 version 取」是同一种「浮动求便利、钉定求稳定」的取舍，一脉相承。",
+                    "en": "PromptDependency describes a reference by either childLabel or childVersion. Floating (childLabel): follows the label, the parent auto-gets new content on child upgrade—suiting a shared preamble's 'edit once, update everywhere'. Pinned (childVersion): locks a specific version, the parent unaffected by upgrades—suiting absolute stability/reproducibility. This mirrors the first section's 'fetch by label vs version': float for convenience, pin for stability.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "prompt 管理把「软件版本控制」的思想（不可变版本、可移动 label、依赖、commit message）整套搬到了 prompt 上。回想你用 git 的经验：哪些 git 工作流（如分支策略、code review、回滚演练）你觉得也值得搬到 prompt 管理上？反过来，prompt 和代码有什么本质不同，使得某些 git 实践未必适用？",
+                "en": "Prompt management ports the whole idea of 'software version control' (immutable versions, movable labels, dependencies, commit messages) onto prompts. Recall your git experience: which git workflows (branch strategy, code review, rollback drills) do you think are worth porting to prompt management? Conversely, how do prompts differ fundamentally from code, making some git practices not necessarily applicable?",
+            },
+        ],
+    },
 }
 
 

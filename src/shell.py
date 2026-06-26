@@ -121,6 +121,8 @@ PAGES = [
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
     ("36-experiments-and-comparison.html", "实验与对比", "Experiments & comparison",
      "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
+    ("37-prompt-management.html", "Prompt 管理", "Prompt management",
+     "第七部分 · Prompt 与 Playground", "Part 7 · Prompts & Playground"),
 ]
 
 
@@ -676,6 +678,8 @@ SUBTITLES = {
                              "a run = an exam sitting (a config runs the whole set); a run item pins runId+itemId→traceId three-way; a run's trace is an ordinary trace reusing the first five parts; mirrored to CH dataset_run_items_rmt with a denormalized question snapshot (ReplacingMergeTree); dataset-run-item-upsert auto-triggers scoring; aggregate by run via agg_scores_avg"),
     "36-experiments-and-comparison.html": ("实验=prompt×数据集×模型服务端自动跑(createExperimentJobClickhouse 逐题 replaceVariablesInPrompt→调LLM→产trace) · trace 标 PromptExperiments+链接prompt+钉item版本 · 评分自动接第30/35课 · 对比靠 baseline+增量(绝对分难判) · Part6 闭环把能打分升级为能决策",
                                             "experiment = prompt × dataset × model run server-side (createExperimentJobClickhouse per question replaceVariablesInPrompt→call LLM→produce trace); trace tagged PromptExperiments + links prompt + pins item version; scoring auto-connects via L30/35; comparison via baseline + deltas (absolute scores hard to judge); Part 6 closes the loop upgrading scoring into deciding"),
+    "37-prompt-management.html": ("prompt = 专为 prompt 定制的 git：(name,version) 唯一、版本自增不可变+commitMessage · label(production/latest) 是唯一可移动指针，打新版自动从旧版摘除 · 按 label 取=配置与代码分离(发布/回滚秒级零部署)、按 version 取=绝对复现 · protected labels 防误操作 · PromptDependency 组合复用(childLabel浮动/childVersion钉死)",
+                                  "a prompt = git tailored for prompts: (name,version) unique, version auto-increments immutably + commitMessage; a label (production/latest) is a unique movable pointer, tagging a new version auto-strips it from the old; fetch by label = config-code separation (second-scale release/rollback, zero-deploy), fetch by version = absolute reproducibility; protected labels guard against fat-fingering; PromptDependency composition reuse (childLabel floating / childVersion pinned)"),
 }
 
 
