@@ -58,4 +58,5 @@ CONTENT = {
     "40-dashboards-and-widgets.html": part8.LESSON_40,
     "41-query-engine.html": part8.LESSON_41,
     "42-models-and-pricing.html": part8.LESSON_42,
+    "43-cloud-usage-metering.html": part8.LESSON_43,
 }

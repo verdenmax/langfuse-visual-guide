@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>43 · 云用量计量与花费 / Cloud usage metering &amp; spend - Langfuse 图解教程</title>
+<meta name="description" content="第八部分 · 仪表盘·指标·成本｜云用量计量与花费 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="43 · 云用量计量与花费 / Cloud usage metering &amp; spend - Langfuse 图解教程">
+<meta property="og:description" content="第八部分 · 仪表盘·指标·成本｜云用量计量与花费 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="43 · 云用量计量与花费 / Cloud usage metering &amp; spend - Langfuse 图解教程">
+<meta name="twitter:description" content="第八部分 · 仪表盘·指标·成本｜云用量计量与花费 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第八部分 · 仪表盘·指标·成本</span><span class="lang-en">Part 8 · Dashboards, Metrics &amp; Cost</span></span>
+    <span class="pill">43 / 43</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第八部分 · 仪表盘·指标·成本</span><span class="lang-en">Part 8 · Dashboards, Metrics &amp; Cost</span></div>
+    <h1><span class="lang-zh">云用量计量与花费</span><span class="lang-en">Cloud usage metering &amp; spend</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+前面讲的「成本」（第 16、42 课）是<strong>你的 LLM 花了多少</strong>。这一课讲<strong>另一笔账</strong>：你用 Langfuse 这个<strong>平台</strong>本身，平台怎么向你<strong>计量、收费</strong>。这是 <strong>Langfuse Cloud 特有</strong>的一环——自托管（self-host）版本<strong>不向你收费</strong>，所以这一课你可以当作「看看托管服务背后的计费是怎么搭的」。
+重点有三：Langfuse Cloud 按<strong>观测数</strong>计量、用<strong>每小时一次的定时任务</strong>把用量上报给 <strong>Stripe</strong> 开账单，以及一个关乎钱的命门——<strong>「计量必须恰好一次」</strong>的幂等设计。钱算多了惹客户、算少了亏自己，所以这套计量对「不重不漏」的要求，比前面任何一条链路都严苛。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  云计量像小区里的<strong>「水表 + 抄表员」</strong>。你用平台就像用水，平台给你装了一块<strong>表</strong>，按用量（观测数）默默地计。<strong>抄表员</strong>（每小时一次的定时任务）准点来抄一次<strong>这一小时</strong>的读数，把数字报给<strong>收费公司</strong>（Stripe），由它汇总成月度账单。
+  最要命的是：抄表<strong>绝不能重复、也绝不能漏</strong>。抄两遍，你这个月水费翻倍、客户暴怒；漏一次，平台白送了一小时算力。所以抄表员手里攥着一本<strong>「上次抄到几点」的台账</strong>（一张带锁的 cron 记录），死死卡住「<strong>每个整点小时的用量，不多不少、恰好上报一次</strong>」——哪怕他中途打了个盹、网断了重来、或者不小心来了两个抄表员，这本台账都能保证账目分毫不乱。
+</div>
+
+
+<h2>计量模型：每小时数一次观测，报给 Stripe</h2>
+<p>Langfuse Cloud 的计费单位是<strong>观测数（observations）</strong>——你的应用每产生一步可观测的 LLM 操作，就计一次。计量任务（<code>handleCloudUsageMeteringJob</code>）由一个<strong>每小时触发</strong>的定时队列驱动：对刚过去的<strong>那个整点小时</strong>，从 ClickHouse 数出每个项目的观测数，再按组织（organization）汇总，最后把数字推给 <strong>Stripe 的计量 API</strong>，由 Stripe 负责出账单。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="云计量流程：每小时定时任务对过去一小时区间，从 ClickHouse 数各项目的观测/trace/score 数，按组织汇总，对有 Stripe customerId 的组织调用 stripe.billing.meterEvents.create 上报 tracing_observations 用量，由 Stripe 出账单">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">每小时计量：数观测 → 按组织汇总 → 报 Stripe</text>
+  <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">每小时 cron</text><text x="80" y="116" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
+  <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">数这一小时的用量</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.2" fill="var(--faint)">按项目，来自 ClickHouse</text>
+  <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">按 organization 汇总</text><text x="425" y="110" text-anchor="middle" font-size="6.4" fill="var(--muted)">仅有 Stripe customerId 的</text><text x="425" y="123" text-anchor="middle" font-size="6.2" fill="var(--faint)">∑ 各项目观测数</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe 计量 API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.2" fill="var(--muted)">event=tracing_observations</text>
+  <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
+  <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
+  <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe 拿到「某客户这一小时用了 N 个观测」的计量事件，月底汇总成发票——平台只管报数，开票交给专业的</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">上报包在 backOff 重试里：网络抖动也要保证这笔用量最终送达</text>
+</svg>
+<div class="figcap"><b>用量计量 → Stripe 出账</b>：<code>handleCloudUsageMeteringJob</code> 每小时对过去整点区间，用 <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> 从 ClickHouse 数量，按 org 汇总，对有 <code>cloudConfig.stripe.customerId</code> 的组织调 <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code>（<code>backOff</code> 重试）。源码：<code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">数量 + 上报 Stripe</span></div>
+  <pre class="code"><span class="cm">// 1) 对刚过去的整点小时，从 ClickHouse 数各项目用量</span>
+<span class="kw">const</span> observationCounts = <span class="kw">await</span> getObservationCountsByProjectInCreationInterval({ start, end });
+
+<span class="kw">for</span> (<span class="kw">const</span> org <span class="kw">of</span> organizations) {                  <span class="cm">// 仅含有 stripe.customerId 的组织</span>
+  <span class="kw">const</span> countObservations = observationCounts<span class="cm">/* …该 org 各项目 */</span>.reduce((s, p) =&gt; s + p.count, 0);
+  <span class="kw">if</span> (countObservations &gt; 0) {
+    <span class="kw">await</span> backOff(() =&gt;                              <span class="cm">// 重试：保证最终送达</span>
+      stripe.billing.meterEvents.create({
+        event_name: <span class="st">"tracing_observations"</span>,
+        timestamp: meterIntervalEnd.getTime() / 1000,
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// 报数</span>
+  }
+}</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>这一小时数了什么</th><th>来源</th><th>是否用于计费</th></tr></thead>
+  <tbody>
+    <tr><td>观测数（observations）</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>是</b>——上报为 <code>tracing_observations</code> 计量事件</td></tr>
+    <tr><td>trace 数</td><td><code>getTraceCounts…</code></td><td>统计/内部口径</td></tr>
+    <tr><td>score 数</td><td><code>getScoreCounts…</code></td><td>统计/内部口径</td></tr>
+  </tbody>
+</table>
+<p>三种量都数，但<strong>计费只认观测数</strong>（meterEvent 的 <code>event_name</code> 就叫 <code>tracing_observations</code>）。trace/score 的计数更多是内部统计与口径备查——计费单位的选择，前面讲过，落在「最对齐价值」的观测上。</p>
+
+
+<h2>命门：计量必须「恰好一次」</h2>
+<p>定时任务最怕<strong>重复执行</strong>和<strong>中途崩溃</strong>——但对计费来说，这两样都是灾难：重复上报，客户被双倍收费；漏报，平台白送算力。所以计量任务用一张 <code>cronJobs</code> 表当<strong>分布式锁 + 进度台账</strong>，把「恰好一次」焊死。它做三件事：<strong>对齐整点</strong>（区间严格按小时切，<code>lastRun</code> 记到哪个整点）、<strong>互斥锁</strong>（<code>state=Processing</code> 期间别的实例不许进）、<strong>兜底解锁</strong>（锁超过 20 分钟没释放，判定上个任务崩了、强制接管）。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="幂等三道闸：cronJobs 表记录 lastRun 对齐整点小时、state=Processing 互斥锁防并发重复、jobStartedAt 超过20分钟判定崩溃强制接管；三者保证每个小时区间恰好计量一次">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">cronJobs 表：把「恰好一次」焊死的三道闸</text>
+  <rect x="40" y="44" width="640" height="34" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">cronJobs 表：lastRun（已计到哪个整点）· state（Processing?）· jobStartedAt（何时开工）</text>
+  <rect x="40" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="140" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">闸1 · 对齐整点</text><text x="140" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">区间 = [lastRun, +1h)</text><text x="140" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">严格小时边界对齐</text><text x="140" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">同一小时不会算两遍</text>
+  <rect x="260" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">闸2 · 互斥锁</text><text x="360" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">state=Processing 期间</text><text x="360" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">别的实例不许进</text><text x="360" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">防并发重复上报</text>
+  <rect x="480" y="96" width="200" height="96" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="580" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">闸3 · 兜底解锁</text><text x="580" y="134" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">锁 &gt; 20 分钟未释放</text><text x="580" y="148" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">判定上个任务崩了</text><text x="580" y="168" text-anchor="middle" font-size="6.4" fill="var(--muted)">强制接管，不会永久卡死</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">重复执行被锁挡、崩溃被兜底接管、区间按整点对齐——三道闸合力，让每个小时的用量「不重不漏，恰好一次」</text>
+</svg>
+<div class="figcap"><b>「恰好一次」靠数据库锁兜底</b>：<code>handleCloudUsageMeteringJob</code> 用 <code>prisma.cronJobs.upsert</code> 维护 <code>lastRun</code>/<code>state</code>/<code>jobStartedAt</code>：区间严格对齐整点（<code>lastRun % 3600000 === 0</code>）、<code>state=Processing</code> 互斥、<code>jobStartedAt</code> 超 <code>1200000</code>ms（20 分钟）判定崩溃强制接管。重复或崩溃都不会让某小时多算或漏算。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">cronJobs 幂等锁</span></div>
+  <pre class="code"><span class="cm">// 取/建 cron 记录（分布式锁 + 进度台账）</span>
+<span class="kw">const</span> cron = <span class="kw">await</span> prisma.cronJobs.upsert({ … });
+
+<span class="cm">// 闸1：区间严格对齐整点小时（避免错位重叠/漏算）</span>
+<span class="kw">if</span> (cron.lastRun.getTime() % <span class="st">3600000</span> !== 0) { <span class="cm">/* 异常，不处理 */</span> }
+<span class="kw">const</span> meterIntervalStart = cron.lastRun;
+<span class="kw">const</span> meterIntervalEnd = <span class="kw">new</span> Date(cron.lastRun.getTime() + <span class="st">3600000</span>);  <span class="cm">// 正好 1 小时</span>
+
+<span class="cm">// 闸2+3：Processing 互斥；但 jobStartedAt 超 20 分钟视为上个任务崩了，强制接管</span>
+<span class="kw">if</span> (cron.state === <span class="st">Processing</span> &amp;&amp;
+    cron.jobStartedAt &gt;= <span class="kw">new</span> Date(Date.now() - <span class="st">1200000</span>)) { <span class="cm">/* 别人在跑，退出 */</span> }</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>威胁</th><th>会造成</th><th>这道闸怎么挡</th></tr></thead>
+  <tbody>
+    <tr><td>同一区间被算两遍</td><td>客户被双倍收费</td><td>区间严格对齐整点（<code>lastRun%3600000===0</code>），同一小时只处理一次</td></tr>
+    <tr><td>两个实例并发跑</td><td>重复上报</td><td><code>state=Processing</code> 互斥锁，后来者直接退出</td></tr>
+    <tr><td>任务中途崩溃</td><td>锁永久卡死、之后全漏算</td><td><code>jobStartedAt</code> 超 20 分钟视为崩溃，强制接管续算</td></tr>
+  </tbody>
+</table>
+<p>三道闸各防一种现实威胁，合起来把抽象的「精确一次」落成了<strong>三个具体、可测的不变量</strong>。这比空谈「我们保证 exactly-once」靠谱得多——<strong>把保证拆成能写进测试的具体条件</strong>，正是计费这种零容错系统该有的工程姿态。</p>
+
+
+<h2>两本不同的账：平台计费 vs 你的花费告警</h2>
+<p>容易混淆的是：Part 8 里出现了<strong>两种「钱」</strong>，方向正好相反。一种是<strong>平台向你收费</strong>（本课的计量，按观测数报 Stripe）；另一种是<strong>你自己的 LLM 花费</strong>（第 16、42 课算出的成本）。后者还配了一个 <strong>花费告警（cloudSpendAlert）</strong>队列：盯着你这个月在各家 provider 上的 LLM 开销，越过你设的阈值就提醒你——这是帮<strong>你</strong>管好<strong>你的</strong>钱，和平台怎么收你的费是两码事。</p>
+
+<div class="cols">
+  <div class="col"><h4>① 平台计量（本课主线）</h4><p>方向：平台 → 收你的费。按<strong>观测数</strong>每小时报 Stripe，Cloud 专属。<code>cloudUsageMeteringQueue</code>。讲究「恰好一次」。</p></div>
+  <div class="col"><h4>② 花费告警（cloudSpendAlert）</h4><p>方向：帮你 → 管你的 LLM 花费。盯你在 OpenAI/Anthropic 等的成本，越阈值就告警。<code>cloudSpendAlertQueue</code>（CloudSpendAlertJob）。</p></div>
+  <div class="col"><h4>③ 自托管（self-host）</h4><p>没有①——自己部署 Langfuse <strong>不向你收平台费</strong>。但②那样的成本观测、第 16/42 课的成本计算照样能用，你的 LLM 花了多少一样看得清。</p></div>
+</div>
+
+<p>把这条线收个尾：Part 8 从第 40 课「把数据聚合成图」一路走到这里，本质是回答<strong>「看清并管住数字」</strong>这件事——仪表盘看趋势、查询引擎统一口径、定价模型算清成本，而这一课，是把其中一类数字（用量）<strong>变成真金白银的账单</strong>。它也顺势揭开了 Langfuse 作为一门<strong>云生意</strong>的内里：开源可自托管（不收费），云托管按用量计费（这套 Stripe 计量）——技术与商业，在这台 worker 上严丝合缝地咬合。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么计量任务要为「恰好一次」下这么大功夫——对齐整点、加锁、还要兜底解锁？</strong> 因为<strong>这是钱</strong>，而钱对错误的容忍度是零。前面所有链路，偶尔多算一条 trace、漏掉一个 score，大多无伤大雅、下次自愈。但计费不一样：<strong>多上报一小时用量，客户的信用卡就被多刷一次</strong>，是会上投诉、上推特的事故；少报，则是平台实打实的亏损。普通后台任务追求「最终一致」就够了，计量任务却必须做到<strong>「精确一次」（exactly-once）</strong>——这是分布式系统里出了名难啃的保证。Langfuse 的解法很务实：不去追求理论上完美的精确一次，而是用一张<strong>数据库行当锁</strong>，把三种现实威胁逐一堵死——重复执行（互斥锁挡）、任务崩溃（20 分钟兜底接管）、区间错位（严格对齐整点）。<strong>把「精确一次」拆解成几个可落地的具体防护，而非空谈理论保证</strong>，这是工程的智慧。<br><br>
+  <strong>为什么 Langfuse 按「观测数」计费，而不是 trace 数或 token 数？</strong> 这是个有意思的产品取舍。按 <strong>token</strong> 计费会和你用的模型强绑定（贵模型 token 多），且和 Langfuse 提供的价值不直接相关——Langfuse 的价值是<strong>记录和分析</strong>，不是替你跑模型。按 <strong>trace</strong> 计费则太粗：一个 trace 可能含一步、也可能含上百步观测，复杂 agent 和简单问答按同价收费不公平。<strong>观测</strong>恰好是「一次可观测的操作」这个<strong>原子计量单位</strong>——它和「Langfuse 帮你存了、分析了多少东西」最对得上，复杂应用产生的观测多、付得也多，简单的少付，<strong>计费颗粒度与平台提供的价值对齐</strong>。好的计费单位，应当让「客户付的钱」正比于「他从你这儿得到的价值」。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>这是 Cloud 专属的平台计费</strong>：和你的 LLM 成本（第 16/42 课）是两笔反向的账；自托管不收平台费，可只看作「托管计费如何搭建」。</li>
+    <li><strong>按观测数计量</strong>：每小时定时任务从 ClickHouse 数各 org 的观测数，对有 Stripe customerId 的组织调 <code>meterEvents.create</code> 上报（<code>backOff</code> 重试），由 Stripe 出账。</li>
+    <li><strong>「恰好一次」是命门</strong>：用 <code>cronJobs</code> 表当分布式锁+台账——区间严格对齐整点、<code>Processing</code> 互斥、20 分钟兜底接管，让每小时用量不重不漏。</li>
+    <li><strong>计费要精确一次</strong>：钱对错误零容忍，普通任务的「最终一致」不够；把 exactly-once 拆成「防重复+防崩溃+防错位」三道可落地的具体防护。</li>
+    <li><strong>观测是对齐价值的计费单位</strong>：比 token（绑模型）、trace（太粗）更贴合「Langfuse 帮你记录分析了多少」——客户付的钱正比于得到的价值。另有 <code>cloudSpendAlert</code> 帮你管自己的 LLM 花费。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse Cloud 的用量计量任务用一张 cronJobs 表，做整点对齐 + Processing 互斥 + 20分钟兜底接管。这套设计要解决的核心问题是？</div>
+  <ol class="opts">
+    <li>计费的「恰好一次」：重复上报会双倍收费、漏报则平台亏损；用数据库行锁堵死重复执行(互斥)、任务崩溃(20分钟兜底)、区间错位(整点对齐)，让每小时用量不重不漏</li>
+    <li>支持多种货币</li>
+    <li>压缩 ClickHouse 存储</li>
+    <li>加快计量速度</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。前面链路偶尔多算一条 trace 大多无伤、下次自愈，但计费对错误零容忍：多报一小时用量，客户信用卡被多刷、上投诉；少报是平台亏损。普通任务「最终一致」不够，计量须「精确一次」(exactly-once，分布式难题)。Langfuse 务实地用 cronJobs 行锁把三种威胁逐一堵死：重复执行(Processing 互斥)、崩溃(jobStartedAt>20分钟强制接管)、错位(lastRun%3600000===0 整点对齐)。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse Cloud 按「观测数」（observations）向你计费，而不是按 trace 数或 token 数。为什么观测是更合适的计费单位？</div>
+  <ol class="opts">
+    <li>观测数最容易统计</li>
+    <li>观测数最小，收费最低</li>
+    <li>它最对齐平台提供的价值：token 绑模型(贵模型token多，与记录分析的价值无关)、trace 太粗(一个trace可能1步也可能上百步观测)；观测是「一次可观测操作」的原子单位，让客户付的钱正比于「Langfuse帮你记录分析了多少」</li>
+    <li>Stripe 只支持观测计费</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Part 8 里出现了两种「钱」：cloudUsageMetering 和 cloudSpendAlert。它们的区别是？</div>
+  <ol class="opts">
+    <li>完全一样，只是名字不同</li>
+    <li>都是平台向你收费</li>
+    <li>都只在自托管版生效</li>
+    <li>方向相反：计量是「平台向你收费」(按观测数报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。两笔账方向相反。cloudUsageMetering：平台→收你的费，按观测数每小时报 Stripe，是 Cloud 商业层、自托管不收费。cloudSpendAlert：帮你→管你自己在 OpenAI/Anthropic 等的 LLM 开销，越过你设的阈值就提醒——和第16/42课算你的成本一脉相承。前者是「Langfuse 怎么收你钱」，后者是「帮你看你花了多少钱」，别混淆。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「计费必须恰好一次」是分布式系统里出了名难的 exactly-once 问题，而 Langfuse 没有追求理论完美，而是用一张数据库行锁把「防重复+防崩溃+防错位」三种现实威胁逐一堵死。回想你做过或设想的系统：哪些场景对「不重不漏」有类似的硬要求（支付、库存、发券）？你会怎么权衡「理论上的精确一次」与「工程上够用的几道具体防护」？后者有什么风险？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+The "cost" discussed earlier (Lessons 16, 42) is <strong>how much your LLM spent</strong>. This lesson is about <strong>a different ledger</strong>: how the Langfuse <strong>platform itself</strong> <strong>meters and charges</strong> you for using it. This is <strong>Langfuse Cloud-specific</strong>—the self-hosted version <strong>does not charge you</strong>, so you can read this lesson as "a look at how a managed service's billing is built".
+Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses an <strong>hourly scheduled job</strong> to report usage to <strong>Stripe</strong> for invoicing, and a money-critical concern—the <strong>"meter exactly once"</strong> idempotency design. Over-count and you anger customers, under-count and you lose money, so this metering's demand for "no duplicates, no misses" is stricter than any chain before it.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (observation count). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
+  The critical part: a reading <strong>must never duplicate, never miss</strong>. Read twice and your water bill doubles this month—an enraged customer; miss one and the platform gives away an hour of compute for free. So the reader clutches a <strong>"where did I read up to" ledger</strong> (a locked cron record), rigidly enforcing "<strong>each whole hour's usage is reported exactly once, no more, no less</strong>"—even if he dozes off mid-read, the network drops and he restarts, or two readers accidentally show up, this ledger keeps the books flawless.
+</div>
+
+
+<h2>The metering model: count observations hourly, report to Stripe</h2>
+<p>Langfuse Cloud's billing unit is the <strong>observation count</strong>—each observable LLM step your app produces counts once. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observations from ClickHouse, aggregates by organization, and pushes the figure to <strong>Stripe's metering API</strong>, leaving Stripe to invoice.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations usage, with Stripe invoicing">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">hourly metering: count observations → aggregate by org → report to Stripe</text>
+  <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">hourly cron</text><text x="80" y="116" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
+  <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">count this hour's usage</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.2" fill="var(--faint)">per project, from ClickHouse</text>
+  <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">aggregate by organization</text><text x="425" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">only those with a Stripe customerId</text><text x="425" y="123" text-anchor="middle" font-size="6.2" fill="var(--faint)">∑ each project's observations</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">event=tracing_observations</text>
+  <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
+  <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
+  <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe receives "this customer used N observations this hour" metering events, rolling into an invoice at month end—the platform just reports counts, invoicing left to the specialist</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
+</svg>
+<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">count + report to Stripe</span></div>
+  <pre class="code"><span class="cm">// 1) for the just-passed whole hour, count each project's usage from ClickHouse</span>
+<span class="kw">const</span> observationCounts = <span class="kw">await</span> getObservationCountsByProjectInCreationInterval({ start, end });
+
+<span class="kw">for</span> (<span class="kw">const</span> org <span class="kw">of</span> organizations) {                  <span class="cm">// only orgs with a stripe.customerId</span>
+  <span class="kw">const</span> countObservations = observationCounts<span class="cm">/* …this org's projects */</span>.reduce((s, p) =&gt; s + p.count, 0);
+  <span class="kw">if</span> (countObservations &gt; 0) {
+    <span class="kw">await</span> backOff(() =&gt;                              <span class="cm">// retry: guarantee eventual delivery</span>
+      stripe.billing.meterEvents.create({
+        event_name: <span class="st">"tracing_observations"</span>,
+        timestamp: meterIntervalEnd.getTime() / 1000,
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// report count</span>
+  }
+}</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>what's counted this hour</th><th>source</th><th>used for billing?</th></tr></thead>
+  <tbody>
+    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b>—reported as the <code>tracing_observations</code> meter event</td></tr>
+    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td>stats / internal</td></tr>
+    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td>stats / internal</td></tr>
+  </tbody>
+</table>
+<p>All three are counted, but <strong>only observation count is billed</strong> (the meterEvent's <code>event_name</code> is literally <code>tracing_observations</code>). Trace/score counts are more for internal stats and reference—the choice of billing unit, as discussed, lands on the most value-aligned observation.</p>
+
+
+<h2>The crux: metering must be "exactly once"</h2>
+<p>A scheduled job most fears <strong>duplicate execution</strong> and <strong>crashing mid-way</strong>—but for billing, both are disasters: a duplicate report double-charges the customer; a miss gives away compute. So the metering job uses a <code>cronJobs</code> table as a <strong>distributed lock + progress ledger</strong>, welding "exactly once" shut. It does three things: <strong>align to the hour</strong> (intervals strictly cut by hour, <code>lastRun</code> records which hour), <strong>mutual exclusion</strong> (during <code>state=Processing</code>, another instance may not enter), and <strong>fallback unlock</strong> (if the lock is held over 20 minutes, deem the prior job crashed and forcibly take over).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Three idempotency gates: the cronJobs table records lastRun aligned to whole hours, state=Processing as a mutex preventing concurrent duplicates, and jobStartedAt over 20 minutes deemed a crash forcing takeover; together they ensure each hour interval is metered exactly once">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">cronJobs table: three gates welding "exactly once" shut</text>
+  <rect x="40" y="44" width="640" height="34" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">cronJobs table: lastRun (metered up to which hour) · state (Processing?) · jobStartedAt (when started)</text>
+  <rect x="40" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="140" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">gate1 · align to hour</text><text x="140" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">interval = [lastRun, +1h)</text><text x="140" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">strict hour-boundary aligned</text><text x="140" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">no hour counted twice</text>
+  <rect x="260" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">gate2 · mutex</text><text x="360" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">while state=Processing</text><text x="360" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">other instances may not enter</text><text x="360" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">prevents concurrent duplicate reports</text>
+  <rect x="480" y="96" width="200" height="96" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="580" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">gate3 · fallback unlock</text><text x="580" y="134" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">lock held &gt; 20 minutes</text><text x="580" y="148" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">deem prior job crashed</text><text x="580" y="168" text-anchor="middle" font-size="6.4" fill="var(--muted)">forcibly take over, never stuck forever</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">duplicates blocked by the lock, crashes recovered by fallback, intervals aligned to the hour—three gates together make each hour's usage "no dup, no miss, exactly once"</text>
+</svg>
+<div class="figcap"><b>"exactly once" backstopped by a DB lock</b>: <code>handleCloudUsageMeteringJob</code> maintains <code>lastRun</code>/<code>state</code>/<code>jobStartedAt</code> via <code>prisma.cronJobs.upsert</code>: intervals strictly hour-aligned (<code>lastRun % 3600000 === 0</code>), <code>state=Processing</code> mutex, <code>jobStartedAt</code> over <code>1200000</code>ms (20 min) deemed crashed and forcibly taken over. Neither a duplicate nor a crash makes an hour over- or under-counted.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">cronJobs idempotency lock</span></div>
+  <pre class="code"><span class="cm">// get/create the cron record (distributed lock + progress ledger)</span>
+<span class="kw">const</span> cron = <span class="kw">await</span> prisma.cronJobs.upsert({ … });
+
+<span class="cm">// gate1: interval strictly aligned to a whole hour (avoid misaligned overlap/gaps)</span>
+<span class="kw">if</span> (cron.lastRun.getTime() % <span class="st">3600000</span> !== 0) { <span class="cm">/* anomaly, don't process */</span> }
+<span class="kw">const</span> meterIntervalStart = cron.lastRun;
+<span class="kw">const</span> meterIntervalEnd = <span class="kw">new</span> Date(cron.lastRun.getTime() + <span class="st">3600000</span>);  <span class="cm">// exactly 1 hour</span>
+
+<span class="cm">// gate2+3: Processing mutex; but jobStartedAt over 20 min = prior job crashed, take over</span>
+<span class="kw">if</span> (cron.state === <span class="st">Processing</span> &amp;&amp;
+    cron.jobStartedAt &gt;= <span class="kw">new</span> Date(Date.now() - <span class="st">1200000</span>)) { <span class="cm">/* someone's running, exit */</span> }</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>threat</th><th>would cause</th><th>how this gate blocks it</th></tr></thead>
+  <tbody>
+    <tr><td>the same interval counted twice</td><td>customer double-charged</td><td>intervals strictly hour-aligned (<code>lastRun%3600000===0</code>), each hour processed once</td></tr>
+    <tr><td>two instances running concurrently</td><td>duplicate reports</td><td><code>state=Processing</code> mutex, the latecomer exits</td></tr>
+    <tr><td>the job crashing mid-way</td><td>lock stuck forever, all later misses</td><td><code>jobStartedAt</code> over 20 min deemed a crash, forcibly taken over to resume</td></tr>
+  </tbody>
+</table>
+<p>Each gate guards one real threat; together they ground abstract "exactly once" into <strong>three concrete, testable invariants</strong>. That's far more reliable than vaguely claiming "we guarantee exactly-once"—<strong>decomposing the guarantee into conditions you can write tests for</strong> is exactly the engineering posture a zero-tolerance billing system deserves.</p>
+
+
+<h2>Two different ledgers: platform billing vs your spend alerts</h2>
+<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+
+<div class="cols">
+  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
+  <div class="col"><h4>② spend alerts (cloudSpendAlert)</h4><p>direction: helps you → manage your LLM spend. Watches your cost on OpenAI/Anthropic etc., alerts on threshold crossing. <code>cloudSpendAlertQueue</code> (CloudSpendAlertJob).</p></div>
+  <div class="col"><h4>③ self-host</h4><p>no ①—self-deploying Langfuse <strong>charges you no platform fee</strong>. But cost observation like ② and the cost computation of Lessons 16/42 still work—you see your LLM spend just the same.</p></div>
+</div>
+
+<p>To wrap this thread: Part 8 ran from Lesson 40's "aggregate data into charts" all the way here, essentially answering <strong>"see clearly and govern the numbers"</strong>—dashboards show trends, the query engine unifies definitions, the pricing model computes cost clearly, and this lesson turns one kind of number (usage) <strong>into a real-money invoice</strong>. It also pulls back the curtain on Langfuse as a <strong>cloud business</strong>: open source and self-hostable (no charge), cloud-managed and usage-billed (this Stripe metering)—technology and commerce meshing tightly on this one worker.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does the metering job go to such lengths for "exactly once"—hour alignment, locking, plus fallback unlock?</strong> Because <strong>this is money</strong>, and money's tolerance for error is zero. All earlier chains can occasionally over-count a trace or miss a score with little harm, self-healing next time. Billing is different: <strong>over-report one hour and a customer's credit card gets charged once more</strong>—a complaint-and-Twitter incident; under-report and the platform takes a real loss. A normal background job seeking "eventual consistency" is enough, but the metering job must achieve <strong>"exactly once"</strong>—a notoriously hard guarantee in distributed systems. Langfuse's solution is pragmatic: rather than chase theoretically perfect exactly-once, it uses a <strong>database row as a lock</strong> to plug three real threats one by one—duplicate execution (mutex blocks), task crash (20-minute fallback takeover), interval misalignment (strict hour alignment). <strong>Decomposing "exactly once" into a few implementable concrete defenses, rather than theorizing about guarantees</strong>—that's engineering wisdom.<br><br>
+  <strong>Why does Langfuse bill by "observation count" rather than trace count or token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations, and charging complex agents and simple Q&A the same is unfair. An <strong>observation</strong> is exactly the <strong>atomic metering unit</strong> of "one observable operation"—it best matches "how much Langfuse stored and analyzed for you": complex apps produce more observations and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>. A good billing unit should make "what the customer pays" proportional to "the value they get from you".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
+    <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>
+    <li><strong>"Exactly once" is the crux</strong>: a <code>cronJobs</code> table as distributed lock + ledger—strict hour-aligned intervals, <code>Processing</code> mutex, 20-minute fallback takeover—so each hour's usage is no-dup, no-miss.</li>
+    <li><strong>Billing must be exactly-once</strong>: money tolerates no error, normal jobs' "eventual consistency" isn't enough; decompose exactly-once into "anti-duplicate + anti-crash + anti-misalignment" implementable defenses.</li>
+    <li><strong>Observation = a value-aligned billing unit</strong>: better than token (model-bound) or trace (too coarse) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse Cloud's usage-metering job uses a cronJobs table for hour alignment + Processing mutex + 20-minute fallback takeover. What core problem does this design solve?</div>
+  <ol class="opts">
+    <li>billing's 'exactly once': a duplicate report double-charges, a miss loses money for the platform; a DB row lock plugs duplicate execution (mutex), task crash (20-min fallback), and interval misalignment (hour alignment), so each hour's usage is no-dup, no-miss</li>
+    <li>supporting multiple currencies</li>
+    <li>compressing ClickHouse storage</li>
+    <li>speeding up metering</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Earlier chains can over-count a trace harmlessly and self-heal, but billing tolerates no error: over-report an hour and a customer's card is overcharged with a complaint; under-report is a platform loss. Normal 'eventual consistency' isn't enough; metering must be 'exactly once' (a hard distributed problem). Langfuse pragmatically uses a cronJobs row lock to plug three threats: duplicate execution (Processing mutex), crash (jobStartedAt>20min forced takeover), misalignment (lastRun%3600000===0 hour alignment).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?</div>
+  <ol class="opts">
+    <li>observation count is easiest to count</li>
+    <li>observation count is smallest, lowest charge</li>
+    <li>it best aligns with the platform's value: token is model-bound (pricey models burn more, unrelated to record/analysis value), trace is too coarse (one trace may be 1 step or hundreds of observations); the observation is the atomic unit of 'one observable operation', making what the customer pays proportional to 'how much Langfuse recorded/analyzed'</li>
+    <li>Stripe only supports observation billing</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Part 8 features two kinds of 'money': cloudUsageMetering and cloudSpendAlert. What's the difference?</div>
+  <ol class="opts">
+    <li>identical, just different names</li>
+    <li>both are the platform charging you</li>
+    <li>both only work in self-host</li>
+    <li>opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Two opposite ledgers. cloudUsageMetering: platform → charges you, reporting observation count to Stripe hourly, the Cloud commercial layer, self-host charges nothing. cloudSpendAlert: helps you → manage your own LLM spend on OpenAI/Anthropic etc., alerting when crossing your threshold—in the lineage of Lessons 16/42 computing your cost. The former is 'how Langfuse charges you', the latter 'helping you watch what you spent'; don't conflate them.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Billing must be exactly once' is the notoriously hard exactly-once problem in distributed systems, yet Langfuse doesn't chase theoretical perfection but uses a DB row lock to plug three real threats: anti-duplicate + anti-crash + anti-misalignment. Recall systems you've built or imagined: which scenarios have a similar hard 'no-dup-no-miss' requirement (payments, inventory, coupon issuance)? How would you weigh 'theoretical exactly-once' against 'a few good-enough concrete engineering defenses'? What are the latter's risks?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="42-models-and-pricing.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">模型与定价</span><span class="lang-en">Models &amp; pricing</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

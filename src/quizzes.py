@@ -2985,6 +2985,76 @@ QUIZZES = {
             },
         ],
     },
+    "43-cloud-usage-metering.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse Cloud 的用量计量任务用一张 cronJobs 表，做整点对齐 + Processing 互斥 + 20分钟兜底接管。这套设计要解决的核心问题是？",
+                    "en": "Langfuse Cloud's usage-metering job uses a cronJobs table for hour alignment + Processing mutex + 20-minute fallback takeover. What core problem does this design solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "计费的「恰好一次」：重复上报会双倍收费、漏报则平台亏损；用数据库行锁堵死重复执行(互斥)、任务崩溃(20分钟兜底)、区间错位(整点对齐)，让每小时用量不重不漏",
+                        "en": "billing's 'exactly once': a duplicate report double-charges, a miss loses money for the platform; a DB row lock plugs duplicate execution (mutex), task crash (20-min fallback), and interval misalignment (hour alignment), so each hour's usage is no-dup, no-miss",
+                    },
+                    {"zh": "加快计量速度", "en": "speeding up metering"},
+                    {"zh": "压缩 ClickHouse 存储", "en": "compressing ClickHouse storage"},
+                    {"zh": "支持多种货币", "en": "supporting multiple currencies"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "前面链路偶尔多算一条 trace 大多无伤、下次自愈，但计费对错误零容忍：多报一小时用量，客户信用卡被多刷、上投诉；少报是平台亏损。普通任务「最终一致」不够，计量须「精确一次」(exactly-once，分布式难题)。Langfuse 务实地用 cronJobs 行锁把三种威胁逐一堵死：重复执行(Processing 互斥)、崩溃(jobStartedAt>20分钟强制接管)、错位(lastRun%3600000===0 整点对齐)。",
+                    "en": "Earlier chains can over-count a trace harmlessly and self-heal, but billing tolerates no error: over-report an hour and a customer's card is overcharged with a complaint; under-report is a platform loss. Normal 'eventual consistency' isn't enough; metering must be 'exactly once' (a hard distributed problem). Langfuse pragmatically uses a cronJobs row lock to plug three threats: duplicate execution (Processing mutex), crash (jobStartedAt>20min forced takeover), misalignment (lastRun%3600000===0 hour alignment).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse Cloud 按「观测数」（observations）向你计费，而不是按 trace 数或 token 数。为什么观测是更合适的计费单位？",
+                    "en": "Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?",
+                },
+                "opts": [
+                    {
+                        "zh": "它最对齐平台提供的价值：token 绑模型(贵模型token多，与记录分析的价值无关)、trace 太粗(一个trace可能1步也可能上百步观测)；观测是「一次可观测操作」的原子单位，让客户付的钱正比于「Langfuse帮你记录分析了多少」",
+                        "en": "it best aligns with the platform's value: token is model-bound (pricey models burn more, unrelated to record/analysis value), trace is too coarse (one trace may be 1 step or hundreds of observations); the observation is the atomic unit of 'one observable operation', making what the customer pays proportional to 'how much Langfuse recorded/analyzed'",
+                    },
+                    {"zh": "观测数最容易统计", "en": "observation count is easiest to count"},
+                    {"zh": "Stripe 只支持观测计费", "en": "Stripe only supports observation billing"},
+                    {"zh": "观测数最小，收费最低", "en": "observation count is smallest, lowest charge"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。",
+                    "en": "Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Part 8 里出现了两种「钱」：cloudUsageMetering 和 cloudSpendAlert。它们的区别是？",
+                    "en": "Part 8 features two kinds of 'money': cloudUsageMetering and cloudSpendAlert. What's the difference?",
+                },
+                "opts": [
+                    {
+                        "zh": "方向相反：计量是「平台向你收费」(按观测数报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱",
+                        "en": "opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money",
+                    },
+                    {"zh": "完全一样，只是名字不同", "en": "identical, just different names"},
+                    {"zh": "都是平台向你收费", "en": "both are the platform charging you"},
+                    {"zh": "都只在自托管版生效", "en": "both only work in self-host"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "两笔账方向相反。cloudUsageMetering：平台→收你的费，按观测数每小时报 Stripe，是 Cloud 商业层、自托管不收费。cloudSpendAlert：帮你→管你自己在 OpenAI/Anthropic 等的 LLM 开销，越过你设的阈值就提醒——和第16/42课算你的成本一脉相承。前者是「Langfuse 怎么收你钱」，后者是「帮你看你花了多少钱」，别混淆。",
+                    "en": "Two opposite ledgers. cloudUsageMetering: platform → charges you, reporting observation count to Stripe hourly, the Cloud commercial layer, self-host charges nothing. cloudSpendAlert: helps you → manage your own LLM spend on OpenAI/Anthropic etc., alerting when crossing your threshold—in the lineage of Lessons 16/42 computing your cost. The former is 'how Langfuse charges you', the latter 'helping you watch what you spent'; don't conflate them.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「计费必须恰好一次」是分布式系统里出了名难的 exactly-once 问题，而 Langfuse 没有追求理论完美，而是用一张数据库行锁把「防重复+防崩溃+防错位」三种现实威胁逐一堵死。回想你做过或设想的系统：哪些场景对「不重不漏」有类似的硬要求（支付、库存、发券）？你会怎么权衡「理论上的精确一次」与「工程上够用的几道具体防护」？后者有什么风险？",
+                "en": "'Billing must be exactly once' is the notoriously hard exactly-once problem in distributed systems, yet Langfuse doesn't chase theoretical perfection but uses a DB row lock to plug three real threats: anti-duplicate + anti-crash + anti-misalignment. Recall systems you've built or imagined: which scenarios have a similar hard 'no-dup-no-miss' requirement (payments, inventory, coupon issuance)? How would you weigh 'theoretical exactly-once' against 'a few good-enough concrete engineering defenses'? What are the latter's risks?",
+            },
+        ],
+    },
 }
 
 

@@ -133,6 +133,8 @@ PAGES = [
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
     ("42-models-and-pricing.html", "模型与定价", "Models & pricing",
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
+    ("43-cloud-usage-metering.html", "云用量计量与花费", "Cloud usage metering & spend",
+     "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
 ]
 
 
@@ -700,6 +702,8 @@ SUBTITLES = {
                             "the query engine = a declarative-query → ClickHouse SQL compiler; the semantic-layer dataModel maps logical names (name/totalCost) to real SQL columns/expressions; QueryBuilder.build consults the dictionary to translate dimensions→GROUP BY/measures→aggregations/time-bucketing/filters→parameterized WHERE/joins; values go via parameters for injection safety (L23); view v1/v2 versioning protects history; one engine for many consumers keeps definitions consistent"),
     "42-models-and-pricing.html": ("定价数据模型喂第16课成本计算 · matchPattern 一条正则统一各家命名(provider前缀/区域前缀/版本后缀/@date) · pricingTiers 默认档+条件档分级定价(matchPricingTier 按 priority 评 AND 条件，否则回落默认) · prices 分项每token计费(输入/输出/缓存读) · 158条种子价 default-model-prices.json upsert，项目可自定义覆盖 · 规则即数据",
                                    "the pricing data model feeds Lesson 16's cost computation; matchPattern unifies naming with one regex (provider/region prefixes, version suffix, @date); pricingTiers tier pricing with a default + conditional tiers (matchPricingTier evaluates AND conditions by priority, else default); prices bills line-by-line per token (input/output/cache-read); 158 seed prices in default-model-prices.json are upserted, projects can override; rules as data"),
+    "43-cloud-usage-metering.html": ("Cloud 专属平台计费(与你的LLM成本反向两笔账，自托管不收费) · 按观测数计量：每小时 cron 从CH数各org观测、对有Stripe customerId的org调 meterEvents.create 上报由Stripe出账(backOff重试) · 命门「恰好一次」：cronJobs表分布式锁+台账，整点对齐+Processing互斥+20分钟兜底接管 · 计费要exactly-once · 观测是对齐价值的计费单位 · cloudSpendAlert 管你的LLM花费",
+                                     "Cloud-exclusive platform billing (an opposite ledger from your LLM cost, self-host charges nothing); meter by observation count: an hourly cron counts each org's observations from CH and for orgs with a Stripe customerId calls meterEvents.create to report, Stripe invoicing (backOff retry); the crux is 'exactly once': a cronJobs table as distributed lock + ledger, hour-aligned + Processing mutex + 20-min fallback takeover; billing must be exactly-once; the observation is a value-aligned billing unit; cloudSpendAlert manages your LLM spend"),
 }
 
 

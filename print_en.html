@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 42 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 43 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -379,6 +379,7 @@ details[open] > summary { list-style: none; }
   <li>Dashboards & widgets</li>
   <li>The query engine</li>
   <li>Models & pricing</li>
+  <li>Cloud usage metering & spend</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8801,6 +8802,186 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Model pricing expresses 'tiering policy' as data (tiers with conditions) rather than if-else in code—another echo of Lessons 16/28's 'rules as data'. Recall systems you've built: which 'business rules' are actually better as data/config than hardcoded? 'Rules as data' brings flexibility but also costs (designing a schema to express rules, writing an interpreter, harder debugging). By what criteria would you decide whether a rule goes into code or into data?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Cloud usage metering & spend</h1>
+
+<p class="lead">
+The "cost" discussed earlier (Lessons 16, 42) is <strong>how much your LLM spent</strong>. This lesson is about <strong>a different ledger</strong>: how the Langfuse <strong>platform itself</strong> <strong>meters and charges</strong> you for using it. This is <strong>Langfuse Cloud-specific</strong>—the self-hosted version <strong>does not charge you</strong>, so you can read this lesson as "a look at how a managed service's billing is built".
+Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses an <strong>hourly scheduled job</strong> to report usage to <strong>Stripe</strong> for invoicing, and a money-critical concern—the <strong>"meter exactly once"</strong> idempotency design. Over-count and you anger customers, under-count and you lose money, so this metering's demand for "no duplicates, no misses" is stricter than any chain before it.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (observation count). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
+  The critical part: a reading <strong>must never duplicate, never miss</strong>. Read twice and your water bill doubles this month—an enraged customer; miss one and the platform gives away an hour of compute for free. So the reader clutches a <strong>"where did I read up to" ledger</strong> (a locked cron record), rigidly enforcing "<strong>each whole hour's usage is reported exactly once, no more, no less</strong>"—even if he dozes off mid-read, the network drops and he restarts, or two readers accidentally show up, this ledger keeps the books flawless.
+</div>
+
+
+<h2>The metering model: count observations hourly, report to Stripe</h2>
+<p>Langfuse Cloud's billing unit is the <strong>observation count</strong>—each observable LLM step your app produces counts once. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observations from ClickHouse, aggregates by organization, and pushes the figure to <strong>Stripe's metering API</strong>, leaving Stripe to invoice.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations usage, with Stripe invoicing">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">hourly metering: count observations → aggregate by org → report to Stripe</text>
+  <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">hourly cron</text><text x="80" y="116" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
+  <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">count this hour's usage</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.2" fill="var(--faint)">per project, from ClickHouse</text>
+  <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">aggregate by organization</text><text x="425" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">only those with a Stripe customerId</text><text x="425" y="123" text-anchor="middle" font-size="6.2" fill="var(--faint)">∑ each project's observations</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">event=tracing_observations</text>
+  <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
+  <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
+  <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
+  <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe receives "this customer used N observations this hour" metering events, rolling into an invoice at month end—the platform just reports counts, invoicing left to the specialist</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
+</svg>
+<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">count + report to Stripe</span></div>
+  <pre class="code"><span class="cm">// 1) for the just-passed whole hour, count each project's usage from ClickHouse</span>
+<span class="kw">const</span> observationCounts = <span class="kw">await</span> getObservationCountsByProjectInCreationInterval({ start, end });
+
+<span class="kw">for</span> (<span class="kw">const</span> org <span class="kw">of</span> organizations) {                  <span class="cm">// only orgs with a stripe.customerId</span>
+  <span class="kw">const</span> countObservations = observationCounts<span class="cm">/* …this org's projects */</span>.reduce((s, p) =&gt; s + p.count, 0);
+  <span class="kw">if</span> (countObservations &gt; 0) {
+    <span class="kw">await</span> backOff(() =&gt;                              <span class="cm">// retry: guarantee eventual delivery</span>
+      stripe.billing.meterEvents.create({
+        event_name: <span class="st">"tracing_observations"</span>,
+        timestamp: meterIntervalEnd.getTime() / 1000,
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// report count</span>
+  }
+}</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>what's counted this hour</th><th>source</th><th>used for billing?</th></tr></thead>
+  <tbody>
+    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b>—reported as the <code>tracing_observations</code> meter event</td></tr>
+    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td>stats / internal</td></tr>
+    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td>stats / internal</td></tr>
+  </tbody>
+</table>
+<p>All three are counted, but <strong>only observation count is billed</strong> (the meterEvent's <code>event_name</code> is literally <code>tracing_observations</code>). Trace/score counts are more for internal stats and reference—the choice of billing unit, as discussed, lands on the most value-aligned observation.</p>
+
+
+<h2>The crux: metering must be "exactly once"</h2>
+<p>A scheduled job most fears <strong>duplicate execution</strong> and <strong>crashing mid-way</strong>—but for billing, both are disasters: a duplicate report double-charges the customer; a miss gives away compute. So the metering job uses a <code>cronJobs</code> table as a <strong>distributed lock + progress ledger</strong>, welding "exactly once" shut. It does three things: <strong>align to the hour</strong> (intervals strictly cut by hour, <code>lastRun</code> records which hour), <strong>mutual exclusion</strong> (during <code>state=Processing</code>, another instance may not enter), and <strong>fallback unlock</strong> (if the lock is held over 20 minutes, deem the prior job crashed and forcibly take over).</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="Three idempotency gates: the cronJobs table records lastRun aligned to whole hours, state=Processing as a mutex preventing concurrent duplicates, and jobStartedAt over 20 minutes deemed a crash forcing takeover; together they ensure each hour interval is metered exactly once">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">cronJobs table: three gates welding "exactly once" shut</text>
+  <rect x="40" y="44" width="640" height="34" rx="7" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="65" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">cronJobs table: lastRun (metered up to which hour) · state (Processing?) · jobStartedAt (when started)</text>
+  <rect x="40" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="140" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">gate1 · align to hour</text><text x="140" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">interval = [lastRun, +1h)</text><text x="140" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">strict hour-boundary aligned</text><text x="140" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">no hour counted twice</text>
+  <rect x="260" y="96" width="200" height="96" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">gate2 · mutex</text><text x="360" y="134" text-anchor="middle" font-size="6.6" fill="var(--muted)">while state=Processing</text><text x="360" y="148" text-anchor="middle" font-size="6.6" fill="var(--muted)">other instances may not enter</text><text x="360" y="168" text-anchor="middle" font-size="6.4" fill="var(--faint)">prevents concurrent duplicate reports</text>
+  <rect x="480" y="96" width="200" height="96" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="580" y="116" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">gate3 · fallback unlock</text><text x="580" y="134" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">lock held &gt; 20 minutes</text><text x="580" y="148" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">deem prior job crashed</text><text x="580" y="168" text-anchor="middle" font-size="6.4" fill="var(--muted)">forcibly take over, never stuck forever</text>
+  <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">duplicates blocked by the lock, crashes recovered by fallback, intervals aligned to the hour—three gates together make each hour's usage "no dup, no miss, exactly once"</text>
+</svg>
+<div class="figcap"><b>"exactly once" backstopped by a DB lock</b>: <code>handleCloudUsageMeteringJob</code> maintains <code>lastRun</code>/<code>state</code>/<code>jobStartedAt</code> via <code>prisma.cronJobs.upsert</code>: intervals strictly hour-aligned (<code>lastRun % 3600000 === 0</code>), <code>state=Processing</code> mutex, <code>jobStartedAt</code> over <code>1200000</code>ms (20 min) deemed crashed and forcibly taken over. Neither a duplicate nor a crash makes an hour over- or under-counted.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">cronJobs idempotency lock</span></div>
+  <pre class="code"><span class="cm">// get/create the cron record (distributed lock + progress ledger)</span>
+<span class="kw">const</span> cron = <span class="kw">await</span> prisma.cronJobs.upsert({ … });
+
+<span class="cm">// gate1: interval strictly aligned to a whole hour (avoid misaligned overlap/gaps)</span>
+<span class="kw">if</span> (cron.lastRun.getTime() % <span class="st">3600000</span> !== 0) { <span class="cm">/* anomaly, don't process */</span> }
+<span class="kw">const</span> meterIntervalStart = cron.lastRun;
+<span class="kw">const</span> meterIntervalEnd = <span class="kw">new</span> Date(cron.lastRun.getTime() + <span class="st">3600000</span>);  <span class="cm">// exactly 1 hour</span>
+
+<span class="cm">// gate2+3: Processing mutex; but jobStartedAt over 20 min = prior job crashed, take over</span>
+<span class="kw">if</span> (cron.state === <span class="st">Processing</span> &amp;&amp;
+    cron.jobStartedAt &gt;= <span class="kw">new</span> Date(Date.now() - <span class="st">1200000</span>)) { <span class="cm">/* someone's running, exit */</span> }</pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>threat</th><th>would cause</th><th>how this gate blocks it</th></tr></thead>
+  <tbody>
+    <tr><td>the same interval counted twice</td><td>customer double-charged</td><td>intervals strictly hour-aligned (<code>lastRun%3600000===0</code>), each hour processed once</td></tr>
+    <tr><td>two instances running concurrently</td><td>duplicate reports</td><td><code>state=Processing</code> mutex, the latecomer exits</td></tr>
+    <tr><td>the job crashing mid-way</td><td>lock stuck forever, all later misses</td><td><code>jobStartedAt</code> over 20 min deemed a crash, forcibly taken over to resume</td></tr>
+  </tbody>
+</table>
+<p>Each gate guards one real threat; together they ground abstract "exactly once" into <strong>three concrete, testable invariants</strong>. That's far more reliable than vaguely claiming "we guarantee exactly-once"—<strong>decomposing the guarantee into conditions you can write tests for</strong> is exactly the engineering posture a zero-tolerance billing system deserves.</p>
+
+
+<h2>Two different ledgers: platform billing vs your spend alerts</h2>
+<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+
+<div class="cols">
+  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
+  <div class="col"><h4>② spend alerts (cloudSpendAlert)</h4><p>direction: helps you → manage your LLM spend. Watches your cost on OpenAI/Anthropic etc., alerts on threshold crossing. <code>cloudSpendAlertQueue</code> (CloudSpendAlertJob).</p></div>
+  <div class="col"><h4>③ self-host</h4><p>no ①—self-deploying Langfuse <strong>charges you no platform fee</strong>. But cost observation like ② and the cost computation of Lessons 16/42 still work—you see your LLM spend just the same.</p></div>
+</div>
+
+<p>To wrap this thread: Part 8 ran from Lesson 40's "aggregate data into charts" all the way here, essentially answering <strong>"see clearly and govern the numbers"</strong>—dashboards show trends, the query engine unifies definitions, the pricing model computes cost clearly, and this lesson turns one kind of number (usage) <strong>into a real-money invoice</strong>. It also pulls back the curtain on Langfuse as a <strong>cloud business</strong>: open source and self-hostable (no charge), cloud-managed and usage-billed (this Stripe metering)—technology and commerce meshing tightly on this one worker.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does the metering job go to such lengths for "exactly once"—hour alignment, locking, plus fallback unlock?</strong> Because <strong>this is money</strong>, and money's tolerance for error is zero. All earlier chains can occasionally over-count a trace or miss a score with little harm, self-healing next time. Billing is different: <strong>over-report one hour and a customer's credit card gets charged once more</strong>—a complaint-and-Twitter incident; under-report and the platform takes a real loss. A normal background job seeking "eventual consistency" is enough, but the metering job must achieve <strong>"exactly once"</strong>—a notoriously hard guarantee in distributed systems. Langfuse's solution is pragmatic: rather than chase theoretically perfect exactly-once, it uses a <strong>database row as a lock</strong> to plug three real threats one by one—duplicate execution (mutex blocks), task crash (20-minute fallback takeover), interval misalignment (strict hour alignment). <strong>Decomposing "exactly once" into a few implementable concrete defenses, rather than theorizing about guarantees</strong>—that's engineering wisdom.<br><br>
+  <strong>Why does Langfuse bill by "observation count" rather than trace count or token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations, and charging complex agents and simple Q&A the same is unfair. An <strong>observation</strong> is exactly the <strong>atomic metering unit</strong> of "one observable operation"—it best matches "how much Langfuse stored and analyzed for you": complex apps produce more observations and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>. A good billing unit should make "what the customer pays" proportional to "the value they get from you".
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
+    <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>
+    <li><strong>"Exactly once" is the crux</strong>: a <code>cronJobs</code> table as distributed lock + ledger—strict hour-aligned intervals, <code>Processing</code> mutex, 20-minute fallback takeover—so each hour's usage is no-dup, no-miss.</li>
+    <li><strong>Billing must be exactly-once</strong>: money tolerates no error, normal jobs' "eventual consistency" isn't enough; decompose exactly-once into "anti-duplicate + anti-crash + anti-misalignment" implementable defenses.</li>
+    <li><strong>Observation = a value-aligned billing unit</strong>: better than token (model-bound) or trace (too coarse) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse Cloud's usage-metering job uses a cronJobs table for hour alignment + Processing mutex + 20-minute fallback takeover. What core problem does this design solve?</div>
+  <ol class="opts">
+    <li>billing's 'exactly once': a duplicate report double-charges, a miss loses money for the platform; a DB row lock plugs duplicate execution (mutex), task crash (20-min fallback), and interval misalignment (hour alignment), so each hour's usage is no-dup, no-miss</li>
+    <li>supporting multiple currencies</li>
+    <li>compressing ClickHouse storage</li>
+    <li>speeding up metering</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Earlier chains can over-count a trace harmlessly and self-heal, but billing tolerates no error: over-report an hour and a customer's card is overcharged with a complaint; under-report is a platform loss. Normal 'eventual consistency' isn't enough; metering must be 'exactly once' (a hard distributed problem). Langfuse pragmatically uses a cronJobs row lock to plug three threats: duplicate execution (Processing mutex), crash (jobStartedAt>20min forced takeover), misalignment (lastRun%3600000===0 hour alignment).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?</div>
+  <ol class="opts">
+    <li>observation count is easiest to count</li>
+    <li>observation count is smallest, lowest charge</li>
+    <li>it best aligns with the platform's value: token is model-bound (pricey models burn more, unrelated to record/analysis value), trace is too coarse (one trace may be 1 step or hundreds of observations); the observation is the atomic unit of 'one observable operation', making what the customer pays proportional to 'how much Langfuse recorded/analyzed'</li>
+    <li>Stripe only supports observation billing</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Part 8 features two kinds of 'money': cloudUsageMetering and cloudSpendAlert. What's the difference?</div>
+  <ol class="opts">
+    <li>identical, just different names</li>
+    <li>both are the platform charging you</li>
+    <li>both only work in self-host</li>
+    <li>opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Two opposite ledgers. cloudUsageMetering: platform → charges you, reporting observation count to Stripe hourly, the Cloud commercial layer, self-host charges nothing. cloudSpendAlert: helps you → manage your own LLM spend on OpenAI/Anthropic etc., alerting when crossing your threshold—in the lineage of Lessons 16/42 computing your cost. The former is 'how Langfuse charges you', the latter 'helping you watch what you spent'; don't conflate them.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Billing must be exactly once' is the notoriously hard exactly-once problem in distributed systems, yet Langfuse doesn't chase theoretical perfection but uses a DB row lock to plug three real threats: anti-duplicate + anti-crash + anti-misalignment. Recall systems you've built or imagined: which scenarios have a similar hard 'no-dup-no-miss' requirement (payments, inventory, coupon issuance)? How would you weigh 'theoretical exactly-once' against 'a few good-enough concrete engineering defenses'? What are the latter's risks?</li>
   </ul>
 </div>
 </div>
