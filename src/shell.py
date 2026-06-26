@@ -89,6 +89,8 @@ PAGES = [
      "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
     ("20-web-app-architecture.html", "web 应用架构", "The web app architecture",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("21-trpc-backbone.html", "tRPC 骨架", "The tRPC backbone",
+     "第四部分 · 查询链路", "Part 4 · The Read Path"),
 ]
 
 
@@ -612,6 +614,8 @@ SUBTITLES = {
                                    "big binaries stay out of ClickHouse; @@@langfuseMedia@@@ reference; presigned direct S3 upload; sha256 content-addressed dedup; blob_storage_file_log ledger"),
     "20-web-app-architecture.html": ("Next.js · Pages Router 为主 · 三种 API(tRPC/REST/App-Router) · features 纵向切片 · 对内类型安全对外契约稳定",
                                      "Next.js; mostly Pages Router; three APIs (tRPC/REST/App-Router); features vertical slices; internal type-safety vs external stable contract"),
+    "21-trpc-backbone.html": ("appRouter 聚合 ~64 路由 · context 注入 session/prisma · procedure=可叠中间件栈 · RBAC 从输入取 projectId · 安全靠结构",
+                              "appRouter aggregates ~64 routers; context injects session/prisma; procedure=stackable middleware; RBAC pulls projectId from input; security by structure"),
 }
 
 

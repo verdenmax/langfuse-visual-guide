@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 20 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 21 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -357,6 +357,7 @@ details[open] > summary { list-style: none; }
   <li>OpenTelemetry 摄取</li>
   <li>媒体与 blob 存储</li>
   <li>web 应用架构</li>
+  <li>tRPC 骨架</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -4356,6 +4357,204 @@ web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>“对内类型安全、对外契约稳定”——同一批数据用两种 API 姿态对待。你做过的系统里，内部调用和对外接口是混在一起还是分开的？如果分开，你会怎么划界？tRPC 这种“前后端共享类型”的收益，在什么规模/团队结构下最划算？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>tRPC 骨架</h1>
+
+<p class="lead">
+上一课点出了三道门，这一课推开「员工通道」——<strong>tRPC</strong>，看它的骨架。tRPC 是 UI 与后端之间<strong>类型安全的契约</strong>：后端定义的类型，前端调用时<strong>一路贯穿</strong>，
+改一处、全链路即时报错。它的结构出奇地简洁：一个<strong>根路由</strong>聚合约 64 个功能路由，加一小撮<strong>「procedure 构建器」</strong>用<strong>分层中间件</strong>统一把守鉴权与 RBAC。
+看懂这套中间件栈，你就看懂了 Langfuse 整个 UI 后端的安检与脉络。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🛂 生活类比</div>
+  把每个 tRPC 请求想成走一条<strong>安检走廊</strong>。走廊里一道道关卡就是<strong>中间件</strong>：先有<strong>摄像头</strong>记录你来过（OTel 追踪），再有<strong>应急员</strong>守着随时接住异常（错误处理），
+  然后是<strong>身份核验</strong>（你登录了吗），最后是<strong>门禁名单</strong>（你在<strong>这个房间</strong>的准入名单上吗——即「你是这个 project 的成员吗」）。
+  不同的门（procedure）配不同数量的关卡：公开的门只过前两关，受保护的门要全程走完。<strong>关卡定义一次，每道门按需挑选</strong>——这就是 procedure 构建器的精髓。
+</div>
+
+
+<h2>procedure = 可叠加的中间件栈</h2>
+<p>tRPC 的精髓在于：<strong>procedure（过程）是一摞中间件叠出来的</strong>。每个中间件干一件事，按 <code>.use()</code> 顺序串起来；不同的 procedure 构建器叠不同的关卡。
+Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只过基础关卡的 <code>publicProcedure</code>，到层层加码的 <code>protectedProjectProcedure</code>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="procedure 中间件栈：publicProcedure 含 OTel 追踪与错误处理，authenticatedProcedure 再加登录校验，protectedProjectProcedure 再加项目成员 RBAC">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">procedure 构建器：一层层叠中间件</text>
+  <rect x="20" y="40" width="216" height="170" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="128" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">publicProcedure</text>
+  <rect x="36" y="72" width="184" height="28" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="128" y="90" text-anchor="middle" font-size="8" fill="var(--ink)">① OTel 追踪</text>
+  <rect x="36" y="106" width="184" height="28" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="128" y="124" text-anchor="middle" font-size="8" fill="var(--ink)">② 错误处理</text>
+  <text x="128" y="160" text-anchor="middle" font-size="7.5" fill="var(--muted)">谁都能调</text><text x="128" y="174" text-anchor="middle" font-size="7.5" fill="var(--muted)">（如健康检查）</text>
+  <rect x="252" y="40" width="216" height="170" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">authenticatedProcedure</text>
+  <rect x="268" y="72" width="184" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="88" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel ② 错误处理</text>
+  <rect x="268" y="102" width="184" height="32" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="118" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ 你登录了吗</text><text x="360" y="129" text-anchor="middle" font-size="7" fill="var(--accent-ink)">enforceUserIsAuthed</text>
+  <text x="360" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">需登录</text><text x="360" y="178" text-anchor="middle" font-size="7.5" fill="var(--muted)">（账号级操作）</text>
+  <rect x="484" y="40" width="216" height="170" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="592" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">protectedProjectProcedure</text>
+  <rect x="500" y="72" width="184" height="24" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="592" y="88" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel ② 错误处理</text>
+  <rect x="500" y="102" width="184" height="44" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="592" y="120" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ 你是这个 project 成员吗</text><text x="592" y="133" text-anchor="middle" font-size="7" fill="var(--accent-ink)">从输入取 projectId + 校验</text>
+  <text x="592" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">绝大多数业务路由</text><text x="592" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">（traces/scores/…）</text>
+  <text x="360" y="222" text-anchor="middle" font-size="8.5" fill="var(--faint)">越往右关卡越多：定义一次中间件，每道门按需 .use() 挑选——RBAC 不必每个路由重写</text>
+</svg>
+<div class="figcap"><b>分层中间件，按需组合</b>：<code>publicProcedure</code>(OTel+错误处理) → <code>authenticatedProcedure</code>(+登录校验) → <code>protectedProjectProcedure</code>(+项目成员 RBAC)。还有 <code>protectedOrganizationProcedure</code>、<code>protectedGetTraceProcedure</code> 等变体。源码：<code>web/src/server/api/trpc.ts:238-583</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/trpc.ts</span><span class="ln">procedure 构建器</span></div>
+  <pre class="code"><span class="kw">const</span> withOtelTracingProcedure = t.procedure.<span class="fn">use</span>(withOtelInstrumentation);
+
+<span class="cm">// 公开：只过 OTel + 错误处理</span>
+<span class="kw">export const</span> publicProcedure = withOtelTracingProcedure.<span class="fn">use</span>(withErrorHandling);
+
+<span class="cm">// 需登录：再叠一层「你登录了吗」</span>
+<span class="kw">export const</span> authenticatedProcedure = withOtelTracingProcedure
+  .<span class="fn">use</span>(withErrorHandling).<span class="fn">use</span>(enforceUserIsAuthed);
+
+<span class="cm">// 受保护（项目级）：再叠一层「你是这个 project 的成员吗」——最常用</span>
+<span class="kw">export const</span> protectedProjectProcedure = withOtelTracingProcedure
+  .<span class="fn">use</span>(withErrorHandling).<span class="fn">use</span>(enforceUserIsAuthedAndProjectMember);</pre>
+</div>
+
+<p>注意每道门最先叠的两层——<strong>OTel 追踪</strong>与<strong>错误处理</strong>——是<strong>所有</strong> procedure 的共同底座。错误处理这一层（<code>withErrorHandling</code>）尤其用心：
+它把 resolver 抛出的异常<strong>统一翻译</strong>成对前端友好的形态——隐藏 5xx 的内部细节与堆栈（防泄露），还特别照顾 ClickHouse 的<strong>资源类错误</strong>（内存超限、查询超时），
+把它们映射成 <code>UNPROCESSABLE_CONTENT</code> 并附上「换个更小的时间范围试试」之类的<strong>可操作建议</strong>。于是无论哪个路由、查崩了什么，用户看到的都是一致、可读、不暴露内幕的错误。</p>
+
+
+<h2>一次 UI 查询的旅程，与 RBAC 的关键一招</h2>
+<p>把这套骨架放进真实数据流里看。UI 里一个 React Query 钩子（如 <code>api.traces.all.useQuery</code>）发起调用，经过统一入口 <code>pages/api/trpc/[trpc].ts</code>，
+先由 <code>createTRPCContext</code> 注入<strong>上下文</strong>——把 <code>{ session, headers, prisma }</code> 挂上每个请求（session 来自 NextAuth）；再走中间件栈，最后到路由的 resolver，
+调 <code>@langfuse/shared</code> 的仓储/服务读 ClickHouse/Postgres：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="UI React Query 钩子经 trpc 入口、context 注入、中间件栈、路由 resolver、调用 shared 仓储读 ClickHouse/Postgres">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一次 tRPC 查询从前端到数据库</text>
+  <rect x="14" y="48" width="116" height="50" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="72" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">UI 钩子</text><text x="72" y="83" text-anchor="middle" font-size="7" fill="var(--muted)">api.traces.all.useQuery</text>
+  <rect x="148" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="206" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">tRPC 入口</text><text x="206" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">[trpc].ts + context</text><text x="206" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">注入 session/prisma</text>
+  <rect x="282" y="48" width="116" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="340" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">中间件栈</text><text x="340" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">OTel→错误→鉴权</text><text x="340" y="90" text-anchor="middle" font-size="7" fill="var(--accent-ink)">RBAC 在此把守</text>
+  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">路由 resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(64 个路由之一)</text>
+  <rect x="550" y="48" width="156" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="628" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">shared 仓储/服务</text><text x="628" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">@langfuse/shared</text><text x="628" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">→ ClickHouse / Postgres</text>
+  <line x1="130" y1="73" x2="146" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="146,73 138,69 138,77" fill="var(--faint)"/>
+  <line x1="264" y1="73" x2="280" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="280,73 272,69 272,77" fill="var(--faint)"/>
+  <line x1="398" y1="73" x2="414" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="414,73 406,69 406,77" fill="var(--faint)"/>
+  <line x1="532" y1="73" x2="548" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="548,73 540,69 540,77" fill="var(--faint)"/>
+  <text x="360" y="130" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">类型贯穿全链路：resolver 的返回类型，前端 useQuery 拿到时即已知</text>
+  <text x="360" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">改后端字段 → 前端编译即报错，这是 tRPC 相对 REST 的最大不同</text>
+  <rect x="150" y="166" width="420" height="26" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--faint)">仓储层、过滤、读模型的细节 → 第 22–25 课</text>
+</svg>
+<div class="figcap"><b>从钩子到数据库</b>：<code>createTRPCContext</code>（trpc.ts:57）把 <code>{session, headers, prisma}</code> 注入每个请求；中间件栈把守鉴权/RBAC；resolver 调 <code>@langfuse/shared</code> 仓储读库。返回<strong>类型一路贯穿到前端</strong>。源码：<code>root.ts:70</code>（appRouter 聚合 ~64 路由）。</div>
+</div>
+
+<p>那个被注入每个请求的 <strong>context</strong> 看似不起眼，却是整套机制的地基——它把「这次请求是谁、带了什么、能用哪些工具」一次性备齐：</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">session</span><span class="name">你是谁（NextAuth）</span></div><div class="ld">当前登录用户及其<strong>「组织 → 项目」成员树</strong>。RBAC 中间件正是查这棵树，判断你能否访问某个 project——身份信息<strong>随 session 一起到</strong>，不必每次查库。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">headers</span><span class="name">这次请求带了什么</span></div><div class="ld">原始请求头，供<strong>限流</strong>、<strong>追踪</strong>、<strong>特性标志</strong>等横切关注点使用——比如根据来源限速、或把请求关联到一条 OTel trace。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">能用哪些工具</span></div><div class="ld">Postgres 客户端（第 9 课），让 resolver 与中间件能读控制面数据（如 admin 兜底查 project 的归属组织）。ClickHouse 则由仓储层按需取（第 22 课）。</div></div>
+</div>
+
+<p>RBAC 最关键的一招，藏在 <code>enforceUserIsAuthedAndProjectMember</code> 里：它不等 resolver 跑，而是<strong>在中间件阶段就从请求输入里把 <code>projectId</code> 抠出来</strong>，
+再去 session 里查「你是不是这个 project 的成员」。这样一来，<strong>每个受保护路由都自动获得统一的租户校验</strong>，无需各写一遍，也不会因为某个路由作者一时疏忽而留下后门（呼应第 10 课「project_id 是隔离键」）：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/trpc.ts</span><span class="ln">enforceUserIsAuthedAndProjectMember :288</span></div>
+  <pre class="code"><span class="kw">const</span> enforceUserIsAuthedAndProjectMember = t.<span class="fn">middleware</span>(<span class="kw">async</span> (opts) =&gt; {
+  <span class="kw">if</span> (!ctx.session?.user) <span class="kw">throw new</span> TRPCError({ code: <span class="st">"UNAUTHORIZED"</span> });
+
+  <span class="cm">// 关键：在 resolver 之前，就从原始输入里取出 projectId</span>
+  <span class="kw">const</span> input = inputProjectSchema.<span class="fn">parse</span>(<span class="kw">await</span> opts.<span class="fn">getRawInput</span>());
+
+  <span class="cm">// 在 session 的「组织 → 项目」树里找：你是这个 project 的成员吗？</span>
+  <span class="kw">const</span> member = ctx.session.user.organizations
+    .<span class="fn">flatMap</span>((org) =&gt; org.projects)
+    .<span class="fn">find</span>((p) =&gt; p.id === input.projectId);
+  <span class="kw">if</span> (!member &amp;&amp; !ctx.session.user.admin) <span class="kw">throw new</span> TRPCError({ code: <span class="st">"FORBIDDEN"</span> });
+  <span class="kw">return</span> next({ <span class="cm">/* 把校验过的 scope 挂进 ctx */</span> });
+});</pre>
+</div>
+
+<table class="t">
+  <tr><th>procedure</th><th>叠了哪些关卡</th><th>用在哪</th></tr>
+  <tr><td><code>publicProcedure</code></td><td>OTel + 错误处理</td><td>无需登录（健康检查、公开分享）</td></tr>
+  <tr><td><code>authenticatedProcedure</code></td><td>+ 登录校验</td><td>账号级、跨项目操作</td></tr>
+  <tr><td><code>protectedProjectProcedure</code></td><td>+ <strong>项目成员 RBAC</strong></td><td><strong>绝大多数业务路由</strong>（traces/scores/…）</td></tr>
+  <tr><td><code>protectedOrganizationProcedure</code></td><td>+ 组织成员校验</td><td>组织级管理</td></tr>
+  <tr><td><code>protectedGetTraceProcedure</code></td><td>+ trace 访问校验（含公开 trace）</td><td>单条 trace 读取（允许公开分享）</td></tr>
+</table>
+
+<div class="cols">
+  <div class="col"><h4>😖 假如每个路由各写鉴权</h4><p>64 个路由各自手写「检查登录、检查项目成员」。只要有一个人忘了写、或写得不一致，那一处就成了<strong>租户隔离的破口</strong>——别的项目的数据可能被读走。安全代码最怕这种「一处疏漏」。</p></div>
+  <div class="col"><h4>😀 收敛成中间件 + procedure</h4><p>校验写一次、测一次，路由作者只需<strong>选对那道门</strong>（<code>protectedProjectProcedure</code>），RBAC 就自动统一生效。新增路由几乎<strong>不可能漏掉</strong>租户校验——安全靠结构兜底。</p></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把鉴权做成「中间件 + procedure 构建器」，而不是在每个路由里各写一遍 if 判断？</strong> 因为<strong>安全代码最怕「漏写」和「写歪」</strong>。
+  如果 64 个路由各自手写「检查登录、检查项目成员」，迟早有人会忘掉一处、或写得不一致——而那一处就是租户隔离的破口。把校验<strong>收敛成几个中间件</strong>、
+  再用 procedure 构建器<strong>声明式地组合</strong>，路由作者只需选对「门」（<code>protectedProjectProcedure</code>），RBAC 就<strong>自动、统一</strong>地生效。
+  更妙的是「<strong>从输入里取 projectId</strong>」这一招：它让校验<strong>先于业务逻辑</strong>发生，任何受保护路由都不可能在没核验租户的情况下碰到数据。
+  这正是第 6 课「把复杂度收敛到一处能严格测试的地方」、第 10 课「project_id 是隔离键」在 API 层的落地——<strong>安全靠结构保证，而非靠每个人自觉。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>tRPC 是 UI↔后端的<strong>类型安全契约</strong>：一个根路由 <code>appRouter</code>（<code>root.ts:70</code>）聚合约 64 个功能路由，返回类型一路贯穿到前端。</li>
+    <li><strong>context</strong>（<code>createTRPCContext</code>）给每个请求注入 <code>{ session, headers, prisma }</code>；session 来自 NextAuth。</li>
+    <li><strong>procedure = 可叠加的中间件栈</strong>：<code>publicProcedure</code>(OTel+错误处理) → <code>authenticatedProcedure</code>(+登录) → <code>protectedProjectProcedure</code>(+项目 RBAC)。</li>
+    <li><strong>RBAC 关键招</strong>：<code>enforceUserIsAuthedAndProjectMember</code> 在中间件阶段从输入取 <code>projectId</code>、校验 session 成员资格——统一、先于 resolver（呼应第 10 课）。</li>
+    <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 64 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（第 6 课）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 用 procedure 构建器（publicProcedure / authenticatedProcedure / protectedProjectProcedure）来定义 tRPC 接口。这种「分层中间件栈」的本质是什么？</div>
+  <ol class="opts">
+    <li>procedure 是一摞中间件按 .use() 叠出来的；公开门只过 OTel+错误处理，受保护门再叠登录、项目成员校验。中间件定义一次，每个路由按需挑选——RBAC 不必各写一遍</li>
+    <li>中间件只能用一个，不能叠加</li>
+    <li>procedure 只是给接口起个名字，无实际作用</li>
+    <li>每个路由都必须手写完整的鉴权逻辑</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。tRPC 的精髓是 procedure = 可叠加的中间件栈。withOtelTracingProcedure 叠 OTel，再 .use(withErrorHandling) 得 publicProcedure，再 .use(enforceUserIsAuthed) 得 authenticatedProcedure，再换成 enforceUserIsAuthedAndProjectMember 得 protectedProjectProcedure。声明式组合让安全检查写一次、处处复用。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. protectedProjectProcedure 的 RBAC 中间件做了一件关键的事：它在 resolver 跑之前就从请求输入里取出 projectId。为什么这一招重要？</div>
+  <ol class="opts">
+    <li>为了让请求更快返回</li>
+    <li>projectId 只是用来打日志</li>
+    <li>校验先于业务逻辑发生：任何受保护路由都不可能在没核验「你是这个 project 成员」之前碰到数据，租户隔离由结构保证，而非靠每个路由作者自觉</li>
+    <li>为了节省数据库连接</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。enforceUserIsAuthedAndProjectMember 用 getRawInput() 取出 projectId，再去 session 的「组织→项目」树里查成员资格，不通过就抛 FORBIDDEN。这让每个受保护路由自动获得统一、前置的租户校验——正是第 10 课「project_id 是隔离键」在 API 层的落地，安全靠结构而非靠人。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 所有 procedure 最底层都叠了 withErrorHandling 这一中间件。它对 ClickHouse 的资源类错误（内存超限、超时）做了什么特殊处理？</div>
+  <ol class="opts">
+    <li>自动重试一百次</li>
+    <li>忽略错误，返回空结果</li>
+    <li>直接把原始堆栈和 SQL 返回给前端</li>
+    <li>把它们映射成 UNPROCESSABLE_CONTENT 并附上「换个更小的时间范围」之类可操作建议；同时隐藏 5xx 内部细节与堆栈，防止泄露</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。withErrorHandling 统一翻译异常：5xx 隐藏内部细节防泄露；ClickHouse 资源错误（如内存/超时）被特判为 UNPROCESSABLE_CONTENT，并给出「缩小时间范围」等用户能照做的建议。于是无论哪个路由查崩了什么，用户看到的都是一致、可读、不暴露内幕的错误。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「把安全检查收敛成中间件、用声明式 procedure 组合，而不是每个接口各写一遍」——这条原则你能用到自己的系统吗？如果你的 API 有几十个端点都要做同一种权限校验，你会怎么设计，才能让「新增端点几乎不可能漏掉校验」？</li>
   </ul>
 </div>
 </div>

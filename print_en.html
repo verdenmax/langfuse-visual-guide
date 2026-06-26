@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 20 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 21 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -357,6 +357,7 @@ details[open] > summary { list-style: none; }
   <li>OpenTelemetry ingestion</li>
   <li>Media & blob storage</li>
   <li>The web app architecture</li>
+  <li>The tRPC backbone</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -4699,6 +4700,218 @@ other. This is the master plan of Part 4's read path.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Internal type-safety, external stable contract' — the same data treated with two API postures. In systems you've built, are internal calls and external interfaces mixed or separated? If separated, how would you draw the line? At what scale/team structure does tRPC's 'shared types front-to-back' pay off most?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The tRPC backbone</h1>
+
+<p class="lead">
+Last lesson named the three doors; this one pushes open the "staff entrance" — <strong>tRPC</strong> — and shows its skeleton. tRPC is the <strong>type-safe
+contract</strong> between UI and server: types the backend defines flow <strong>end to end</strong> to the frontend caller, so a change in one place errors the
+whole chain instantly. Its structure is surprisingly lean: one <strong>root router</strong> aggregates ~64 feature routers, plus a handful of <strong>"procedure
+builders"</strong> that guard auth and RBAC uniformly via <strong>layered middleware</strong>. Grasp this middleware stack and you grasp the security and the flow
+of Langfuse's entire UI backend.
+</p>
+
+<div class="card analogy">
+  <div class="tag">🛂 Analogy</div>
+  Think of each tRPC request as walking a <strong>security corridor</strong>. The checkpoints along it are the <strong>middleware</strong>: first a <strong>camera</strong>
+  logs that you came (OTel tracing), then a <strong>responder</strong> stands ready to catch exceptions (error handling), then an <strong>ID check</strong> (are you
+  logged in), and finally the <strong>guest list</strong> (are you on the access list for <strong>this room</strong> — i.e. "are you a member of this project").
+  Different doors (procedures) carry different numbers of checkpoints: a public door passes only the first two, a protected door walks them all. <strong>Define a
+  checkpoint once, each door picks what it needs</strong> — that's the essence of procedure builders.
+</div>
+
+
+<h2>A procedure = a stackable middleware chain</h2>
+<p>The essence of tRPC: <strong>a procedure is built by stacking middleware</strong>. Each middleware does one thing, chained in <code>.use()</code> order; different
+procedure builders stack different checkpoints. Langfuse defines a set in <code>web/src/server/api/trpc.ts</code>: from the bare-bones <code>publicProcedure</code> to
+the layered <code>protectedProjectProcedure</code>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="procedure middleware stack: publicProcedure has OTel tracing and error handling, authenticatedProcedure adds a login check, protectedProjectProcedure adds project-member RBAC">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Procedure builders: stacking middleware, layer by layer</text>
+  <rect x="20" y="40" width="216" height="170" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="128" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">publicProcedure</text>
+  <rect x="36" y="72" width="184" height="28" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="128" y="90" text-anchor="middle" font-size="8" fill="var(--ink)">① OTel tracing</text>
+  <rect x="36" y="106" width="184" height="28" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="128" y="124" text-anchor="middle" font-size="8" fill="var(--ink)">② error handling</text>
+  <text x="128" y="160" text-anchor="middle" font-size="7.5" fill="var(--muted)">anyone can call</text><text x="128" y="174" text-anchor="middle" font-size="7.5" fill="var(--muted)">(e.g. health check)</text>
+  <rect x="252" y="40" width="216" height="170" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">authenticatedProcedure</text>
+  <rect x="268" y="72" width="184" height="24" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="88" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel ② error handling</text>
+  <rect x="268" y="102" width="184" height="32" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="118" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ are you logged in</text><text x="360" y="129" text-anchor="middle" font-size="7" fill="var(--accent-ink)">enforceUserIsAuthed</text>
+  <text x="360" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">login required</text><text x="360" y="178" text-anchor="middle" font-size="7.5" fill="var(--muted)">(account-level ops)</text>
+  <rect x="484" y="40" width="216" height="170" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="592" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">protectedProjectProcedure</text>
+  <rect x="500" y="72" width="184" height="24" rx="5" fill="var(--bg)" stroke="var(--blue)"/><text x="592" y="88" text-anchor="middle" font-size="7.5" fill="var(--ink)">① OTel ② error handling</text>
+  <rect x="500" y="102" width="184" height="44" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="592" y="120" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">③ member of this project?</text><text x="592" y="133" text-anchor="middle" font-size="7" fill="var(--accent-ink)">pull projectId from input + check</text>
+  <text x="592" y="166" text-anchor="middle" font-size="7.5" fill="var(--muted)">most business routers</text><text x="592" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">(traces/scores/…)</text>
+  <text x="360" y="222" text-anchor="middle" font-size="8.5" fill="var(--faint)">more checkpoints to the right: define middleware once, each door .use()s what it needs — no per-router RBAC rewrite</text>
+</svg>
+<div class="figcap"><b>Layered middleware, composed on demand</b>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project-member RBAC). Plus variants <code>protectedOrganizationProcedure</code>, <code>protectedGetTraceProcedure</code>. Source: <code>web/src/server/api/trpc.ts:238-583</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/trpc.ts</span><span class="ln">procedure builders</span></div>
+  <pre class="code"><span class="kw">const</span> withOtelTracingProcedure = t.procedure.<span class="fn">use</span>(withOtelInstrumentation);
+
+<span class="cm">// public: only OTel + error handling</span>
+<span class="kw">export const</span> publicProcedure = withOtelTracingProcedure.<span class="fn">use</span>(withErrorHandling);
+
+<span class="cm">// authenticated: add a "are you logged in" layer</span>
+<span class="kw">export const</span> authenticatedProcedure = withOtelTracingProcedure
+  .<span class="fn">use</span>(withErrorHandling).<span class="fn">use</span>(enforceUserIsAuthed);
+
+<span class="cm">// protected (project-level): add "are you a member of this project" — the most used</span>
+<span class="kw">export const</span> protectedProjectProcedure = withOtelTracingProcedure
+  .<span class="fn">use</span>(withErrorHandling).<span class="fn">use</span>(enforceUserIsAuthedAndProjectMember);</pre>
+</div>
+
+<p>Note the first two layers every door stacks — <strong>OTel tracing</strong> and <strong>error handling</strong> — are the common base of <strong>all</strong>
+procedures. The error-handling layer (<code>withErrorHandling</code>) is especially careful: it <strong>uniformly translates</strong> resolver exceptions into a
+frontend-friendly form — hiding 5xx internal detail and stacks (no leaks), and specially caring for ClickHouse <strong>resource errors</strong> (out-of-memory,
+query timeout), mapping them to <code>UNPROCESSABLE_CONTENT</code> with <strong>actionable advice</strong> like "try a smaller time range". So whatever router,
+whatever blew up, the user sees a consistent, readable error that doesn't expose the internals.</p>
+
+
+<h2>A UI query's journey, and RBAC's key move</h2>
+<p>Put this skeleton into a real data flow. A React Query hook in the UI (e.g. <code>api.traces.all.useQuery</code>) fires a call, through the unified entry
+<code>pages/api/trpc/[trpc].ts</code>; first <code>createTRPCContext</code> injects the <strong>context</strong> — attaching <code>{ session, headers, prisma }</code>
+to every request (session from NextAuth); then the middleware stack runs, finally reaching the router's resolver, which calls a <code>@langfuse/shared</code>
+repository/service to read ClickHouse/Postgres:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="UI React Query hook through the trpc entry, context injection, middleware stack, router resolver, calling shared repositories to read ClickHouse/Postgres">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One tRPC query from frontend to database</text>
+  <rect x="14" y="48" width="116" height="50" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="72" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">UI hook</text><text x="72" y="83" text-anchor="middle" font-size="7" fill="var(--muted)">api.traces.all.useQuery</text>
+  <rect x="148" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="206" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">tRPC entry</text><text x="206" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">[trpc].ts + context</text><text x="206" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">inject session/prisma</text>
+  <rect x="282" y="48" width="116" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="340" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">middleware stack</text><text x="340" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">OTel→error→auth</text><text x="340" y="90" text-anchor="middle" font-size="7" fill="var(--accent-ink)">RBAC guards here</text>
+  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">router resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(one of ~64 routers)</text>
+  <rect x="550" y="48" width="156" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="628" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">shared repo/service</text><text x="628" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">@langfuse/shared</text><text x="628" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">→ ClickHouse / Postgres</text>
+  <line x1="130" y1="73" x2="146" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="146,73 138,69 138,77" fill="var(--faint)"/>
+  <line x1="264" y1="73" x2="280" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="280,73 272,69 272,77" fill="var(--faint)"/>
+  <line x1="398" y1="73" x2="414" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="414,73 406,69 406,77" fill="var(--faint)"/>
+  <line x1="532" y1="73" x2="548" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="548,73 540,69 540,77" fill="var(--faint)"/>
+  <text x="360" y="130" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">Types thread the whole chain: the resolver's return type is known when useQuery receives it</text>
+  <text x="360" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">change a backend field → the frontend errors at compile time — tRPC's biggest difference from REST</text>
+  <rect x="150" y="166" width="420" height="26" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--faint)">repository, filtering, read-model details → Lessons 22–25</text>
+</svg>
+<div class="figcap"><b>From hook to database</b>: <code>createTRPCContext</code> (trpc.ts:57) injects <code>{session, headers, prisma}</code> into every request; the middleware stack guards auth/RBAC; the resolver calls a <code>@langfuse/shared</code> repository. The return <strong>type threads all the way to the frontend</strong>. Source: <code>root.ts:70</code> (appRouter aggregates ~64 routers).</div>
+</div>
+
+<p>That <strong>context</strong> injected into every request looks unremarkable but is the bedrock — it gathers, in one shot, "who is this request, what did it
+carry, what tools may it use":</p>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">session</span><span class="name">who you are (NextAuth)</span></div><div class="ld">The current logged-in user and their <strong>"organization → project" membership tree</strong>. The RBAC middleware reads exactly this tree to decide whether you can access a project — identity <strong>arrives with the session</strong>, no per-request DB lookup.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">headers</span><span class="name">what the request carried</span></div><div class="ld">Raw request headers, used by cross-cutting concerns like <strong>rate limiting</strong>, <strong>tracing</strong>, <strong>feature flags</strong> — e.g. rate-limit by source, or tie the request to an OTel trace.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">what tools you may use</span></div><div class="ld">The Postgres client (Lesson 9), letting resolvers and middleware read control-plane data (e.g. the admin fallback looking up a project's owning org). ClickHouse is fetched on demand by the repository layer (Lesson 22).</div></div>
+</div>
+
+<p>RBAC's key move hides in <code>enforceUserIsAuthedAndProjectMember</code>: rather than waiting for the resolver, it <strong>pulls <code>projectId</code> out of the
+request input at the middleware stage</strong>, then checks the session for "are you a member of this project". This way <strong>every protected router gets uniform
+tenant checking automatically</strong>, never re-written per router, and no backdoor left by one router author's lapse (echoing Lesson 10's "project_id is the
+isolation key"):</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/trpc.ts</span><span class="ln">enforceUserIsAuthedAndProjectMember :288</span></div>
+  <pre class="code"><span class="kw">const</span> enforceUserIsAuthedAndProjectMember = t.<span class="fn">middleware</span>(<span class="kw">async</span> (opts) =&gt; {
+  <span class="kw">if</span> (!ctx.session?.user) <span class="kw">throw new</span> TRPCError({ code: <span class="st">"UNAUTHORIZED"</span> });
+
+  <span class="cm">// key: pull projectId out of the raw input, before the resolver</span>
+  <span class="kw">const</span> input = inputProjectSchema.<span class="fn">parse</span>(<span class="kw">await</span> opts.<span class="fn">getRawInput</span>());
+
+  <span class="cm">// search the session's "org → project" tree: are you a member of this project?</span>
+  <span class="kw">const</span> member = ctx.session.user.organizations
+    .<span class="fn">flatMap</span>((org) =&gt; org.projects)
+    .<span class="fn">find</span>((p) =&gt; p.id === input.projectId);
+  <span class="kw">if</span> (!member &amp;&amp; !ctx.session.user.admin) <span class="kw">throw new</span> TRPCError({ code: <span class="st">"FORBIDDEN"</span> });
+  <span class="kw">return</span> next({ <span class="cm">/* attach the verified scope to ctx */</span> });
+});</pre>
+</div>
+
+<table class="t">
+  <tr><th>procedure</th><th>checkpoints stacked</th><th>used where</th></tr>
+  <tr><td><code>publicProcedure</code></td><td>OTel + error handling</td><td>no login (health check, public share)</td></tr>
+  <tr><td><code>authenticatedProcedure</code></td><td>+ login check</td><td>account-level, cross-project ops</td></tr>
+  <tr><td><code>protectedProjectProcedure</code></td><td>+ <strong>project-member RBAC</strong></td><td><strong>most business routers</strong> (traces/scores/…)</td></tr>
+  <tr><td><code>protectedOrganizationProcedure</code></td><td>+ org-member check</td><td>org-level admin</td></tr>
+  <tr><td><code>protectedGetTraceProcedure</code></td><td>+ trace-access check (incl. public traces)</td><td>single-trace reads (allows public share)</td></tr>
+</table>
+
+<div class="cols">
+  <div class="col"><h4>😖 if each router wrote its own auth</h4><p>64 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
+  <div class="col"><h4>😀 converged into middleware + procedure</h4><p>The check is written once, tested once; a router author just <strong>picks the right door</strong> (<code>protectedProjectProcedure</code>) and RBAC applies automatically and uniformly. A new router can <strong>hardly miss</strong> tenant checking — security backstopped by structure.</p></div>
+</div>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
+  "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
+  inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
+  <strong>declaratively</strong> via procedure builders, means a router author only picks the right "door" (<code>protectedProjectProcedure</code>) and RBAC takes
+  effect <strong>automatically and uniformly</strong>. Even better is the "<strong>pull projectId from the input</strong>" move: it makes the check happen
+  <strong>before</strong> business logic, so no protected router can ever touch data without verifying the tenant first. This is Lesson 6's "converge complexity
+  into one strictly testable place" and Lesson 10's "project_id is the isolation key" landing at the API layer — <strong>security guaranteed by structure, not by
+  everyone's diligence.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~64 feature routers, the return type threading to the frontend.</li>
+    <li><strong>context</strong> (<code>createTRPCContext</code>) injects <code>{ session, headers, prisma }</code> into every request; session from NextAuth.</li>
+    <li><strong>A procedure = a stackable middleware chain</strong>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project RBAC).</li>
+    <li><strong>RBAC's key move</strong>: <code>enforceUserIsAuthedAndProjectMember</code> pulls <code>projectId</code> from the input at the middleware stage and checks session membership — uniform, before the resolver (echoing Lesson 10).</li>
+    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse defines tRPC endpoints with procedure builders (publicProcedure / authenticatedProcedure / protectedProjectProcedure). What's the essence of this 'layered middleware stack'?</div>
+  <ol class="opts">
+    <li>a procedure is a stack of middleware chained by .use(); a public door passes only OTel+error handling, a protected door adds login and project-member checks. Middleware is defined once and each router picks what it needs — RBAC isn't rewritten per router</li>
+    <li>only one middleware is allowed, no stacking</li>
+    <li>procedures just name endpoints, with no real effect</li>
+    <li>every router must hand-write full auth logic</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. tRPC's essence is procedure = stackable middleware. withOtelTracingProcedure adds OTel, then .use(withErrorHandling) gives publicProcedure, then .use(enforceUserIsAuthed) gives authenticatedProcedure, then swapping in enforceUserIsAuthedAndProjectMember gives protectedProjectProcedure. Declarative composition lets a security check be written once and reused everywhere.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. protectedProjectProcedure's RBAC middleware does one key thing: it pulls projectId from the request input before the resolver runs. Why does this matter?</div>
+  <ol class="opts">
+    <li>to make requests return faster</li>
+    <li>projectId is only used for logging</li>
+    <li>the check happens before business logic: no protected router can ever touch data before verifying 'you're a member of this project', so tenant isolation is guaranteed by structure, not by each router author's diligence</li>
+    <li>to save database connections</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. enforceUserIsAuthedAndProjectMember pulls projectId via getRawInput(), then checks membership in the session's 'org→project' tree, throwing FORBIDDEN otherwise. This gives every protected router uniform, up-front tenant checking — Lesson 10's 'project_id is the isolation key' landing at the API layer, security by structure not by people.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. All procedures stack withErrorHandling at the base. What special handling does it give ClickHouse resource errors (out-of-memory, timeout)?</div>
+  <ol class="opts">
+    <li>automatically retries a hundred times</li>
+    <li>ignores the error and returns empty results</li>
+    <li>returns the raw stack and SQL straight to the frontend</li>
+    <li>maps them to UNPROCESSABLE_CONTENT with actionable advice like 'try a smaller time range'; and hides 5xx internal detail and stacks to prevent leaks</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. withErrorHandling uniformly translates exceptions: 5xx hides internal detail to prevent leaks; ClickHouse resource errors (memory/timeout) are special-cased to UNPROCESSABLE_CONTENT with actionable advice like 'narrow the time range'. So whatever router blew up, the user sees a consistent, readable error that doesn't expose internals.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Converge security checks into middleware and compose via declarative procedures, rather than hand-writing per endpoint' — can you apply this to your systems? If your API has dozens of endpoints all needing the same permission check, how would you design it so 'a new endpoint can hardly miss the check'?</li>
   </ul>
 </div>
 </div>

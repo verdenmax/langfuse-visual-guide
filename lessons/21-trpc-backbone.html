@@ -1,288 +1,349 @@
-"""Part 4 — 查询链路 / The read (query) path. Lessons L20–L27.
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>21 · tRPC 骨架 / The tRPC backbone - Langfuse 图解教程</title>
+<meta name="description" content="第四部分 · 查询链路｜tRPC 骨架 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="21 · tRPC 骨架 / The tRPC backbone - Langfuse 图解教程">
+<meta property="og:description" content="第四部分 · 查询链路｜tRPC 骨架 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="21 · tRPC 骨架 / The tRPC backbone - Langfuse 图解教程">
+<meta name="twitter:description" content="第四部分 · 查询链路｜tRPC 骨架 - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
 
-Same authoring pattern as part1/2/3: each lesson assembles its bilingual body
-from ``_ZHn`` / ``_ENn`` section lists, then exports ``LESSON_NN = {"zh","en"}``.
-All technical claims are grounded in the real langfuse/langfuse source.
-"""
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
 
-# ══════════════════════════════════════════════════════════════════════
-# L20 · web 应用架构 / The web app architecture
-# ══════════════════════════════════════════════════════════════════════
-_ZH20 = []
-_EN20 = []
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
 
-_ZH20.append(r"""
-<p class="lead">
-前三部分顺着<strong>写入</strong>走完了：数据怎么进来、存哪、怎么合并落盘。从这一部分起，我们反向追<strong>读取</strong>——UI 和 SDK 怎么把数据<strong>查出来</strong>。
-第一站是 web 应用的<strong>骨架</strong>。Langfuse 的前端是个 <strong>Next.js</strong> 应用，绝大多数页面用<strong>老牌的 Pages Router</strong>，
-并行跑着<strong>三种 API 风格</strong>：给自家 UI 用的 tRPC、给 SDK 用的公共 REST、以及给流式/Webhook 用的少量 App-Router 处理器。看懂这张「门牌图」，后面七课才不会迷路。
-</p>
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
 
-<div class="card analogy">
-  <div class="tag">🏢 生活类比</div>
-  把 web 应用想成一栋<strong>大楼</strong>（Next.js）。大楼开了<strong>三道门</strong>，迎接三类访客：<strong>员工通道</strong>（tRPC——只给自家 UI 走，类型安全、内部直达）、
-  <strong>公共前台</strong>（REST <code>/api/public</code>——给外部 SDK 走，稳定、带版本号），还有一个<strong>特殊装卸口</strong>（App-Router / SSE 处理器——给需要流式推送、Webhook 回调的特殊货物走）。
-  三道门通向同一栋楼、同一批数据，但<strong>各服务各的客</strong>：员工不用走前台登记，外部访客也进不了员工通道。分清这三道门，就分清了 Langfuse 所有对外接口的脉络。
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></span>
+    <span class="pill">21 / 21</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
 </div>
-""")
-
-# (L20 sections appended below)
-
-_ZH20.append(r"""
-<h2>一栋楼、三道门</h2>
-<p>先看整体。<code>web/</code> 是一个 Next.js 应用，<code>web/src</code> 下分几大块：<code>features/</code>（按功能切的纵向模块，约 80 个）、
-<code>components/</code>（共享 UI，含表格系统）、<code>server/</code>（鉴权 + tRPC）、<code>pages/</code>（页面与 API 路由）、还有少量 <code>app/</code>（App Router）。
-而对外的接口，正是开篇说的三道门：</p>
-
-<div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">纵向功能模块（~80 个）</span></div><div class="ld">按业务功能切分的「竖切片」：traces、search-bar、public-api、batch-exports… 每个功能把自己的页面、组件、server 逻辑收在一处。Langfuse 绝大多数代码住在这里。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">共享 UI</span></div><div class="ld">跨功能复用的通用组件，最重要的是 <code>components/table/</code> 那套表格系统（第 24 课）——列表、过滤、分页、列控制、行选择全靠它，是整个后台界面的骨架。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">鉴权 + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> 是 tRPC 的根与中间件、procedure 定义（第 21 课）；<code>server/auth.ts</code> 是 NextAuth 会话。这是「员工通道」的安检处。</div></div>
-  <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">路由</span></div><div class="ld"><code>pages/</code> 是主干（UI 页面 + API 路由），<code>app/</code> 仅 4 个文件兜特殊语义。还有 <code>hooks/</code>、<code>ee/</code>（企业版）等。</div></div>
-</div>
-
-<p>这里值得停一下看 <code>features/</code> 的组织哲学：它是<strong>按「功能」而非按「技术层」切分</strong>的。传统做法可能把所有页面塞 <code>pages/</code>、所有组件塞 <code>components/</code>、所有接口塞 <code>api/</code>——
-找一个功能的代码得在三四个目录间来回跳。Langfuse 反过来，每个功能（比如 search-bar、batch-exports）是一个<strong>自包含的竖切片</strong>，把它的前端组件、状态 hook、server 端逻辑、甚至说明 README 都收在
-<code>features/&lt;功能&gt;/</code> 一处。好处是：读懂或修改一个功能，<strong>主要只需看一个目录</strong>；功能之间边界清晰，不易互相牵连。这也是为什么后面每讲一课，我们几乎都能精准地指向一个 <code>features/</code> 子目录，而不必满仓库地翻找散落各处的代码。</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web 应用：Pages Router 承载 UI 页面与多数 API；三种 API 风格 tRPC 给 UI、REST 给 SDK、App-Router/SSE 给流式与 webhook">
-  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Langfuse web 应用：一栋楼，三道门</text>
-  <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js 应用（web/）· 以 Pages Router 为主</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI 页面 pages/project/[projectId]/…（traces / sessions / dashboards / datasets …）</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src 目录：features/ · components/ · server/ · hooks/ · ee/</text>
-  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① 员工通道 · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给自家 UI · 类型安全</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 个 feature 路由</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 21 课</text>
-  <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② 公共前台 · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给外部 SDK · 稳定带版本</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern 契约</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 27 课</text>
-  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ 装卸口 · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/**（仅 4 个文件）</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">流式 SSE · webhook</text>
-  <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
-</svg>
-<div class="figcap"><b>三道门各服务各的客</b>：<b>tRPC</b>（<code>pages/api/trpc/[trpc].ts</code>）给自家 UI、类型安全；<b>REST</b>（<code>pages/api/public/**</code>）给外部 SDK、稳定带版本；<b>App-Router/SSE</b>（<code>app/api/**</code> 仅 4 文件 + 流式端点）给 webhook 与流式。源码：<code>web/src/server/api/root.ts</code>、<code>web/src/features/public-api/</code>、<code>web/src/app/</code>。</div>
-</div>
-
-<div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">三种 API 入口</span></div>
-  <pre class="code"><span class="cm">// ① tRPC：UI 的类型安全后端，一个文件接住全部 ~64 个路由</span>
-web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter（第 21 课）</span>
-
-<span class="cm">// ② 公共 REST：给 SDK 的稳定接口，按资源 + 版本分文件夹</span>
-web/src/pages/api/public/traces/index.ts
-web/src/pages/api/public/v2/scores/…    <span class="cm">// 文件夹即版本（第 27 课）</span>
-
-<span class="cm">// ③ App Router：只有 4 个文件，专给需要原始 Request/流式/webhook 的端点</span>
-web/src/app/api/billing/stripe-webhook/route.ts
-web/src/app/api/chatCompletion/route.ts
-web/src/app/api/in-app-agent/route.ts
-web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流式仪表盘</span></pre>
-</div>
-""")
-
-# (pages vs app router section below)
-
-_ZH20.append(r"""
-<h2>为什么几乎全是 Pages Router</h2>
-<p>你可能注意到一个反差：明明 Next.js 早就推出了 App Router，Langfuse 却<strong>几乎全用老的 Pages Router</strong>——App Router 下统共只有 <strong>4 个文件</strong>。
-这不是落伍，而是<strong>务实</strong>的取舍。</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 200" role="img" aria-label="Pages Router 承载几乎全部 UI 与 API，App Router 仅 4 个文件用于原始 Request、流式与 webhook 语义">
-  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Pages Router 主干 · App Router 仅作特例</text>
-  <rect x="30" y="44" width="420" height="130" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">Pages Router（主干 · 99%）</text>
-  <rect x="48" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="141" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">UI 页面</text><text x="141" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/project/[projectId]/…</text>
-  <rect x="246" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="339" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API 路由</text><text x="339" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/api/**（tRPC + REST）</text>
-  <text x="240" y="140" text-anchor="middle" font-size="8" fill="var(--accent-ink)">UI 用 tRPC + React Query，类型从后端一路贯穿到组件</text>
-  <text x="240" y="158" text-anchor="middle" font-size="8" fill="var(--muted)">长期沉淀的成熟路线，团队约定俗成</text>
-  <rect x="466" y="44" width="224" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="578" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">App Router（仅 4 文件）</text><text x="578" y="88" text-anchor="middle" font-size="7.5" fill="var(--muted)">layout.tsx（根布局）</text><text x="578" y="104" text-anchor="middle" font-size="7.5" fill="var(--muted)">stripe-webhook/route.ts</text><text x="578" y="120" text-anchor="middle" font-size="7.5" fill="var(--muted)">chatCompletion/route.ts</text><text x="578" y="136" text-anchor="middle" font-size="7.5" fill="var(--muted)">in-app-agent/route.ts</text><text x="578" y="158" text-anchor="middle" font-size="8" fill="var(--blue)">只为「原始 Request / 流式 / webhook」</text>
-</svg>
-<div class="figcap"><b>务实而非落伍</b>：Pages Router 承载几乎全部 UI 与 API（tRPC + REST）；App Router 只保留 4 个文件，专给需要<strong>原始 <code>Request</code>、流式响应、webhook 回调</strong>这类 Pages Router 不擅长的语义。源码：<code>web/src/app/</code>（layout + 3 个 route.ts）。</div>
-</div>
-
-<table class="t">
-  <tr><th>这道门</th><th>给谁用</th><th>在哪</th><th>为什么</th></tr>
-  <tr><td><b>tRPC</b></td><td>自家 UI（React）</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>类型从后端贯穿到前端，改一处全链路报错；内部接口无需对外稳定</td></tr>
-  <tr><td><b>公共 REST</b></td><td>外部 SDK / 用户脚本</td><td><code>pages/api/public/**</code></td><td>对外契约要<strong>稳定、带版本</strong>，由 Fern 生成多语言 SDK（第 27 课）</td></tr>
-  <tr><td><b>App-Router / SSE</b></td><td>webhook 源 · 流式仪表盘</td><td><code>app/api/**</code> + 流式端点</td><td>需要原始 <code>Request</code>、<code>text/event-stream</code> 等 Pages Router 不顺手的语义</td></tr>
-</table>
-
-<p>这套划分背后是一条清晰的边界：<strong>对内求「类型安全、改得快」，对外求「契约稳定、版本可控」</strong>。UI 和后端是同一个团队、同一个仓库，用 tRPC 把类型一路打通，
-重构时编译器即时报错；而 SDK 面向千千万万外部用户，接口一旦发布就不能随意改，于是用 REST + 版本号 + Fern 契约严格约束。<strong>同一批数据，两种对外姿态</strong>——
-内部接口可以天天演进，外部契约必须长期稳定，把它们放进同一种 API 反而会互相掣肘。这正是 Part 4 要展开的读取链路的总纲。</p>
-
-<p>预告一下整条读取链路：无论从哪道门进来，一次「查数据」的请求大致都要走这么几步。后面七课会逐站深入：</p>
-
-<div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>入口（tRPC 或 REST）</h4><p>UI 发 tRPC 调用、SDK 发 REST 请求；各自的入口先做<strong>鉴权</strong>，确认你能读这个 project（第 21、27 课）。</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>过滤与查询构建</h4><p>把 UI 的 <code>FilterState</code>（或 SDK 的查询参数）<strong>编译成参数化 SQL</strong>，并带上强制的 project_id 与时间窗（第 23 课）。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>仓储层执行</h4><p>经过统一的 ClickHouse 执行器：打 OTel span、贴查询 tag、失败退避重试、把资源错误翻成友好提示（第 22 课）。</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>读模型塑形</h4><p>列表走「紧凑行 + 懒加载指标」的双查询，详情走「整棵观测树」的全量取——按场景选不同读模型（第 24、25 课）。</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>返回 + 前端渲染</h4><p>结果回到 UI，表格系统用 URL 状态、列预设、行选择把它<strong>快速且可分享地</strong>渲染出来（第 24 课）。</p></div></div>
-</div>
-""")
-
-# (spark + key below)
-
-_ZH20.append(r"""
-<div class="card spark">
-  <div class="tag">🎯 设计取舍</div>
-  <strong>为什么不赶时髦全面迁到 App Router、或者干脆只用 REST 一种 API？</strong> 因为<strong>架构选择要服务于团队现实，而非追新</strong>。Langfuse 在 App Router 成熟之前
-  就用 Pages Router + tRPC 立了稳固的根基——tRPC 让前后端<strong>共享同一套类型</strong>，是这个全栈团队迭代飞快的关键，贸然迁移收益小、风险大。至于 API：
-  对内和对外是<strong>两类截然不同的需求</strong>。对内（UI）追求的是「改一处、全链路类型即时校验」，tRPC 完美契合；对外（SDK）追求的是「我两年前写的集成代码今天还能跑」，
-  这就必须有稳定契约、显式版本。硬把两者统一成一种 API，要么牺牲内部的开发速度，要么牺牲外部的稳定性。Langfuse 的答案是<strong>不强求统一，按受众分而治之</strong>——
-  再用 App Router 兜住少数特殊语义。<strong>合适，比统一更重要。</strong>
-</div>
-
-<div class="card key">
-  <div class="tag">🎯 本课要点</div>
-  <ul>
-    <li>Langfuse 前端是 <strong>Next.js 应用</strong>，<strong>绝大多数用 Pages Router</strong>；App Router 仅 4 个文件，专给原始 Request/流式/webhook。</li>
-    <li><strong>三种 API 风格并存</strong>：tRPC（UI，类型安全）、公共 REST（SDK，稳定带版本）、App-Router/SSE（流式/webhook）。</li>
-    <li><code>web/src</code> 分层：<code>features/</code>（~80 个纵向功能模块）、<code>components/</code>（共享 UI）、<code>server/</code>（鉴权+tRPC）、<code>pages/</code>、<code>app/</code>。</li>
-    <li>核心边界：<strong>对内求类型安全与迭代速度（tRPC），对外求契约稳定与版本可控（REST + Fern）</strong>——同一批数据、两种对外姿态。</li>
-    <li>这是 Part 4「读取链路」的总览图；接下来七课将分别钻进 tRPC 骨架、仓储层、过滤、表格、详情、sessions、公共 REST。</li>
-  </ul>
-</div>
-""")
-
-_EN20.append(r"""
-<p class="lead">
-The first three parts followed the <strong>write</strong> direction: how data comes in, where it's stored, how it's merged and persisted. From this part on
-we trace <strong>reads</strong> in reverse — how the UI and SDKs <strong>query data back out</strong>. First stop: the web app's <strong>skeleton</strong>.
-Langfuse's frontend is a <strong>Next.js</strong> app, with the vast majority of pages on the <strong>veteran Pages Router</strong>, running <strong>three API
-styles</strong> in parallel: tRPC for its own UI, a public REST API for SDKs, and a handful of App-Router handlers for streaming/webhooks. Grasp this "door
-map" and the next seven lessons won't get you lost.
-</p>
-
-<div class="card analogy">
-  <div class="tag">🏢 Analogy</div>
-  Think of the web app as a <strong>building</strong> (Next.js) with <strong>three doors</strong> for three kinds of visitors: a <strong>staff
-  entrance</strong> (tRPC — only for its own UI, type-safe, direct internal access), a <strong>public reception</strong> (REST <code>/api/public</code> —
-  for external SDKs, stable, versioned), and a <strong>special loading dock</strong> (App-Router / SSE handlers — for special cargo needing streaming
-  pushes or webhook callbacks). All three doors lead into the same building, the same data, but <strong>each serves its own crowd</strong>: staff skip
-  reception, external visitors can't use the staff entrance. Sort out these three doors and you've sorted out every Langfuse external interface.
-</div>
-""")
-
-_EN20.append(r"""
-<h2>One building, three doors</h2>
-<p>The big picture first. <code>web/</code> is a Next.js app; under <code>web/src</code> sit a few big areas: <code>features/</code> (vertical, by-feature
-modules, ~80 of them), <code>components/</code> (shared UI, including the table system), <code>server/</code> (auth + tRPC), <code>pages/</code> (pages and API
-routes), plus a small <code>app/</code> (App Router). And the external interfaces are exactly the three doors from the intro:</p>
-
-<div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (~80)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (Lesson 24) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (Lesson 21); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
-  <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">routing</span></div><div class="ld"><code>pages/</code> is the trunk (UI pages + API routes), <code>app/</code> is just 4 files for special semantics. Plus <code>hooks/</code>, <code>ee/</code> (enterprise), etc.</div></div>
-</div>
-
-<p>Pause on <code>features/</code>'s organizing philosophy: it's cut <strong>by "feature", not by "technical layer"</strong>. A traditional layout might dump all
-pages in <code>pages/</code>, all components in <code>components/</code>, all endpoints in <code>api/</code> — finding one feature's code means hopping across
-three or four directories. Langfuse inverts this: each feature (say search-bar, batch-exports) is a <strong>self-contained vertical slice</strong> gathering its
-frontend components, state hooks, server logic, even a README under one <code>features/&lt;feature&gt;/</code>. The payoff: to understand or change a feature you
-<strong>mostly read just one directory</strong>; boundaries between features are clear, so they don't entangle. That's why nearly every later lesson can point
-precisely at a <code>features/</code> subfolder.</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, App-Router/SSE for streaming and webhooks">
-  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
-  <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
-  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
-  <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
-  <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · App-Router/SSE</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
-  <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
-</svg>
-<div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>App-Router/SSE</b> (<code>app/api/**</code>, 4 files + the streaming endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
-</div>
-
-<div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
-  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~64 routers</span>
-web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (Lesson 21)</span>
-
-<span class="cm">// ② public REST: the stable interface for SDKs, by resource + version folder</span>
-web/src/pages/api/public/traces/index.ts
-web/src/pages/api/public/v2/scores/…    <span class="cm">// folder = version (Lesson 27)</span>
-
-<span class="cm">// ③ App Router: only 4 files, for endpoints needing raw Request/streaming/webhook</span>
-web/src/app/api/billing/stripe-webhook/route.ts
-web/src/app/api/chatCompletion/route.ts
-web/src/app/api/in-app-agent/route.ts
-web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE streaming dashboards</span></pre>
-</div>
-""")
-
-_EN20.append(r"""
-<h2>Why it's almost all Pages Router</h2>
-<p>You may notice a contrast: even though Next.js shipped the App Router long ago, Langfuse <strong>uses the old Pages Router for almost everything</strong> —
-the App Router has all of <strong>4 files</strong>. This isn't being behind the times; it's a <strong>pragmatic</strong> choice.</p>
-
-<div class="fig">
-<svg viewBox="0 0 720 200" role="img" aria-label="Pages Router carries nearly all UI and APIs; App Router is just 4 files for raw Request, streaming, and webhook semantics">
-  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Pages Router trunk · App Router only for special cases</text>
-  <rect x="30" y="44" width="420" height="130" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="240" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">Pages Router (trunk · 99%)</text>
-  <rect x="48" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="141" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">UI pages</text><text x="141" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/project/[projectId]/…</text>
-  <rect x="246" y="80" width="186" height="38" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="339" y="98" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API routes</text><text x="339" y="111" text-anchor="middle" font-size="7" fill="var(--muted)">pages/api/** (tRPC + REST)</text>
-  <text x="240" y="140" text-anchor="middle" font-size="8" fill="var(--accent-ink)">UI uses tRPC + React Query, types flow from backend to component</text>
-  <text x="240" y="158" text-anchor="middle" font-size="8" fill="var(--muted)">a mature, long-settled path the team standardized on</text>
-  <rect x="466" y="44" width="224" height="130" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="578" y="66" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">App Router (4 files only)</text><text x="578" y="88" text-anchor="middle" font-size="7.5" fill="var(--muted)">layout.tsx (root layout)</text><text x="578" y="104" text-anchor="middle" font-size="7.5" fill="var(--muted)">stripe-webhook/route.ts</text><text x="578" y="120" text-anchor="middle" font-size="7.5" fill="var(--muted)">chatCompletion/route.ts</text><text x="578" y="136" text-anchor="middle" font-size="7.5" fill="var(--muted)">in-app-agent/route.ts</text><text x="578" y="158" text-anchor="middle" font-size="8" fill="var(--blue)">only for "raw Request / streaming / webhook"</text>
-</svg>
-<div class="figcap"><b>Pragmatic, not behind</b>: Pages Router carries nearly all UI and APIs (tRPC + REST); App Router keeps just 4 files, for endpoints needing <strong>raw <code>Request</code>, streaming responses, webhook callbacks</strong> — semantics Pages Router handles awkwardly. Source: <code>web/src/app/</code> (layout + 3 route.ts).</div>
-</div>
-
-<table class="t">
-  <tr><th>this door</th><th>for whom</th><th>where</th><th>why</th></tr>
-  <tr><td><b>tRPC</b></td><td>own UI (React)</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>types flow backend → frontend, change one spot and the whole chain errors; internal API needn't be externally stable</td></tr>
-  <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (Lesson 27)</td></tr>
-  <tr><td><b>App-Router / SSE</b></td><td>webhook sources · streaming dashboards</td><td><code>app/api/**</code> + streaming endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics Pages Router handles awkwardly</td></tr>
-</table>
-
-<p>Behind this split is a clear boundary: <strong>internally, seek "type-safe, fast to change"; externally, seek "stable contract, controlled versions"</strong>.
-The UI and backend are one team, one repo, so tRPC threads types end to end — the compiler errors instantly on refactors; whereas the SDK faces countless external
-users, where a published interface can't change freely, so REST + version numbers + the Fern contract enforce strict stability. <strong>Same data, two external
-postures</strong> — the internal API can evolve daily, the external contract must stay stable for years; forcing them into one API style would only hobble each
-other. This is the master plan of Part 4's read path.</p>
-
-<p>A preview of the whole read path: whichever door you enter, a "query data" request roughly takes these steps. The next seven lessons dive into each stop:</p>
-
-<div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>entry (tRPC or REST)</h4><p>The UI fires a tRPC call, the SDK a REST request; each entry first does <strong>auth</strong>, confirming you can read this project (Lessons 21, 27).</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>filter &amp; query build</h4><p>The UI's <code>FilterState</code> (or SDK query params) is <strong>compiled into parameterized SQL</strong>, with the mandatory project_id and time window (Lesson 23).</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>repository executes</h4><p>Through a unified ClickHouse executor: OTel span, query tags, backoff retry on failure, resource errors turned into friendly messages (Lesson 22).</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>read-model shaping</h4><p>Lists use a "compact rows + lazy metrics" dual query; details fetch the "whole observation tree" — different read models per scenario (Lessons 24, 25).</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>return + frontend render</h4><p>Results return to the UI, where the table system renders them <strong>fast and shareably</strong> with URL state, column presets, row selection (Lesson 24).</p></div></div>
-</div>
-""")
-
-_EN20.append(r"""
-<div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
-  <strong>Why not chase the trend and migrate fully to App Router, or just use REST as the one API?</strong> Because <strong>architecture choices should serve
-  team reality, not novelty</strong>. Langfuse laid a solid foundation on Pages Router + tRPC before the App Router matured — tRPC lets front and back
-  <strong>share one type system</strong>, the key to this full-stack team iterating fast; a rash migration is low-reward, high-risk. As for the API: internal and
-  external are <strong>two utterly different needs</strong>. Internal (UI) wants "change one spot, instant type-check across the chain" — tRPC fits perfectly;
-  external (SDK) wants "the integration I wrote two years ago still runs today" — which demands a stable contract and explicit versions. Force the two into one
-  API and you sacrifice either internal velocity or external stability. Langfuse's answer is <strong>don't force unity; divide and conquer by audience</strong> —
-  with App Router catching the few special semantics. <strong>Fit matters more than uniformity.</strong>
-</div>
-
-<div class="card key">
-  <div class="tag">🎯 Key points</div>
-  <ul>
-    <li>Langfuse's frontend is a <strong>Next.js app</strong>, <strong>mostly Pages Router</strong>; App Router is just 4 files for raw Request/streaming/webhook.</li>
-    <li><strong>Three API styles coexist</strong>: tRPC (UI, type-safe), public REST (SDK, stable+versioned), App-Router/SSE (streaming/webhook).</li>
-    <li><code>web/src</code> layers: <code>features/</code> (~80 vertical feature modules), <code>components/</code> (shared UI), <code>server/</code> (auth+tRPC), <code>pages/</code>, <code>app/</code>.</li>
-    <li>Core boundary: <strong>internally seek type-safety and iteration speed (tRPC), externally seek contract stability and version control (REST + Fern)</strong> — same data, two external postures.</li>
-    <li>This is Part 4's read-path overview; the next seven lessons drill into the tRPC backbone, repository layer, filtering, tables, detail, sessions, and the public REST API.</li>
-  </ul>
-</div>
-""")
-LESSON_20 = {"zh": "\n".join(_ZH20), "en": "\n".join(_EN20)}
-
-
-# ══════════════════════════════════════════════════════════════════════
-# L21 · tRPC 骨架 / The tRPC backbone
-# ══════════════════════════════════════════════════════════════════════
-_ZH21 = []
-_EN21 = []
-
-_ZH21.append(r"""
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
+    <h1><span class="lang-zh">tRPC 骨架</span><span class="lang-en">The tRPC backbone</span></h1>
+  </div>
+  <div class="lang-zh">
 <p class="lead">
 上一课点出了三道门，这一课推开「员工通道」——<strong>tRPC</strong>，看它的骨架。tRPC 是 UI 与后端之间<strong>类型安全的契约</strong>：后端定义的类型，前端调用时<strong>一路贯穿</strong>，
 改一处、全链路即时报错。它的结构出奇地简洁：一个<strong>根路由</strong>聚合约 64 个功能路由，加一小撮<strong>「procedure 构建器」</strong>用<strong>分层中间件</strong>统一把守鉴权与 RBAC。
@@ -295,11 +356,8 @@ _ZH21.append(r"""
   然后是<strong>身份核验</strong>（你登录了吗），最后是<strong>门禁名单</strong>（你在<strong>这个房间</strong>的准入名单上吗——即「你是这个 project 的成员吗」）。
   不同的门（procedure）配不同数量的关卡：公开的门只过前两关，受保护的门要全程走完。<strong>关卡定义一次，每道门按需挑选</strong>——这就是 procedure 构建器的精髓。
 </div>
-""")
 
-# (L21 sections appended below)
 
-_ZH21.append(r"""
 <h2>procedure = 可叠加的中间件栈</h2>
 <p>tRPC 的精髓在于：<strong>procedure（过程）是一摞中间件叠出来的</strong>。每个中间件干一件事，按 <code>.use()</code> 顺序串起来；不同的 procedure 构建器叠不同的关卡。
 Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只过基础关卡的 <code>publicProcedure</code>，到层层加码的 <code>protectedProjectProcedure</code>。</p>
@@ -343,11 +401,8 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
 <p>注意每道门最先叠的两层——<strong>OTel 追踪</strong>与<strong>错误处理</strong>——是<strong>所有</strong> procedure 的共同底座。错误处理这一层（<code>withErrorHandling</code>）尤其用心：
 它把 resolver 抛出的异常<strong>统一翻译</strong>成对前端友好的形态——隐藏 5xx 的内部细节与堆栈（防泄露），还特别照顾 ClickHouse 的<strong>资源类错误</strong>（内存超限、查询超时），
 把它们映射成 <code>UNPROCESSABLE_CONTENT</code> 并附上「换个更小的时间范围试试」之类的<strong>可操作建议</strong>。于是无论哪个路由、查崩了什么，用户看到的都是一致、可读、不暴露内幕的错误。</p>
-""")
 
-# (context + RBAC section below)
 
-_ZH21.append(r"""
 <h2>一次 UI 查询的旅程，与 RBAC 的关键一招</h2>
 <p>把这套骨架放进真实数据流里看。UI 里一个 React Query 钩子（如 <code>api.traces.all.useQuery</code>）发起调用，经过统一入口 <code>pages/api/trpc/[trpc].ts</code>，
 先由 <code>createTRPCContext</code> 注入<strong>上下文</strong>——把 <code>{ session, headers, prisma }</code> 挂上每个请求（session 来自 NextAuth）；再走中间件栈，最后到路由的 resolver，
@@ -413,11 +468,8 @@ _ZH21.append(r"""
   <div class="col"><h4>😖 假如每个路由各写鉴权</h4><p>64 个路由各自手写「检查登录、检查项目成员」。只要有一个人忘了写、或写得不一致，那一处就成了<strong>租户隔离的破口</strong>——别的项目的数据可能被读走。安全代码最怕这种「一处疏漏」。</p></div>
   <div class="col"><h4>😀 收敛成中间件 + procedure</h4><p>校验写一次、测一次，路由作者只需<strong>选对那道门</strong>（<code>protectedProjectProcedure</code>），RBAC 就自动统一生效。新增路由几乎<strong>不可能漏掉</strong>租户校验——安全靠结构兜底。</p></div>
 </div>
-""")
 
-# (spark + key below)
 
-_ZH21.append(r"""
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么把鉴权做成「中间件 + procedure 构建器」，而不是在每个路由里各写一遍 if 判断？</strong> 因为<strong>安全代码最怕「漏写」和「写歪」</strong>。
@@ -437,9 +489,55 @@ _ZH21.append(r"""
     <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 64 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（第 6 课）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
   </ul>
 </div>
-""")
-
-_EN21.append(r"""
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 用 procedure 构建器（publicProcedure / authenticatedProcedure / protectedProjectProcedure）来定义 tRPC 接口。这种「分层中间件栈」的本质是什么？</div>
+  <ol class="opts">
+    <li>procedure 是一摞中间件按 .use() 叠出来的；公开门只过 OTel+错误处理，受保护门再叠登录、项目成员校验。中间件定义一次，每个路由按需挑选——RBAC 不必各写一遍</li>
+    <li>中间件只能用一个，不能叠加</li>
+    <li>procedure 只是给接口起个名字，无实际作用</li>
+    <li>每个路由都必须手写完整的鉴权逻辑</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。tRPC 的精髓是 procedure = 可叠加的中间件栈。withOtelTracingProcedure 叠 OTel，再 .use(withErrorHandling) 得 publicProcedure，再 .use(enforceUserIsAuthed) 得 authenticatedProcedure，再换成 enforceUserIsAuthedAndProjectMember 得 protectedProjectProcedure。声明式组合让安全检查写一次、处处复用。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. protectedProjectProcedure 的 RBAC 中间件做了一件关键的事：它在 resolver 跑之前就从请求输入里取出 projectId。为什么这一招重要？</div>
+  <ol class="opts">
+    <li>为了让请求更快返回</li>
+    <li>projectId 只是用来打日志</li>
+    <li>校验先于业务逻辑发生：任何受保护路由都不可能在没核验「你是这个 project 成员」之前碰到数据，租户隔离由结构保证，而非靠每个路由作者自觉</li>
+    <li>为了节省数据库连接</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。enforceUserIsAuthedAndProjectMember 用 getRawInput() 取出 projectId，再去 session 的「组织→项目」树里查成员资格，不通过就抛 FORBIDDEN。这让每个受保护路由自动获得统一、前置的租户校验——正是第 10 课「project_id 是隔离键」在 API 层的落地，安全靠结构而非靠人。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 所有 procedure 最底层都叠了 withErrorHandling 这一中间件。它对 ClickHouse 的资源类错误（内存超限、超时）做了什么特殊处理？</div>
+  <ol class="opts">
+    <li>自动重试一百次</li>
+    <li>忽略错误，返回空结果</li>
+    <li>直接把原始堆栈和 SQL 返回给前端</li>
+    <li>把它们映射成 UNPROCESSABLE_CONTENT 并附上「换个更小的时间范围」之类可操作建议；同时隐藏 5xx 内部细节与堆栈，防止泄露</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。withErrorHandling 统一翻译异常：5xx 隐藏内部细节防泄露；ClickHouse 资源错误（如内存/超时）被特判为 UNPROCESSABLE_CONTENT，并给出「缩小时间范围」等用户能照做的建议。于是无论哪个路由查崩了什么，用户看到的都是一致、可读、不暴露内幕的错误。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>「把安全检查收敛成中间件、用声明式 procedure 组合，而不是每个接口各写一遍」——这条原则你能用到自己的系统吗？如果你的 API 有几十个端点都要做同一种权限校验，你会怎么设计，才能让「新增端点几乎不可能漏掉校验」？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
 <p class="lead">
 Last lesson named the three doors; this one pushes open the "staff entrance" — <strong>tRPC</strong> — and shows its skeleton. tRPC is the <strong>type-safe
 contract</strong> between UI and server: types the backend defines flow <strong>end to end</strong> to the frontend caller, so a change in one place errors the
@@ -456,9 +554,8 @@ of Langfuse's entire UI backend.
   Different doors (procedures) carry different numbers of checkpoints: a public door passes only the first two, a protected door walks them all. <strong>Define a
   checkpoint once, each door picks what it needs</strong> — that's the essence of procedure builders.
 </div>
-""")
 
-_EN21.append(r"""
+
 <h2>A procedure = a stackable middleware chain</h2>
 <p>The essence of tRPC: <strong>a procedure is built by stacking middleware</strong>. Each middleware does one thing, chained in <code>.use()</code> order; different
 procedure builders stack different checkpoints. Langfuse defines a set in <code>web/src/server/api/trpc.ts</code>: from the bare-bones <code>publicProcedure</code> to
@@ -505,9 +602,8 @@ procedures. The error-handling layer (<code>withErrorHandling</code>) is especia
 frontend-friendly form — hiding 5xx internal detail and stacks (no leaks), and specially caring for ClickHouse <strong>resource errors</strong> (out-of-memory,
 query timeout), mapping them to <code>UNPROCESSABLE_CONTENT</code> with <strong>actionable advice</strong> like "try a smaller time range". So whatever router,
 whatever blew up, the user sees a consistent, readable error that doesn't expose the internals.</p>
-""")
 
-_EN21.append(r"""
+
 <h2>A UI query's journey, and RBAC's key move</h2>
 <p>Put this skeleton into a real data flow. A React Query hook in the UI (e.g. <code>api.traces.all.useQuery</code>) fires a call, through the unified entry
 <code>pages/api/trpc/[trpc].ts</code>; first <code>createTRPCContext</code> injects the <strong>context</strong> — attaching <code>{ session, headers, prisma }</code>
@@ -577,9 +673,8 @@ isolation key"):</p>
   <div class="col"><h4>😖 if each router wrote its own auth</h4><p>64 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
   <div class="col"><h4>😀 converged into middleware + procedure</h4><p>The check is written once, tested once; a router author just <strong>picks the right door</strong> (<code>protectedProjectProcedure</code>) and RBAC applies automatically and uniformly. A new router can <strong>hardly miss</strong> tenant checking — security backstopped by structure.</p></div>
 </div>
-""")
 
-_EN21.append(r"""
+
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
@@ -602,5 +697,65 @@ _EN21.append(r"""
     <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
   </ul>
 </div>
-""")
-LESSON_21 = {"zh": "\n".join(_ZH21), "en": "\n".join(_EN21)}
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse defines tRPC endpoints with procedure builders (publicProcedure / authenticatedProcedure / protectedProjectProcedure). What's the essence of this 'layered middleware stack'?</div>
+  <ol class="opts">
+    <li>a procedure is a stack of middleware chained by .use(); a public door passes only OTel+error handling, a protected door adds login and project-member checks. Middleware is defined once and each router picks what it needs — RBAC isn't rewritten per router</li>
+    <li>only one middleware is allowed, no stacking</li>
+    <li>procedures just name endpoints, with no real effect</li>
+    <li>every router must hand-write full auth logic</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. tRPC's essence is procedure = stackable middleware. withOtelTracingProcedure adds OTel, then .use(withErrorHandling) gives publicProcedure, then .use(enforceUserIsAuthed) gives authenticatedProcedure, then swapping in enforceUserIsAuthedAndProjectMember gives protectedProjectProcedure. Declarative composition lets a security check be written once and reused everywhere.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. protectedProjectProcedure's RBAC middleware does one key thing: it pulls projectId from the request input before the resolver runs. Why does this matter?</div>
+  <ol class="opts">
+    <li>to make requests return faster</li>
+    <li>projectId is only used for logging</li>
+    <li>the check happens before business logic: no protected router can ever touch data before verifying 'you're a member of this project', so tenant isolation is guaranteed by structure, not by each router author's diligence</li>
+    <li>to save database connections</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. enforceUserIsAuthedAndProjectMember pulls projectId via getRawInput(), then checks membership in the session's 'org→project' tree, throwing FORBIDDEN otherwise. This gives every protected router uniform, up-front tenant checking — Lesson 10's 'project_id is the isolation key' landing at the API layer, security by structure not by people.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. All procedures stack withErrorHandling at the base. What special handling does it give ClickHouse resource errors (out-of-memory, timeout)?</div>
+  <ol class="opts">
+    <li>automatically retries a hundred times</li>
+    <li>ignores the error and returns empty results</li>
+    <li>returns the raw stack and SQL straight to the frontend</li>
+    <li>maps them to UNPROCESSABLE_CONTENT with actionable advice like 'try a smaller time range'; and hides 5xx internal detail and stacks to prevent leaks</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. withErrorHandling uniformly translates exceptions: 5xx hides internal detail to prevent leaks; ClickHouse resource errors (memory/timeout) are special-cased to UNPROCESSABLE_CONTENT with actionable advice like 'narrow the time range'. So whatever router blew up, the user sees a consistent, readable error that doesn't expose internals.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>'Converge security checks into middleware and compose via declarative procedures, rather than hand-writing per endpoint' — can you apply this to your systems? If your API has dozens of endpoints all needing the same permission check, how would you design it so 'a new endpoint can hardly miss the check'?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="20-web-app-architecture.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">web 应用架构</span><span class="lang-en">The web app architecture</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

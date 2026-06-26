@@ -32,4 +32,5 @@ CONTENT = {
     "18-opentelemetry-ingestion.html": part3.LESSON_18,
     "19-media-blob-storage.html": part3.LESSON_19,
     "20-web-app-architecture.html": part4.LESSON_20,
+    "21-trpc-backbone.html": part4.LESSON_21,
 }

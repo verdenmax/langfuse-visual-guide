@@ -1445,6 +1445,76 @@ QUIZZES = {
             },
         ],
     },
+    "21-trpc-backbone.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 用 procedure 构建器（publicProcedure / authenticatedProcedure / protectedProjectProcedure）来定义 tRPC 接口。这种「分层中间件栈」的本质是什么？",
+                    "en": "Langfuse defines tRPC endpoints with procedure builders (publicProcedure / authenticatedProcedure / protectedProjectProcedure). What's the essence of this 'layered middleware stack'?",
+                },
+                "opts": [
+                    {
+                        "zh": "procedure 是一摞中间件按 .use() 叠出来的；公开门只过 OTel+错误处理，受保护门再叠登录、项目成员校验。中间件定义一次，每个路由按需挑选——RBAC 不必各写一遍",
+                        "en": "a procedure is a stack of middleware chained by .use(); a public door passes only OTel+error handling, a protected door adds login and project-member checks. Middleware is defined once and each router picks what it needs — RBAC isn't rewritten per router",
+                    },
+                    {"zh": "每个路由都必须手写完整的鉴权逻辑", "en": "every router must hand-write full auth logic"},
+                    {"zh": "procedure 只是给接口起个名字，无实际作用", "en": "procedures just name endpoints, with no real effect"},
+                    {"zh": "中间件只能用一个，不能叠加", "en": "only one middleware is allowed, no stacking"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "tRPC 的精髓是 procedure = 可叠加的中间件栈。withOtelTracingProcedure 叠 OTel，再 .use(withErrorHandling) 得 publicProcedure，再 .use(enforceUserIsAuthed) 得 authenticatedProcedure，再换成 enforceUserIsAuthedAndProjectMember 得 protectedProjectProcedure。声明式组合让安全检查写一次、处处复用。",
+                    "en": "tRPC's essence is procedure = stackable middleware. withOtelTracingProcedure adds OTel, then .use(withErrorHandling) gives publicProcedure, then .use(enforceUserIsAuthed) gives authenticatedProcedure, then swapping in enforceUserIsAuthedAndProjectMember gives protectedProjectProcedure. Declarative composition lets a security check be written once and reused everywhere.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "protectedProjectProcedure 的 RBAC 中间件做了一件关键的事：它在 resolver 跑之前就从请求输入里取出 projectId。为什么这一招重要？",
+                    "en": "protectedProjectProcedure's RBAC middleware does one key thing: it pulls projectId from the request input before the resolver runs. Why does this matter?",
+                },
+                "opts": [
+                    {
+                        "zh": "校验先于业务逻辑发生：任何受保护路由都不可能在没核验「你是这个 project 成员」之前碰到数据，租户隔离由结构保证，而非靠每个路由作者自觉",
+                        "en": "the check happens before business logic: no protected router can ever touch data before verifying 'you're a member of this project', so tenant isolation is guaranteed by structure, not by each router author's diligence",
+                    },
+                    {"zh": "为了让请求更快返回", "en": "to make requests return faster"},
+                    {"zh": "为了节省数据库连接", "en": "to save database connections"},
+                    {"zh": "projectId 只是用来打日志", "en": "projectId is only used for logging"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "enforceUserIsAuthedAndProjectMember 用 getRawInput() 取出 projectId，再去 session 的「组织→项目」树里查成员资格，不通过就抛 FORBIDDEN。这让每个受保护路由自动获得统一、前置的租户校验——正是第 10 课「project_id 是隔离键」在 API 层的落地，安全靠结构而非靠人。",
+                    "en": "enforceUserIsAuthedAndProjectMember pulls projectId via getRawInput(), then checks membership in the session's 'org→project' tree, throwing FORBIDDEN otherwise. This gives every protected router uniform, up-front tenant checking — Lesson 10's 'project_id is the isolation key' landing at the API layer, security by structure not by people.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "所有 procedure 最底层都叠了 withErrorHandling 这一中间件。它对 ClickHouse 的资源类错误（内存超限、超时）做了什么特殊处理？",
+                    "en": "All procedures stack withErrorHandling at the base. What special handling does it give ClickHouse resource errors (out-of-memory, timeout)?",
+                },
+                "opts": [
+                    {
+                        "zh": "把它们映射成 UNPROCESSABLE_CONTENT 并附上「换个更小的时间范围」之类可操作建议；同时隐藏 5xx 内部细节与堆栈，防止泄露",
+                        "en": "maps them to UNPROCESSABLE_CONTENT with actionable advice like 'try a smaller time range'; and hides 5xx internal detail and stacks to prevent leaks",
+                    },
+                    {"zh": "直接把原始堆栈和 SQL 返回给前端", "en": "returns the raw stack and SQL straight to the frontend"},
+                    {"zh": "忽略错误，返回空结果", "en": "ignores the error and returns empty results"},
+                    {"zh": "自动重试一百次", "en": "automatically retries a hundred times"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "withErrorHandling 统一翻译异常：5xx 隐藏内部细节防泄露；ClickHouse 资源错误（如内存/超时）被特判为 UNPROCESSABLE_CONTENT，并给出「缩小时间范围」等用户能照做的建议。于是无论哪个路由查崩了什么，用户看到的都是一致、可读、不暴露内幕的错误。",
+                    "en": "withErrorHandling uniformly translates exceptions: 5xx hides internal detail to prevent leaks; ClickHouse resource errors (memory/timeout) are special-cased to UNPROCESSABLE_CONTENT with actionable advice like 'narrow the time range'. So whatever router blew up, the user sees a consistent, readable error that doesn't expose internals.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "「把安全检查收敛成中间件、用声明式 procedure 组合，而不是每个接口各写一遍」——这条原则你能用到自己的系统吗？如果你的 API 有几十个端点都要做同一种权限校验，你会怎么设计，才能让「新增端点几乎不可能漏掉校验」？",
+                "en": "'Converge security checks into middleware and compose via declarative procedures, rather than hand-writing per endpoint' — can you apply this to your systems? If your API has dozens of endpoints all needing the same permission check, how would you design it so 'a new endpoint can hardly miss the check'?",
+            },
+        ],
+    },
 }
 
 
