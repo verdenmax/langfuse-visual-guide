@@ -745,6 +745,76 @@ QUIZZES = {
             },
         ],
     },
+    "11-deployment-topology.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "自托管一套 Langfuse，最小栈包含哪些容器？",
+                    "en": "What containers make up the minimal stack to self-host Langfuse?",
+                },
+                "opts": [
+                    {
+                        "zh": "2 个应用（langfuse-web、langfuse-worker）+ 4 个基础设施（postgres、clickhouse、redis、minio/S3），全在 docker-compose.yml",
+                        "en": "2 apps (langfuse-web, langfuse-worker) + 4 infra (postgres, clickhouse, redis, minio/S3), all in docker-compose.yml",
+                    },
+                    {"zh": "只要一个 langfuse 容器", "en": "Just one langfuse container"},
+                    {"zh": "web + worker + 一个 SQLite 文件", "en": "web + worker + one SQLite file"},
+                    {"zh": "只需要 ClickHouse", "en": "Only ClickHouse"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "docker-compose.yml 列出两个应用容器（web/worker）加四个基础设施（postgres:17、clickhouse-server、redis:7、minio）。这正是第 5、7 课架构图的实体版。",
+                    "en": "docker-compose.yml lists two app containers (web/worker) plus four infra (postgres:17, clickhouse-server, redis:7, minio). It's the physical version of the architecture in L05/L07.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "web 和 worker 都连同一套存储，为什么还要拆成两个容器、还能分别扩容？",
+                    "en": "web and worker connect the same storage — why split into two containers, and why scale them separately?",
+                },
+                "opts": [
+                    {
+                        "zh": "职责相反：web 面向用户、要低延迟、按 QPS 扩；worker 啃重活、可重试、按队列积压扩。靠 Redis 队列解耦，所以能各自独立扩容、互不阻塞",
+                        "en": "Opposite duties: web is user-facing, low-latency, scales by QPS; worker chews heavy jobs, retryable, scales by queue backlog. Decoupled by the Redis queue, so each scales independently without blocking the other",
+                    },
+                    {"zh": "因为一个容器装不下代码", "en": "Because one container can't hold the code"},
+                    {"zh": "因为它们用不同的数据库", "en": "Because they use different databases"},
+                    {"zh": "纯粹为了多开机器", "en": "Just to run more machines"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "用户压力（QPS）和后台压力（队列积压）是两条独立的扩容信号。拆成两个容器、用队列解耦，就能“用户多了加 web、队列堵了加 worker”，互不牵连。这是第 4 课窄腰让两容器独立演进的部署体现。",
+                    "en": "User pressure (QPS) and background pressure (queue backlog) are independent scaling signals. Splitting into two containers decoupled by a queue lets you 'add web for more users, add worker for a backed-up queue', without entanglement. It's the deployment-side expression of L04's narrow waist.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 用 Zod 在“启动时”校验环境变量。这条纪律的好处是什么？",
+                    "en": "Langfuse validates env vars with Zod 'at startup'. What's the benefit of this discipline?",
+                },
+                "opts": [
+                    {
+                        "zh": "配错/漏填会让进程直接启动失败并指出哪个变量有问题——把“配置错误”从难查的运行时 bug 变成一眼可见的启动错误，而不是带病运行到半路才崩",
+                        "en": "A misconfig/missing var makes the process fail to start and names the bad variable — turning 'config errors' from hard-to-find runtime bugs into obvious startup errors, instead of running sick and crashing midway",
+                    },
+                    {"zh": "让启动更慢以便检查", "en": "To make startup slower for checking"},
+                    {"zh": "把环境变量加密", "en": "To encrypt env vars"},
+                    {"zh": "自动修正错误的配置", "en": "To auto-fix wrong config"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "fail-fast：env.ts 用 Zod 在启动时校验类型与必填项，错了立刻报清楚。这比“带着错误配置跑半天、在某个边角功能才崩”可调试得多（第 51 课展开）。",
+                    "en": "Fail-fast: env.ts uses Zod to validate types and required fields at startup, reporting clearly on error. Far more debuggable than 'running with bad config and crashing in some corner feature later' (expanded in L51).",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Langfuse 的自托管需要 4 个基础设施，门槛比“一个二进制”高。如果你做一个开源工具，会怎么在“能扛规模”和“易自托管”之间取舍？docker-compose 一键编排算不算一个好答案？",
+                "en": "Langfuse self-host needs 4 infra engines, a higher bar than 'one binary'. If you built an open-source tool, how would you trade off 'handles scale' vs 'easy to self-host'? Is one-command docker-compose orchestration a good answer?",
+            },
+        ],
+    },
 }
 
 

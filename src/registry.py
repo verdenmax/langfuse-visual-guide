@@ -20,4 +20,5 @@ CONTENT = {
     "08-clickhouse-wide-events.html": part2.LESSON_08,
     "09-postgres-metadata-schema.html": part2.LESSON_09,
     "10-multi-tenancy.html": part2.LESSON_10,
+    "11-deployment-topology.html": part2.LESSON_11,
 }

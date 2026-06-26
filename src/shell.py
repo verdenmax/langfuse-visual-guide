@@ -69,6 +69,8 @@ PAGES = [
      "第二部分 · 前置基础", "Part 2 · Foundations"),
     ("10-multi-tenancy.html", "多租户：org → project → environment", "Multi-tenancy",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("11-deployment-topology.html", "部署拓扑与依赖", "Deployment topology",
+     "第二部分 · 前置基础", "Part 2 · Foundations"),
 ]
 
 
@@ -572,6 +574,8 @@ SUBTITLES = {
                                          "control plane vs data plane; Project hub; model groups; Legacy remnants; hashed API keys"),
     "10-multi-tenancy.html": ("三层嵌套 org→project→env · project 硬隔离 · environment 软切片 · project_id 贯穿",
                               "three levels org→project→env; hard project isolation; soft environment slice; project_id threaded"),
+    "11-deployment-topology.html": ("2 应用 + 4 基础设施 · docker-compose · web vs worker · MinIO 替身 · env 启动即校验",
+                                    "2 apps + 4 infra; docker-compose; web vs worker; MinIO stand-in; env validated at startup"),
 }
 
 
