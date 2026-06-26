@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 11 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 12 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -348,6 +348,7 @@ details[open] > summary { list-style: none; }
   <li>The metadata schema (Postgres)</li>
   <li>Multi-tenancy</li>
   <li>Deployment topology</li>
+  <li>The ingestion API</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -2604,9 +2605,15 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>Three details: (1) the type is <code>LowCardinality(String)</code> — env names are a small fixed set (prod/staging/dev), and
 low-cardinality encoding saves space and speeds queries; (2) the default <code>'default'</code> — without an explicit environment, data lands
-in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — it sits
-right after project_id, the two forming a "project + environment" locating prefix. So environment is a <strong>soft slice</strong>: just a tag
-on the row — add a condition to filter by env, or ignore it to see them together.</p>
+in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — this only
+places it <strong>right after project_id in the table's column layout (purely a cosmetic column order for readability)</strong>; <strong>note it
+is NOT added to the ordering key</strong>. So unlike project_id, environment is essentially a <strong>plain filter column</strong> on the row — a
+soft slice: add a condition to filter by env, or ignore it to see them together.</p>
+
+<p>This neatly contrasts the two isolation mechanisms: <strong>project_id is welded into the ordering key</strong> (isolate = locate,
+structurally safe), while <strong>environment is just an ordinary column</strong> (filtered at query time). Reasonably so — hard isolation must
+be guaranteed by structure, while a soft slice is just a convenient view dimension that needn't (and shouldn't) wield the heavy weapon of the
+ordering key.</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>
@@ -2744,8 +2751,9 @@ concrete "packing list" and your mental model of Langfuse's "shape" is complete.
 
 <p>Note <strong>minio</strong>: an open-source object store that <strong>speaks the S3 protocol</strong>, standing in for AWS S3 locally / when
 self-hosting. So the same code uses real S3 in the cloud and MinIO when self-hosted, <strong>entirely transparent to the app layer</strong> —
-the portability of "program to an interface (the S3 protocol), not an implementation". All six containers have <strong>named volumes</strong>
-for persistence, so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
+the portability of "program to an interface (the S3 protocol), not an implementation". The <strong>four infra containers each mount a named
+volume</strong> for persistence (postgres / clickhouse data+logs / redis / minio), while <strong>web and worker are stateless — no volumes</strong>;
+so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">app tier</span><span class="name">web · worker</span></div><div class="ld">stateless business containers, restartable and scalable on demand. They start, connect to the storage below, and work.</div></div>
@@ -2799,7 +2807,7 @@ startup</strong>. Misconfigure or miss one and the process <strong>fails to star
 than running sick and crashing midway. This "<strong>validate config at startup</strong>" discipline turns "config errors" from hard-to-find
 runtime bugs into obvious startup errors (expanded in L51).</p>
 
-<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.example</code> and fill
+<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.dev.example</code> and fill
 the key variables → <code>docker compose up</code></strong>, and the six containers come up in dependency order, connect, and within minutes you
 open a browser to the Langfuse UI. The repo also ships <strong>several compose files</strong> for different scenarios —
 <code>docker-compose.dev.yml</code> (local dev, often just the infra while the apps run on your machine for hot reload),
@@ -2874,6 +2882,204 @@ also know which container's logs to check when something breaks.</p>
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Langfuse self-host needs 4 infra engines, a higher bar than 'one binary'. If you built an open-source tool, how would you trade off 'handles scale' vs 'easy to self-host'? Is one-command docker-compose orchestration a good answer?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The ingestion API</h1>
+
+<p class="lead">
+Part 2 finished "what the data looks like and where it lives". From here we walk the <strong>ingestion path</strong> — the close-up of
+Lesson 5's "write trunk". First stop: the <strong>public ingestion API</strong> — how the server <strong>receives</strong> a batch of events
+your app sends. Spoiler on its character: <strong>extremely fast and light</strong>. It does just three things — <strong>auth + validate +
+enqueue</strong> — then returns immediately, <strong>never</strong> merging, computing cost, or writing the DB here (those are the worker's
+job). This is Lesson 5's "fast lane".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture the ingestion API as a courier's <strong>drop-off counter</strong>: the courier (your SDK) brings <strong>a batch</strong> of parcels
+  (events), and the clerk (the API) does three things before waving you through — <strong>check the sender's identity</strong> (auth: which
+  project is this key?), <strong>scan and log the labels</strong> (validate: is each parcel well-formed?), <strong>drop them on the
+  belt</strong> (enqueue). Then it <strong>hands you a receipt on the spot</strong> (HTTP 200) and lets you go — it <strong>won't</strong> sort,
+  weigh and deliver in front of you. The slow work is done by people down the belt (the worker). The counter's only goal: <strong>accept fast,
+  never block the door</strong>.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 200">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">the life of one ingestion request (milliseconds)</text>
+  <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">a batch of events</text>
+  <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">1 auth</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
+  <rect x="290" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">2 Zod validate</text><text x="345" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">well-formed?</text>
+  <rect x="420" y="70" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">3 processEventBatch</text><text x="495" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">enqueue (+ S3)</text>
+  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">200 OK</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">return now</text>
+  <line x1="140" y1="95" x2="158" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="158,95 149,90 149,100" fill="var(--faint)"/>
+  <line x1="270" y1="95" x2="288" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="288,95 279,90 279,100" fill="var(--faint)"/>
+  <line x1="400" y1="95" x2="418" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,95 409,90 409,100" fill="var(--faint)"/>
+  <line x1="570" y1="95" x2="588" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="588,95 579,90 579,100" fill="var(--faint)"/>
+  <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">merge, cost, ClickHouse writes are not here — that's the worker (L15–17)</text>
+  <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
+</svg>
+<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+</div>
+
+<h2>The life of one ingestion request</h2>
+<p>The entry is the <code>handler</code> in <code>web/src/pages/api/public/ingestion.ts</code>. After taking the body, the real work is a
+shared function called <code>processEventBatch</code>:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts</span><span class="ln">handler</span></div>
+  <pre class="code"><span class="kw">import</span> { processEventBatch } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;
+
+<span class="kw">export default async function</span> <span class="fn">handler</span>(req, res) {
+  <span class="cm">// …auth, parse body…</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);
+  <span class="cm">// return the result immediately (success / partial failure), not waiting for the worker</span>
+}</pre>
+</div>
+
+<p>One design detail: <code>processEventBatch</code> is <strong>shared</strong> — besides <code>/ingestion</code>, even the standalone "submit a
+score" endpoint reuses it. Why? Because "accept a batch, validate, enqueue" is <strong>needed everywhere</strong>; factoring it into one
+function avoids re-implementing (and re-bugging) it per endpoint (again Lesson 6's "converge complexity to one place"). The event types it
+supports cover <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> /
+<code>SCORE_CREATE</code> and more (including <code>SDK_LOG</code>, <code>DATASET_RUN_ITEM_CREATE</code>) — exactly Lesson 6's event
+envelope.</p>
+
+<h2>Why a "batch", not "one"</h2>
+<p>The SDK doesn't fire one HTTP per event — it <strong>collects a batch</strong> and sends it. This "batch" design saves a lot:</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 one-by-one</h4><p>Every observation a full HTTP round trip; at high frequency the network overhead is huge and connections explode — a real drag on your app.</p></div>
+  <div class="col"><h4>😀 batched</h4><p>Dozens or hundreds of events in one request, <strong>one round trip</strong>. Network overhead amortizes, and the API validates and enqueues in one go — far higher throughput.</p></div>
+</div>
+
+<p>Batching also gives a semantic benefit: a batch may hold both a <code>CREATE</code> and an <code>UPDATE</code> for one observation, and the
+server can process them <strong>together</strong>, cutting round trips. Of course a batch can't be infinite — when the body is too large the API
+rejects it ("payload too large"), another guard: don't let one request blow up the server.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK batches → POST /ingestion</h4><p>the app packs a window of events into one batch and sends it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>handler authenticates</h4><p>resolve the project from the API key and check write permission (fail → reject the whole batch).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Zod-validate each event</h4><p>ill-formed events are rejected; the rest continue (partial success possible).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch enqueues + lands S3</h4><p>valid events enter the Redis queue; originals are stored in S3 (L14).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>return the result immediately</h4><p>tell the caller which were accepted, which rejected — all in milliseconds, not waiting for the worker.</p></div></div>
+</div>
+
+
+<h2>Two gates: auth + validation</h2>
+<p>Before "enqueue", the API must pass two gates. They look routine but are the system's first line of <strong>security and
+robustness</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="two gates: auth resolves the project and checks permission, Zod validates event shape, both must pass to enqueue">
+  <rect x="40" y="60" width="180" height="80" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="130" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">1 auth gate</text>
+  <text x="130" y="106" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API key → which project?</text>
+  <text x="130" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">may it write?</text>
+  <rect x="270" y="60" width="180" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="360" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">2 validate gate (Zod)</text>
+  <text x="360" y="106" text-anchor="middle" font-size="9" fill="var(--ink)">is each event well-formed?</text>
+  <text x="360" y="122" text-anchor="middle" font-size="9" fill="var(--ink)">reject bad events early</text>
+  <rect x="510" y="70" width="170" height="60" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="595" y="95" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">enqueue</text>
+  <text x="595" y="113" text-anchor="middle" font-size="8.5" fill="var(--muted)">only if both pass</text>
+  <line x1="220" y1="100" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,100 259,95 259,105" fill="var(--faint)"/>
+  <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
+  <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">auth decides "who you are and may you write", validation decides "is what you sent clean"</text>
+</svg>
+<div class="figcap"><b>Two gates</b>: <b>auth</b> resolves the project from the API key (L09: a key belongs to a project) and confirms write permission — this also <b>pins the tenant</b> (L10's project_id threading); <b>Zod validation</b> checks each event's shape, so <b>bad data is rejected at the door</b> and never pollutes downstream. Pass both, then enqueue.</div>
+</div>
+
+<p>The second gate, Zod validation, especially matters: the ingestion system swallows a flood of data from <strong>many SDKs and
+versions</strong> daily, inevitably with malformed or missing-field "dirty events". Rejecting them at the <strong>entry</strong> with a Zod
+schema and a clear error beats letting them flow into the queue and crash the worker — <strong>the earlier you reject bad data, the calmer the
+whole system</strong>. If a few events in a batch are bad, the API can still return "partial success", telling you which weren't accepted,
+rather than failing the whole batch.</p>
+
+<table class="t">
+  <tr><th>This gate</th><th>Guards</th><th>On failure</th></tr>
+  <tr><td><b>auth</b></td><td>Is the API key valid? Which project? May it write?</td><td>401/403, whole batch rejected</td></tr>
+  <tr><td><b>Zod validation</b></td><td>Is each event's shape/type legal</td><td>bad events rejected; partial success possible</td></tr>
+  <tr><td><b>size guard</b></td><td>Is the body too large</td><td>"payload too large", prevents blow-up</td></tr>
+</table>
+
+<p>"Partial success" isn't just talk — it's baked into the <strong>response contract</strong>: the last line of <code>ingestion.ts</code>'s handler
+is <code>res.status(<strong>207</strong>).json(result)</code>, where <code>result</code> looks like <code>{ successes, errors }</code> — two arrays
+listing the accepted events and the rejected ones (each with its error reason). The <strong>207 Multi-Status</strong> HTTP code is purpose-built for
+"one request, many sub-operations, mixed outcomes". So even if 3 of your 100 events are dirty, the server <strong>accepts 97, returns the 3 with
+reasons</strong>, instead of throwing out the whole pot for a few bad apples. Hugely SDK-friendly: the client can retransmit just the failed ones,
+no full-batch retry.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why does the API only "auth + validate + enqueue", pushing all heavy work to the worker?</strong> Because the ingestion API is the
+  layer <strong>facing your app directly</strong>, and its top KPI is "<strong>always fast, never drag the caller</strong>". Any extra work
+  here — merging, looking up pricing, writing the DB — becomes latency on every instrumentation call and can fail on downstream hiccups. So
+  Langfuse <strong>cuts this line very cleanly</strong>: the API keeps only the minimum that <strong>must happen on the spot</strong> (auth to
+  prevent unauthorized writes, validation to keep dirty data out, enqueue to hand off), and everything else that can be async <strong>is
+  async</strong>. The cost is "eventual consistency" (L05), but the gain is an ingestion entry that's almost impossible to slow or to drag
+  your business down. <strong>The thinner the entry, the better it survives spikes.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The ingestion API's entire job: <strong>auth + Zod validation + enqueue</strong>, then return immediately — merge/cost/DB-write are not here (the worker's job).</li>
+    <li>The <code>handler</code> in <code>ingestion.ts</code> calls the shared <code>processEventBatch</code> (even the standalone score endpoint reuses it).</li>
+    <li><strong>Batched reporting</strong>: dozens/hundreds of events per HTTP, amortizing network cost, validated and enqueued in one go; oversized batches are rejected (size guard).</li>
+    <li><strong>Two gates</strong>: auth (key→project, permission, pins the tenant) + Zod validation (reject bad data at the door, partial success possible).</li>
+    <li>Tradeoff: the entry keeps only "must happen now", everything async-able is async — the thinner the entry the better it survives spikes, at the cost of eventual consistency.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. The ingestion API does only three things on a batch, then returns immediately. Which three, and why not merge/cost/write-DB here?</div>
+  <ol class="opts">
+    <li>auth + merge + write-DB; because it's fastest</li>
+    <li>auth + Zod validation + enqueue; because the API faces your app directly, its top goal is 'always fast, never drag the caller'; heavy work here would add latency to every call and fail on downstream hiccups</li>
+    <li>compress + encrypt + enqueue</li>
+    <li>only enqueue, no auth or validation</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The entry keeps only the must-do-now minimum (auth prevents unauthorized writes, validation blocks dirty data, enqueue hands off), deferring everything async to the worker. The thinner the entry, the better it survives spikes and the less it drags your business — at the cost of eventual consistency (L05).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. The ingestion.ts handler delegates the real work to a shared processEventBatch, reused even by the standalone score endpoint. The benefit?</div>
+  <ol class="opts">
+    <li>to make the score endpoint slower</li>
+    <li>'accept a batch, validate, enqueue' is needed everywhere; factoring it into one place avoids re-implementing (and re-bugging) it per endpoint (converge complexity, L06)</li>
+    <li>just to write more code</li>
+    <li>because scores can't use the queue</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Multiple endpoints share one ingestion routine, maintained and tested in one place, avoiding inconsistency from scattered implementations — in line with L06's 'converge complexity to one strictly testable place'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why 'validate with Zod at the entry, reject bad data as early as possible', and why can the API return 'partial success'?</div>
+  <ol class="opts">
+    <li>Ingestion swallows data from many SDKs/versions daily, inevitably with dirty events; rejecting at the entry with a clear error beats letting them crash the worker; a few bad events in a batch get rejected while the rest are accepted</li>
+    <li>because bad data is faster</li>
+    <li>because partial success saves money</li>
+    <li>because Zod encrypts data</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Fail-fast + fault tolerance: a schema blocks dirty data at the door, sparing downstream and the worker; per-event partial success avoids letting a few bad events doom the whole batch. This keeps ingestion from massive heterogeneous sources both robust and friendly.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Splitting 'accept' from 'process' so the entry does the minimum — can you apply this to your own APIs? Which work 'must happen now', and which can be deferred to async background? What if you split it wrong?</li>
   </ul>
 </div>
 </div>

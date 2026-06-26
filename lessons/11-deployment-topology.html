@@ -333,10 +333,10 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="topbar-inner">
     <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
     <span class="pill"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></span>
-    <span class="pill">11 / 11</span>
+    <span class="pill">11 / 12</span>
     <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
   </div>
-  <div class="progress"><span style="width:100%"></span></div>
+  <div class="progress"><span style="width:91%"></span></div>
 </div>
 <div class="wrap">
   <div class="hero">
@@ -389,8 +389,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </table>
 
 <p>注意 <strong>minio</strong>：它是一个<strong>兼容 S3 协议</strong>的开源对象存储，在本地/自托管时充当 AWS S3 的<strong>替身</strong>。这意味着同一套代码，
-在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。六个容器各自有 <strong>named volume</strong> 做持久化，
-所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
+在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。<strong>四个基础设施容器各自挂 named volume</strong> 做持久化
+（postgres / clickhouse data+logs / redis / minio），而 <strong>web 与 worker 无状态、不挂卷</strong>；所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">应用层</span><span class="name">web · worker</span></div><div class="ld">无状态的业务容器，可随时重启、按需扩容。它们启动后连上下面的存储干活。</div></div>
@@ -438,7 +438,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 （<code>packages/shared/src/env.ts</code>、<code>worker/src/env.ts</code> 等），<strong>启动时</strong>就检查类型与必填项。配错了、漏填了，进程会<strong>直接启动失败并报清楚哪个变量有问题</strong>，
 而不是带病运行到半路才崩。这条「<strong>启动即校验配置</strong>」的纪律，是把「配置错误」从难查的运行时 bug 变成一眼可见的启动错误（第 51 课展开）。</p>
 
-<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
+<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.dev.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
 六个容器就按依赖次序拉起、连通，几分钟后你就能打开浏览器看到 Langfuse 界面。仓库里还备了<strong>多套 compose 文件</strong>应对不同场景——
 <code>docker-compose.dev.yml</code>（本地开发，常只拉基础设施、应用跑在本机便于热重载）、<code>docker-compose.yml</code>（完整一套）、
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
@@ -559,8 +559,9 @@ concrete "packing list" and your mental model of Langfuse's "shape" is complete.
 
 <p>Note <strong>minio</strong>: an open-source object store that <strong>speaks the S3 protocol</strong>, standing in for AWS S3 locally / when
 self-hosting. So the same code uses real S3 in the cloud and MinIO when self-hosted, <strong>entirely transparent to the app layer</strong> —
-the portability of "program to an interface (the S3 protocol), not an implementation". All six containers have <strong>named volumes</strong>
-for persistence, so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
+the portability of "program to an interface (the S3 protocol), not an implementation". The <strong>four infra containers each mount a named
+volume</strong> for persistence (postgres / clickhouse data+logs / redis / minio), while <strong>web and worker are stateless — no volumes</strong>;
+so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">app tier</span><span class="name">web · worker</span></div><div class="ld">stateless business containers, restartable and scalable on demand. They start, connect to the storage below, and work.</div></div>
@@ -614,7 +615,7 @@ startup</strong>. Misconfigure or miss one and the process <strong>fails to star
 than running sick and crashing midway. This "<strong>validate config at startup</strong>" discipline turns "config errors" from hard-to-find
 runtime bugs into obvious startup errors (expanded in L51).</p>
 
-<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.example</code> and fill
+<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.dev.example</code> and fill
 the key variables → <code>docker compose up</code></strong>, and the six containers come up in dependency order, connect, and within minutes you
 open a browser to the Langfuse UI. The repo also ships <strong>several compose files</strong> for different scenarios —
 <code>docker-compose.dev.yml</code> (local dev, often just the infra while the apps run on your machine for hot reload),
@@ -691,7 +692,7 @@ also know which container's logs to check when something breaks.</p>
   </ul>
 </div>
 </div></div>
-  <div class="footnav"><a class="prev" href="10-multi-tenancy.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">多租户：org → project → environment</span><span class="lang-en">Multi-tenancy</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+  <div class="footnav"><a class="prev" href="10-multi-tenancy.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">多租户：org → project → environment</span><span class="lang-en">Multi-tenancy</span></div></a><a class="next" href="12-ingestion-api.html"><div class="dir"><span class="lang-zh">下一课 →</span><span class="lang-en">Next →</span></div><div class="ttl"><span class="lang-zh">摄取 API</span><span class="lang-en">The ingestion API</span></div></a></div>
 </div>
 <script>
 function lvgSetLang(l){

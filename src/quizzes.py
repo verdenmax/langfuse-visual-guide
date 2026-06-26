@@ -815,6 +815,76 @@ QUIZZES = {
             },
         ],
     },
+    "12-ingestion-api.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "摄取 API 收到一批事件后只做三件事就立即返回。是哪三件？为什么不在这里合并/算成本/写库？",
+                    "en": "The ingestion API does only three things on a batch, then returns immediately. Which three, and why not merge/cost/write-DB here?",
+                },
+                "opts": [
+                    {
+                        "zh": "鉴权 + Zod 校验 + 入队；因为 API 直面你的应用，首要目标是“永远快、不拖累调用方”，重活放这里会增加每次埋点的延迟、还会因下游抖动而失败",
+                        "en": "auth + Zod validation + enqueue; because the API faces your app directly, its top goal is 'always fast, never drag the caller'; heavy work here would add latency to every call and fail on downstream hiccups",
+                    },
+                    {"zh": "鉴权 + 合并 + 写库；因为这样最快", "en": "auth + merge + write-DB; because it's fastest"},
+                    {"zh": "压缩 + 加密 + 入队", "en": "compress + encrypt + enqueue"},
+                    {"zh": "只做入队，不鉴权也不校验", "en": "only enqueue, no auth or validation"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "入口只保留“必须当场做”的最小集合（鉴权防越权、校验拦脏数据、入队完成交接），能异步的全交给 worker。入口越薄越扛洪峰、越不可能拖垮你的业务，代价是最终一致（第 5 课）。",
+                    "en": "The entry keeps only the must-do-now minimum (auth prevents unauthorized writes, validation blocks dirty data, enqueue hands off), deferring everything async to the worker. The thinner the entry, the better it survives spikes and the less it drags your business — at the cost of eventual consistency (L05).",
+                },
+            },
+            {
+                "q": {
+                    "zh": "ingestion.ts 的 handler 把真正的活交给一个叫 processEventBatch 的共享函数，连单独提交 score 的接口也复用它。这么做的好处是？",
+                    "en": "The ingestion.ts handler delegates the real work to a shared processEventBatch, reused even by the standalone score endpoint. The benefit?",
+                },
+                "opts": [
+                    {
+                        "zh": "“收一批、校验、入队”到处都用得上，抽成一处就不必每个端点各写一遍、各错一遍（复杂度收敛到一处，第 6 课）",
+                        "en": "'accept a batch, validate, enqueue' is needed everywhere; factoring it into one place avoids re-implementing (and re-bugging) it per endpoint (converge complexity, L06)",
+                    },
+                    {"zh": "为了让 score 接口更慢", "en": "to make the score endpoint slower"},
+                    {"zh": "因为 score 不能走队列", "en": "because scores can't use the queue"},
+                    {"zh": "纯粹为了多写代码", "en": "just to write more code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "多个端点共享同一套摄取逻辑，维护在一处、测试在一处，避免分散实现导致的不一致。这与第 6 课“把复杂度收敛到一个能严格测试的地方”一脉相承。",
+                    "en": "Multiple endpoints share one ingestion routine, maintained and tested in one place, avoiding inconsistency from scattered implementations — in line with L06's 'converge complexity to one strictly testable place'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么说“在入口用 Zod 校验、越早拒绝坏数据越好”，而且 API 还能返回“部分成功”？",
+                    "en": "Why 'validate with Zod at the entry, reject bad data as early as possible', and why can the API return 'partial success'?",
+                },
+                "opts": [
+                    {
+                        "zh": "摄取每天吞下各种 SDK/版本的数据，难免有脏事件；入口拦下并给清晰错误，比让它流进队列、到 worker 才崩好得多；一批里坏几条只拒那几条、其余照收",
+                        "en": "Ingestion swallows data from many SDKs/versions daily, inevitably with dirty events; rejecting at the entry with a clear error beats letting them crash the worker; a few bad events in a batch get rejected while the rest are accepted",
+                    },
+                    {"zh": "因为 Zod 能加密数据", "en": "because Zod encrypts data"},
+                    {"zh": "因为坏数据更快", "en": "because bad data is faster"},
+                    {"zh": "因为部分成功能省钱", "en": "because partial success saves money"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "fail-fast + 容错：在门口用 schema 拦下脏数据，避免污染下游、避免 worker 崩；同时按事件粒度返回部分成功，不因个别坏事件牵连整批。这让海量异构来源的摄取既健壮又友好。",
+                    "en": "Fail-fast + fault tolerance: a schema blocks dirty data at the door, sparing downstream and the worker; per-event partial success avoids letting a few bad events doom the whole batch. This keeps ingestion from massive heterogeneous sources both robust and friendly.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "把“接收”和“处理”切开、入口只做最小集合——这条思路你能用到自己写的 API 上吗？哪些工作“必须当场做”，哪些可以丢给后台异步？切错了会怎样？",
+                "en": "Splitting 'accept' from 'process' so the entry does the minimum — can you apply this to your own APIs? Which work 'must happen now', and which can be deferred to async background? What if you split it wrong?",
+            },
+        ],
+    },
 }
 
 

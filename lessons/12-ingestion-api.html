@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var l=localStorage.getItem('lvg-lang');if(l==='en'){document.documentElement.dataset.lang='en';document.documentElement.lang='en';}}catch(e){}</script>
+<title>12 · 摄取 API / The ingestion API - Langfuse 图解教程</title>
+<meta name="description" content="第三部分 · 摄取链路｜摄取 API - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="theme-color" content="#059669">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNycgZmlsbD0nIzA1OTY2OScvPjxwYXRoIGQ9J005IDE2IEwyMiA4LjUgTTkgMTYgTDIyIDIzLjUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPScxLjcnIGZpbGw9J25vbmUnLz48Y2lyY2xlIGN4PSc5JyBjeT0nMTYnIHI9JzMnIGZpbGw9JyNmZmYnLz48Y2lyY2xlIGN4PScyMicgY3k9JzguNScgcj0nMycgZmlsbD0nI2ZmZicvPjxjaXJjbGUgY3g9JzIyJyBjeT0nMjMuNScgcj0nMycgZmlsbD0nI2ZmZicvPjwvc3ZnPg==">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Langfuse 图解教程">
+<meta property="og:title" content="12 · 摄取 API / The ingestion API - Langfuse 图解教程">
+<meta property="og:description" content="第三部分 · 摄取链路｜摄取 API - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="12 · 摄取 API / The ingestion API - Langfuse 图解教程">
+<meta name="twitter:description" content="第三部分 · 摄取链路｜摄取 API - Langfuse 图解教程（中英双语，配真实源码对应、折叠深挖与设计取舍）">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --ink: #1d2129;
+  --muted: #5b6470; --faint: #8a939f; --line: #e1e5ea;
+  --accent: #059669; --accent-soft: #d1fae5; --accent-ink: #047857;
+  --blue: #2563eb; --blue-soft: #e7efff; --amber: #b4690e; --amber-soft: #fdf1dd;
+  --purple: #7c3aed; --purple-soft: #f0e9ff; --red: #d23f3f; --red-soft: #fbe6e6;
+  --teal: #0891b2; --teal-soft: #cffafe;
+  --code-bg: #0f172a; --code-ink: #e2e8f0; --code-line: #1e293b;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --panel-2: #1c232c; --ink: #e6edf3;
+    --muted: #9aa6b2; --faint: #6e7a86; --line: #2a323c;
+    --accent: #34d399; --accent-soft: #064e3b; --accent-ink: #6ee7b7;
+    --blue: #6ea8fe; --blue-soft: #16243f; --amber: #e0a44a; --amber-soft: #33270f;
+    --purple: #b794f6; --purple-soft: #271a40; --red: #f08080; --red-soft: #3a1a1a;
+    --teal: #22d3ee; --teal-soft: #083344;
+    --code-bg: #0a0f1a; --code-ink: #d8e2f0; --code-line: #14202f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+code, .mono { font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace; overflow-wrap: break-word; }
+
+/* ---- top progress bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: var(--panel);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.topbar-inner {
+  max-width: 960px; margin: 0 auto; padding: .7rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.topbar .home { font-size: .82rem; color: var(--muted); font-weight: 600; display:flex; gap:.5rem; align-items:center; }
+.topbar .home b { color: var(--accent); }
+.topbar .pill { font-size: .72rem; color: var(--muted); background: var(--panel-2);
+  padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.progress { height: 3px; background: var(--panel-2); }
+.progress > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+
+.wrap { max-width: 820px; margin: 0 auto; padding: 2.4rem 1.25rem 5rem; }
+
+/* ---- hero ---- */
+.hero { margin-bottom: 2rem; }
+.hero .part { font-size: .76rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); font-weight: 700; margin-bottom: .55rem; }
+.hero h1 { font-size: 2.05rem; line-height: 1.2; letter-spacing: -.01em; font-weight: 750; }
+.hero .lead { margin-top: .9rem; font-size: 1.06rem; color: var(--muted); }
+
+h2 { font-size: 1.32rem; margin: 2.4rem 0 .9rem; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .55rem; }
+h2::before { content: ""; width: 4px; height: 1.05em; background: var(--accent); border-radius: 3px; display: inline-block; }
+h3 { font-size: 1.05rem; margin: 1.4rem 0 .5rem; }
+p { margin: .7rem 0; }
+ul, ol { margin: .6rem 0 .6rem 1.3rem; }
+li { margin: .3rem 0; }
+strong { color: var(--ink); font-weight: 680; }
+.inline { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: .08em .4em; font-size: .9em; color: var(--accent-ink); }
+
+/* ---- callout cards ---- */
+.card { border-radius: var(--radius); padding: 1.05rem 1.2rem; margin: 1.2rem 0;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); }
+.card .tag { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.card.macro { border-left: 4px solid var(--blue); }
+.card.macro .tag { color: var(--blue); }
+.card.detail { border-left: 4px solid var(--purple); }
+.card.detail .tag { color: var(--purple); }
+.card.analogy { border-left: 4px solid var(--amber); background: var(--amber-soft); }
+.card.analogy .tag { color: var(--amber); }
+.card.key { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+.card.key .tag { color: var(--accent-ink); }
+.card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+.card.warn .tag { color: var(--red); }
+.card.spark { border-left: 4px solid #e0a000;
+  background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
+.card.spark .tag { color: #c98a00; }
+@media (prefers-color-scheme: dark) { .card.spark .tag { color: #f0c050; } }
+
+/* ---- code file callout ---- */
+.codefile { margin: 1.2rem 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: var(--shadow); }
+.codefile .cf-head { display: flex; align-items: center; gap: .55rem; padding: .5rem .85rem;
+  background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: .8rem; }
+.codefile .cf-head .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink:0; }
+.codefile .cf-head .path { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.codefile .cf-head .ln { margin-left: auto; color: var(--faint); font-size: .72rem; }
+.codefile pre { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem;
+  overflow-x: auto; font-size: .82rem; line-height: 1.6; }
+.codefile pre .cm { color: #7d8aa3; }
+.codefile pre .kw { color: #c792ea; }
+.codefile pre .fn { color: #82aaff; }
+.codefile pre .st { color: #c3e88d; }
+.codefile pre .nb { color: #f78c6c; }
+
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: .9rem 1rem; border-radius: 12px;
+  overflow-x: auto; font-size: .83rem; line-height: 1.6; margin: 1.1rem 0; box-shadow: var(--shadow); }
+pre.code .cm { color: #7d8aa3; } pre.code .kw { color: #c792ea; }
+pre.code .fn { color: #82aaff; } pre.code .st { color: #c3e88d; } pre.code .nb { color: #f78c6c; }
+
+/* ---- collapsible accordion (details/summary) ---- */
+.accordion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+  margin: .7rem 0; box-shadow: var(--shadow); overflow: hidden; }
+.accordion > summary { cursor: pointer; padding: .85rem 1.1rem; font-weight: 650; font-size: .96rem;
+  list-style: none; display: flex; align-items: center; gap: .6rem; user-select: none; }
+.accordion > summary::-webkit-details-marker { display: none; }
+.accordion > summary::after { content: "▶"; font-size: .68rem; color: var(--accent);
+  margin-left: auto; transition: transform .15s ease; }
+.accordion[open] > summary::after { transform: rotate(90deg); }
+.accordion > summary:hover { background: var(--panel-2); }
+.accordion[open] > summary { border-bottom: 1px solid var(--line); }
+.accordion .badge-num { background: var(--accent-soft); color: var(--accent-ink);
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+.accordion .hint { font-size: .72rem; color: var(--faint); font-weight: 400; }
+.acc-body { padding: .9rem 1.1rem 1.1rem; }
+.acc-intro { color: var(--muted); font-size: .9rem; margin: .2rem 0 .4rem; }
+.qa { margin: 1rem 0; }
+.qa:first-child { margin-top: .3rem; }
+.qa .q { font-weight: 680; font-size: .9rem; display: flex; gap: .45rem; align-items: center; margin-bottom: .3rem; }
+.qa .a { color: var(--muted); font-size: .9rem; }
+.qa .a strong { color: var(--ink); }
+.qa pre.code { margin: .5rem 0 0; font-size: .78rem; }
+
+/* ---- flow diagram ---- */
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; margin: 1.3rem 0;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1.2rem 1rem; box-shadow: var(--shadow); }
+.flow .node { flex: 1 1 0; min-width: 110px; text-align: center; padding: .7rem .5rem;
+  border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); }
+.flow .node .nt { font-weight: 700; font-size: .92rem; }
+.flow .node .nd { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+.flow .node.hl { background: var(--accent-soft); border-color: var(--accent); }
+.flow .arrow { align-self: center; color: var(--faint); font-size: 1.3rem; padding: 0 .35rem; }
+
+/* vertical flow */
+.vflow { margin: 1.3rem 0; }
+.vflow .step { display: flex; gap: .9rem; position: relative; padding-bottom: 1.1rem; }
+.vflow .step:not(:last-child)::before { content:""; position:absolute; left: 15px; top: 34px; bottom: -2px;
+  width: 2px; background: var(--line); }
+.vflow .num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; z-index:1; }
+.vflow .sc h4 { margin: .25rem 0 .2rem; font-size: 1rem; }
+.vflow .sc p { margin: .15rem 0; font-size: .92rem; color: var(--muted); }
+.vflow .sc .mono { font-size: .8rem; color: var(--accent-ink); }
+
+/* layered architecture */
+.layers { margin: 1.3rem 0; display: flex; flex-direction: column; gap: .55rem; }
+.layer { border-radius: 12px; padding: .85rem 1.1rem; border: 1px solid var(--line); background: var(--panel);
+  box-shadow: var(--shadow); }
+.layer .lh { display: flex; align-items: center; gap: .6rem; }
+.layer .lh .badge { font-size: .7rem; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; }
+.layer .lh .name { font-weight: 700; font-family: ui-monospace, monospace; }
+.layer .ld { font-size: .85rem; color: var(--muted); margin-top: .35rem; }
+.layer.l-core { border-left: 4px solid var(--accent); } .layer.l-core .badge { background: var(--accent-soft); color: var(--accent-ink); }
+.layer.l-main { border-left: 4px solid var(--blue); } .layer.l-main .badge { background: var(--blue-soft); color: var(--blue); }
+.layer.l-part { border-left: 4px solid var(--purple); } .layer.l-part .badge { background: var(--purple-soft); color: var(--purple); }
+.layer.l-app { border-left: 4px solid var(--amber); } .layer.l-app .badge { background: var(--amber-soft); color: var(--amber); }
+
+/* two-column compare */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); min-width: 0; }
+.col h4 { margin: 0 0 .4rem; font-size: .95rem; }
+
+table.t { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .9rem;
+  background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+table.t th, table.t td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--line); }
+table.t th { background: var(--panel-2); font-size: .8rem; letter-spacing: .02em; }
+table.t tr:last-child td { border-bottom: none; }
+table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent-ink); }
+@media (max-width: 640px) {
+  /* Wide multi-column tables: scroll within their own box instead of
+     forcing page-level horizontal overflow (which clipped right columns). */
+  table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.t th, table.t td { padding: .5rem .6rem; }
+}
+.selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
+.selftest > h2 { margin-top: .2rem; }
+.quiz { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--blue);
+  border-radius: 12px; padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.quiz .qn { font-weight: 650; }
+.quiz ol.opts { list-style: upper-alpha; margin: .55rem 0 .6rem 1.5rem; padding: 0; }
+.quiz ol.opts li { margin: .3rem 0; padding-left: .15rem; }
+.quiz details.accordion { margin: .5rem 0 0; }
+.selftest code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent-ink);
+  background: var(--accent-soft); padding: 0 .28em; border-radius: 4px; }
+
+/* footer nav */
+.footnav { display: flex; justify-content: space-between; gap: 1rem; margin-top: 3rem;
+  padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.footnav a { flex: 1; padding: .85rem 1.1rem; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: var(--shadow); transition: .15s; }
+.footnav a:hover { border-color: var(--accent); transform: translateY(-1px); }
+.footnav a.next { text-align: right; }
+.footnav .dir { font-size: .72rem; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.footnav .ttl { font-weight: 700; color: var(--ink); margin-top: .15rem; }
+.footnav a.disabled { opacity: .35; pointer-events: none; }
+
+/* index page */
+.toc { display: grid; gap: .7rem; margin-top: 1.6rem; }
+.toc-part { font-size: .78rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin: 1.4rem 0 .2rem; }
+.toc a { display: flex; align-items: center; gap: .9rem; padding: .85rem 1.05rem; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .15s; }
+.toc a:hover { border-color: var(--accent); transform: translateX(3px); }
+.toc .n { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.toc .tt { font-weight: 650; color: var(--ink); }
+.toc .ts { font-size: .8rem; color: var(--muted); margin-left: auto; text-align: right; }
+.toc-search { position: relative; margin: 1.6rem 0 -.4rem; }
+.toc-search input { width: 100%; box-sizing: border-box; padding: .75rem 2.8rem .75rem 1rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: .98rem; box-shadow: var(--shadow); }
+.toc-search input:focus { outline: none; border-color: var(--accent); }
+.toc-search .qcount { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: .8rem; pointer-events: none; }
+.toc a.hide, .toc .toc-part.hide { display: none; }
+.t tr.hide, table.t.hide, h2.hide { display: none; }
+.toc-empty { display: none; color: var(--muted); padding: 1rem; text-align: center; }
+.toc-empty.show { display: block; }
+.hero.index h1 { font-size: 2.3rem; }
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:1rem; font-size:.8rem; color:var(--muted); }
+.legend span { display:flex; align-items:center; gap:.4rem; }
+.legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.pdf-btn { display:inline-flex; align-items:center; gap:.4rem; padding:.55rem 1.1rem;
+  background:var(--accent); color:#fff; border-radius:10px; font-size:.9rem; font-weight:650;
+  box-shadow:var(--shadow); transition:.15s; }
+.pdf-btn:hover { background:var(--accent-ink); transform:translateY(-1px); }
+
+/* ---- bilingual language switch ----
+   Contract: <html> must carry data-lang="zh" (default) or "en".
+   page()/index_page() hard-code data-lang="zh"; LANG_BOOT may switch to "en". */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+.langtoggle { font-size:.72rem; font-weight:700; color:var(--accent-ink);
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:999px;
+  padding:.22rem .7rem; cursor:pointer; line-height:1.4; white-space:nowrap; }
+.langtoggle:hover { background:var(--accent); color:#fff; }
+
+/* ---- schematic: cell strips (vector rows / quant blocks / KV columns) ---- */
+.cellgroup { margin: 1.2rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.cellgroup .cg-cap { font-size: .82rem; color: var(--muted); margin-bottom: .55rem; }
+.cellgroup .cg-cap b { color: var(--ink); }
+.cells { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.cells + .cells { margin-top: .5rem; }
+.cell { min-width: 2.1rem; padding: .38rem .5rem; text-align: center; border-radius: 8px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: .78rem;
+  font-family: ui-monospace, monospace; white-space: nowrap; }
+.cell.scale { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.cell.hl    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.cell.q     { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.cell.dim   { opacity: .45; }
+.cells .lab { font-size: .76rem; color: var(--faint); padding: 0 .35rem; }
+.cells .sep { color: var(--faint); padding: 0 .1rem; }
+
+/* ---- schematic: timeline lanes (write vs read, step-by-step) ---- */
+.timeline { margin: 1.2rem 0; display: flex; flex-direction: column; gap: .5rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.timeline .lane { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.timeline .lane-label { min-width: 6rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.timeline .tslot { padding: .4rem .6rem; border-radius: 8px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: .78rem; text-align: center; font-family: ui-monospace, monospace; }
+.timeline .tslot.span { flex: 1; min-width: 8rem; background: var(--blue-soft); border-color: var(--blue);
+  color: var(--blue); font-weight: 700; }
+.timeline .tslot.now { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.timeline .tl-row { display: flex; align-items: flex-start; gap: .6rem; padding: .12rem 0; }
+.timeline .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: .45rem; }
+.timeline .tl-t { font-family: ui-monospace, monospace; font-weight: 700; color: var(--accent-ink); min-width: 2.4rem; font-size: .82rem; flex-shrink: 0; margin-top: .18rem; }
+.timeline .tl-c { font-size: .9rem; color: var(--muted); }
+
+/* ---- worked-example trace: one concrete input, stepped through ---- */
+.trace { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+.trace .tcap { font-size: .82rem; color: var(--muted); margin-bottom: .7rem; }
+.trace .tcap b { color: var(--accent-ink); }
+.trace .stations { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+.trace .stn { flex: 1 1 0; min-width: 116px; border: 1px solid var(--line); border-radius: 10px;
+  padding: .55rem; background: var(--bg); }
+.trace .stn h5 { margin: 0 0 .45rem; font-size: .8rem; color: var(--ink); }
+.trace .cellrow { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+.trace .vc { min-width: 2.1rem; padding: .32rem .45rem; text-align: center; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line); font: 600 .76rem ui-monospace, monospace; white-space: nowrap; }
+.trace .vc.hot  { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.trace .vc.blue { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.trace .vc.dim  { opacity: .42; }
+.trace .tlab { font-size: .68rem; color: var(--faint); margin-top: .35rem; }
+.trace .op { align-self: center; color: var(--accent); font: 700 .72rem ui-monospace, monospace;
+  padding: 0 .5rem; text-align: center; white-space: nowrap; }
+.trace svg { max-width: 100%; height: auto; display: block; margin: .3rem auto; }
+@media (max-width: 640px) { .trace .stations { flex-direction: column; } .trace .op { padding: .3rem 0; } }
+/* --- hand-drawn figure (inline SVG illustrations) --- */
+.fig { margin: 1.3rem 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1rem .85rem; box-shadow: var(--shadow); text-align: center; }
+.fig svg { max-width: 100%; height: auto; display: block; margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif; }
+.fig svg text { fill: var(--ink); }
+.fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+.fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></span>
+    <span class="pill">12 / 12</span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+  <div class="progress"><span style="width:100%"></span></div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></div>
+    <h1><span class="lang-zh">摄取 API</span><span class="lang-en">The ingestion API</span></h1>
+  </div>
+  <div class="lang-zh">
+<p class="lead">
+第二部分把「数据长什么样、存在哪」讲完了。从这一课起，我们正式走<strong>摄取链路</strong>——也就是第 5 课那条「写入主干」的放大版。
+第一站是<strong>公共摄取 API</strong>：你的应用发来一批事件，服务端这一头是怎么<strong>收下</strong>的。剧透一下它的性格——<strong>极快、极轻</strong>：
+它只做「鉴权 + 校验 + 入队」三件事，然后立刻返回，<strong>绝不</strong>在这里合并、算成本、写库（那些是 worker 的活）。这就是第 5 课说的「快路」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把摄取 API 想成快递的<strong>收件口</strong>：快递员（你的 SDK）抱来<strong>一批</strong>包裹（events），收件员（API）做三件事就放行——
+  <strong>核对寄件人身份</strong>（鉴权：你这把 key 是哪个项目的？）、<strong>扫码登记面单</strong>（校验：每个包裹的格式对不对？）、<strong>丢上传送带</strong>（入队）。
+  然后<strong>当场给你一张回执</strong>（HTTP 200），就让你走了——<strong>不会</strong>当着你的面去分拣、称重、送到目的地。那些慢活，传送带后面的人（worker）慢慢做。
+  收件口的唯一目标，就是<strong>收得飞快、永不堵门</strong>。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="摄取请求的生命周期：鉴权、Zod 校验、processEventBatch 入队、立即返回 200">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一个摄取请求的一生（毫秒级）</text>
+  <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">一批 events</text>
+  <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">① 鉴权</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
+  <rect x="290" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">② Zod 校验</text><text x="345" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">格式对不对</text>
+  <rect x="420" y="70" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">③ processEventBatch</text><text x="495" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">入队（+落 S3）</text>
+  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">200 OK</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">立即返回</text>
+  <line x1="140" y1="95" x2="158" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="158,95 149,90 149,100" fill="var(--faint)"/>
+  <line x1="270" y1="95" x2="288" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="288,95 279,90 279,100" fill="var(--faint)"/>
+  <line x1="400" y1="95" x2="418" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,95 409,90 409,100" fill="var(--faint)"/>
+  <line x1="570" y1="95" x2="588" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="588,95 579,90 579,100" fill="var(--faint)"/>
+  <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">合并、算成本、写 ClickHouse 都不在这里——那是 worker 的活（第 15–17 课）</text>
+  <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API 的全部职责：收下 → 校验 → 入队 → 回执</text>
+</svg>
+<div class="figcap"><b>极简的收件流程</b>：鉴权（API key 解析出 project，第 9·10 课）→ Zod 校验事件格式 → <code>processEventBatch</code> 把事件入队（同时把原件落 S3）→ 立即 200。整条链路上「重活」一件都不在这里做，所以 API 永远毫秒级返回。</div>
+</div>
+
+<h2>一个摄取请求的一生</h2>
+<p>入口在 <code>web/src/pages/api/public/ingestion.ts</code> 的 <code>handler</code>。它收下请求体后，真正干活的是一个叫 <code>processEventBatch</code> 的共享函数：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts</span><span class="ln">handler</span></div>
+  <pre class="code"><span class="kw">import</span> { processEventBatch } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;
+
+<span class="kw">export default async function</span> <span class="fn">handler</span>(req, res) {
+  <span class="cm">// …鉴权、解析 body…</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);
+  <span class="cm">// 立即把结果返回（成功/部分失败），不等 worker 处理</span>
+}</pre>
+</div>
+
+<p>注意一个设计细节：<code>processEventBatch</code> 是<strong>共享的</strong>——除了 <code>/ingestion</code>，连「单独提交 score」的接口也复用它。
+为什么？因为「收一批事件、校验、入队」这套逻辑<strong>到处都用得上</strong>，抽成一个函数就不必每个端点各写一遍、各错一遍（又是第 6 课「复杂度收敛到一处」的体现）。
+它支持的事件类型涵盖了 <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> / <code>SCORE_CREATE</code> 等
+（还包括 <code>SDK_LOG</code>、<code>DATASET_RUN_ITEM_CREATE</code>）——正是第 6 课说的那套事件信封。</p>
+
+<h2>为什么是「一批」，不是「一条」</h2>
+<p>SDK 不是每产生一个事件就发一次 HTTP，而是<strong>攒成一批</strong>再发。这个「批」的设计省了大事：</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 一条一发</h4><p>每个 observation 都来一次 HTTP 往返，高频应用下网络开销巨大、连接数爆炸，对你的应用是实打实的拖累。</p></div>
+  <div class="col"><h4>😀 攒批一发</h4><p>几十上百个事件打成一个请求，<strong>一次往返</strong>搞定。网络开销摊薄，API 也能一次性校验、一次性入队，吞吐高得多。</p></div>
+</div>
+
+<p>批处理还带来一个语义上的好处：同一批里可能既有某 observation 的 <code>CREATE</code> 又有它的 <code>UPDATE</code>，服务端可以<strong>整批一起</strong>处理，
+减少来回。当然，批也不能无限大——请求体过大时 API 会拒绝（返回「请求体过大」），这也是一道保护：别让单个请求把服务端撑爆。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK 攒批 → POST /ingestion</h4><p>应用侧把一段时间内的事件打成一批，一次发出。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>handler 鉴权</h4><p>从 API key 解析 project、校验写入权限（失败整批拒）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Zod 校验每个事件</h4><p>结构不对的事件被拒；其余继续（可部分成功）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch 入队 + 落 S3</h4><p>合法事件进 Redis 队列、原件存 S3（第 14 课）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>立即返回结果</h4><p>告诉调用方哪些收下、哪些被拒——全程毫秒级，不等 worker。</p></div></div>
+</div>
+
+
+<h2>守门的两道关：鉴权 + 校验</h2>
+<p>API 在「入队」之前，必须先过两道关。它们看似例行公事，却是整个系统<strong>安全与健壮</strong>的第一道防线：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="两道关：鉴权解析出 project 并校验权限，Zod 校验事件格式，都通过才入队">
+  <rect x="40" y="60" width="180" height="80" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="130" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">① 鉴权关</text>
+  <text x="130" y="106" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API key → 哪个 project？</text>
+  <text x="130" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">有没有写入权限？</text>
+  <rect x="270" y="60" width="180" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="360" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">② 校验关（Zod）</text>
+  <text x="360" y="106" text-anchor="middle" font-size="9" fill="var(--ink)">每个事件结构对不对？</text>
+  <text x="360" y="122" text-anchor="middle" font-size="9" fill="var(--ink)">坏事件早拒，别进系统</text>
+  <rect x="510" y="70" width="170" height="60" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="595" y="95" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">入队</text>
+  <text x="595" y="113" text-anchor="middle" font-size="8.5" fill="var(--muted)">两关都过才放行</text>
+  <line x1="220" y1="100" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,100 259,95 259,105" fill="var(--faint)"/>
+  <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
+  <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">鉴权决定「你是谁、能不能写」，校验决定「你发的东西干不干净」</text>
+</svg>
+<div class="figcap"><b>两道关</b>：<b>鉴权</b>从 API key 解析出 project（第 9 课 key 属于某 project）并确认有写入权限——这一步也<b>把租户钉死</b>（第 10 课 project_id 贯穿）；<b>Zod 校验</b>逐个事件检查结构，<b>坏数据在门口就被拒</b>，不会污染下游。两关都过，才允许入队。</div>
+</div>
+
+<p>第二道关「Zod 校验」尤其重要：摄取系统每天吞下海量来自<strong>各种 SDK、各种版本</strong>的数据，难免有格式不对、字段缺失的「脏事件」。
+在<strong>入口</strong>就用 Zod schema 把它们挡下、给出清晰错误，比让它们流进队列、到 worker 处理时才崩要好得多——<strong>越早拒绝坏数据，整个系统越省心</strong>。
+这一批里如果有几个坏事件，API 还能返回「部分成功」，告诉你哪几条没收下，而不是整批一刀切。</p>
+
+<table class="t">
+  <tr><th>这一关</th><th>把守什么</th><th>失败会怎样</th></tr>
+  <tr><td><b>鉴权</b></td><td>API key 有效吗？属于哪个 project？能写吗？</td><td>401/403，整批拒绝</td></tr>
+  <tr><td><b>Zod 校验</b></td><td>每个事件的结构/类型是否合法</td><td>坏事件被拒，可返回部分成功</td></tr>
+  <tr><td><b>体积保护</b></td><td>请求体是否过大</td><td>返回「请求体过大」，防撑爆</td></tr>
+</table>
+
+<p>「部分成功」不是说说而已，它写进了<strong>响应契约</strong>：<code>ingestion.ts</code> 的 handler 最后一行是 <code>res.status(<strong>207</strong>).json(result)</code>，
+而 <code>result</code> 形如 <code>{ successes, errors }</code>——两个数组，分别列出收下的事件与被拒的事件（每条带错误原因）。<strong>207 Multi-Status</strong> 这个 HTTP 状态码
+天生就是为「一个请求里多个子操作、结果各异」设计的。于是即便你这批 100 个事件里混进 3 个脏的，服务端也会<strong>收下 97 个、退回 3 个并告诉你为什么</strong>，
+而不是因为 3 颗老鼠屎把整锅粥倒掉。这对 SDK 极其友好：客户端可以只重传失败的那几条，无需整批重来。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 API 只做「鉴权+校验+入队」，把一切重活都推给 worker？</strong> 因为摄取 API 是<strong>直面你应用的那一层</strong>，它的首要 KPI 是
+  「<strong>永远快、永远不拖累调用方</strong>」。任何放在这里的额外工作——合并、查定价、写库——都会变成你每次埋点调用的延迟，还会因为下游抖动而失败。
+  所以 Langfuse 把这条线<strong>切得极干净</strong>：API 端只保留「无论如何都必须当场做」的最小集合（鉴权防止越权写入、校验防止脏数据入库、入队完成交接），
+  剩下能异步的<strong>一律异步</strong>。代价是「最终一致」（第 5 课），但收益是一个几乎不可能慢、不可能拖垮你业务的摄取入口。<strong>入口越薄，越扛得住洪峰。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>摄取 API 的全部职责：<strong>鉴权 + Zod 校验 + 入队</strong>，然后立即返回——合并/算成本/写库都不在这里（是 worker 的活）。</li>
+    <li>入口 <code>ingestion.ts</code> 的 <code>handler</code> 调用共享的 <code>processEventBatch</code>（连单独提交 score 的接口也复用它）。</li>
+    <li><strong>攒批上报</strong>：几十上百个事件一次 HTTP，摊薄网络开销、一次校验一次入队；批过大会被拒（体积保护）。</li>
+    <li><strong>两道关</strong>：鉴权（key→project、权限，把租户钉死）+ Zod 校验（坏数据门口就拒，可部分成功）。</li>
+    <li>取舍：入口只留「必须当场做」的最小集合，能异步的全异步——入口越薄越扛洪峰，代价是最终一致。</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 摄取 API 收到一批事件后只做三件事就立即返回。是哪三件？为什么不在这里合并/算成本/写库？</div>
+  <ol class="opts">
+    <li>鉴权 + 合并 + 写库；因为这样最快</li>
+    <li>鉴权 + Zod 校验 + 入队；因为 API 直面你的应用，首要目标是“永远快、不拖累调用方”，重活放这里会增加每次埋点的延迟、还会因下游抖动而失败</li>
+    <li>压缩 + 加密 + 入队</li>
+    <li>只做入队，不鉴权也不校验</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。入口只保留“必须当场做”的最小集合（鉴权防越权、校验拦脏数据、入队完成交接），能异步的全交给 worker。入口越薄越扛洪峰、越不可能拖垮你的业务，代价是最终一致（第 5 课）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. ingestion.ts 的 handler 把真正的活交给一个叫 processEventBatch 的共享函数，连单独提交 score 的接口也复用它。这么做的好处是？</div>
+  <ol class="opts">
+    <li>为了让 score 接口更慢</li>
+    <li>“收一批、校验、入队”到处都用得上，抽成一处就不必每个端点各写一遍、各错一遍（复杂度收敛到一处，第 6 课）</li>
+    <li>纯粹为了多写代码</li>
+    <li>因为 score 不能走队列</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。多个端点共享同一套摄取逻辑，维护在一处、测试在一处，避免分散实现导致的不一致。这与第 6 课“把复杂度收敛到一个能严格测试的地方”一脉相承。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 为什么说“在入口用 Zod 校验、越早拒绝坏数据越好”，而且 API 还能返回“部分成功”？</div>
+  <ol class="opts">
+    <li>摄取每天吞下各种 SDK/版本的数据，难免有脏事件；入口拦下并给清晰错误，比让它流进队列、到 worker 才崩好得多；一批里坏几条只拒那几条、其余照收</li>
+    <li>因为坏数据更快</li>
+    <li>因为部分成功能省钱</li>
+    <li>因为 Zod 能加密数据</li>
+  </ol>
+  <details class="accordion">
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。fail-fast + 容错：在门口用 schema 拦下脏数据，避免污染下游、避免 worker 崩；同时按事件粒度返回部分成功，不因个别坏事件牵连整批。这让海量异构来源的摄取既健壮又友好。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>把“接收”和“处理”切开、入口只做最小集合——这条思路你能用到自己写的 API 上吗？哪些工作“必须当场做”，哪些可以丢给后台异步？切错了会怎样？</li>
+  </ul>
+</div>
+</div></div>
+  <div class="lang-en">
+<p class="lead">
+Part 2 finished "what the data looks like and where it lives". From here we walk the <strong>ingestion path</strong> — the close-up of
+Lesson 5's "write trunk". First stop: the <strong>public ingestion API</strong> — how the server <strong>receives</strong> a batch of events
+your app sends. Spoiler on its character: <strong>extremely fast and light</strong>. It does just three things — <strong>auth + validate +
+enqueue</strong> — then returns immediately, <strong>never</strong> merging, computing cost, or writing the DB here (those are the worker's
+job). This is Lesson 5's "fast lane".
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 Analogy</div>
+  Picture the ingestion API as a courier's <strong>drop-off counter</strong>: the courier (your SDK) brings <strong>a batch</strong> of parcels
+  (events), and the clerk (the API) does three things before waving you through — <strong>check the sender's identity</strong> (auth: which
+  project is this key?), <strong>scan and log the labels</strong> (validate: is each parcel well-formed?), <strong>drop them on the
+  belt</strong> (enqueue). Then it <strong>hands you a receipt on the spot</strong> (HTTP 200) and lets you go — it <strong>won't</strong> sort,
+  weigh and deliver in front of you. The slow work is done by people down the belt (the worker). The counter's only goal: <strong>accept fast,
+  never block the door</strong>.
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 200">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">the life of one ingestion request (milliseconds)</text>
+  <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">a batch of events</text>
+  <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">1 auth</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
+  <rect x="290" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">2 Zod validate</text><text x="345" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">well-formed?</text>
+  <rect x="420" y="70" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">3 processEventBatch</text><text x="495" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">enqueue (+ S3)</text>
+  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">200 OK</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">return now</text>
+  <line x1="140" y1="95" x2="158" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="158,95 149,90 149,100" fill="var(--faint)"/>
+  <line x1="270" y1="95" x2="288" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="288,95 279,90 279,100" fill="var(--faint)"/>
+  <line x1="400" y1="95" x2="418" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,95 409,90 409,100" fill="var(--faint)"/>
+  <line x1="570" y1="95" x2="588" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="588,95 579,90 579,100" fill="var(--faint)"/>
+  <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">merge, cost, ClickHouse writes are not here — that's the worker (L15–17)</text>
+  <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
+</svg>
+<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+</div>
+
+<h2>The life of one ingestion request</h2>
+<p>The entry is the <code>handler</code> in <code>web/src/pages/api/public/ingestion.ts</code>. After taking the body, the real work is a
+shared function called <code>processEventBatch</code>:</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts</span><span class="ln">handler</span></div>
+  <pre class="code"><span class="kw">import</span> { processEventBatch } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;
+
+<span class="kw">export default async function</span> <span class="fn">handler</span>(req, res) {
+  <span class="cm">// …auth, parse body…</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);
+  <span class="cm">// return the result immediately (success / partial failure), not waiting for the worker</span>
+}</pre>
+</div>
+
+<p>One design detail: <code>processEventBatch</code> is <strong>shared</strong> — besides <code>/ingestion</code>, even the standalone "submit a
+score" endpoint reuses it. Why? Because "accept a batch, validate, enqueue" is <strong>needed everywhere</strong>; factoring it into one
+function avoids re-implementing (and re-bugging) it per endpoint (again Lesson 6's "converge complexity to one place"). The event types it
+supports cover <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> /
+<code>SCORE_CREATE</code> and more (including <code>SDK_LOG</code>, <code>DATASET_RUN_ITEM_CREATE</code>) — exactly Lesson 6's event
+envelope.</p>
+
+<h2>Why a "batch", not "one"</h2>
+<p>The SDK doesn't fire one HTTP per event — it <strong>collects a batch</strong> and sends it. This "batch" design saves a lot:</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 one-by-one</h4><p>Every observation a full HTTP round trip; at high frequency the network overhead is huge and connections explode — a real drag on your app.</p></div>
+  <div class="col"><h4>😀 batched</h4><p>Dozens or hundreds of events in one request, <strong>one round trip</strong>. Network overhead amortizes, and the API validates and enqueues in one go — far higher throughput.</p></div>
+</div>
+
+<p>Batching also gives a semantic benefit: a batch may hold both a <code>CREATE</code> and an <code>UPDATE</code> for one observation, and the
+server can process them <strong>together</strong>, cutting round trips. Of course a batch can't be infinite — when the body is too large the API
+rejects it ("payload too large"), another guard: don't let one request blow up the server.</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK batches → POST /ingestion</h4><p>the app packs a window of events into one batch and sends it.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>handler authenticates</h4><p>resolve the project from the API key and check write permission (fail → reject the whole batch).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Zod-validate each event</h4><p>ill-formed events are rejected; the rest continue (partial success possible).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch enqueues + lands S3</h4><p>valid events enter the Redis queue; originals are stored in S3 (L14).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>return the result immediately</h4><p>tell the caller which were accepted, which rejected — all in milliseconds, not waiting for the worker.</p></div></div>
+</div>
+
+
+<h2>Two gates: auth + validation</h2>
+<p>Before "enqueue", the API must pass two gates. They look routine but are the system's first line of <strong>security and
+robustness</strong>:</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="two gates: auth resolves the project and checks permission, Zod validates event shape, both must pass to enqueue">
+  <rect x="40" y="60" width="180" height="80" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="130" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">1 auth gate</text>
+  <text x="130" y="106" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API key → which project?</text>
+  <text x="130" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">may it write?</text>
+  <rect x="270" y="60" width="180" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="360" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">2 validate gate (Zod)</text>
+  <text x="360" y="106" text-anchor="middle" font-size="9" fill="var(--ink)">is each event well-formed?</text>
+  <text x="360" y="122" text-anchor="middle" font-size="9" fill="var(--ink)">reject bad events early</text>
+  <rect x="510" y="70" width="170" height="60" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="595" y="95" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">enqueue</text>
+  <text x="595" y="113" text-anchor="middle" font-size="8.5" fill="var(--muted)">only if both pass</text>
+  <line x1="220" y1="100" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,100 259,95 259,105" fill="var(--faint)"/>
+  <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
+  <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">auth decides "who you are and may you write", validation decides "is what you sent clean"</text>
+</svg>
+<div class="figcap"><b>Two gates</b>: <b>auth</b> resolves the project from the API key (L09: a key belongs to a project) and confirms write permission — this also <b>pins the tenant</b> (L10's project_id threading); <b>Zod validation</b> checks each event's shape, so <b>bad data is rejected at the door</b> and never pollutes downstream. Pass both, then enqueue.</div>
+</div>
+
+<p>The second gate, Zod validation, especially matters: the ingestion system swallows a flood of data from <strong>many SDKs and
+versions</strong> daily, inevitably with malformed or missing-field "dirty events". Rejecting them at the <strong>entry</strong> with a Zod
+schema and a clear error beats letting them flow into the queue and crash the worker — <strong>the earlier you reject bad data, the calmer the
+whole system</strong>. If a few events in a batch are bad, the API can still return "partial success", telling you which weren't accepted,
+rather than failing the whole batch.</p>
+
+<table class="t">
+  <tr><th>This gate</th><th>Guards</th><th>On failure</th></tr>
+  <tr><td><b>auth</b></td><td>Is the API key valid? Which project? May it write?</td><td>401/403, whole batch rejected</td></tr>
+  <tr><td><b>Zod validation</b></td><td>Is each event's shape/type legal</td><td>bad events rejected; partial success possible</td></tr>
+  <tr><td><b>size guard</b></td><td>Is the body too large</td><td>"payload too large", prevents blow-up</td></tr>
+</table>
+
+<p>"Partial success" isn't just talk — it's baked into the <strong>response contract</strong>: the last line of <code>ingestion.ts</code>'s handler
+is <code>res.status(<strong>207</strong>).json(result)</code>, where <code>result</code> looks like <code>{ successes, errors }</code> — two arrays
+listing the accepted events and the rejected ones (each with its error reason). The <strong>207 Multi-Status</strong> HTTP code is purpose-built for
+"one request, many sub-operations, mixed outcomes". So even if 3 of your 100 events are dirty, the server <strong>accepts 97, returns the 3 with
+reasons</strong>, instead of throwing out the whole pot for a few bad apples. Hugely SDK-friendly: the client can retransmit just the failed ones,
+no full-batch retry.</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design tradeoff</div>
+  <strong>Why does the API only "auth + validate + enqueue", pushing all heavy work to the worker?</strong> Because the ingestion API is the
+  layer <strong>facing your app directly</strong>, and its top KPI is "<strong>always fast, never drag the caller</strong>". Any extra work
+  here — merging, looking up pricing, writing the DB — becomes latency on every instrumentation call and can fail on downstream hiccups. So
+  Langfuse <strong>cuts this line very cleanly</strong>: the API keeps only the minimum that <strong>must happen on the spot</strong> (auth to
+  prevent unauthorized writes, validation to keep dirty data out, enqueue to hand off), and everything else that can be async <strong>is
+  async</strong>. The cost is "eventual consistency" (L05), but the gain is an ingestion entry that's almost impossible to slow or to drag
+  your business down. <strong>The thinner the entry, the better it survives spikes.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li>The ingestion API's entire job: <strong>auth + Zod validation + enqueue</strong>, then return immediately — merge/cost/DB-write are not here (the worker's job).</li>
+    <li>The <code>handler</code> in <code>ingestion.ts</code> calls the shared <code>processEventBatch</code> (even the standalone score endpoint reuses it).</li>
+    <li><strong>Batched reporting</strong>: dozens/hundreds of events per HTTP, amortizing network cost, validated and enqueued in one go; oversized batches are rejected (size guard).</li>
+    <li><strong>Two gates</strong>: auth (key→project, permission, pins the tenant) + Zod validation (reject bad data at the door, partial success possible).</li>
+    <li>Tradeoff: the entry keeps only "must happen now", everything async-able is async — the thinner the entry the better it survives spikes, at the cost of eventual consistency.</li>
+  </ul>
+</div>
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. The ingestion API does only three things on a batch, then returns immediately. Which three, and why not merge/cost/write-DB here?</div>
+  <ol class="opts">
+    <li>auth + merge + write-DB; because it's fastest</li>
+    <li>auth + Zod validation + enqueue; because the API faces your app directly, its top goal is 'always fast, never drag the caller'; heavy work here would add latency to every call and fail on downstream hiccups</li>
+    <li>compress + encrypt + enqueue</li>
+    <li>only enqueue, no auth or validation</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The entry keeps only the must-do-now minimum (auth prevents unauthorized writes, validation blocks dirty data, enqueue hands off), deferring everything async to the worker. The thinner the entry, the better it survives spikes and the less it drags your business — at the cost of eventual consistency (L05).</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. The ingestion.ts handler delegates the real work to a shared processEventBatch, reused even by the standalone score endpoint. The benefit?</div>
+  <ol class="opts">
+    <li>to make the score endpoint slower</li>
+    <li>'accept a batch, validate, enqueue' is needed everywhere; factoring it into one place avoids re-implementing (and re-bugging) it per endpoint (converge complexity, L06)</li>
+    <li>just to write more code</li>
+    <li>because scores can't use the queue</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Multiple endpoints share one ingestion routine, maintained and tested in one place, avoiding inconsistency from scattered implementations — in line with L06's 'converge complexity to one strictly testable place'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why 'validate with Zod at the entry, reject bad data as early as possible', and why can the API return 'partial success'?</div>
+  <ol class="opts">
+    <li>Ingestion swallows data from many SDKs/versions daily, inevitably with dirty events; rejecting at the entry with a clear error beats letting them crash the worker; a few bad events in a batch get rejected while the rest are accepted</li>
+    <li>because bad data is faster</li>
+    <li>because partial success saves money</li>
+    <li>because Zod encrypts data</li>
+  </ol>
+  <details class="accordion">
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Fail-fast + fault tolerance: a schema blocks dirty data at the door, sparing downstream and the worker; per-event partial success avoids letting a few bad events doom the whole batch. This keeps ingestion from massive heterogeneous sources both robust and friendly.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Splitting 'accept' from 'process' so the entry does the minimum — can you apply this to your own APIs? Which work 'must happen now', and which can be deferred to async background? What if you split it wrong?</li>
+  </ul>
+</div>
+</div></div>
+  <div class="footnav"><a class="prev" href="11-deployment-topology.html"><div class="dir"><span class="lang-zh">← 上一课</span><span class="lang-en">← Prev</span></div><div class="ttl"><span class="lang-zh">部署拓扑与依赖</span><span class="lang-en">Deployment topology</span></div></a><a class="next" href="../index.html"><div class="dir"><span class="lang-zh">完成 →</span><span class="lang-en">Done →</span></div><div class="ttl"><span class="lang-zh">返回目录</span><span class="lang-en">Back to index</span></div></a></div>
+</div>
+<script>
+function lvgSetLang(l){
+  l=(l==='en')?'en':'zh';
+  var d=document.documentElement;
+  d.dataset.lang=l; d.lang=(l==='en'?'en':'zh-CN');
+  try{localStorage.setItem('lvg-lang',l);}catch(e){}
+}
+function lvgToggleLang(){
+  lvgSetLang(document.documentElement.dataset.lang==='en'?'zh':'en');
+}
+</script>
+</body></html>

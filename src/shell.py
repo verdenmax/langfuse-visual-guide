@@ -71,6 +71,8 @@ PAGES = [
      "第二部分 · 前置基础", "Part 2 · Foundations"),
     ("11-deployment-topology.html", "部署拓扑与依赖", "Deployment topology",
      "第二部分 · 前置基础", "Part 2 · Foundations"),
+    ("12-ingestion-api.html", "摄取 API", "The ingestion API",
+     "第三部分 · 摄取链路", "Part 3 · The Ingestion Path"),
 ]
 
 
@@ -576,6 +578,8 @@ SUBTITLES = {
                               "three levels org→project→env; hard project isolation; soft environment slice; project_id threaded"),
     "11-deployment-topology.html": ("2 应用 + 4 基础设施 · docker-compose · web vs worker · MinIO 替身 · env 启动即校验",
                                     "2 apps + 4 infra; docker-compose; web vs worker; MinIO stand-in; env validated at startup"),
+    "12-ingestion-api.html": ("鉴权+Zod+入队 · processEventBatch · 攒批上报 · 两道关 · 快返回",
+                              "auth+Zod+enqueue; processEventBatch; batched reporting; two gates; fast return"),
 }
 
 

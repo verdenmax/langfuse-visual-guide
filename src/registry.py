@@ -7,6 +7,7 @@ Grows one Part module per milestone (part1 .. part11). M0 ships only L01.
 """
 import part1
 import part2
+import part3
 
 # Filename -> {"zh": ..., "en": ...}. Keep keys in sync with shell.PAGES.
 CONTENT = {
@@ -21,4 +22,5 @@ CONTENT = {
     "09-postgres-metadata-schema.html": part2.LESSON_09,
     "10-multi-tenancy.html": part2.LESSON_10,
     "11-deployment-topology.html": part2.LESSON_11,
+    "12-ingestion-api.html": part3.LESSON_12,
 }

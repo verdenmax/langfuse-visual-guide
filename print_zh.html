@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 11 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 12 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -348,6 +348,7 @@ details[open] > summary { list-style: none; }
   <li>元数据 schema（Postgres/Prisma）</li>
   <li>多租户：org → project → environment</li>
   <li>部署拓扑与依赖</li>
+  <li>摄取 API</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -2410,7 +2411,11 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>三个细节值得注意：① 类型是 <code>LowCardinality(String)</code>——环境名翻来覆去就那么几个（prod/staging/dev），低基数编码又省空间又查得快；
 ② 默认值 <code>'default'</code>——你不显式指定环境时，数据自动落到 <code>default</code>，向后兼容（老数据天然属于 default）；③ 位置 <code>AFTER project_id</code>——
-它紧挨在 project_id 之后，二者一起构成「项目 + 环境」的定位前缀。所以 environment 是<strong>软切片</strong>：它只是行上的一个标签，你想按环境过滤就加个条件，不想分就忽略它。</p>
+这只是让它在表结构里<strong>紧挨 project_id 排列（纯粹是列的书写顺序，便于阅读）</strong>，<strong>注意它并没有进入排序键</strong>。所以和 project_id 不同，environment 本质是行上的一个
+<strong>普通过滤列</strong>，也就是软切片：想按环境过滤就在查询里加个条件，不想分就忽略它。</p>
+
+<p>这正好对照出 project 与 environment 隔离机制的不同：<strong>project_id 焊进了排序键</strong>（隔离即定位，结构性安全），而 <strong>environment 只是一个普通列</strong>（查询时过滤）。
+这也合理——硬隔离要靠结构保证，软切片只是个方便的视图维度，不必、也不该动用排序键这种重武器。</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
@@ -2541,8 +2546,8 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 </table>
 
 <p>注意 <strong>minio</strong>：它是一个<strong>兼容 S3 协议</strong>的开源对象存储，在本地/自托管时充当 AWS S3 的<strong>替身</strong>。这意味着同一套代码，
-在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。六个容器各自有 <strong>named volume</strong> 做持久化，
-所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
+在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。<strong>四个基础设施容器各自挂 named volume</strong> 做持久化
+（postgres / clickhouse data+logs / redis / minio），而 <strong>web 与 worker 无状态、不挂卷</strong>；所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">应用层</span><span class="name">web · worker</span></div><div class="ld">无状态的业务容器，可随时重启、按需扩容。它们启动后连上下面的存储干活。</div></div>
@@ -2590,7 +2595,7 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 （<code>packages/shared/src/env.ts</code>、<code>worker/src/env.ts</code> 等），<strong>启动时</strong>就检查类型与必填项。配错了、漏填了，进程会<strong>直接启动失败并报清楚哪个变量有问题</strong>，
 而不是带病运行到半路才崩。这条「<strong>启动即校验配置</strong>」的纪律，是把「配置错误」从难查的运行时 bug 变成一眼可见的启动错误（第 51 课展开）。</p>
 
-<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
+<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.dev.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
 六个容器就按依赖次序拉起、连通，几分钟后你就能打开浏览器看到 Langfuse 界面。仓库里还备了<strong>多套 compose 文件</strong>应对不同场景——
 <code>docker-compose.dev.yml</code>（本地开发，常只拉基础设施、应用跑在本机便于热重载）、<code>docker-compose.yml</code>（完整一套）、
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
@@ -2659,6 +2664,188 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>Langfuse 的自托管需要 4 个基础设施，门槛比“一个二进制”高。如果你做一个开源工具，会怎么在“能扛规模”和“易自托管”之间取舍？docker-compose 一键编排算不算一个好答案？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>摄取 API</h1>
+
+<p class="lead">
+第二部分把「数据长什么样、存在哪」讲完了。从这一课起，我们正式走<strong>摄取链路</strong>——也就是第 5 课那条「写入主干」的放大版。
+第一站是<strong>公共摄取 API</strong>：你的应用发来一批事件，服务端这一头是怎么<strong>收下</strong>的。剧透一下它的性格——<strong>极快、极轻</strong>：
+它只做「鉴权 + 校验 + 入队」三件事，然后立刻返回，<strong>绝不</strong>在这里合并、算成本、写库（那些是 worker 的活）。这就是第 5 课说的「快路」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">🔌 生活类比</div>
+  把摄取 API 想成快递的<strong>收件口</strong>：快递员（你的 SDK）抱来<strong>一批</strong>包裹（events），收件员（API）做三件事就放行——
+  <strong>核对寄件人身份</strong>（鉴权：你这把 key 是哪个项目的？）、<strong>扫码登记面单</strong>（校验：每个包裹的格式对不对？）、<strong>丢上传送带</strong>（入队）。
+  然后<strong>当场给你一张回执</strong>（HTTP 200），就让你走了——<strong>不会</strong>当着你的面去分拣、称重、送到目的地。那些慢活，传送带后面的人（worker）慢慢做。
+  收件口的唯一目标，就是<strong>收得飞快、永不堵门</strong>。
+</div>
+
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="摄取请求的生命周期：鉴权、Zod 校验、processEventBatch 入队、立即返回 200">
+  <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一个摄取请求的一生（毫秒级）</text>
+  <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">一批 events</text>
+  <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">① 鉴权</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
+  <rect x="290" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">② Zod 校验</text><text x="345" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">格式对不对</text>
+  <rect x="420" y="70" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">③ processEventBatch</text><text x="495" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">入队（+落 S3）</text>
+  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">200 OK</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">立即返回</text>
+  <line x1="140" y1="95" x2="158" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="158,95 149,90 149,100" fill="var(--faint)"/>
+  <line x1="270" y1="95" x2="288" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="288,95 279,90 279,100" fill="var(--faint)"/>
+  <line x1="400" y1="95" x2="418" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,95 409,90 409,100" fill="var(--faint)"/>
+  <line x1="570" y1="95" x2="588" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="588,95 579,90 579,100" fill="var(--faint)"/>
+  <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">合并、算成本、写 ClickHouse 都不在这里——那是 worker 的活（第 15–17 课）</text>
+  <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API 的全部职责：收下 → 校验 → 入队 → 回执</text>
+</svg>
+<div class="figcap"><b>极简的收件流程</b>：鉴权（API key 解析出 project，第 9·10 课）→ Zod 校验事件格式 → <code>processEventBatch</code> 把事件入队（同时把原件落 S3）→ 立即 200。整条链路上「重活」一件都不在这里做，所以 API 永远毫秒级返回。</div>
+</div>
+
+<h2>一个摄取请求的一生</h2>
+<p>入口在 <code>web/src/pages/api/public/ingestion.ts</code> 的 <code>handler</code>。它收下请求体后，真正干活的是一个叫 <code>processEventBatch</code> 的共享函数：</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts</span><span class="ln">handler</span></div>
+  <pre class="code"><span class="kw">import</span> { processEventBatch } <span class="kw">from</span> <span class="st">"@langfuse/shared/src/server"</span>;
+
+<span class="kw">export default async function</span> <span class="fn">handler</span>(req, res) {
+  <span class="cm">// …鉴权、解析 body…</span>
+  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);
+  <span class="cm">// 立即把结果返回（成功/部分失败），不等 worker 处理</span>
+}</pre>
+</div>
+
+<p>注意一个设计细节：<code>processEventBatch</code> 是<strong>共享的</strong>——除了 <code>/ingestion</code>，连「单独提交 score」的接口也复用它。
+为什么？因为「收一批事件、校验、入队」这套逻辑<strong>到处都用得上</strong>，抽成一个函数就不必每个端点各写一遍、各错一遍（又是第 6 课「复杂度收敛到一处」的体现）。
+它支持的事件类型涵盖了 <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> / <code>SCORE_CREATE</code> 等
+（还包括 <code>SDK_LOG</code>、<code>DATASET_RUN_ITEM_CREATE</code>）——正是第 6 课说的那套事件信封。</p>
+
+<h2>为什么是「一批」，不是「一条」</h2>
+<p>SDK 不是每产生一个事件就发一次 HTTP，而是<strong>攒成一批</strong>再发。这个「批」的设计省了大事：</p>
+
+<div class="cols">
+  <div class="col"><h4>😖 一条一发</h4><p>每个 observation 都来一次 HTTP 往返，高频应用下网络开销巨大、连接数爆炸，对你的应用是实打实的拖累。</p></div>
+  <div class="col"><h4>😀 攒批一发</h4><p>几十上百个事件打成一个请求，<strong>一次往返</strong>搞定。网络开销摊薄，API 也能一次性校验、一次性入队，吞吐高得多。</p></div>
+</div>
+
+<p>批处理还带来一个语义上的好处：同一批里可能既有某 observation 的 <code>CREATE</code> 又有它的 <code>UPDATE</code>，服务端可以<strong>整批一起</strong>处理，
+减少来回。当然，批也不能无限大——请求体过大时 API 会拒绝（返回「请求体过大」），这也是一道保护：别让单个请求把服务端撑爆。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>SDK 攒批 → POST /ingestion</h4><p>应用侧把一段时间内的事件打成一批，一次发出。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>handler 鉴权</h4><p>从 API key 解析 project、校验写入权限（失败整批拒）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Zod 校验每个事件</h4><p>结构不对的事件被拒；其余继续（可部分成功）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch 入队 + 落 S3</h4><p>合法事件进 Redis 队列、原件存 S3（第 14 课）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>立即返回结果</h4><p>告诉调用方哪些收下、哪些被拒——全程毫秒级，不等 worker。</p></div></div>
+</div>
+
+
+<h2>守门的两道关：鉴权 + 校验</h2>
+<p>API 在「入队」之前，必须先过两道关。它们看似例行公事，却是整个系统<strong>安全与健壮</strong>的第一道防线：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="两道关：鉴权解析出 project 并校验权限，Zod 校验事件格式，都通过才入队">
+  <rect x="40" y="60" width="180" height="80" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="130" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">① 鉴权关</text>
+  <text x="130" y="106" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API key → 哪个 project？</text>
+  <text x="130" y="122" text-anchor="middle" font-size="9" fill="var(--accent-ink)">有没有写入权限？</text>
+  <rect x="270" y="60" width="180" height="80" rx="11" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/>
+  <text x="360" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="var(--blue)">② 校验关（Zod）</text>
+  <text x="360" y="106" text-anchor="middle" font-size="9" fill="var(--ink)">每个事件结构对不对？</text>
+  <text x="360" y="122" text-anchor="middle" font-size="9" fill="var(--ink)">坏事件早拒，别进系统</text>
+  <rect x="510" y="70" width="170" height="60" rx="11" fill="var(--purple-soft)" stroke="var(--purple)"/>
+  <text x="595" y="95" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">入队</text>
+  <text x="595" y="113" text-anchor="middle" font-size="8.5" fill="var(--muted)">两关都过才放行</text>
+  <line x1="220" y1="100" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,100 259,95 259,105" fill="var(--faint)"/>
+  <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
+  <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">鉴权决定「你是谁、能不能写」，校验决定「你发的东西干不干净」</text>
+</svg>
+<div class="figcap"><b>两道关</b>：<b>鉴权</b>从 API key 解析出 project（第 9 课 key 属于某 project）并确认有写入权限——这一步也<b>把租户钉死</b>（第 10 课 project_id 贯穿）；<b>Zod 校验</b>逐个事件检查结构，<b>坏数据在门口就被拒</b>，不会污染下游。两关都过，才允许入队。</div>
+</div>
+
+<p>第二道关「Zod 校验」尤其重要：摄取系统每天吞下海量来自<strong>各种 SDK、各种版本</strong>的数据，难免有格式不对、字段缺失的「脏事件」。
+在<strong>入口</strong>就用 Zod schema 把它们挡下、给出清晰错误，比让它们流进队列、到 worker 处理时才崩要好得多——<strong>越早拒绝坏数据，整个系统越省心</strong>。
+这一批里如果有几个坏事件，API 还能返回「部分成功」，告诉你哪几条没收下，而不是整批一刀切。</p>
+
+<table class="t">
+  <tr><th>这一关</th><th>把守什么</th><th>失败会怎样</th></tr>
+  <tr><td><b>鉴权</b></td><td>API key 有效吗？属于哪个 project？能写吗？</td><td>401/403，整批拒绝</td></tr>
+  <tr><td><b>Zod 校验</b></td><td>每个事件的结构/类型是否合法</td><td>坏事件被拒，可返回部分成功</td></tr>
+  <tr><td><b>体积保护</b></td><td>请求体是否过大</td><td>返回「请求体过大」，防撑爆</td></tr>
+</table>
+
+<p>「部分成功」不是说说而已，它写进了<strong>响应契约</strong>：<code>ingestion.ts</code> 的 handler 最后一行是 <code>res.status(<strong>207</strong>).json(result)</code>，
+而 <code>result</code> 形如 <code>{ successes, errors }</code>——两个数组，分别列出收下的事件与被拒的事件（每条带错误原因）。<strong>207 Multi-Status</strong> 这个 HTTP 状态码
+天生就是为「一个请求里多个子操作、结果各异」设计的。于是即便你这批 100 个事件里混进 3 个脏的，服务端也会<strong>收下 97 个、退回 3 个并告诉你为什么</strong>，
+而不是因为 3 颗老鼠屎把整锅粥倒掉。这对 SDK 极其友好：客户端可以只重传失败的那几条，无需整批重来。</p>
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 API 只做「鉴权+校验+入队」，把一切重活都推给 worker？</strong> 因为摄取 API 是<strong>直面你应用的那一层</strong>，它的首要 KPI 是
+  「<strong>永远快、永远不拖累调用方</strong>」。任何放在这里的额外工作——合并、查定价、写库——都会变成你每次埋点调用的延迟，还会因为下游抖动而失败。
+  所以 Langfuse 把这条线<strong>切得极干净</strong>：API 端只保留「无论如何都必须当场做」的最小集合（鉴权防止越权写入、校验防止脏数据入库、入队完成交接），
+  剩下能异步的<strong>一律异步</strong>。代价是「最终一致」（第 5 课），但收益是一个几乎不可能慢、不可能拖垮你业务的摄取入口。<strong>入口越薄，越扛得住洪峰。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li>摄取 API 的全部职责：<strong>鉴权 + Zod 校验 + 入队</strong>，然后立即返回——合并/算成本/写库都不在这里（是 worker 的活）。</li>
+    <li>入口 <code>ingestion.ts</code> 的 <code>handler</code> 调用共享的 <code>processEventBatch</code>（连单独提交 score 的接口也复用它）。</li>
+    <li><strong>攒批上报</strong>：几十上百个事件一次 HTTP，摊薄网络开销、一次校验一次入队；批过大会被拒（体积保护）。</li>
+    <li><strong>两道关</strong>：鉴权（key→project、权限，把租户钉死）+ Zod 校验（坏数据门口就拒，可部分成功）。</li>
+    <li>取舍：入口只留「必须当场做」的最小集合，能异步的全异步——入口越薄越扛洪峰，代价是最终一致。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. 摄取 API 收到一批事件后只做三件事就立即返回。是哪三件？为什么不在这里合并/算成本/写库？</div>
+  <ol class="opts">
+    <li>鉴权 + 合并 + 写库；因为这样最快</li>
+    <li>鉴权 + Zod 校验 + 入队；因为 API 直面你的应用，首要目标是“永远快、不拖累调用方”，重活放这里会增加每次埋点的延迟、还会因下游抖动而失败</li>
+    <li>压缩 + 加密 + 入队</li>
+    <li>只做入队，不鉴权也不校验</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。入口只保留“必须当场做”的最小集合（鉴权防越权、校验拦脏数据、入队完成交接），能异步的全交给 worker。入口越薄越扛洪峰、越不可能拖垮你的业务，代价是最终一致（第 5 课）。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. ingestion.ts 的 handler 把真正的活交给一个叫 processEventBatch 的共享函数，连单独提交 score 的接口也复用它。这么做的好处是？</div>
+  <ol class="opts">
+    <li>为了让 score 接口更慢</li>
+    <li>“收一批、校验、入队”到处都用得上，抽成一处就不必每个端点各写一遍、各错一遍（复杂度收敛到一处，第 6 课）</li>
+    <li>纯粹为了多写代码</li>
+    <li>因为 score 不能走队列</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。多个端点共享同一套摄取逻辑，维护在一处、测试在一处，避免分散实现导致的不一致。这与第 6 课“把复杂度收敛到一个能严格测试的地方”一脉相承。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. 为什么说“在入口用 Zod 校验、越早拒绝坏数据越好”，而且 API 还能返回“部分成功”？</div>
+  <ol class="opts">
+    <li>摄取每天吞下各种 SDK/版本的数据，难免有脏事件；入口拦下并给清晰错误，比让它流进队列、到 worker 才崩好得多；一批里坏几条只拒那几条、其余照收</li>
+    <li>因为坏数据更快</li>
+    <li>因为部分成功能省钱</li>
+    <li>因为 Zod 能加密数据</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。fail-fast + 容错：在门口用 schema 拦下脏数据，避免污染下游、避免 worker 崩；同时按事件粒度返回部分成功，不因个别坏事件牵连整批。这让海量异构来源的摄取既健壮又友好。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>把“接收”和“处理”切开、入口只做最小集合——这条思路你能用到自己写的 API 上吗？哪些工作“必须当场做”，哪些可以丢给后台异步？切错了会怎样？</li>
   </ul>
 </div>
 </div>

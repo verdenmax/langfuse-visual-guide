@@ -333,10 +333,10 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="topbar-inner">
     <a class="home" href="../index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
     <span class="pill"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></span>
-    <span class="pill">10 / 11</span>
+    <span class="pill">10 / 12</span>
     <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
   </div>
-  <div class="progress"><span style="width:90%"></span></div>
+  <div class="progress"><span style="width:83%"></span></div>
 </div>
 <div class="wrap">
   <div class="hero">
@@ -433,7 +433,11 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>三个细节值得注意：① 类型是 <code>LowCardinality(String)</code>——环境名翻来覆去就那么几个（prod/staging/dev），低基数编码又省空间又查得快；
 ② 默认值 <code>'default'</code>——你不显式指定环境时，数据自动落到 <code>default</code>，向后兼容（老数据天然属于 default）；③ 位置 <code>AFTER project_id</code>——
-它紧挨在 project_id 之后，二者一起构成「项目 + 环境」的定位前缀。所以 environment 是<strong>软切片</strong>：它只是行上的一个标签，你想按环境过滤就加个条件，不想分就忽略它。</p>
+这只是让它在表结构里<strong>紧挨 project_id 排列（纯粹是列的书写顺序，便于阅读）</strong>，<strong>注意它并没有进入排序键</strong>。所以和 project_id 不同，environment 本质是行上的一个
+<strong>普通过滤列</strong>，也就是软切片：想按环境过滤就在查询里加个条件，不想分就忽略它。</p>
+
+<p>这正好对照出 project 与 environment 隔离机制的不同：<strong>project_id 焊进了排序键</strong>（隔离即定位，结构性安全），而 <strong>environment 只是一个普通列</strong>（查询时过滤）。
+这也合理——硬隔离要靠结构保证，软切片只是个方便的视图维度，不必、也不该动用排序键这种重武器。</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
@@ -615,9 +619,15 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>Three details: (1) the type is <code>LowCardinality(String)</code> — env names are a small fixed set (prod/staging/dev), and
 low-cardinality encoding saves space and speeds queries; (2) the default <code>'default'</code> — without an explicit environment, data lands
-in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — it sits
-right after project_id, the two forming a "project + environment" locating prefix. So environment is a <strong>soft slice</strong>: just a tag
-on the row — add a condition to filter by env, or ignore it to see them together.</p>
+in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — this only
+places it <strong>right after project_id in the table's column layout (purely a cosmetic column order for readability)</strong>; <strong>note it
+is NOT added to the ordering key</strong>. So unlike project_id, environment is essentially a <strong>plain filter column</strong> on the row — a
+soft slice: add a condition to filter by env, or ignore it to see them together.</p>
+
+<p>This neatly contrasts the two isolation mechanisms: <strong>project_id is welded into the ordering key</strong> (isolate = locate,
+structurally safe), while <strong>environment is just an ordinary column</strong> (filtered at query time). Reasonably so — hard isolation must
+be guaranteed by structure, while a soft slice is just a convenient view dimension that needn't (and shouldn't) wield the heavy weapon of the
+ordering key.</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>

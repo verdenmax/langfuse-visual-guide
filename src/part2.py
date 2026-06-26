@@ -1222,7 +1222,11 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>三个细节值得注意：① 类型是 <code>LowCardinality(String)</code>——环境名翻来覆去就那么几个（prod/staging/dev），低基数编码又省空间又查得快；
 ② 默认值 <code>'default'</code>——你不显式指定环境时，数据自动落到 <code>default</code>，向后兼容（老数据天然属于 default）；③ 位置 <code>AFTER project_id</code>——
-它紧挨在 project_id 之后，二者一起构成「项目 + 环境」的定位前缀。所以 environment 是<strong>软切片</strong>：它只是行上的一个标签，你想按环境过滤就加个条件，不想分就忽略它。</p>
+这只是让它在表结构里<strong>紧挨 project_id 排列（纯粹是列的书写顺序，便于阅读）</strong>，<strong>注意它并没有进入排序键</strong>。所以和 project_id 不同，environment 本质是行上的一个
+<strong>普通过滤列</strong>，也就是软切片：想按环境过滤就在查询里加个条件，不想分就忽略它。</p>
+
+<p>这正好对照出 project 与 environment 隔离机制的不同：<strong>project_id 焊进了排序键</strong>（隔离即定位，结构性安全），而 <strong>environment 只是一个普通列</strong>（查询时过滤）。
+这也合理——硬隔离要靠结构保证，软切片只是个方便的视图维度，不必、也不该动用排序键这种重武器。</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
@@ -1360,9 +1364,15 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>Three details: (1) the type is <code>LowCardinality(String)</code> — env names are a small fixed set (prod/staging/dev), and
 low-cardinality encoding saves space and speeds queries; (2) the default <code>'default'</code> — without an explicit environment, data lands
-in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — it sits
-right after project_id, the two forming a "project + environment" locating prefix. So environment is a <strong>soft slice</strong>: just a tag
-on the row — add a condition to filter by env, or ignore it to see them together.</p>
+in <code>default</code>, backward-compatible (old data naturally belongs to default); (3) the position <code>AFTER project_id</code> — this only
+places it <strong>right after project_id in the table's column layout (purely a cosmetic column order for readability)</strong>; <strong>note it
+is NOT added to the ordering key</strong>. So unlike project_id, environment is essentially a <strong>plain filter column</strong> on the row — a
+soft slice: add a condition to filter by env, or ignore it to see them together.</p>
+
+<p>This neatly contrasts the two isolation mechanisms: <strong>project_id is welded into the ordering key</strong> (isolate = locate,
+structurally safe), while <strong>environment is just an ordinary column</strong> (filtered at query time). Reasonably so — hard isolation must
+be guaranteed by structure, while a soft slice is just a convenient view dimension that needn't (and shouldn't) wield the heavy weapon of the
+ordering key.</p>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>
@@ -1456,8 +1466,8 @@ _ZH11.append(r"""
 </table>
 
 <p>注意 <strong>minio</strong>：它是一个<strong>兼容 S3 协议</strong>的开源对象存储，在本地/自托管时充当 AWS S3 的<strong>替身</strong>。这意味着同一套代码，
-在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。六个容器各自有 <strong>named volume</strong> 做持久化，
-所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
+在云上用真 S3、在自托管用 MinIO，<strong>应用层完全无感</strong>——这正是「面向接口（S3 协议）而非实现」带来的可移植性。<strong>四个基础设施容器各自挂 named volume</strong> 做持久化
+（postgres / clickhouse data+logs / redis / minio），而 <strong>web 与 worker 无状态、不挂卷</strong>；所以你 <code>docker compose down</code> 再 <code>up</code>，数据还在。</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">应用层</span><span class="name">web · worker</span></div><div class="ld">无状态的业务容器，可随时重启、按需扩容。它们启动后连上下面的存储干活。</div></div>
@@ -1506,7 +1516,7 @@ _ZH11.append(r"""
 （<code>packages/shared/src/env.ts</code>、<code>worker/src/env.ts</code> 等），<strong>启动时</strong>就检查类型与必填项。配错了、漏填了，进程会<strong>直接启动失败并报清楚哪个变量有问题</strong>，
 而不是带病运行到半路才崩。这条「<strong>启动即校验配置</strong>」的纪律，是把「配置错误」从难查的运行时 bug 变成一眼可见的启动错误（第 51 课展开）。</p>
 
-<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
+<p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.dev.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
 六个容器就按依赖次序拉起、连通，几分钟后你就能打开浏览器看到 Langfuse 界面。仓库里还备了<strong>多套 compose 文件</strong>应对不同场景——
 <code>docker-compose.dev.yml</code>（本地开发，常只拉基础设施、应用跑在本机便于热重载）、<code>docker-compose.yml</code>（完整一套）、
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
@@ -1582,8 +1592,9 @@ _EN11.append(r"""
 
 <p>Note <strong>minio</strong>: an open-source object store that <strong>speaks the S3 protocol</strong>, standing in for AWS S3 locally / when
 self-hosting. So the same code uses real S3 in the cloud and MinIO when self-hosted, <strong>entirely transparent to the app layer</strong> —
-the portability of "program to an interface (the S3 protocol), not an implementation". All six containers have <strong>named volumes</strong>
-for persistence, so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
+the portability of "program to an interface (the S3 protocol), not an implementation". The <strong>four infra containers each mount a named
+volume</strong> for persistence (postgres / clickhouse data+logs / redis / minio), while <strong>web and worker are stateless — no volumes</strong>;
+so <code>docker compose down</code> then <code>up</code> keeps your data.</p>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">app tier</span><span class="name">web · worker</span></div><div class="ld">stateless business containers, restartable and scalable on demand. They start, connect to the storage below, and work.</div></div>
@@ -1638,7 +1649,7 @@ startup</strong>. Misconfigure or miss one and the process <strong>fails to star
 than running sick and crashing midway. This "<strong>validate config at startup</strong>" discipline turns "config errors" from hard-to-find
 runtime bugs into obvious startup errors (expanded in L51).</p>
 
-<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.example</code> and fill
+<p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.dev.example</code> and fill
 the key variables → <code>docker compose up</code></strong>, and the six containers come up in dependency order, connect, and within minutes you
 open a browser to the Langfuse UI. The repo also ships <strong>several compose files</strong> for different scenarios —
 <code>docker-compose.dev.yml</code> (local dev, often just the infra while the apps run on your machine for hot reload),
