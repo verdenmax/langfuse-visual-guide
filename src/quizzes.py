@@ -2355,6 +2355,76 @@ QUIZZES = {
             },
         ],
     },
+    "34-datasets-and-items.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的数据项（DatasetItem）有 sourceTraceId / sourceObservationId 字段。它们让数据集获得了什么独特能力？",
+                    "en": "Langfuse's DatasetItem has sourceTraceId / sourceObservationId fields. What unique capability do they give datasets?",
+                },
+                "opts": [
+                    {
+                        "zh": "把真实生产 trace「提拔」成测试用例：在线上发现应用答砸的难题，一键收录成回归题，让测试集紧贴真实流量分布而非凭空臆造",
+                        "en": "promoting a real production trace into a test case: spot a botched hard case in production, capture it as a regression question in one click, keeping the test set close to the real traffic distribution rather than imagined",
+                    },
+                    {"zh": "让数据项自动评分", "en": "auto-scoring dataset items"},
+                    {"zh": "把数据项存进 ClickHouse", "en": "storing items in ClickHouse"},
+                    {"zh": "给数据项加密", "en": "encrypting items"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "sourceTraceId/sourceObservationId 记下「这道题从哪条真实 trace 来」。凭空想象的测试用例覆盖不到真实长尾输入，而线上每次答砸的 trace 都是现成好题。于是「发现问题→收录成回归题→改进后验证」闭环——观测平台顺手把生产问题变成防复发的疫苗。",
+                    "en": "sourceTraceId/sourceObservationId record which real trace a question came from. Imagined test cases miss real long-tail inputs, while every botched production trace is a ready-made question. This closes the loop 'find a problem → capture as regression question → verify after improving'—the platform turns production problems into vaccines against recurrence.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "DatasetItem 的主键是 (id, projectId, validFrom)，每行还有一个 validTo。当你修订一道题时，系统怎么做？",
+                    "en": "A DatasetItem's primary key is (id, projectId, validFrom), and each row has a validTo. When you revise a question, what does the system do?",
+                },
+                "opts": [
+                    {
+                        "zh": "在一个事务里：给旧版盖上 validTo（关闭其有效区间），再插入一行新版（新 validFrom、validTo 为空成为当前版）——缓慢变化维 / 双时态，不抹改历史",
+                        "en": "in a transaction: stamp the old version with validTo (close its validity interval), then insert a new version row (new validFrom, validTo null becoming current)—slowly-changing dimension / bitemporal, not erasing history",
+                    },
+                    {"zh": "原地更新那一行", "en": "updates that row in place"},
+                    {"zh": "删除旧行再建新行", "en": "deletes the old row then creates a new one"},
+                    {"zh": "只改 updatedAt 时间戳", "en": "only changes the updatedAt timestamp"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "dataset-items.ts 的 VERSIONED 写入：事务里先找当前版（validTo IS NULL），给它盖 validTo=newValidFrom 关闭区间，再 create 一行新版 validFrom=newValidFrom（validTo 默认 null）。于是同一道题多版本共存、当前版 = validTo 为空那行。这是经典的不可变历史 + 可移动当前指针。",
+                    "en": "dataset-items.ts VERSIONED write: in a transaction, find the current version (validTo IS NULL), stamp it with validTo=newValidFrom to close its interval, then create a new row with validFrom=newValidFrom (validTo defaults null). So many versions of one question coexist, the current being the validTo-null row. Classic immutable history + a movable current pointer.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "为什么数据项要这样版本化，而不是简单地原地更新？",
+                    "en": "Why version dataset items this way rather than simply updating in place?",
+                },
+                "opts": [
+                    {
+                        "zh": "为了实验可复现：一次 run 钉住某个 validFrom，永远看到「当时那版题」；否则历史实验的分数会失去语境，两次实验无法公平对比（第30课 eval 正是用 datasetItemValidFrom 精确回放）",
+                        "en": "for reproducibility: a run pins a validFrom and always sees 'that version of the question'; otherwise historical scores lose their context and two experiments can't be fairly compared (Lesson 30's eval replays exactly via datasetItemValidFrom)",
+                    },
+                    {"zh": "为了节省存储", "en": "to save storage"},
+                    {"zh": "为了加快查询", "en": "to speed up queries"},
+                    {"zh": "为了支持并发写", "en": "to support concurrent writes"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "评估的价值在比较。若题被原地改，「上次」的分就失去语境——不知道当时考的是什么，没法和「这次」公平比。版本化给每道题每版钉上时间区间，让每次 run 钉死它用的那版（第30课 eval 带 datasetItemValidFrom 精确回放）。这和第37课 prompt 版本、git commit 同一种「真相记录后不抹改」的信念。",
+                    "en": "Evaluation's value is comparison. If a question is edited in place, 'last time'\\'s score loses context—you don't know what it tested, can't fairly compare with 'this time'. Versioning pins a time interval on every version, letting each run pin the version it used (Lesson 30's eval replays via datasetItemValidFrom). Same 'record truth without erasing' belief as Lesson 37's prompt versions and git commits.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "数据集把「生产 trace」和「测试用例」用 sourceTraceId 连了起来，又用版本化保证实验可复现。设想你在维护一个客服机器人：你会怎么用这两个机制构建一套「持续改进」的回归测试流程？哪些线上 case 值得提拔成数据集？什么时候该给一道题升新版而不是新建一道题？",
+                "en": "Datasets link 'production traces' and 'test cases' via sourceTraceId, and use versioning to keep experiments reproducible. Imagine maintaining a customer-service bot: how would you use these two mechanisms to build a 'continuous improvement' regression-test flow? Which production cases are worth promoting into a dataset? When should you version-up a question rather than create a new one?",
+            },
+        ],
+    },
 }
 
 

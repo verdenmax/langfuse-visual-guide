@@ -115,6 +115,8 @@ PAGES = [
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
     ("33-monitors-and-alerting.html", "监控器与告警", "Monitors & alerting",
      "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
+    ("34-datasets-and-items.html", "数据集与数据项", "Datasets & items",
+     "第六部分 · 数据集与实验", "Part 6 · Datasets & Experiments"),
 ]
 
 
@@ -664,6 +666,8 @@ SUBTITLES = {
                                  "third score source source=ANNOTATION closes the three sources; often ground truth to calibrate the AI judge; annotation queue binds scoreConfigIds; items review TRACE/OBSERVATION/SESSION; 5-minute soft lock prevents double-annotation; same flow-back into scores table"),
     "33-monitors-and-alerting.html": ("主动评估：把质量监测从拉(看仪表盘)变推(越线告警) · monitor 复用 DashboardWidget 的 view/filters/metric · window/cadence/阈值 · severity 状态机 OK/WARNING/ALERT · 只在变化时 emit 防刷屏 · 发布 WebhookQueue 解耦投递",
                                       "active evaluation: turn quality monitoring from pull (dashboard) to push (alert on crossing); a monitor reuses DashboardWidget's view/filters/metric; window/cadence/thresholds; severity state machine OK/WARNING/ALERT; emit only on change to avoid spam; publish to WebhookQueue for decoupled delivery"),
+    "34-datasets-and-items.html": ("数据集=一组测试用例(item: input+expectedOutput+metadata) · 题可从真实 trace 提拔(sourceTraceId) · 数据项版本化主键(id,projectId,validFrom) · 改题=关旧版盖validTo+插新版(SCD Type2) · run 钉住 validFrom 保实验可复现",
+                                   "a dataset = a set of test cases (item: input+expectedOutput+metadata); questions promotable from real traces (sourceTraceId); items versioned by key (id,projectId,validFrom); editing = close old (stamp validTo) + insert new (SCD Type 2); a run pins validFrom for reproducible experiments"),
 }
 
 

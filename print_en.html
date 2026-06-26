@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 33 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 34 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -370,6 +370,7 @@ details[open] > summary { list-style: none; }
   <li>Code-based evaluation</li>
   <li>Human annotation</li>
   <li>Monitors & alerting</li>
+  <li>Datasets & items</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -7186,6 +7187,168 @@ We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget 
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Part 5 is now complete: the score model (28) → four ways to produce scores (29–32) → active monitoring and alerting (33). Reviewing the whole part, Langfuse turns 'evaluation' from a static 'can score, can query' system into a dynamic closed loop that 'auto-evaluates, alerts actively, and calibrates AI with human scores'. If you designed an evaluation system for your own LLM app, how would you combine these five capabilities (human/LLM-judge/code/monitoring)? Which quality signals would you continuously monitor and alert on, and why?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Datasets & items</h1>
+
+<p class="lead">
+Evaluation needs "exam questions". To know whether your app got better or worse after you changed a prompt or swapped a model, you need a <strong>fixed set of test cases</strong> to quiz it on repeatedly. That set is a <strong>dataset</strong>; each question in it is a <strong>dataset item</strong>: one input + one expected output.
+This lesson covers the <strong>data model</strong> of datasets and items, focusing on two delightful designs: an item can be <strong>"promoted" from a real production trace</strong> into a test case (a hard case you hit in production becomes a regression test), and items are <strong>versioned</strong>—editing a question keeps a version of history, so "which version of the question did last experiment use" is always answerable.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  A dataset is like a <strong>standard exam paper</strong>. Each question (item) has a <strong>prompt</strong> (input) and a <strong>reference answer</strong> (expectedOutput). Questions come two ways: you can <strong>write</strong> one, or you can <strong>capture verbatim</strong> a real, botched case from production (a trace) into the paper—a "production incident" thus becomes a "regression question".
+  The most careful part is the edit rule: when you revise a question, the system <strong>does not erase the old version</strong>—it stamps the old one with a "<strong>valid-until</strong>" and starts a new version. So every version of the question is kept, and "<strong>which version of the prompt did the March exam use</strong>" is always retrievable—lifeblood for "experiments must be reproducible".
+</div>
+
+
+<h2>A dataset = a set of test cases, and questions can be "picked" from production</h2>
+<p>The data model is intuitive: a <strong>Dataset</strong> holds a set of <strong>DatasetItems</strong>. A Dataset has a name, a description, and can attach <code>inputSchema</code> / <code>expectedOutputSchema</code> to give questions a format spec. Each DatasetItem's core is three things: <code>input</code> (the prompt), <code>expectedOutput</code> (the reference answer), <code>metadata</code> (side notes). But the truly clever fields are two others: <code>sourceTraceId</code> and <code>sourceObservationId</code>—they record "which real trace this question came from".</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="Dataset model: a Dataset holds many DatasetItems, each with input/expectedOutput/metadata; an item can be authored, or promoted from a real production trace via sourceTraceId, turning a production hard case into a regression test case">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">a dataset holds test cases; questions authored or picked from production</text>
+  <rect x="250" y="36" width="220" height="48" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="56" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Dataset (an exam paper)</text><text x="360" y="73" text-anchor="middle" font-size="6.8" fill="var(--accent-ink)">name · description · input/expectedOutput Schema</text>
+  <rect x="40" y="110" width="200" height="56" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="140" y="130" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">DatasetItem A (authored)</text><text x="140" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">input + expectedOutput</text><text x="140" y="159" text-anchor="middle" font-size="6.6" fill="var(--faint)">hand-written question</text>
+  <rect x="260" y="110" width="200" height="56" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="360" y="130" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">DatasetItem B</text><text x="360" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">input + expectedOutput</text><text x="360" y="159" text-anchor="middle" font-size="6.6" fill="var(--faint)">metadata side notes</text>
+  <rect x="480" y="110" width="200" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="580" y="130" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">DatasetItem C (from production)</text><text x="580" y="146" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">sourceTraceId → a real trace</text><text x="580" y="159" text-anchor="middle" font-size="6.4" fill="var(--muted)">production hard case → regression q</text>
+  <rect x="480" y="186" width="200" height="34" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="580" y="206" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">a production trace (Lesson 13)</text>
+  <line x1="320" y1="84" x2="160" y2="108" stroke="var(--faint)" stroke-width="1.2"/><line x1="360" y1="84" x2="360" y2="108" stroke="var(--faint)" stroke-width="1.2"/><line x1="400" y1="84" x2="560" y2="108" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="580" y1="186" x2="580" y2="168" stroke="var(--accent)" stroke-width="1.5"/><polygon points="580,166 576,175 584,175" fill="var(--accent)"/><text x="632" y="180" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">promote</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">"production as test source": capture a real botched case into a question, keeping regression tests close to the real distribution</text>
+</svg>
+<div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (Lesson 13) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">prompt + answer</span><span class="name">input / expectedOutput</span></div><div class="ld">An item's body: <code>input</code> is fed to the app, <code>expectedOutput</code> is the reference answer you expect. Evaluation compares the app's real output against expectedOutput (or hands it to Lessons 29–31's judges). <code>metadata</code> holds tags, difficulty, and other notes.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">from production</span><span class="name">sourceTraceId / sourceObservationId</span></div><div class="ld">The dataset's most vital source: spotting a real botched case in a trace detail, you <strong>capture it in one click</strong> as an item, with <code>sourceTraceId</code> recording its origin. So your test set <strong>hugs the real traffic distribution</strong>, not imagined toy questions.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">status</span><span class="name">DatasetStatus</span></div><div class="ld">An item is ACTIVE / ARCHIVED: archiving doesn't delete—it just retires the item from the test set, keeping history and links. The dataset itself can attach a schema (<code>inputSchema</code>/<code>expectedOutputSchema</code>) to set rules for new questions.</div></div>
+</div>
+
+<p>A built dataset can do three big things—it's the foundation for the next two lessons of Part 6:</p>
+<div class="cols">
+  <div class="col"><h4>regression testing</h4><p>After changing a prompt / swapping a model, re-run the whole set and check whether scores dropped—preventing "fix one bug, break three cases".</p></div>
+  <div class="col"><h4>experiment comparison</h4><p>The same set, run once per config (Lessons 35–36's runs), with multiple results placed side by side to pick the best combination.</p></div>
+  <div class="col"><h4>few-shot example bank</h4><p>An item's input/expectedOutput can also serve as <strong>examples</strong> in a prompt (Lesson 37), letting the model answer in the shape of the reference answers.</p></div>
+</div>
+
+
+<h2>Versioning: edit a question by closing the old version, opening a new</h2>
+<p>An item's most refined design is <strong>versioning</strong>. The primary key says it all: <code>@@id([id, projectId, validFrom])</code>—the same question (same <code>id</code>) can have <strong>multiple rows</strong>, distinguished by <code>validFrom</code>. Each row also has a <code>validTo</code>: the row where it's <code>null</code> is the <strong>currently active</strong> version. On edit, the system does two steps in a transaction—stamp the old version with <code>validTo</code> (close its validity interval), then insert a new version row. This is the database's classic "<strong>slowly-changing dimension / bitemporal</strong>" technique.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Dataset item versioning timeline: the same question id has multiple versions, each with a validFrom-to-validTo interval, the current version's validTo being null; on edit the old version gets validTo and the new starts at validFrom; a dataset run pins a validFrom so it always sees that version">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">version timeline of one question id (validFrom → validTo)</text>
+  <line x1="40" y1="150" x2="690" y2="150" stroke="var(--faint)" stroke-width="1.5"/><polygon points="690,150 682,146 682,154" fill="var(--faint)"/><text x="690" y="168" text-anchor="end" font-size="7" fill="var(--muted)">time</text>
+  <rect x="60" y="60" width="200" height="40" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="160" y="78" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">version 1 (old)</text><text x="160" y="92" text-anchor="middle" font-size="6.6" fill="var(--muted)">validFrom=t1 · validTo=t2</text>
+  <rect x="290" y="60" width="200" height="40" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="390" y="78" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">version 2 (old)</text><text x="390" y="92" text-anchor="middle" font-size="6.6" fill="var(--muted)">validFrom=t2 · validTo=t3</text>
+  <rect x="520" y="60" width="170" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="605" y="78" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">version 3 (current)</text><text x="605" y="92" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">validFrom=t3 · validTo=null</text>
+  <line x1="160" y1="100" x2="160" y2="150" stroke="var(--faint)" stroke-width="1" stroke-dasharray="3 2"/><text x="70" y="120" font-size="6.6" fill="var(--muted)">t1</text>
+  <line x1="390" y1="100" x2="390" y2="150" stroke="var(--faint)" stroke-width="1" stroke-dasharray="3 2"/><text x="300" y="120" font-size="6.6" fill="var(--muted)">t2 close+open</text>
+  <line x1="605" y1="100" x2="605" y2="150" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"/><text x="528" y="120" font-size="6.6" fill="var(--accent-ink)">t3 close+open</text>
+  <rect x="300" y="160" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="390" y="179" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">March's run pins validFrom=t2</text>
+  <line x1="390" y1="160" x2="390" y2="102" stroke="var(--blue)" stroke-width="1.2"/><polygon points="390,100 386,109 394,109" fill="var(--blue)"/>
+</svg>
+<div class="figcap"><b>Bitemporal versions</b>: the current version = the row with <code>validTo IS NULL</code>. An edit, in a transaction, "closes the old version (stamps validTo) + inserts a new version (new validFrom)". A dataset run <b>pins</b> a <code>validFrom</code>, so it always sees "that version of the question"—exactly why Lesson 30's eval uses <code>datasetItemValidFrom</code>. Source: <code>dataset-items.ts:418-470</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/dataset-items.ts:418-470</span><span class="ln">VERSIONED write</span></div>
+  <pre class="code"><span class="cm">// in one transaction: close the old version, then insert the new (SCD Type 2)</span>
+<span class="kw">await</span> prisma.$transaction(<span class="kw">async</span> (tx) =&gt; {
+  <span class="cm">// 0. find the current version (the row with validTo null)</span>
+  <span class="kw">const</span> current = <span class="kw">await</span> tx.datasetItem.findFirst({
+    where: { id: itemId, projectId, validTo: <span class="kw">null</span> }, orderBy: { validFrom: <span class="st">"desc"</span> } });
+  <span class="kw">const</span> newValidFrom = <span class="kw">new</span> Date(Math.max(Date.now(), baseTs + 1));
+
+  <span class="cm">// 1. stamp the old version with validTo — close its validity interval</span>
+  <span class="kw">if</span> (current) <span class="kw">await</span> tx.datasetItem.update({ where: {…current.validFrom}, data: { validTo: newValidFrom } });
+
+  <span class="cm">// 2. insert the new version — validFrom = that moment, validTo defaults null (the new current)</span>
+  <span class="kw">await</span> tx.datasetItem.create({ data: { ...itemData, validFrom: newValidFrom } });
+});</pre>
+</div>
+
+<p>Why go to all this trouble instead of editing in place? Because <strong>experiments must be reproducible</strong>. You ran an experiment in March and got scores; in June you tweaked a few questions and ran again. If questions were "edited in place", March's scores would <strong>lose their context</strong>—you wouldn't know which version they tested, and the two experiments couldn't be compared fairly. Versioning pins every version of every question on a timeline, so "March's run used version t2, June's used t3" is crystal clear, and historical conclusions stay forever explainable.</p>
+
+<table class="t">
+  <thead><tr><th>id (logical question)</th><th>validFrom</th><th>validTo</th><th>current?</th><th>content</th></tr></thead>
+  <tbody>
+    <tr><td>item-42</td><td>t1</td><td>t2</td><td>no (history)</td><td>prompt v1</td></tr>
+    <tr><td>item-42</td><td>t2</td><td>t3</td><td>no (history)</td><td>prompt v2</td></tr>
+    <tr><td>item-42</td><td>t3</td><td><b>null</b></td><td><b>yes ✓</b></td><td>prompt v3 (current)</td></tr>
+  </tbody>
+</table>
+<p>Three rows with the <strong>same id</strong>, different <code>validFrom</code>, distinguished as "current vs history" by whether <code>validTo</code> is null. To ask "what does this question look like now", <code>WHERE validTo IS NULL</code>; to ask "what did the t2 experiment use", find the row where <code>validFrom ≤ t2 &lt; validTo</code>—one table answers both "now" and "any historical moment", the power of bitemporal.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why version dataset items rather than simply update in place?</strong> In a phrase: <strong>to keep historical experiments forever explainable and reproducible</strong>. The whole value of evaluation is "comparison"—is this better or worse than last time. But if the test questions are silently edited, "last time"'s score becomes rootless: you don't know what it tested, and can't fairly compare with "this time". Versioning uses <code>validFrom/validTo</code> to pin a time interval on every version of every question, letting each run <strong>pin</strong> the version it used (Lesson 30's eval replays exactly via <code>datasetItemValidFrom</code>). It's the classic "immutable history + a movable current pointer", the same belief as Lesson 37's prompt versions and git commits: <strong>once truth is recorded it's not erased; to change, append a new version</strong>.<br><br>
+  <strong>Why let items be "promoted" from real traces?</strong> Because <strong>the best test questions hide in production incidents</strong>. Imagined test cases rarely cover the tricky, long-tail inputs real users throw; whereas every botched production trace is a ready-made, real-distribution question. <code>sourceTraceId</code> closes the loop "find a problem → capture it as a regression question → verify after improving"—an observability platform not only lets you see problems but turns them into "vaccines" against recurrence.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A dataset = a set of test cases</strong>: a Dataset holds DatasetItems, each = <code>input</code> (prompt) + <code>expectedOutput</code> (reference answer) + <code>metadata</code>. It's the "exam paper" for evaluation, used with Lessons 28–32's scores.</li>
+    <li><strong>Questions can be "promoted" from production</strong>: <code>sourceTraceId</code>/<code>sourceObservationId</code> let you capture a real trace (Lesson 13) into a test case in one click—the regression set hugs the real traffic distribution, not made-up cases.</li>
+    <li><strong>Items are versioned</strong>: the key <code>(id, projectId, validFrom)</code> lets many versions of one question coexist; the current = <code>validTo IS NULL</code>. An edit, in a transaction, "closes the old (stamps validTo) + inserts the new"—slowly-changing dimension / bitemporal.</li>
+    <li><strong>Versioning is for reproducibility</strong>: a run pins a <code>validFrom</code>, always seeing "that version" (Lesson 30's eval replays via <code>datasetItemValidFrom</code>). Historical experiments stay explainable and fairly comparable.</li>
+    <li><strong>Immutable history + a movable pointer</strong>: the same belief as Lesson 37's prompt versions and git commits—record truth without erasing it; append a new version to change.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's DatasetItem has sourceTraceId / sourceObservationId fields. What unique capability do they give datasets?</div>
+  <ol class="opts">
+    <li>storing items in ClickHouse</li>
+    <li>encrypting items</li>
+    <li>promoting a real production trace into a test case: spot a botched hard case in production, capture it as a regression question in one click, keeping the test set close to the real traffic distribution rather than imagined</li>
+    <li>auto-scoring dataset items</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. sourceTraceId/sourceObservationId record which real trace a question came from. Imagined test cases miss real long-tail inputs, while every botched production trace is a ready-made question. This closes the loop 'find a problem → capture as regression question → verify after improving'—the platform turns production problems into vaccines against recurrence.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. A DatasetItem's primary key is (id, projectId, validFrom), and each row has a validTo. When you revise a question, what does the system do?</div>
+  <ol class="opts">
+    <li>only changes the updatedAt timestamp</li>
+    <li>in a transaction: stamp the old version with validTo (close its validity interval), then insert a new version row (new validFrom, validTo null becoming current)—slowly-changing dimension / bitemporal, not erasing history</li>
+    <li>deletes the old row then creates a new one</li>
+    <li>updates that row in place</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. dataset-items.ts VERSIONED write: in a transaction, find the current version (validTo IS NULL), stamp it with validTo=newValidFrom to close its interval, then create a new row with validFrom=newValidFrom (validTo defaults null). So many versions of one question coexist, the current being the validTo-null row. Classic immutable history + a movable current pointer.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Why version dataset items this way rather than simply updating in place?</div>
+  <ol class="opts">
+    <li>to speed up queries</li>
+    <li>for reproducibility: a run pins a validFrom and always sees 'that version of the question'; otherwise historical scores lose their context and two experiments can't be fairly compared (Lesson 30's eval replays exactly via datasetItemValidFrom)</li>
+    <li>to save storage</li>
+    <li>to support concurrent writes</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Evaluation's value is comparison. If a question is edited in place, 'last time'\'s score loses context—you don't know what it tested, can't fairly compare with 'this time'. Versioning pins a time interval on every version, letting each run pin the version it used (Lesson 30's eval replays via datasetItemValidFrom). Same 'record truth without erasing' belief as Lesson 37's prompt versions and git commits.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Datasets link 'production traces' and 'test cases' via sourceTraceId, and use versioning to keep experiments reproducible. Imagine maintaining a customer-service bot: how would you use these two mechanisms to build a 'continuous improvement' regression-test flow? Which production cases are worth promoting into a dataset? When should you version-up a question rather than create a new one?</li>
   </ul>
 </div>
 </div>
