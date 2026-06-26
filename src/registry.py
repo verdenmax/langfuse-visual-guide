@@ -9,6 +9,7 @@ import part1
 import part2
 import part3
 import part4
+import part5
 
 # Filename -> {"zh": ..., "en": ...}. Keep keys in sync with shell.PAGES.
 CONTENT = {
@@ -39,4 +40,5 @@ CONTENT = {
     "25-trace-detail-tree.html": part4.LESSON_25,
     "26-sessions.html": part4.LESSON_26,
     "27-public-rest-api.html": part4.LESSON_27,
+    "28-scoring-model.html": part5.LESSON_28,
 }

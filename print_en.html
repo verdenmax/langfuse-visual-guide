@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 27 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 28 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -364,6 +364,7 @@ details[open] > summary { list-style: none; }
   <li>Trace detail & the observation tree</li>
   <li>Sessions</li>
   <li>The public REST API</li>
+  <li>The scoring model</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -6036,6 +6037,171 @@ silently drifting from the Fern contract), the whole external channel stays stab
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>'Internally optimize fast-to-change, externally optimize don't-break' — same data, UI via tRPC, SDK via versioned REST. In systems you've built or used, how were internal interfaces and external APIs handled against this tension? Designing an 'evolve without breaking' mechanism for an external API, how would you do versioning and prevent contract drift?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>The scoring model</h1>
+
+<p class="lead">
+The first four parts let you <strong>see</strong> what happened on every LLM call. But "what happened" is not the same as "<strong>how good was it</strong>". This part is about <strong>evaluation</strong>—how to put a number on a trace. And the atomic unit of all of it is the <strong>score</strong>.
+This lesson nails down the score's <strong>data model</strong>: what a score looks like, its <strong>three data types</strong> (numeric / categorical / boolean), what the <strong>score config</strong> ("the schema of a score") governs, and which <strong>three sources</strong> a score can come from.
+Once you have this model, the next five lessons (LLM-as-a-judge, code eval, human annotation, monitors) are all just "<strong>different ways of producing a score</strong>".
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Think of a score as an <strong>evaluation sticker</strong> slapped on one answer. The sticker says <strong>what you're rating</strong> (name, e.g. "helpfulness"), <strong>the rating</strong> (value), and <strong>which kind of scale</strong> (dataType: a 0–1 number? a "good/ok/bad" tier? a "right/wrong" tick?).
+  The <strong>score config</strong> is the <strong>printing standard</strong> for that kind of sticker: it mandates that "helpfulness" must be a 0–1 number, that "sentiment" must be one of {pos/neutral/neg}—so <strong>same-named stickers always use the same ruler</strong>, which is what makes them comparable and averageable.
+  As for who applied the sticker (source): maybe <strong>you</strong> did (API), maybe an <strong>AI judge</strong> did (EVAL), maybe a <strong>human reviewer</strong> did (ANNOTATION)—but as long as the scale matches, all three live in the <strong>same comparable space</strong>.
+</div>
+
+
+<h2>Three scales: numeric, categorical, boolean</h2>
+<p>The soul of a score is its <code>dataType</code>—it decides how the value is read and validated. Langfuse pins down three types with Zod (plus a legacy TEXT):</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="The three score data types: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A score's three scales (dataType)</text>
+  <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value is a number</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">optional minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">e.g. helpfulness 0–1, latency 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">averageable, sortable</text>
+  <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a set of label ↔ value</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">labels unique, values unique</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. sentiment {pos/neu/neg}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">countable, groupable</text>
+  <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a special category</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">locked: True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. contains toxic words?</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">pass-rate computable</text>
+</svg>
+<div class="figcap"><b>Three scales, each with a strength</b>: <b>NUMERIC</b> (a number with optional min/max, averageable/sortable), <b>CATEGORICAL</b> (a fixed set of label↔value, both unique, countable/groupable), <b>BOOLEAN</b> (a special category locked to <code>True=1 / False=0</code>, pass-rate computable). Source: <code>packages/shared/src/domain/score-configs.ts:18-80</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
+  <pre class="code"><span class="cm">// numeric: optional bounds, no categories</span>
+NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
+
+<span class="cm">// categorical: a set of {label, value}; labels unique, values unique (validateCategories)</span>
+CategoricalConfigFields = { dataType: <span class="st">"CATEGORICAL"</span>, categories: [{label, value}, …] };
+
+<span class="cm">// boolean: really a "exactly two" special category, locked to True=1 / False=0</span>
+BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
+  categories: [{label:<span class="st">"True"</span>, value:1}, {label:<span class="st">"False"</span>, value:0}] };  <span class="cm">// length===2 enforced</span></pre>
+</div>
+
+<p>Note one elegant move: <strong>boolean is not a separate fourth type—it is implemented as a "exactly two categories, locked to True=1/False=0" category</strong>. So the core only handles two logics, "numeric" and "categorical", and boolean reuses categorical storage and aggregation—
+one fewer special case, one more bit of consistency. This echoes Lesson 8's "wide event" idea: if a general mechanism can express it, don't invent a new one.</p>
+
+<p>One more design that runs throughout: <strong>the <code>value</code> is always a number</strong>, while <code>stringValue</code> only holds the "label". A NUMERIC value is just that number with an empty stringValue; CATEGORICAL/BOOLEAN put the label in stringValue and the mapped number in value (e.g. <code>"positive"</code>→a number, <code>"True"</code>→1).
+Precisely because <strong>every score has a numeric value</strong>, averaging, trending, and pass-rate work uniformly across all types—the physical basis of "comparable".</p>
+
+<table class="t">
+  <thead><tr><th>dataType</th><th>value / stringValue</th><th>constraints</th><th>aggregations</th><th>example</th></tr></thead>
+  <tbody>
+    <tr><td><b>NUMERIC</b></td><td>value=the number; stringValue empty</td><td>optional minValue / maxValue</td><td>mean, distribution, trend</td><td>helpfulness 0.82</td></tr>
+    <tr><td><b>CATEGORICAL</b></td><td>stringValue=label; value=mapped number</td><td>labels unique, values unique</td><td>count, share, group-by</td><td>sentiment "positive"</td></tr>
+    <tr><td><b>BOOLEAN</b></td><td>stringValue="True"/"False"; value∈{0,1}</td><td>locked: True=1 / False=0</td><td>pass-rate</td><td>is_toxic False (0)</td></tr>
+  </tbody>
+</table>
+<p>Reminder: <code>scores.ts</code> actually lists <strong>5</strong> dataTypes—the three above are the "comparable scales" a score config supports, plus <strong>TEXT</strong> (free text, length ≤500, legacy) and <strong>CORRECTION</strong> (for human-annotation corrections, name fixed to <code>"output"</code>). The latter two aren't aggregatable scales, so this lesson focuses on the first three. Source: <code>scores.ts:46-52</code> (5 types), <code>score-configs.ts:117-138</code> (config is a 4-way discriminatedUnion).</p>
+
+
+
+<h2>score config: a "schema for scoring"</h2>
+<p>A dataType alone isn't enough. If the same "helpfulness" score is rated 0–1 by one person today and 1–100 by another tomorrow, the data turns to mush. <strong>score config</strong> fixes exactly this: it is the <strong>schema of a score name</strong>—
+declaring what dataType that name uses, and what bounds / which categories. So no matter where a score comes from, it is validated against the <strong>same ruler</strong>, which is the precondition for comparison and aggregation.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="A score config as the schema of a name, validating scores from API, EVAL, and ANNOTATION sources so they land in one comparable space">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One config guards one name: three sources, one ruler</text>
+  <rect x="20" y="44" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API (you submit it)</text><text x="95" y="74" text-anchor="middle" font-size="7" fill="var(--muted)">source=API</text>
+  <rect x="20" y="86" width="150" height="36" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="103" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL (AI/code judge)</text><text x="95" y="116" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source=EVAL</text>
+  <rect x="20" y="128" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="145" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">ANNOTATION (human)</text><text x="95" y="158" text-anchor="middle" font-size="7" fill="var(--muted)">source=ANNOTATION</text>
+  <rect x="270" y="74" width="180" height="62" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">score config (name's schema)</text><text x="360" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness" = NUMERIC [0,1]</text><text x="360" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">validates the value</text>
+  <rect x="500" y="80" width="200" height="50" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="600" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores table (L8 wide table)</text><text x="600" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">same name+ruler → comparable</text>
+  <line x1="170" y1="62" x2="268" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="104" x2="268" y2="105" stroke="var(--accent)" stroke-width="1.3"/><line x1="170" y1="146" x2="268" y2="118" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="450" y1="105" x2="498" y2="105" stroke="var(--faint)" stroke-width="1.5"/><polygon points="498,105 489,101 489,109" fill="var(--faint)"/>
+  <text x="360" y="186" text-anchor="middle" font-size="8.5" fill="var(--faint)">three sources converge: all validated by config, all written to one scores table—judge/human/API in one comparable space</text>
+</svg>
+<div class="figcap"><b>One config guards one name</b>: a score config declares a name's dataType and constraints (numeric bounds / category set), validating scores from <b>API / EVAL / ANNOTATION</b> into one scores table, one ruler. Source: <code>scores.ts:4</code> (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>).</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">you submit it</span></div><div class="ld">Use the SDK's <code>score.create</code> directly—e.g. your own offline eval script, or thumbs-up collected in production. This is one origin of the <code>SCORE_CREATE</code> event on the ingestion path of Lessons 6 & 12.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI or code judge</span></div><div class="ld">Scores computed by LLM-as-a-judge (Lesson 29) or code eval (Lesson 31). They too <strong>flow back through the same ingestion path</strong> to become scores—evaluation isn't a separate pipeline, it's a producer of scores.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">human annotation</span></div><div class="ld">Human reviewers score traces against the config in an annotation queue (Lesson 32). They land in the same scores table, just with source set to ANNOTATION.</div></div>
+</div>
+
+<h2>What fields a score object actually has</h2>
+<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / observation / session / dataset-run</strong> (four reference fields, exactly one non-null).</p>
+
+<div class="cols">
+  <div class="col"><h4>what · how much</h4><p><code>name</code> which dimension (e.g. "helpfulness"); <code>value</code> always a number; <code>stringValue</code> the label (categorical/boolean/text only); <code>dataType</code> which scale.</p></div>
+  <div class="col"><h4>who · with what</h4><p><code>source</code> API / EVAL / ANNOTATION; <code>authorUserId</code> the human annotator (nullable); <code>comment</code> a note (nullable); <code>configId</code> which config validates it; <code>queueId</code> which annotation queue it came from.</p></div>
+  <div class="col"><h4>attached to (one of)</h4><p><code>traceId</code> the whole trace; <code>observationId</code> one step within; <code>sessionId</code> the whole session; <code>datasetRunId</code> one dataset run—<strong>exactly one must be non-null</strong>.</p></div>
+</div>
+<p>This "one-of-four attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation</strong> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). One score model covers every evaluation granularity, from a single step to a whole batch experiment. Source: <code>packages/shared/src/domain/scores.ts:89-133</code>.</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why bother with a dedicated score config instead of letting everyone score freely?</strong> Because <strong>"being comparable" is the entire value of evaluation</strong>. If under the name "helpfulness" team A rates 0–1, team B uses a percentage, and C uses "good/bad",
+  then those scores are <strong>meaningless together</strong>—averaging is wrong, trending is wrong, comparing is more wrong still. A score config <strong>fixes and enforces</strong> "a given name = a given scale", so same-named scores are forever comparable,
+  and you can confidently ask "did average helpfulness rise this week" or "which model has the higher toxicity pass-rate". This is the same engineering belief as Lesson 8's "provided vs computed" and Lesson 16's "pricing schema": <strong>model "what the data should look like" explicitly and validate up front,
+  and every downstream analysis stands on solid ground</strong>. Unifying three sources into one scores table and one config set lets "AI-judged", "human-reviewed", and "API-reported" scores live in one space—<strong>which is the shared destination of every remaining lesson in Part 5: producing comparable scores</strong>.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
+    <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
+    <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing Lesson 8's "don't invent when a general mechanism works".</li>
+    <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
+    <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to Lesson 8's scores table. The next five lessons are just "producing scores in different ways".</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. A Langfuse score has three dataTypes: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not an 'independent fourth logic' — what is it implemented as?</div>
+  <ol class="opts">
+    <li>a special CATEGORICAL with 'exactly two categories, locked to True=1 / False=0' — the core only handles numeric and categorical, and boolean reuses categorical storage and aggregation</li>
+    <li>a separate boolean table</li>
+    <li>an alias of NUMERIC</li>
+    <li>a frontend-only validation</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. BooleanConfigFields forces categories length 2, locked to {True:1, False:0} (score-configs.ts). So boolean needs no new storage/aggregation; it rides the categorical path — one fewer special case, more consistency. This echoes Lesson 8's 'if a general mechanism expresses it, don't invent a new one'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. For the score 'helpfulness', team A rates 0–1, team B uses a percentage, C uses 'good/bad'. What core problem does a score config solve?</div>
+  <ol class="opts">
+    <li>auto-generates scores</li>
+    <li>comparability: a config is the schema of a name, fixing and enforcing 'this name = this scale', so same-named scores always use one ruler — only then are averaging, trending, and comparison meaningful</li>
+    <li>reduces database storage</li>
+    <li>makes scoring faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. 'Being comparable' is the whole value of evaluation. If same-named scores use different scales, averaging/trending/comparing them is all wrong. A score config explicitly declares dataType and constraints (bounds/categories) and validates up front, keeping same-named scores forever comparable. Same belief as Lesson 8's provided/computed and Lesson 16's pricing schema: model 'what the data should look like' explicitly.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. A score has three sources: API, EVAL, ANNOTATION (ScoreSourceArray in scores.ts). Which statement about them is most accurate?</div>
+  <ol class="opts">
+    <li>each source has its own table and aggregation logic</li>
+    <li>EVAL scores bypass the ingestion path</li>
+    <li>all three converge: AI judging (EVAL), human annotation (ANNOTATION), and direct submission (API) are all validated by the same config and written to the same scores table — evaluation isn't a separate pipeline but a producer of scores</li>
+    <li>only the API source gets stored</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. ScoreSourceArray=["API","EVAL","ANNOTATION"] merely labels a row in the same scores table with 'who scored this'. Scores from LLM-as-a-judge, code eval, and human annotation all flow back through the same ingestion path, validated by the same config. This is the shared destination of every remaining Part 5 lesson: producing comparable scores in different ways.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Langfuse unifies 'AI-judged, human-reviewed, API-reported' scores into one score type, one table, one config, distinguishing origin only by a source field. In a system you've built or imagined, if you had to unify 'quality signals from many sources' into one comparable metric, how would you design its data model? Would you want a 'schema gatekeeper' like a score config — and why?</li>
   </ul>
 </div>
 </div>

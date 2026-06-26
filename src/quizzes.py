@@ -1935,6 +1935,76 @@ QUIZZES = {
             },
         ],
     },
+    "28-scoring-model.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 score 有三种 dataType：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是「独立的第四套逻辑」，而是被实现成什么？",
+                    "en": "A Langfuse score has three dataTypes: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not an 'independent fourth logic' — what is it implemented as?",
+                },
+                "opts": [
+                    {
+                        "zh": "一个「恰好两档、且锁死为 True=1 / False=0」的特殊 CATEGORICAL——底层只需处理数值与分类两套逻辑，布尔复用分类的存储与聚合",
+                        "en": "a special CATEGORICAL with 'exactly two categories, locked to True=1 / False=0' — the core only handles numeric and categorical, and boolean reuses categorical storage and aggregation",
+                    },
+                    {"zh": "一个独立的布尔表", "en": "a separate boolean table"},
+                    {"zh": "一个 NUMERIC 的别名", "en": "an alias of NUMERIC"},
+                    {"zh": "一段前端专用的校验", "en": "a frontend-only validation"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "BooleanConfigFields 强制 categories 长度为 2、且锁死 {True:1, False:0}（score-configs.ts）。这样就不必为布尔新造一套存储/聚合，它顺着分类的路走——少一套特例、多一分一致。这正呼应第 8 课「能用通用机制表达的，就别新造一个」。",
+                    "en": "BooleanConfigFields forces categories length 2, locked to {True:1, False:0} (score-configs.ts). So boolean needs no new storage/aggregation; it rides the categorical path — one fewer special case, more consistency. This echoes Lesson 8's 'if a general mechanism expresses it, don't invent a new one'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "「有用性」这个分数，A 团队打 0–1、B 团队用百分制、C 用「好/差」。score config 要解决的核心问题是？",
+                    "en": "For the score 'helpfulness', team A rates 0–1, team B uses a percentage, C uses 'good/bad'. What core problem does a score config solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "可比性：config 是某个 name 的 schema，把「这个名字=这种刻度」固定并强制校验，于是同名分数永远同一把尺——求平均、画趋势、做对比才有意义",
+                        "en": "comparability: a config is the schema of a name, fixing and enforcing 'this name = this scale', so same-named scores always use one ruler — only then are averaging, trending, and comparison meaningful",
+                    },
+                    {"zh": "让打分速度更快", "en": "makes scoring faster"},
+                    {"zh": "减少数据库存储", "en": "reduces database storage"},
+                    {"zh": "自动生成分数", "en": "auto-generates scores"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "「能比较」是评估的全部价值。若同名分数刻度各异，放一起求平均/画趋势/对比全是错的。score config 显式声明 dataType 与约束（区间/类别）并前置校验，使同名分数恒可比。这和第 8 课 provided/computed、第 16 课定价 schema 是同一种「把数据该长什么样显式建模」的工程信念。",
+                    "en": "'Being comparable' is the whole value of evaluation. If same-named scores use different scales, averaging/trending/comparing them is all wrong. A score config explicitly declares dataType and constraints (bounds/categories) and validates up front, keeping same-named scores forever comparable. Same belief as Lesson 8's provided/computed and Lesson 16's pricing schema: model 'what the data should look like' explicitly.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "score 有三种 source：API、EVAL、ANNOTATION（scores.ts 的 ScoreSourceArray）。关于这三者的关系，下列哪句最准确？",
+                    "en": "A score has three sources: API, EVAL, ANNOTATION (ScoreSourceArray in scores.ts). Which statement about them is most accurate?",
+                },
+                "opts": [
+                    {
+                        "zh": "三者殊途同归：AI 评判(EVAL)、人工标注(ANNOTATION)、亲手提交(API)最终都按同一 config 校验、写进同一张 scores 表——评估不是独立管道，而是 score 的生产者",
+                        "en": "all three converge: AI judging (EVAL), human annotation (ANNOTATION), and direct submission (API) are all validated by the same config and written to the same scores table — evaluation isn't a separate pipeline but a producer of scores",
+                    },
+                    {"zh": "三种 source 各有独立的表和聚合逻辑", "en": "each source has its own table and aggregation logic"},
+                    {"zh": "只有 API 来源会被存储", "en": "only the API source gets stored"},
+                    {"zh": "EVAL 分数不经过摄取链路", "en": "EVAL scores bypass the ingestion path"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "ScoreSourceArray=[\"API\",\"EVAL\",\"ANNOTATION\"] 只是给同一张 scores 表的一行标注「这分谁打的」。LLM-as-a-judge、代码 eval、人工标注算出的分都走回同一条摄取链路、按同一 config 校验。这就是 Part 5 后续每课的共同终点：用不同方式生产可比的 score。",
+                    "en": "ScoreSourceArray=[\"API\",\"EVAL\",\"ANNOTATION\"] merely labels a row in the same scores table with 'who scored this'. Scores from LLM-as-a-judge, code eval, and human annotation all flow back through the same ingestion path, validated by the same config. This is the shared destination of every remaining Part 5 lesson: producing comparable scores in different ways.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "Langfuse 把「AI 评的、人审的、API 报的」分数统一成一种 score、一张表、一套 config，只用 source 字段区分来源。在你做过或设想的系统里，如果要把「多种来源的质量信号」统一成一个可比的指标，你会怎么设计它的数据模型？需要一个像 score config 那样的「schema 守门人」吗，为什么？",
+                "en": "Langfuse unifies 'AI-judged, human-reviewed, API-reported' scores into one score type, one table, one config, distinguishing origin only by a source field. In a system you've built or imagined, if you had to unify 'quality signals from many sources' into one comparable metric, how would you design its data model? Would you want a 'schema gatekeeper' like a score config — and why?",
+            },
+        ],
+    },
 }
 
 

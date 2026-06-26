@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 27 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 28 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -364,6 +364,7 @@ details[open] > summary { list-style: none; }
   <li>trace 详情与观测树</li>
   <li>sessions</li>
   <li>公共 REST API</li>
+  <li>评分模型</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -5606,6 +5607,171 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>「对内优化『改得快』、对外优化『不破坏』」——同一份数据，UI 用 tRPC、SDK 用版本化 REST。你做过或用过的系统里，内部接口和对外 API 是怎么处理这对矛盾的？如果让你给一个对外 API 设计「演进而不破坏」的机制，你会怎么做版本、怎么防契约漂移？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>评分模型</h1>
+
+<p class="lead">
+前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 打分。而一切的原子单位，是 <strong>score（评分）</strong>。
+这一课先把 score 的<strong>数据模型</strong>讲透：一个 score 长什么样、有哪<strong>三种数据类型</strong>（数值/分类/布尔）、<strong>score config</strong> 这个「评分的 schema」管什么，以及一个 score 可能来自哪<strong>三种来源</strong>。
+理解了这套模型，后面五课（LLM 评判、代码 eval、人工标注、监控）就都只是「<strong>用不同方式生产 score</strong>」而已。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  把 score 想成给一次回答贴的一张<strong>评价标签</strong>。标签上写着<strong>评什么</strong>（name，如「有用性」）、<strong>打多少</strong>（value）、以及这是<strong>哪种刻度</strong>（dataType：是 0–1 的分数？还是「好/中/差」的档位？还是「对/错」的勾叉？）。
+  而 <strong>score config</strong> 就像这类标签的<strong>印制规范</strong>：它规定「有用性」这张标签必须是 0–1 的数值、「情感」那张必须从 {正/中/负} 里选一个——于是<strong>同名标签永远同一把尺</strong>，才能横向比较、求平均。
+  至于标签是谁贴的（source）：可能是你<strong>亲手</strong>贴（API）、可能是 <strong>AI 评判员</strong>贴（EVAL）、也可能是<strong>人工审核</strong>贴（ANNOTATION）——但只要刻度一致，三方贴的标签就活在<strong>同一个可比的空间</strong>里。
+</div>
+
+
+<h2>三种刻度：数值、分类、布尔</h2>
+<p>一个 score 的灵魂是它的 <code>dataType</code>——它决定 value 怎么解读、怎么校验。Langfuse 用 Zod 把三种类型定义得清清楚楚（外加一个旧的 TEXT）：</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="score 三种数据类型：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score 的三种刻度（dataType）</text>
+  <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC 数值</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value 是一个数</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">可设 minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">例：有用性 0–1、延迟分 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可求平均、可排序</text>
+  <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL 分类</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">一组「标签 ↔ 值」</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">标签唯一、值唯一</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：情感 {正/中/负}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可计数、可分组</text>
+  <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN 布尔</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">特殊的分类</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">固定两档：True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：是否含敏感词</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可算通过率</text>
+</svg>
+<div class="figcap"><b>三种刻度，各有所长</b>：<b>NUMERIC</b>（数，带可选 min/max，能求平均/排序）、<b>CATEGORICAL</b>（标签↔值的固定集合，标签与值都唯一，能计数/分组）、<b>BOOLEAN</b>（固定为 <code>True=1 / False=0</code> 的特殊分类，能算通过率）。源码：<code>packages/shared/src/domain/score-configs.ts:18-80</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
+  <pre class="code"><span class="cm">// 数值：可选区间，无 categories</span>
+NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
+
+<span class="cm">// 分类：一组 {label, value}，标签唯一、值唯一（validateCategories）</span>
+CategoricalConfigFields = { dataType: <span class="st">"CATEGORICAL"</span>, categories: [{label, value}, …] };
+
+<span class="cm">// 布尔：其实是「恰好两档」的特殊分类，且锁死为 True=1 / False=0</span>
+BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
+  categories: [{label:<span class="st">"True"</span>, value:1}, {label:<span class="st">"False"</span>, value:0}] };  <span class="cm">// length===2 强校验</span></pre>
+</div>
+
+<p>注意一个优雅之处：<strong>布尔不是独立的第四种类型，而是被实现成「恰好两档、且锁死为 True=1/False=0」的分类</strong>。这样底层只需处理「数值」和「分类」两套逻辑，布尔顺势复用分类的存储与聚合——
+少一套特例，多一分一致。这也呼应了第 8 课「宽事件」的思路：能用通用机制表达的，就别新造一个。</p>
+
+<p>还有个贯穿始终的设计：<strong><code>value</code> 永远是一个数</strong>，而 <code>stringValue</code> 只用来存「标签」。NUMERIC 的 value 就是那个数、stringValue 为空；CATEGORICAL/BOOLEAN 则把标签放进 stringValue、把映射后的数放进 value（如 <code>"positive"</code>→某数、<code>"True"</code>→1）。
+正因为<strong>任何 score 都有一个数值 value</strong>，求平均、画趋势、算通过率才对所有类型一视同仁——这是「可比」的物理基础。</p>
+
+<table class="t">
+  <thead><tr><th>dataType</th><th>value / stringValue</th><th>约束</th><th>能做的聚合</th><th>例子</th></tr></thead>
+  <tbody>
+    <tr><td><b>NUMERIC</b></td><td>value=那个数；stringValue 空</td><td>可选 minValue / maxValue</td><td>均值、分布、趋势</td><td>helpfulness 0.82</td></tr>
+    <tr><td><b>CATEGORICAL</b></td><td>stringValue=标签；value=映射数</td><td>标签唯一、值唯一</td><td>计数、占比、分组</td><td>sentiment "positive"</td></tr>
+    <tr><td><b>BOOLEAN</b></td><td>stringValue="True"/"False"；value∈{0,1}</td><td>锁死两档 True=1 / False=0</td><td>通过率</td><td>is_toxic False (0)</td></tr>
+  </tbody>
+</table>
+<p>提醒：<code>scores.ts</code> 里 dataType 其实列了 <strong>5</strong> 种——上面 3 种是 score config 支持的「可比刻度」，另有 <strong>TEXT</strong>（自由文本，长度 ≤500，旧式）和 <strong>CORRECTION</strong>（人工标注纠正专用，name 固定为 <code>"output"</code>）。后两者不是可聚合的刻度，故本课聚焦前三。源码：<code>scores.ts:46-52</code>（5 种）、<code>score-configs.ts:117-138</code>（config 仅 4 种 discriminatedUnion）。</p>
+
+
+
+<h2>score config：一张「评分的 schema」</h2>
+<p>光有 dataType 还不够。如果同一个「有用性」分数，今天有人打 0–1、明天有人打 1–100，数据就乱成一锅。<strong>score config</strong> 就是解决这个的：它是某个 score <strong>name 的 schema</strong>——
+声明这个名字下的分数是什么 dataType、什么区间/有哪些类别。于是无论分数从哪来，都按<strong>同一把尺</strong>校验，才谈得上比较与聚合。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="score config 作为某 name 的 schema，校验来自 API、EVAL、ANNOTATION 三种来源的分数，使它们落入同一可比空间">
+  <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一份 config 把守一个 name：三来源、同一把尺</text>
+  <rect x="20" y="44" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">API（你亲手提交）</text><text x="95" y="74" text-anchor="middle" font-size="7" fill="var(--muted)">source=API</text>
+  <rect x="20" y="86" width="150" height="36" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="95" y="103" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">EVAL（AI/代码评判）</text><text x="95" y="116" text-anchor="middle" font-size="7" fill="var(--accent-ink)">source=EVAL</text>
+  <rect x="20" y="128" width="150" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="145" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">ANNOTATION（人工）</text><text x="95" y="158" text-anchor="middle" font-size="7" fill="var(--muted)">source=ANNOTATION</text>
+  <rect x="270" y="74" width="180" height="62" rx="10" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">score config（name 的 schema）</text><text x="360" y="114" text-anchor="middle" font-size="7.5" fill="var(--ink)">"有用性" = NUMERIC [0,1]</text><text x="360" y="128" text-anchor="middle" font-size="7" fill="var(--muted)">校验 value 是否合规</text>
+  <rect x="500" y="80" width="200" height="50" rx="10" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="600" y="100" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">scores 表（第 8 课宽表）</text><text x="600" y="116" text-anchor="middle" font-size="7.5" fill="var(--muted)">同名同尺 → 可比、可聚合</text>
+  <line x1="170" y1="62" x2="268" y2="92" stroke="var(--faint)" stroke-width="1.3"/><line x1="170" y1="104" x2="268" y2="105" stroke="var(--accent)" stroke-width="1.3"/><line x1="170" y1="146" x2="268" y2="118" stroke="var(--faint)" stroke-width="1.3"/>
+  <line x1="450" y1="105" x2="498" y2="105" stroke="var(--faint)" stroke-width="1.5"/><polygon points="498,105 489,101 489,109" fill="var(--faint)"/>
+  <text x="360" y="186" text-anchor="middle" font-size="8.5" fill="var(--faint)">三种来源殊途同归：都按 config 校验、都写进同一张 scores 表——评判/人工/API 活在同一个可比空间</text>
+</svg>
+<div class="figcap"><b>一份 config 守一个 name</b>：score config 声明某 name 的 dataType 与约束（数值区间 / 类别集合），校验来自 <b>API / EVAL / ANNOTATION</b> 三种来源的分数，使它们落进同一张 scores 表、同一把尺。源码：<code>scores.ts:4</code>（<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>）。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 6、12 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（第 29 课）或代码 eval（第 31 课）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（第 32 课）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
+</div>
+
+<h2>一个 score 对象到底有哪些字段</h2>
+<p>把 <code>ScoreSchema</code> 拆开看，一条 score 大致分三组字段——「评什么·打多少」「谁打的·带什么」「挂在哪」。最值得记的是最后一组：<strong>一条 score 必须挂在 trace / observation / session / 数据集运行 四者之一上</strong>（四个引用字段，恰好一个非空）。</p>
+
+<div class="cols">
+  <div class="col"><h4>评什么 · 打多少</h4><p><code>name</code> 评的是哪个维度（如「有用性」）；<code>value</code> 永远是一个数；<code>stringValue</code> 标签（分类/布尔/文本才有）；<code>dataType</code> 哪种刻度。</p></div>
+  <div class="col"><h4>谁打的 · 带什么</h4><p><code>source</code> API / EVAL / ANNOTATION；<code>authorUserId</code> 人工标注者（可空）；<code>comment</code> 备注（可空）；<code>configId</code> 按哪份 config 校验；<code>queueId</code> 来自哪个标注队列。</p></div>
+  <div class="col"><h4>挂在哪（四选一）</h4><p><code>traceId</code> 整条 trace；<code>observationId</code> trace 里某一步；<code>sessionId</code> 整个会话；<code>datasetRunId</code> 某次数据集运行——<strong>必须恰有一个非空</strong>。</p></div>
+</div>
+<p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么要专门搞一个 score config，而不是让大家随手打分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
+  那这些分数<strong>放在一起毫无意义</strong>——求平均是错的、画趋势是错的、做对比更是错的。score config 把「某个名字 = 某种刻度」<strong>固定下来、强制校验</strong>，于是同名分数永远可比，
+  你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和第 8 课「provided vs computed」、第 16 课「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
+  下游的一切分析才有坚实地基</strong>。而把三种来源统一到同一张 scores 表、同一套 config，则让「AI 评的」「人审的」「API 报的」分数活在一个空间里——<strong>这正是 Part 5 后续每一课的共同终点：生产可比的 score</strong>。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>score 是评估的原子单位</strong>：一个 (name, value, dataType, source) 挂在 trace 或其中某步 observation 上（也可挂 session / 数据集运行），把「发生了什么」变成「做得多好」。</li>
+    <li><strong>三种 dataType</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
+    <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应第 8 课「能用通用机制就别新造」。</li>
+    <li><strong>score config = 某 name 的 schema</strong>：声明 dataType 与约束（区间/类别），强制校验，使<strong>同名分数永远同一把尺</strong>、可比可聚合。</li>
+    <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进第 8 课的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 score 有三种 dataType：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是「独立的第四套逻辑」，而是被实现成什么？</div>
+  <ol class="opts">
+    <li>一个「恰好两档、且锁死为 True=1 / False=0」的特殊 CATEGORICAL——底层只需处理数值与分类两套逻辑，布尔复用分类的存储与聚合</li>
+    <li>一个独立的布尔表</li>
+    <li>一个 NUMERIC 的别名</li>
+    <li>一段前端专用的校验</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。BooleanConfigFields 强制 categories 长度为 2、且锁死 {True:1, False:0}（score-configs.ts）。这样就不必为布尔新造一套存储/聚合，它顺着分类的路走——少一套特例、多一分一致。这正呼应第 8 课「能用通用机制表达的，就别新造一个」。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. 「有用性」这个分数，A 团队打 0–1、B 团队用百分制、C 用「好/差」。score config 要解决的核心问题是？</div>
+  <ol class="opts">
+    <li>自动生成分数</li>
+    <li>可比性：config 是某个 name 的 schema，把「这个名字=这种刻度」固定并强制校验，于是同名分数永远同一把尺——求平均、画趋势、做对比才有意义</li>
+    <li>减少数据库存储</li>
+    <li>让打分速度更快</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。「能比较」是评估的全部价值。若同名分数刻度各异，放一起求平均/画趋势/对比全是错的。score config 显式声明 dataType 与约束（区间/类别）并前置校验，使同名分数恒可比。这和第 8 课 provided/computed、第 16 课定价 schema 是同一种「把数据该长什么样显式建模」的工程信念。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. score 有三种 source：API、EVAL、ANNOTATION（scores.ts 的 ScoreSourceArray）。关于这三者的关系，下列哪句最准确？</div>
+  <ol class="opts">
+    <li>三种 source 各有独立的表和聚合逻辑</li>
+    <li>EVAL 分数不经过摄取链路</li>
+    <li>三者殊途同归：AI 评判(EVAL)、人工标注(ANNOTATION)、亲手提交(API)最终都按同一 config 校验、写进同一张 scores 表——评估不是独立管道，而是 score 的生产者</li>
+    <li>只有 API 来源会被存储</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。ScoreSourceArray=["API","EVAL","ANNOTATION"] 只是给同一张 scores 表的一行标注「这分谁打的」。LLM-as-a-judge、代码 eval、人工标注算出的分都走回同一条摄取链路、按同一 config 校验。这就是 Part 5 后续每课的共同终点：用不同方式生产可比的 score。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>Langfuse 把「AI 评的、人审的、API 报的」分数统一成一种 score、一张表、一套 config，只用 source 字段区分来源。在你做过或设想的系统里，如果要把「多种来源的质量信号」统一成一个可比的指标，你会怎么设计它的数据模型？需要一个像 score config 那样的「schema 守门人」吗，为什么？</li>
   </ul>
 </div>
 </div>

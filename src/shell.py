@@ -103,6 +103,8 @@ PAGES = [
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
     ("27-public-rest-api.html", "公共 REST API", "The public REST API",
      "第四部分 · 查询链路", "Part 4 · The Read Path"),
+    ("28-scoring-model.html", "评分模型", "The scoring model",
+     "第五部分 · 评估与评分", "Part 5 · Evaluation & Scoring"),
 ]
 
 
@@ -640,6 +642,8 @@ SUBTITLES = {
                          "session = traces grouped by session_id; derived view not new entity; user_ids/duration/total cost; reuses L24 table machinery; always consistent zero extra writes"),
     "27-public-rest-api.html": ("路由工厂统一鉴权/限流/校验 · Redis 缓存+负缓存扛量 · 文件夹版本 v1/v2/v3 · Fern 契约生成多语言 SDK · 对外求稳",
                                 "route factory unifies auth/rate-limit/validation; Redis cache+negative caching scales; folder versions v1/v2/v3; Fern contract generates multi-language SDKs; external stability"),
+    "28-scoring-model.html": ("score = 评估的原子单位 (name/value/dataType/source) · 三种刻度数值/分类/布尔 · 布尔是锁死的特殊分类 · config 是 name 的 schema 保可比 · 三来源 API/EVAL/ANNOTATION 同写 scores 表",
+                              "score = evaluation's atomic unit (name/value/dataType/source); three scales numeric/categorical/boolean; boolean is a locked special category; config is a name's schema for comparability; three sources API/EVAL/ANNOTATION write one scores table"),
 }
 
 
