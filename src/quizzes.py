@@ -2915,6 +2915,76 @@ QUIZZES = {
             },
         ],
     },
+    "42-models-and-pricing.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 给每个模型配一条 matchPattern 正则（如 gpt-4o 的 (?i)^(openai/)?(gpt-4o)$），而不是用精确字符串匹配模型名。为什么？",
+                    "en": "Langfuse gives each model a matchPattern regex (e.g. gpt-4o's (?i)^(openai/)?(gpt-4o)$) instead of exact string matching. Why?",
+                },
+                "opts": [
+                    {
+                        "zh": "模型命名极度碎片化：同一模型在 OpenAI/Bedrock/Vertex 有 provider 前缀、us./eu. 区域前缀、-v1:0/@date 版本等十几种合法写法；一条正则把这些同义写法收敛成一个意图，精确匹配则要为每种写法各存一条、维护爆炸",
+                        "en": "model naming is highly fragmented: the same model has provider prefixes, us./eu. region prefixes, -v1:0/@date versions—a dozen valid spellings across OpenAI/Bedrock/Vertex; one regex converges these synonyms into one intent, whereas exact matching needs one entry per spelling, exploding maintenance",
+                    },
+                    {"zh": "正则匹配更快", "en": "regex matching is faster"},
+                    {"zh": "为了支持模糊搜索", "en": "to support fuzzy search"},
+                    {"zh": "正则能加密模型名", "en": "regex can encrypt model names"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "同一个 Claude 在 OpenAI 风格叫 claude-3-5-sonnet、Bedrock 叫 us.anthropic.claude-3-5-sonnet-v1:0、Vertex 叫 claude-...@20240620，加大小写和 provider/ 前缀排列，轻松十几种写法。精确匹配要为每种各存一条价目，加区域/改版本就全表翻新、极易漏。一条 (?i)^…$ 全串正则把同义写法收敛成「无论你怎么称呼，我都认得这是 gpt-4o」——对抗命名碎片化的必需品。",
+                    "en": "The same Claude is claude-3-5-sonnet in OpenAI style, us.anthropic.claude-3-5-sonnet-v1:0 on Bedrock, claude-...@20240620 on Vertex, plus casing and provider/ prefix permutations—easily a dozen spellings. Exact matching needs one price entry per spelling; adding a region or bumping a version overhauls the table and misses abound. One (?i)^…$ full-string regex converges synonyms into 'however you call it, I know this is gpt-4o'—a necessity against naming fragmentation.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 pricingTiers 把定价分成「恰一个默认档 + 任意条件档」。matchPricingTier 是怎么选出该用哪个档的？",
+                    "en": "Langfuse's pricingTiers splits pricing into 'exactly one default tier + any conditional tiers'. How does matchPricingTier pick which tier to use?",
+                },
+                "opts": [
+                    {
+                        "zh": "滤掉默认档，把条件档按 priority 升序逐个评估（每档 conditions 是 AND 逻辑、全满足才中），第一个全满足的胜出；都不满足就回落默认档——保证任何用量都能算出价",
+                        "en": "filter out the default tier, evaluate conditional tiers in ascending priority (each tier's conditions are AND logic, all must hold), the first all-holding wins; if none hold, fall back to the default tier—guaranteeing any usage gets a price",
+                    },
+                    {"zh": "总是用最便宜的档", "en": "always uses the cheapest tier"},
+                    {"zh": "随机选一个档", "en": "picks a random tier"},
+                    {"zh": "用 priority 最高的档", "en": "uses the highest-priority tier"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "matchPricingTier(matcher.ts:88)：① 滤掉 isDefault 档、按 priority 升序排序非默认档；② 逐个评估其 conditions（evaluateConditions 用 AND——全部 operator(gt/gte/lt/lte/eq/neq) 比较通过才算中）；③ 返回第一个全满足的档；④ 都不中则返回默认档。默认档永远存在、永远兜底，保证任何用量都落进某个价、绝不漏算。这把「分级定价策略」表达成数据而非 if-else。",
+                    "en": "matchPricingTier (matcher.ts:88): ① filter out the isDefault tier, sort non-default tiers by ascending priority; ② evaluate each one's conditions (evaluateConditions uses AND—all operator(gt/gte/lt/lte/eq/neq) comparisons must pass to match); ③ return the first all-holding tier; ④ if none, return the default. The default always exists and backstops, guaranteeing any usage lands in a price. This expresses 'tiered pricing policy' as data, not if-else.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "default-model-prices.json 里有 158 条模型价目，但一个项目用了自研模型、谈了折扣价。Langfuse 怎么兼顾「开箱即用」和「贴合真实账单」？",
+                    "en": "default-model-prices.json has 158 model prices, but a project uses a self-built model with a negotiated discount. How does Langfuse balance 'ready out of the box' with 'fits the real bill'?",
+                },
+                "opts": [
+                    {
+                        "zh": "158 条是 projectId 为空的全局默认价（upsert 进 Model/Price 表，开箱即用）；项目可新增带 projectId 的 Model 条目覆盖（自研/私有/折扣价优先）——默认 + 项目覆盖两全",
+                        "en": "the 158 are global defaults with empty projectId (upserted into Model/Price tables, ready out of the box); a project can add projectId-scoped Model entries to override (self-built/private/discount prices take priority)—defaults + project override, both covered",
+                    },
+                    {"zh": "只能用内置的 158 个模型", "en": "only the built-in 158 models can be used"},
+                    {"zh": "必须改 JSON 文件重新部署", "en": "you must edit the JSON and redeploy"},
+                    {"zh": "折扣价不支持", "en": "discount prices aren't supported"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "default-model-prices.json 的 158 条是 Langfuse 内置默认价，由 upsertDefaultModelPrices 灌进 DB 的 Model/Price 表（projectId 为空=全局）。项目可在自己项目下新增带 projectId 的 Model 条目，优先于全局默认——于是主流模型价开箱即备好，自研/私有/折扣场景又能精确覆盖。add-model-price 仓库技能管的就是怎么安全往种子价里增改条目。",
+                    "en": "The 158 in default-model-prices.json are Langfuse's built-in defaults, loaded into the DB's Model/Price tables by upsertDefaultModelPrices (empty projectId = global). A project can add projectId-scoped Model entries that take priority over global defaults—so mainstream prices are preloaded while self-built/private/discount cases override precisely. The add-model-price repo skill governs how to safely add/edit entries in the seed file.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "模型定价把「分级策略」表达成数据（带 conditions 的 tier）而非代码里的 if-else，这是第 16/28 课「规则即数据」的又一次回响。回想你做过的系统：哪些「业务规则」其实更适合放进数据/配置而非硬编码？「规则即数据」带来灵活，但也有代价（要设计一套表达规则的 schema、要写解释器、调试更绕）。你会用什么标准判断一条规则该进代码还是进数据？",
+                "en": "Model pricing expresses 'tiering policy' as data (tiers with conditions) rather than if-else in code—another echo of Lessons 16/28's 'rules as data'. Recall systems you've built: which 'business rules' are actually better as data/config than hardcoded? 'Rules as data' brings flexibility but also costs (designing a schema to express rules, writing an interpreter, harder debugging). By what criteria would you decide whether a rule goes into code or into data?",
+            },
+        ],
+    },
 }
 
 

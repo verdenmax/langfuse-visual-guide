@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 41 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 42 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -378,6 +378,7 @@ details[open] > summary { list-style: none; }
   <li>Playground & LLM connections</li>
   <li>Dashboards & widgets</li>
   <li>The query engine</li>
+  <li>Models & pricing</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -8631,6 +8632,175 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>The query engine is essentially a 'semantic layer + compiler'—a common industry pattern (Cube, LookML, Malloy). What does 'declarative + physical-agnostic + injection-safe' buy, and at what cost (the engine must support every needed query shape, escaping to raw SQL is limited)? If your team built an internal analytics platform, would you choose 'everyone writes SQL' or 'a unified semantic layer', and why? Can the two coexist?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Models & pricing</h1>
+
+<p class="lead">
+Lesson 16 said "cost = usage × price", but left a cliffhanger: <strong>where does the price come from, and how does a wildly-named model name match its price list?</strong> This lesson fills that piece—Langfuse's <strong>pricing data model</strong>. Three focuses: <code>matchPattern</code> uses <strong>one regex</strong> to recognize the same model under every platform's quirky naming; <code>pricingTiers</code> uses <strong>"a default tier + conditional tiers"</strong> to support <strong>tiered pricing</strong> by usage / context window; and <code>prices</code> is a fine price list "<strong>per usage type, per token</strong>" (input, output, cache reads… each with its own price).
+It directly feeds Lesson 16's cost computation: take a call's model name, <strong>match</strong> its price list, <strong>select</strong> the right tier by usage, and compute "price × usage" to get how much this call cost.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Model pricing is like a <strong>"cross-country taxi fare manual"</strong>. The same car has <strong>a pile of different names</strong> across cities and ride apps—<code>gpt-4o</code>, <code>openai/gpt-4o</code>, <code>us.anthropic.claude-...-v1:0</code>. The manual uses one <strong>"recognition rule"</strong> (the <code>matchPattern</code> regex) to recognize all these aliases as <strong>the same car</strong>, matching one fare table.
+  And the fare <strong>isn't flat</strong>: a short city trip at one rate, but if your trip is especially long (say a context window over 200K tokens), it jumps to a "long-haul tier" at another rate (<code>pricingTiers</code>' conditional tiers). At checkout, the manual sums "how much × rate per unit" item by item—and bills <strong>line-by-line</strong>: base fare, mileage, waiting each separately (input tokens, output tokens, cache hits each have their own rate). One manual handles "identify the car + pick the tier + itemized billing" in one go.
+</div>
+
+
+<h2>matchPattern: one regex to recognize every alias</h2>
+<p>The same model is <strong>named differently</strong> on OpenAI, Anthropic, AWS Bedrock, Google Vertex, and Azure: some carry an <code>openai/</code> prefix, some a <code>us.</code> region prefix, some a <code>-v1:0</code> version suffix, some an <code>@date</code>. Matching the price list by "exact name" would mean storing one entry per spelling—a maintenance nightmare. Langfuse's solution gives each model a <strong>case-insensitive, full-string</strong> regex <code>matchPattern</code> that catches every valid spelling.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="matchPattern unifies naming: gpt-4o, openai/gpt-4o, and the region-prefixed and version-suffixed Bedrock/Vertex spellings are all matched by the same matchPattern regex, mapping to the same Model price entry">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">every alias → one regex → one price list</text>
+  <rect x="30" y="44" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="64" text-anchor="middle" font-size="7.5" fill="var(--ink)">gpt-4o (bare name)</text>
+  <rect x="30" y="82" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="102" text-anchor="middle" font-size="7.5" fill="var(--ink)">openai/gpt-4o (provider prefix)</text>
+  <rect x="30" y="120" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="140" text-anchor="middle" font-size="7" fill="var(--ink)">us.anthropic.claude-...-v1:0 (Bedrock)</text>
+  <rect x="30" y="158" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="178" text-anchor="middle" font-size="7" fill="var(--ink)">claude-...@20240620 (Vertex date)</text>
+  <rect x="300" y="90" width="160" height="56" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="380" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">matchPattern</text><text x="380" y="126" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">(?i)^(provider/)?(...)$</text><text x="380" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">case-insensitive · full-string</text>
+  <rect x="510" y="84" width="180" height="68" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">one Model entry</text><text x="600" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">tokenizerId + pricingTiers</text><text x="600" y="138" text-anchor="middle" font-size="6.4" fill="var(--muted)">same car → same price list</text>
+  <line x1="250" y1="60" x2="298" y2="105" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="98" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="136" x2="298" y2="124" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="174" x2="298" y2="132" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="460" y1="118" x2="508" y2="118" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,118 499,114 499,122" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">regex parts: (?i) case-insensitive · ^…$ full-string · (provider/)? optional prefix · (us.|eu.|apac.)? region · (:0)? / @date version</text>
+</svg>
+<div class="figcap"><b>one regex unifies fragmented naming</b>: each <code>default-model-prices.json</code> entry carries a <code>matchPattern</code>, e.g. gpt-4o's <code>(?i)^(openai/)?(gpt-4o)$</code>. With <code>(?i)</code> case-insensitive, <code>^…$</code> full-string, optional provider/region prefixes and version suffixes, it <b>catches all</b> spellings of one model across six platforms. Source: <code>worker/src/constants/default-model-prices.json</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/constants/default-model-prices.json</span><span class="ln">one model entry (excerpt)</span></div>
+  <pre class="code"><span class="cm">// one of 158 seed prices; matchPattern catches every alias</span>
+{
+  "modelName": <span class="st">"gpt-4o"</span>,
+  "matchPattern": <span class="st">"(?i)^(openai/)?(gpt-4o)$"</span>,   <span class="cm">// matches gpt-4o / openai/gpt-4o / GPT-4O</span>
+  "tokenizerId": <span class="st">"openai"</span>,                        <span class="cm">// if the SDK didn't report usage, count tokens with this tokenizer</span>
+  "pricingTiers": [ { "name": <span class="st">"Standard"</span>, "isDefault": <span class="kw">true</span>, "conditions": [],
+    "prices": { "input": 2.5e-6, "output": 1e-5,             <span class="cm">// per-token prices</span>
+                "input_cached_tokens": 1.25e-6, … } } ]      <span class="cm">// line items: input/output/cache-read each priced</span>
+}
+<span class="cm">// an Anthropic matchPattern also includes us./eu./apac. region prefixes and -v1:0, @date version forms</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>regex part</th><th>purpose</th><th>spellings it recognizes</th></tr></thead>
+  <tbody>
+    <tr><td><code>(?i)</code></td><td>case-insensitive</td><td>recognizes both gpt-4o and GPT-4O</td></tr>
+    <tr><td><code>^…$</code></td><td>full-string match</td><td>avoids false hits (won't treat gpt-4o-mini as gpt-4o)</td></tr>
+    <tr><td><code>(provider/)?</code></td><td>optional provider prefix</td><td>openai/gpt-4o, anthropic/claude-…</td></tr>
+    <tr><td><code>(us\.|eu\.|apac\.)?</code></td><td>optional AWS region prefix</td><td>us.anthropic.claude-… (Bedrock)</td></tr>
+    <tr><td><code>(:0)?</code> / <code>@date</code></td><td>optional version suffix</td><td>…-v1:0 (Bedrock), …@20240620 (Vertex)</td></tr>
+  </tbody>
+</table>
+<p>These parts are like <strong>detachable Lego</strong>: when a platform adds a new naming quirk, just add an optional group to the regex—no need to rearrange the price table. One rule <strong>absorbs the naming differences of six platforms at the pattern layer</strong>.</p>
+
+
+<h2>pricingTiers: a default tier + conditional tiers</h2>
+<p>Pricing is often not flat. For the same model, a <strong>larger context window may cost more</strong>; some bill by usage steps. Langfuse uses <code>pricingTiers</code> for this tiering: each model has <strong>exactly one default tier</strong> (<code>isDefault=true</code>, <code>priority=0</code>, <code>conditions=[]</code>), plus any number of <strong>conditional tiers</strong> (with <code>conditions</code>, e.g. "input tokens &gt; 200K"). To pick, <code>matchPricingTier</code> evaluates conditional tiers <strong>in ascending priority</strong>, the <strong>first whose conditions all hold</strong> wins; if none, it <strong>falls back to the default tier</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="Tier selection: a call's usage enters, matchPricingTier evaluates non-default conditional tiers in ascending priority, the first whose conditions all hold wins, else fall back to the default tier; the selected tier provides the prices list">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">pick a tier by usage: conditional first, fall back to default if none</text>
+  <rect x="30" y="80" width="130" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">this call's usage</text><text x="95" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">input=250k, output=8k</text>
+  <rect x="200" y="44" width="300" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="350" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">conditional (priority 1): input &gt; 200000 ?</text><text x="350" y="73" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">holds ✓ → pick it (long-context price)</text>
+  <rect x="200" y="88" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="105" text-anchor="middle" font-size="7.5" fill="var(--muted)">conditional (priority 2): … (prior one won, not tried)</text>
+  <rect x="200" y="128" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="350" y="148" text-anchor="middle" font-size="7.5" fill="var(--muted)">default (priority 0, conditions=[]): fallback when none hold</text>
+  <rect x="540" y="80" width="150" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">the tier's prices</text><text x="615" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">→ Lesson 16 cost</text>
+  <line x1="160" y1="96" x2="198" y2="62" stroke="var(--accent)" stroke-width="1.4"/><polygon points="198,62 189,64 193,71" fill="var(--accent)"/>
+  <line x1="500" y1="62" x2="538" y2="96" stroke="var(--teal)" stroke-width="1.5"/><polygon points="538,96 529,92 532,100" fill="var(--teal)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">conditions use AND logic (all must hold); operator supports gt/gte/lt/lte/eq/neq; first-come-first-served by ascending priority</text>
+  <text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--faint)">the default tier always exists and always backstops—guaranteeing any usage gets a price, never uncomputed</text>
+</svg>
+<div class="figcap"><b>tiered pricing, default backstop</b>: <code>matchPricingTier</code> (<code>pricing-tiers/matcher.ts:88</code>) filters out the default tier, evaluates conditional tiers in ascending <code>priority</code>, the first with <b>all conditions holding</b> (AND logic) wins, else falls back to default. A condition = <code>usageDetailPattern</code> (regex selecting a usage item) + <code>operator</code> (gt/gte/lt/lte/eq/neq) + <code>value</code>.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>tier type</th><th>isDefault / priority / conditions</th><th>role</th></tr></thead>
+  <tbody>
+    <tr><td><b>default</b> (exactly one per model)</td><td>true / 0 / []</td><td>backstop price—any usage gets computed, never missed</td></tr>
+    <tr><td><b>conditional</b> (any number)</td><td>false / ≥1 / has conditions</td><td>tier by context window/usage (e.g. "&gt;200K tokens → long-context price")</td></tr>
+    <tr><td colspan="3" style="background:var(--blue-soft)"><b>selection rule</b>: evaluate conditional tiers in ascending priority, first with all conditions holding wins; none → default</td></tr>
+  </tbody>
+</table>
+
+
+<h2>Put together: how a call's cost is computed</h2>
+<p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>match the Model</h4><p>Test the name against each <code>matchPattern</code> regex; the hit is the price entry to use (with tokenizerId and pricingTiers).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>(if needed) count tokens</h4><p>If the SDK didn't report usage, use the entry's <code>tokenizerId</code>/<code>tokenizerConfig</code> to tokenize the text and count tokens (Lesson 16).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>select the tier</h4><p><code>matchPricingTier</code> picks the right tier by usage (default or conditional), yielding the <code>prices</code> list to use this time.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>itemized cost</h4><p>For each usage type (input/output/cache-read…) sum <code>prices[item] × usage</code>, giving the call's total cost.</p></div></div>
+</div>
+
+<p>One more layer of flexibility: these 158 are just <strong>Langfuse's built-in defaults</strong> (global Models with empty <code>projectId</code>). If you use a self-built model, a private deployment, or negotiated special discounts, you can <strong>add/override</strong> Model prices in your own project (project-scoped entries with a <code>projectId</code> take priority)—so the platform is both <strong>ready out of the box</strong> (mainstream model prices preloaded) and <strong>precisely fitted</strong> to your real bill. The repo skill <code>add-model-price</code> governs exactly how to safely add/edit entries in this seed file (generate a UUID, write the right matchPattern, validate the JSON).</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why match model names with regex rather than exact string equality?</strong> Because model naming in the ecosystem is <strong>maddeningly fragmented</strong>. The same Claude is <code>claude-3-5-sonnet</code> in OpenAI style, <code>us.anthropic.claude-3-5-sonnet-v1:0</code> on Bedrock, <code>claude-3-5-sonnet@20240620</code> on Vertex, plus permutations of casing and <code>provider/</code> prefixes—a model easily has a dozen valid spellings. With exact matching, you'd store one price entry per spelling, and adding a region or bumping a version means overhauling the whole table—maintenance explodes and misses abound. One carefully written regex <strong>converges these synonymous spellings into one intent</strong>: "however you call it, I know this is gpt-4o". <strong>Regex here isn't showing off but a necessity against naming fragmentation</strong>—it keeps "the world's chaos" outside the price table.<br><br>
+  <strong>Why split pricing into "default + conditional tiers" rather than a flat price?</strong> Because real pricing <strong>is tiered</strong>: long context costs more, cache hits cost less, some usage jumps tiers above a threshold. Storing only a flat price would either miscompute or fill the billing code with if-else—<strong>hardcoding pricing policy into logic</strong>, so every price change means a code change and a release. Expressing tiering as <strong>data</strong> (a set of tiers with conditions) leaves the billing logic just one job: <strong>pick the right tier by usage</strong>, while "how tiers split, how prices are set" lives in data, adjustable anytime. Another win for "<strong>move policy from code into data</strong>"—the same lineage as Lesson 28's score config and Lesson 16's pricing schema: <strong>a rule expressible as data shouldn't be written into code</strong>. And the ever-present default tier is an elegant backstop: it guarantees <strong>any</strong> usage lands in some price, never failing to compute just because no condition matched.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>The pricing data model feeds Lesson 16's cost computation</strong>: <code>default-model-prices.json</code>'s 158 seed prices are upserted into the Model/Price tables, and every call computes "usage × price" from them.</li>
+    <li><strong>matchPattern unifies naming</strong>: one case-insensitive, full-string regex per model catches all the spellings of OpenAI/Anthropic/Bedrock/Vertex/Azure/Gemini (provider prefix, region prefix, version suffix, @date).</li>
+    <li><strong>pricingTiers tier pricing</strong>: exactly one default tier (backstop) + any conditional tiers; <code>matchPricingTier</code> evaluates conditions in ascending priority (AND logic, operators gt/gte/lt/lte/eq/neq), first all-holding wins, else default.</li>
+    <li><strong>prices bills line-by-line</strong>: each usage type (input/output/cache-read…) has its own per-token price; cost = Σ(per-item price × per-item usage).</li>
+    <li><strong>defaults + project override</strong>: 158 global defaults ready out of the box, projects can add <code>projectId</code>-scoped Models to override (self-built/private/discount prices). Policy in data not code—echoing Lessons 16/28's "rules as data".</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse gives each model a matchPattern regex (e.g. gpt-4o's (?i)^(openai/)?(gpt-4o)$) instead of exact string matching. Why?</div>
+  <ol class="opts">
+    <li>model naming is highly fragmented: the same model has provider prefixes, us./eu. region prefixes, -v1:0/@date versions—a dozen valid spellings across OpenAI/Bedrock/Vertex; one regex converges these synonyms into one intent, whereas exact matching needs one entry per spelling, exploding maintenance</li>
+    <li>regex matching is faster</li>
+    <li>regex can encrypt model names</li>
+    <li>to support fuzzy search</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. The same Claude is claude-3-5-sonnet in OpenAI style, us.anthropic.claude-3-5-sonnet-v1:0 on Bedrock, claude-...@20240620 on Vertex, plus casing and provider/ prefix permutations—easily a dozen spellings. Exact matching needs one price entry per spelling; adding a region or bumping a version overhauls the table and misses abound. One (?i)^…$ full-string regex converges synonyms into 'however you call it, I know this is gpt-4o'—a necessity against naming fragmentation.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse's pricingTiers splits pricing into 'exactly one default tier + any conditional tiers'. How does matchPricingTier pick which tier to use?</div>
+  <ol class="opts">
+    <li>picks a random tier</li>
+    <li>always uses the cheapest tier</li>
+    <li>uses the highest-priority tier</li>
+    <li>filter out the default tier, evaluate conditional tiers in ascending priority (each tier's conditions are AND logic, all must hold), the first all-holding wins; if none hold, fall back to the default tier—guaranteeing any usage gets a price</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. matchPricingTier (matcher.ts:88): ① filter out the isDefault tier, sort non-default tiers by ascending priority; ② evaluate each one's conditions (evaluateConditions uses AND—all operator(gt/gte/lt/lte/eq/neq) comparisons must pass to match); ③ return the first all-holding tier; ④ if none, return the default. The default always exists and backstops, guaranteeing any usage lands in a price. This expresses 'tiered pricing policy' as data, not if-else.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. default-model-prices.json has 158 model prices, but a project uses a self-built model with a negotiated discount. How does Langfuse balance 'ready out of the box' with 'fits the real bill'?</div>
+  <ol class="opts">
+    <li>you must edit the JSON and redeploy</li>
+    <li>only the built-in 158 models can be used</li>
+    <li>discount prices aren't supported</li>
+    <li>the 158 are global defaults with empty projectId (upserted into Model/Price tables, ready out of the box); a project can add projectId-scoped Model entries to override (self-built/private/discount prices take priority)—defaults + project override, both covered</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. The 158 in default-model-prices.json are Langfuse's built-in defaults, loaded into the DB's Model/Price tables by upsertDefaultModelPrices (empty projectId = global). A project can add projectId-scoped Model entries that take priority over global defaults—so mainstream prices are preloaded while self-built/private/discount cases override precisely. The add-model-price repo skill governs how to safely add/edit entries in the seed file.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>Model pricing expresses 'tiering policy' as data (tiers with conditions) rather than if-else in code—another echo of Lessons 16/28's 'rules as data'. Recall systems you've built: which 'business rules' are actually better as data/config than hardcoded? 'Rules as data' brings flexibility but also costs (designing a schema to express rules, writing an interpreter, harder debugging). By what criteria would you decide whether a rule goes into code or into data?</li>
   </ul>
 </div>
 </div>

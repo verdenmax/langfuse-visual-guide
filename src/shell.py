@@ -131,6 +131,8 @@ PAGES = [
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
     ("41-query-engine.html", "查询引擎", "The query engine",
      "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
+    ("42-models-and-pricing.html", "模型与定价", "Models & pricing",
+     "第八部分 · 仪表盘·指标·成本", "Part 8 · Dashboards, Metrics & Cost"),
 ]
 
 
@@ -696,6 +698,8 @@ SUBTITLES = {
                                        "dashboards see global aggregation; a Dashboard (definition layout + board-level filters) holds a row of DashboardWidgets; a widget = a declarative query (view+dimensions+metrics+filters) + a chart (chartType, 9 types); query/presentation decoupled; one query shape reused three ways (dashboard charts/L33 monitor thresholds/L41 engine SQL), MonitorView = DashboardWidgetViews minus TRACES"),
     "41-query-engine.html": ("查询引擎=声明式查询→ClickHouse SQL 编译器 · 语义层 dataModel 把逻辑名(name/totalCost)映射到真实 SQL 列/表达式 · QueryBuilder.build 对照字典译维度→GROUP BY/度量→聚合/时间分桶/过滤→参数化 WHERE/连表 · 值走 parameters 防注入(第23课) · view v1/v2 版本化护历史 · 一引擎多消费保口径一致",
                             "the query engine = a declarative-query → ClickHouse SQL compiler; the semantic-layer dataModel maps logical names (name/totalCost) to real SQL columns/expressions; QueryBuilder.build consults the dictionary to translate dimensions→GROUP BY/measures→aggregations/time-bucketing/filters→parameterized WHERE/joins; values go via parameters for injection safety (L23); view v1/v2 versioning protects history; one engine for many consumers keeps definitions consistent"),
+    "42-models-and-pricing.html": ("定价数据模型喂第16课成本计算 · matchPattern 一条正则统一各家命名(provider前缀/区域前缀/版本后缀/@date) · pricingTiers 默认档+条件档分级定价(matchPricingTier 按 priority 评 AND 条件，否则回落默认) · prices 分项每token计费(输入/输出/缓存读) · 158条种子价 default-model-prices.json upsert，项目可自定义覆盖 · 规则即数据",
+                                   "the pricing data model feeds Lesson 16's cost computation; matchPattern unifies naming with one regex (provider/region prefixes, version suffix, @date); pricingTiers tier pricing with a default + conditional tiers (matchPricingTier evaluates AND conditions by priority, else default); prices bills line-by-line per token (input/output/cache-read); 158 seed prices in default-model-prices.json are upserted, projects can override; rules as data"),
 }
 
 

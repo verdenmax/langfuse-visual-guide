@@ -565,3 +565,264 @@ _EN41.append(r"""
 """)
 
 LESSON_41 = {"zh": "\n".join(_ZH41), "en": "\n".join(_EN41)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L42 · 模型与定价 / Models & pricing
+# ══════════════════════════════════════════════════════════════════════
+_ZH42 = []
+_EN42 = []
+
+_ZH42.append(r"""
+<p class="lead">
+第 16 课说过「成本 = 用量 × 单价」，但留了个悬念：<strong>单价从哪来？一个叫法五花八门的模型名，又怎么对上它的价目？</strong> 这一课补上这块拼图——Langfuse 的<strong>定价数据模型</strong>。重点有三：<code>matchPattern</code> 用<strong>一条正则</strong>把同一个模型在各家平台千奇百怪的命名统一认出来；<code>pricingTiers</code> 用<strong>「默认档 + 条件档」</strong>支持按用量/上下文窗口<strong>分级定价</strong>；而 <code>prices</code> 是一张「<strong>每种用量、每个 token</strong>」的细价目（输入、输出、缓存读……各有各的价）。
+它直接喂养第 16 课的成本计算：拿一条调用的模型名去<strong>匹配</strong>出价目、按用量<strong>选中</strong>合适的档、再用「单价 × 用量」<strong>算</strong>出这次花了多少钱。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  模型定价像一本<strong>「跨国出租车计价手册」</strong>。同一款车，在不同城市、不同叫车平台有<strong>一堆不同的名字</strong>——<code>gpt-4o</code>、<code>openai/gpt-4o</code>、<code>us.anthropic.claude-...-v1:0</code>。手册用一条<strong>「识别规则」</strong>（<code>matchPattern</code> 正则）把这些花名<strong>全认成同一辆车</strong>，对上同一份价目。
+  而车费<strong>不是一口价</strong>：市区短途一个价，但要是你这趟特别长（比如上下文窗口超过 20 万 token），就跳到「长途档」按另一套价算（<code>pricingTiers</code> 的条件档）。最后结账时，手册按<strong>「跑了多少 × 每单位多少钱」</strong>逐项相加——而且<strong>分项计费</strong>：起步价、里程费、等待费各算各的（输入 token、输出 token、缓存命中各有单价）。一本手册，把「认车 + 分档 + 分项计费」三件事一次办妥。
+</div>
+""")
+
+# (L42 sections below)
+
+_ZH42.append(r"""
+<h2>matchPattern：一条正则，认尽各家花名</h2>
+<p>同一个模型，在 OpenAI、Anthropic、AWS Bedrock、Google Vertex、Azure 上的<strong>命名规则各不相同</strong>：有的带 <code>openai/</code> 前缀、有的带 <code>us.</code> 区域前缀、有的带 <code>-v1:0</code> 版本后缀、有的用 <code>@日期</code>。如果用「精确名」去匹配价目，就得为每种写法各存一条，维护噩梦。Langfuse 的解法是给每个模型配一条<strong>大小写不敏感、全串匹配</strong>的正则 <code>matchPattern</code>，一网打尽所有合法写法。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="matchPattern 统一命名：gpt-4o、openai/gpt-4o、带区域前缀和版本后缀的 Bedrock/Vertex 写法，都被同一条 matchPattern 正则匹配，对应到同一个 Model 价目条目">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">各家花名 → 一条正则 → 同一份价目</text>
+  <rect x="30" y="44" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="64" text-anchor="middle" font-size="7.5" fill="var(--ink)">gpt-4o（裸名）</text>
+  <rect x="30" y="82" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="102" text-anchor="middle" font-size="7.5" fill="var(--ink)">openai/gpt-4o（带 provider 前缀）</text>
+  <rect x="30" y="120" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="140" text-anchor="middle" font-size="7" fill="var(--ink)">us.anthropic.claude-...-v1:0（Bedrock）</text>
+  <rect x="30" y="158" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="178" text-anchor="middle" font-size="7" fill="var(--ink)">claude-...@20240620（Vertex 日期）</text>
+  <rect x="300" y="90" width="160" height="56" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="380" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">matchPattern</text><text x="380" y="126" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">(?i)^(provider/)?(...)$</text><text x="380" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">大小写不敏感 · 全串匹配</text>
+  <rect x="510" y="84" width="180" height="68" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">同一个 Model 条目</text><text x="600" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">tokenizerId + pricingTiers</text><text x="600" y="138" text-anchor="middle" font-size="6.4" fill="var(--muted)">认成同一辆车 → 同一价目</text>
+  <line x1="250" y1="60" x2="298" y2="105" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="98" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="136" x2="298" y2="124" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="174" x2="298" y2="132" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="460" y1="118" x2="508" y2="118" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,118 499,114 499,122" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">正则组件：(?i) 不分大小写 · ^…$ 全串 · (provider/)? 可选前缀 · (us.|eu.|apac.)? 区域 · (:0)? / @date 版本</text>
+</svg>
+<div class="figcap"><b>一条正则，统一碎片化命名</b>：<code>default-model-prices.json</code> 的每个条目都带一条 <code>matchPattern</code>，如 gpt-4o 的 <code>(?i)^(openai/)?(gpt-4o)$</code>。它用 <code>(?i)</code> 不分大小写、<code>^…$</code> 全串匹配、可选的 provider/区域前缀与版本后缀，把同一模型在六大平台的所有写法<b>一网打尽</b>。源码：<code>worker/src/constants/default-model-prices.json</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/constants/default-model-prices.json</span><span class="ln">一个模型条目（节选）</span></div>
+  <pre class="code"><span class="cm">// 158 条种子价之一；matchPattern 认尽各家花名</span>
+{
+  "modelName": <span class="st">"gpt-4o"</span>,
+  "matchPattern": <span class="st">"(?i)^(openai/)?(gpt-4o)$"</span>,   <span class="cm">// gpt-4o / openai/gpt-4o / GPT-4O 都匹配</span>
+  "tokenizerId": <span class="st">"openai"</span>,                        <span class="cm">// SDK 没报用量时，用这个分词器数 token</span>
+  "pricingTiers": [ { "name": <span class="st">"Standard"</span>, "isDefault": <span class="kw">true</span>, "conditions": [],
+    "prices": { "input": 2.5e-6, "output": 1e-5,             <span class="cm">// 每 token 单价</span>
+                "input_cached_tokens": 1.25e-6, … } } ]      <span class="cm">// 分项：输入/输出/缓存读各有价</span>
+}
+<span class="cm">// Anthropic 的 matchPattern 还会含 us./eu./apac. 区域前缀与 -v1:0、@date 版本写法</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>正则组件</th><th>作用</th><th>能认出的写法</th></tr></thead>
+  <tbody>
+    <tr><td><code>(?i)</code></td><td>大小写不敏感</td><td>gpt-4o 和 GPT-4O 都认</td></tr>
+    <tr><td><code>^…$</code></td><td>全串匹配</td><td>避免误伤（不会把 gpt-4o-mini 当成 gpt-4o）</td></tr>
+    <tr><td><code>(provider/)?</code></td><td>可选 provider 前缀</td><td>openai/gpt-4o、anthropic/claude-…</td></tr>
+    <tr><td><code>(us\.|eu\.|apac\.)?</code></td><td>可选 AWS 区域前缀</td><td>us.anthropic.claude-…（Bedrock）</td></tr>
+    <tr><td><code>(:0)?</code> / <code>@date</code></td><td>可选版本后缀</td><td>…-v1:0（Bedrock）、…@20240620（Vertex）</td></tr>
+  </tbody>
+</table>
+<p>这几个组件像一套「<strong>可拆装的乐高</strong>」：哪家平台多了种命名花样，往正则里加一段可选组就行，无需重排价目表。一条规则，把六大平台的命名差异<strong>吸收在了模式层</strong>。</p>
+""")
+
+_ZH42.append(r"""
+<h2>pricingTiers：默认档 + 条件档</h2>
+<p>定价往往不是一口价。同一个模型，<strong>上下文窗口越大、单价可能越高</strong>；有的还按用量阶梯计费。Langfuse 用 <code>pricingTiers</code>（价目档）支持这种分级：每个模型有<strong>恰好一个默认档</strong>（<code>isDefault=true</code>、<code>priority=0</code>、<code>conditions=[]</code>），外加任意个<strong>条件档</strong>（带 <code>conditions</code>，如「输入 token &gt; 20 万」）。选档时，<code>matchPricingTier</code> 把条件档<strong>按 priority 升序</strong>逐个试，<strong>第一个所有条件都满足</strong>的胜出；都不满足就<strong>回落到默认档</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="选档流程：一次调用的用量进来，matchPricingTier 把非默认条件档按 priority 升序逐个评估，第一个所有条件都满足的胜出，否则回落默认档；选中的 tier 提供 prices 价目">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">按用量选档：条件档优先，都不中则回落默认</text>
+  <rect x="30" y="80" width="130" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">这次调用的用量</text><text x="95" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">input=250k, output=8k</text>
+  <rect x="200" y="44" width="300" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="350" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">条件档（priority 1）：input &gt; 200000 ?</text><text x="350" y="73" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">满足 ✓ → 选它（长上下文价）</text>
+  <rect x="200" y="88" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="105" text-anchor="middle" font-size="7.5" fill="var(--muted)">条件档（priority 2）：…（前一个已中，不再试）</text>
+  <rect x="200" y="128" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="350" y="148" text-anchor="middle" font-size="7.5" fill="var(--muted)">默认档（priority 0, conditions=[]）：都不中时的兜底</text>
+  <rect x="540" y="80" width="150" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">选中档的 prices</text><text x="615" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">→ 第16课算成本</text>
+  <line x1="160" y1="96" x2="198" y2="62" stroke="var(--accent)" stroke-width="1.4"/><polygon points="198,62 189,64 193,71" fill="var(--accent)"/>
+  <line x1="500" y1="62" x2="538" y2="96" stroke="var(--teal)" stroke-width="1.5"/><polygon points="538,96 529,92 532,100" fill="var(--teal)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">conditions 用 AND 逻辑（全满足才算中）；operator 支持 gt/gte/lt/lte/eq/neq；按 priority 升序「先到先得」</text>
+  <text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--faint)">默认档永远存在、永远兜底——保证任何用量都能算出一个价，绝不漏算</text>
+</svg>
+<div class="figcap"><b>分级定价，默认兜底</b>：<code>matchPricingTier</code>（<code>pricing-tiers/matcher.ts:88</code>）滤掉默认档、按 <code>priority</code> 升序评估条件档，第一个<b>全条件满足</b>（AND 逻辑）的胜出，否则回落默认档。条件 = <code>usageDetailPattern</code>（正则选用量项）+ <code>operator</code>（gt/gte/lt/lte/eq/neq）+ <code>value</code>。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>档类型</th><th>isDefault / priority / conditions</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><b>默认档</b>（每模型恰一个）</td><td>true / 0 / []</td><td>兜底价——任何用量都能算出，绝不漏</td></tr>
+    <tr><td><b>条件档</b>（任意个）</td><td>false / ≥1 / 有条件</td><td>按上下文窗口/用量分级（如「&gt;20万 token 走长上下文价」）</td></tr>
+    <tr><td colspan="3" style="background:var(--blue-soft)"><b>选档规则</b>：条件档按 priority 升序逐个评，第一个全条件满足者胜；都不中→默认档</td></tr>
+  </tbody>
+</table>
+""")
+
+# (L42 sec3 costcalc below)
+
+_ZH42.append(r"""
+<h2>合起来：一次调用的成本是怎么算出来的</h2>
+<p>把 matchPattern 和 pricingTiers 串起来，就还原了第 16 课「成本 = 用量 × 单价」的完整链条。<code>default-model-prices.json</code> 这 158 条种子价会被 <code>upsertDefaultModelPrices</code> 灌进数据库的 Model/Price 表；之后每条调用都走这条计价线：</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>拿模型名</h4><p>从一条 observation（generation）取出它报告的模型名，如 <code>us.anthropic.claude-...-v1:0</code>。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>匹配 Model</h4><p>用模型名去试各条 <code>matchPattern</code> 正则，命中的就是这次该用的价目条目（含 tokenizerId 与 pricingTiers）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>（必要时）数 token</h4><p>若 SDK 没报用量，用条目的 <code>tokenizerId</code>/<code>tokenizerConfig</code> 把文本分词、数出 token 数（第 16 课）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>选档</h4><p><code>matchPricingTier</code> 按用量选中合适的 tier（默认或条件档），拿到这次该用的 <code>prices</code> 价目。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>分项算钱</h4><p>对每种用量（输入/输出/缓存读…）用 <code>prices[该项] × 用量</code> 逐项相加，得这次调用的总成本。</p></div></div>
+</div>
+
+<p>还有一层灵活：这 158 条只是 <strong>Langfuse 内置的默认价</strong>（<code>projectId</code> 为空的全局 Model）。如果你用的是自研模型、私有部署、或谈了特殊折扣，可以在自己项目里<strong>新增/覆盖</strong> Model 价目（带 <code>projectId</code> 的项目级条目优先）——于是平台既<strong>开箱即用</strong>（主流模型价已备好），又能<strong>精确贴合</strong>你的真实账单。<code>add-model-price</code> 这个仓库技能，管的就是怎么安全地往这份种子价里增改条目（生成 UUID、写对 matchPattern、校验 JSON）。</p>
+""")
+
+_ZH42.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么用正则匹配模型名，而不是精确字符串相等？</strong> 因为模型命名在生态里<strong>碎得令人发指</strong>。同一个 Claude，OpenAI 风格叫 <code>claude-3-5-sonnet</code>、Bedrock 上叫 <code>us.anthropic.claude-3-5-sonnet-v1:0</code>、Vertex 上叫 <code>claude-3-5-sonnet@20240620</code>，再加上大小写、<code>provider/</code> 前缀的排列组合，一个模型轻松有十几种合法写法。若用精确匹配，你得为每种写法各存一条价目，加个新区域、改个版本号就得全表翻新——维护成本爆炸，还极易漏。一条精心写的正则把这些<strong>同义写法收敛成一个意图</strong>：「无论你怎么称呼它，我都认得这是 gpt-4o」。<strong>正则在这里不是炫技，而是对抗命名碎片化的必需品</strong>——它把「世界的混乱」挡在了价目表之外。<br><br>
+  <strong>为什么定价要分「默认档 + 条件档」，而不是一口价？</strong> 因为真实定价<strong>本就分级</strong>：长上下文更贵、缓存命中更便宜、某些用量超阈值跳档。如果只存一口价，这些差异要么算错、要么得在计费代码里写满 if-else——把定价策略<strong>硬编码进逻辑</strong>，每变一次价就得改代码、发版本。把分级表达成<strong>数据</strong>（一组带 conditions 的 tier），计费逻辑就只剩一件事：<strong>按用量选中合适的档</strong>，而「档怎么分、价怎么定」全在数据里、可随时调。这又是一次「<strong>把策略从代码挪进数据</strong>」的胜利——和第 28 课 score config、第 16 课定价 schema 一脉相承：<strong>能用数据表达的规则，就别写进代码</strong>。而那个永远存在的默认档，则是一道优雅的兜底：保证<strong>任何</strong>用量都落得进某个价，绝不会因为没匹配上条件就算不出钱。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>定价数据模型喂养第 16 课成本计算</strong>：<code>default-model-prices.json</code> 158 条种子价被 upsert 进 Model/Price 表，每条调用据此算「用量 × 单价」。</li>
+    <li><strong>matchPattern 统一命名</strong>：每模型一条大小写不敏感、全串匹配的正则，认尽 OpenAI/Anthropic/Bedrock/Vertex/Azure/Gemini 的各种写法（provider 前缀、区域前缀、版本后缀、@日期）。</li>
+    <li><strong>pricingTiers 分级定价</strong>：恰一个默认档（兜底）+ 任意条件档；<code>matchPricingTier</code> 按 priority 升序评条件（AND 逻辑、operator gt/gte/lt/lte/eq/neq），第一个全满足者胜，否则回落默认。</li>
+    <li><strong>prices 分项计费</strong>：每种用量（输入/输出/缓存读…）各有每-token 单价；成本 = Σ(各项单价 × 各项用量)。</li>
+    <li><strong>默认价 + 项目覆盖</strong>：158 条全局默认开箱即用，项目可新增带 <code>projectId</code> 的 Model 覆盖（自研/私有/折扣价）。把分级策略放进数据而非代码——呼应第 16/28 课「规则即数据」。</li>
+  </ul>
+</div>
+""")
+
+_EN42.append(r"""
+<p class="lead">
+Lesson 16 said "cost = usage × price", but left a cliffhanger: <strong>where does the price come from, and how does a wildly-named model name match its price list?</strong> This lesson fills that piece—Langfuse's <strong>pricing data model</strong>. Three focuses: <code>matchPattern</code> uses <strong>one regex</strong> to recognize the same model under every platform's quirky naming; <code>pricingTiers</code> uses <strong>"a default tier + conditional tiers"</strong> to support <strong>tiered pricing</strong> by usage / context window; and <code>prices</code> is a fine price list "<strong>per usage type, per token</strong>" (input, output, cache reads… each with its own price).
+It directly feeds Lesson 16's cost computation: take a call's model name, <strong>match</strong> its price list, <strong>select</strong> the right tier by usage, and compute "price × usage" to get how much this call cost.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Model pricing is like a <strong>"cross-country taxi fare manual"</strong>. The same car has <strong>a pile of different names</strong> across cities and ride apps—<code>gpt-4o</code>, <code>openai/gpt-4o</code>, <code>us.anthropic.claude-...-v1:0</code>. The manual uses one <strong>"recognition rule"</strong> (the <code>matchPattern</code> regex) to recognize all these aliases as <strong>the same car</strong>, matching one fare table.
+  And the fare <strong>isn't flat</strong>: a short city trip at one rate, but if your trip is especially long (say a context window over 200K tokens), it jumps to a "long-haul tier" at another rate (<code>pricingTiers</code>' conditional tiers). At checkout, the manual sums "how much × rate per unit" item by item—and bills <strong>line-by-line</strong>: base fare, mileage, waiting each separately (input tokens, output tokens, cache hits each have their own rate). One manual handles "identify the car + pick the tier + itemized billing" in one go.
+</div>
+""")
+
+_EN42.append(r"""
+<h2>matchPattern: one regex to recognize every alias</h2>
+<p>The same model is <strong>named differently</strong> on OpenAI, Anthropic, AWS Bedrock, Google Vertex, and Azure: some carry an <code>openai/</code> prefix, some a <code>us.</code> region prefix, some a <code>-v1:0</code> version suffix, some an <code>@date</code>. Matching the price list by "exact name" would mean storing one entry per spelling—a maintenance nightmare. Langfuse's solution gives each model a <strong>case-insensitive, full-string</strong> regex <code>matchPattern</code> that catches every valid spelling.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="matchPattern unifies naming: gpt-4o, openai/gpt-4o, and the region-prefixed and version-suffixed Bedrock/Vertex spellings are all matched by the same matchPattern regex, mapping to the same Model price entry">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">every alias → one regex → one price list</text>
+  <rect x="30" y="44" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="64" text-anchor="middle" font-size="7.5" fill="var(--ink)">gpt-4o (bare name)</text>
+  <rect x="30" y="82" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="102" text-anchor="middle" font-size="7.5" fill="var(--ink)">openai/gpt-4o (provider prefix)</text>
+  <rect x="30" y="120" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="140" text-anchor="middle" font-size="7" fill="var(--ink)">us.anthropic.claude-...-v1:0 (Bedrock)</text>
+  <rect x="30" y="158" width="220" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="140" y="178" text-anchor="middle" font-size="7" fill="var(--ink)">claude-...@20240620 (Vertex date)</text>
+  <rect x="300" y="90" width="160" height="56" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="380" y="110" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">matchPattern</text><text x="380" y="126" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">(?i)^(provider/)?(...)$</text><text x="380" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">case-insensitive · full-string</text>
+  <rect x="510" y="84" width="180" height="68" rx="10" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="600" y="106" text-anchor="middle" font-size="9" font-weight="700" fill="var(--teal)">one Model entry</text><text x="600" y="124" text-anchor="middle" font-size="6.6" fill="var(--muted)">tokenizerId + pricingTiers</text><text x="600" y="138" text-anchor="middle" font-size="6.4" fill="var(--muted)">same car → same price list</text>
+  <line x1="250" y1="60" x2="298" y2="105" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="98" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="136" x2="298" y2="124" stroke="var(--faint)" stroke-width="1.2"/><line x1="250" y1="174" x2="298" y2="132" stroke="var(--faint)" stroke-width="1.2"/>
+  <line x1="460" y1="118" x2="508" y2="118" stroke="var(--teal)" stroke-width="1.5"/><polygon points="508,118 499,114 499,122" fill="var(--teal)"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">regex parts: (?i) case-insensitive · ^…$ full-string · (provider/)? optional prefix · (us.|eu.|apac.)? region · (:0)? / @date version</text>
+</svg>
+<div class="figcap"><b>one regex unifies fragmented naming</b>: each <code>default-model-prices.json</code> entry carries a <code>matchPattern</code>, e.g. gpt-4o's <code>(?i)^(openai/)?(gpt-4o)$</code>. With <code>(?i)</code> case-insensitive, <code>^…$</code> full-string, optional provider/region prefixes and version suffixes, it <b>catches all</b> spellings of one model across six platforms. Source: <code>worker/src/constants/default-model-prices.json</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/constants/default-model-prices.json</span><span class="ln">one model entry (excerpt)</span></div>
+  <pre class="code"><span class="cm">// one of 158 seed prices; matchPattern catches every alias</span>
+{
+  "modelName": <span class="st">"gpt-4o"</span>,
+  "matchPattern": <span class="st">"(?i)^(openai/)?(gpt-4o)$"</span>,   <span class="cm">// matches gpt-4o / openai/gpt-4o / GPT-4O</span>
+  "tokenizerId": <span class="st">"openai"</span>,                        <span class="cm">// if the SDK didn't report usage, count tokens with this tokenizer</span>
+  "pricingTiers": [ { "name": <span class="st">"Standard"</span>, "isDefault": <span class="kw">true</span>, "conditions": [],
+    "prices": { "input": 2.5e-6, "output": 1e-5,             <span class="cm">// per-token prices</span>
+                "input_cached_tokens": 1.25e-6, … } } ]      <span class="cm">// line items: input/output/cache-read each priced</span>
+}
+<span class="cm">// an Anthropic matchPattern also includes us./eu./apac. region prefixes and -v1:0, @date version forms</span></pre>
+</div>
+
+<table class="t">
+  <thead><tr><th>regex part</th><th>purpose</th><th>spellings it recognizes</th></tr></thead>
+  <tbody>
+    <tr><td><code>(?i)</code></td><td>case-insensitive</td><td>recognizes both gpt-4o and GPT-4O</td></tr>
+    <tr><td><code>^…$</code></td><td>full-string match</td><td>avoids false hits (won't treat gpt-4o-mini as gpt-4o)</td></tr>
+    <tr><td><code>(provider/)?</code></td><td>optional provider prefix</td><td>openai/gpt-4o, anthropic/claude-…</td></tr>
+    <tr><td><code>(us\.|eu\.|apac\.)?</code></td><td>optional AWS region prefix</td><td>us.anthropic.claude-… (Bedrock)</td></tr>
+    <tr><td><code>(:0)?</code> / <code>@date</code></td><td>optional version suffix</td><td>…-v1:0 (Bedrock), …@20240620 (Vertex)</td></tr>
+  </tbody>
+</table>
+<p>These parts are like <strong>detachable Lego</strong>: when a platform adds a new naming quirk, just add an optional group to the regex—no need to rearrange the price table. One rule <strong>absorbs the naming differences of six platforms at the pattern layer</strong>.</p>
+""")
+
+# (en sec2/3/spark below)
+
+_EN42.append(r"""
+<h2>pricingTiers: a default tier + conditional tiers</h2>
+<p>Pricing is often not flat. For the same model, a <strong>larger context window may cost more</strong>; some bill by usage steps. Langfuse uses <code>pricingTiers</code> for this tiering: each model has <strong>exactly one default tier</strong> (<code>isDefault=true</code>, <code>priority=0</code>, <code>conditions=[]</code>), plus any number of <strong>conditional tiers</strong> (with <code>conditions</code>, e.g. "input tokens &gt; 200K"). To pick, <code>matchPricingTier</code> evaluates conditional tiers <strong>in ascending priority</strong>, the <strong>first whose conditions all hold</strong> wins; if none, it <strong>falls back to the default tier</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 205" role="img" aria-label="Tier selection: a call's usage enters, matchPricingTier evaluates non-default conditional tiers in ascending priority, the first whose conditions all hold wins, else fall back to the default tier; the selected tier provides the prices list">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">pick a tier by usage: conditional first, fall back to default if none</text>
+  <rect x="30" y="80" width="130" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">this call's usage</text><text x="95" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">input=250k, output=8k</text>
+  <rect x="200" y="44" width="300" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="350" y="61" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">conditional (priority 1): input &gt; 200000 ?</text><text x="350" y="73" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">holds ✓ → pick it (long-context price)</text>
+  <rect x="200" y="88" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="350" y="105" text-anchor="middle" font-size="7.5" fill="var(--muted)">conditional (priority 2): … (prior one won, not tried)</text>
+  <rect x="200" y="128" width="300" height="32" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="350" y="148" text-anchor="middle" font-size="7.5" fill="var(--muted)">default (priority 0, conditions=[]): fallback when none hold</text>
+  <rect x="540" y="80" width="150" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="615" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">the tier's prices</text><text x="615" y="115" text-anchor="middle" font-size="6.4" fill="var(--muted)">→ Lesson 16 cost</text>
+  <line x1="160" y1="96" x2="198" y2="62" stroke="var(--accent)" stroke-width="1.4"/><polygon points="198,62 189,64 193,71" fill="var(--accent)"/>
+  <line x1="500" y1="62" x2="538" y2="96" stroke="var(--teal)" stroke-width="1.5"/><polygon points="538,96 529,92 532,100" fill="var(--teal)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">conditions use AND logic (all must hold); operator supports gt/gte/lt/lte/eq/neq; first-come-first-served by ascending priority</text>
+  <text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--faint)">the default tier always exists and always backstops—guaranteeing any usage gets a price, never uncomputed</text>
+</svg>
+<div class="figcap"><b>tiered pricing, default backstop</b>: <code>matchPricingTier</code> (<code>pricing-tiers/matcher.ts:88</code>) filters out the default tier, evaluates conditional tiers in ascending <code>priority</code>, the first with <b>all conditions holding</b> (AND logic) wins, else falls back to default. A condition = <code>usageDetailPattern</code> (regex selecting a usage item) + <code>operator</code> (gt/gte/lt/lte/eq/neq) + <code>value</code>.</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>tier type</th><th>isDefault / priority / conditions</th><th>role</th></tr></thead>
+  <tbody>
+    <tr><td><b>default</b> (exactly one per model)</td><td>true / 0 / []</td><td>backstop price—any usage gets computed, never missed</td></tr>
+    <tr><td><b>conditional</b> (any number)</td><td>false / ≥1 / has conditions</td><td>tier by context window/usage (e.g. "&gt;200K tokens → long-context price")</td></tr>
+    <tr><td colspan="3" style="background:var(--blue-soft)"><b>selection rule</b>: evaluate conditional tiers in ascending priority, first with all conditions holding wins; none → default</td></tr>
+  </tbody>
+</table>
+""")
+
+_EN42.append(r"""
+<h2>Put together: how a call's cost is computed</h2>
+<p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>match the Model</h4><p>Test the name against each <code>matchPattern</code> regex; the hit is the price entry to use (with tokenizerId and pricingTiers).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>(if needed) count tokens</h4><p>If the SDK didn't report usage, use the entry's <code>tokenizerId</code>/<code>tokenizerConfig</code> to tokenize the text and count tokens (Lesson 16).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>select the tier</h4><p><code>matchPricingTier</code> picks the right tier by usage (default or conditional), yielding the <code>prices</code> list to use this time.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>itemized cost</h4><p>For each usage type (input/output/cache-read…) sum <code>prices[item] × usage</code>, giving the call's total cost.</p></div></div>
+</div>
+
+<p>One more layer of flexibility: these 158 are just <strong>Langfuse's built-in defaults</strong> (global Models with empty <code>projectId</code>). If you use a self-built model, a private deployment, or negotiated special discounts, you can <strong>add/override</strong> Model prices in your own project (project-scoped entries with a <code>projectId</code> take priority)—so the platform is both <strong>ready out of the box</strong> (mainstream model prices preloaded) and <strong>precisely fitted</strong> to your real bill. The repo skill <code>add-model-price</code> governs exactly how to safely add/edit entries in this seed file (generate a UUID, write the right matchPattern, validate the JSON).</p>
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why match model names with regex rather than exact string equality?</strong> Because model naming in the ecosystem is <strong>maddeningly fragmented</strong>. The same Claude is <code>claude-3-5-sonnet</code> in OpenAI style, <code>us.anthropic.claude-3-5-sonnet-v1:0</code> on Bedrock, <code>claude-3-5-sonnet@20240620</code> on Vertex, plus permutations of casing and <code>provider/</code> prefixes—a model easily has a dozen valid spellings. With exact matching, you'd store one price entry per spelling, and adding a region or bumping a version means overhauling the whole table—maintenance explodes and misses abound. One carefully written regex <strong>converges these synonymous spellings into one intent</strong>: "however you call it, I know this is gpt-4o". <strong>Regex here isn't showing off but a necessity against naming fragmentation</strong>—it keeps "the world's chaos" outside the price table.<br><br>
+  <strong>Why split pricing into "default + conditional tiers" rather than a flat price?</strong> Because real pricing <strong>is tiered</strong>: long context costs more, cache hits cost less, some usage jumps tiers above a threshold. Storing only a flat price would either miscompute or fill the billing code with if-else—<strong>hardcoding pricing policy into logic</strong>, so every price change means a code change and a release. Expressing tiering as <strong>data</strong> (a set of tiers with conditions) leaves the billing logic just one job: <strong>pick the right tier by usage</strong>, while "how tiers split, how prices are set" lives in data, adjustable anytime. Another win for "<strong>move policy from code into data</strong>"—the same lineage as Lesson 28's score config and Lesson 16's pricing schema: <strong>a rule expressible as data shouldn't be written into code</strong>. And the ever-present default tier is an elegant backstop: it guarantees <strong>any</strong> usage lands in some price, never failing to compute just because no condition matched.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>The pricing data model feeds Lesson 16's cost computation</strong>: <code>default-model-prices.json</code>'s 158 seed prices are upserted into the Model/Price tables, and every call computes "usage × price" from them.</li>
+    <li><strong>matchPattern unifies naming</strong>: one case-insensitive, full-string regex per model catches all the spellings of OpenAI/Anthropic/Bedrock/Vertex/Azure/Gemini (provider prefix, region prefix, version suffix, @date).</li>
+    <li><strong>pricingTiers tier pricing</strong>: exactly one default tier (backstop) + any conditional tiers; <code>matchPricingTier</code> evaluates conditions in ascending priority (AND logic, operators gt/gte/lt/lte/eq/neq), first all-holding wins, else default.</li>
+    <li><strong>prices bills line-by-line</strong>: each usage type (input/output/cache-read…) has its own per-token price; cost = Σ(per-item price × per-item usage).</li>
+    <li><strong>defaults + project override</strong>: 158 global defaults ready out of the box, projects can add <code>projectId</code>-scoped Models to override (self-built/private/discount prices). Policy in data not code—echoing Lessons 16/28's "rules as data".</li>
+  </ul>
+</div>
+""")
+
+LESSON_42 = {"zh": "\n".join(_ZH42), "en": "\n".join(_EN42)}
