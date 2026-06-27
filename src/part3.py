@@ -896,6 +896,41 @@ _ZH14.append(r"""
 <p>所有项目共用一条主队列，会有个隐患：某个超高吞吐的项目<strong>瞬间灌进百万事件</strong>，把队列塞满，其他项目的事件只能干等。Langfuse 的解法是<strong>次队列隔离</strong>：
 worker 在处理每个任务前先判断——这个 project 该不该<strong>改道</strong>去次队列？判断有两条：</p>
 
+<svg viewBox="0 0 720 250" role="img" aria-label="worker 处理每个任务前判断该 project 是否改道：命中 env 白名单或 S3 SlowDown 标志的高吞吐项目 C 被路由到独立分片、独立 worker 的次队列，普通项目 A、B 留在主队列正常处理，吵闹租户被物理隔离不堵塞他人">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="58" width="80" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="58" y="78" font-size="12" text-anchor="middle" fill="var(--ink)">项目 A</text>
+  <rect x="18" y="104" width="80" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="58" y="124" font-size="12" text-anchor="middle" fill="var(--ink)">项目 B</text>
+  <rect x="18" y="158" width="80" height="34" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="58" y="174" font-size="12" text-anchor="middle" fill="var(--ink)">项目 C</text>
+  <text x="58" y="188" font-size="10" text-anchor="middle" fill="var(--muted)">高吞吐</text>
+  <rect x="138" y="66" width="128" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="202" y="92" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">改道判断</text>
+  <text x="202" y="116" font-size="10.5" text-anchor="middle" fill="var(--muted)">① env 白名单（静态）</text>
+  <text x="202" y="134" font-size="10.5" text-anchor="middle" fill="var(--muted)">② S3 SlowDown（动态）</text>
+  <text x="202" y="160" font-size="10" text-anchor="middle" fill="var(--muted)">命中 → 次队列</text>
+  <text x="202" y="174" font-size="10" text-anchor="middle" fill="var(--muted)">否则 → 主队列</text>
+  <line x1="98" y1="73" x2="138" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="98" y1="119" x2="138" y2="124" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="98" y1="175" x2="138" y2="150" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="320" y="58" width="160" height="48" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="400" y="80" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">主队列</text>
+  <text x="400" y="97" font-size="10" text-anchor="middle" fill="var(--muted)">常规分片 · 给 A、B</text>
+  <rect x="540" y="58" width="150" height="48" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="615" y="86" font-size="12" text-anchor="middle" fill="var(--ink)">主 worker</text>
+  <rect x="320" y="150" width="160" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="400" y="172" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">次队列</text>
+  <text x="400" y="190" font-size="10" text-anchor="middle" fill="var(--muted)">独立分片 · 给 C</text>
+  <rect x="540" y="150" width="150" height="52" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
+  <text x="615" y="180" font-size="12" text-anchor="middle" fill="var(--ink)">次 worker</text>
+  <line x1="266" y1="100" x2="320" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="266" y1="150" x2="320" y2="176" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <line x1="480" y1="82" x2="540" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="480" y1="176" x2="540" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="234" font-size="11" text-anchor="middle" fill="var(--muted)">物理隔离：C 改道后，主队列立刻腾手处理 A、B——吵闹租户堵不住别人</text>
+</svg>
+
 <table class="t">
   <tr><th>判断</th><th>触发条件</th><th>含义</th></tr>
   <tr><td><b>env 白名单</b></td><td>project 在 <code>LANGFUSE_SECONDARY_INGESTION_QUEUE_ENABLED_PROJECT_IDS</code> 里</td><td>已知的高吞吐大户，<strong>静态</strong>隔离到次队列</td></tr>
@@ -1040,6 +1075,41 @@ _EN14.append(r"""
 <p>All projects sharing one primary queue has a hazard: one ultra-high-throughput project <strong>floods in a million events</strong>, packs the queue,
 and everyone else's events just wait. Langfuse's answer is <strong>secondary-queue isolation</strong>: before processing each job, the worker decides —
 should this project be <strong>redirected</strong> to the secondary queue? Two checks:</p>
+
+<svg viewBox="0 0 720 250" role="img" aria-label="before processing each job the worker decides whether to redirect the project: a high-throughput project C matching the env allowlist or the S3 SlowDown flag is routed to the secondary queue with its own shards and own worker, while normal projects A and B stay on the primary queue, physically isolating the noisy tenant so it cannot block others">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="58" width="80" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="58" y="78" font-size="12" text-anchor="middle" fill="var(--ink)">project A</text>
+  <rect x="18" y="104" width="80" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="58" y="124" font-size="12" text-anchor="middle" fill="var(--ink)">project B</text>
+  <rect x="18" y="158" width="80" height="34" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="58" y="174" font-size="12" text-anchor="middle" fill="var(--ink)">project C</text>
+  <text x="58" y="188" font-size="10" text-anchor="middle" fill="var(--muted)">high-throughput</text>
+  <rect x="138" y="66" width="128" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="202" y="92" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">redirect check</text>
+  <text x="202" y="116" font-size="10.5" text-anchor="middle" fill="var(--muted)">(1) env allowlist (static)</text>
+  <text x="202" y="134" font-size="10.5" text-anchor="middle" fill="var(--muted)">(2) S3 SlowDown (dynamic)</text>
+  <text x="202" y="160" font-size="10" text-anchor="middle" fill="var(--muted)">match → secondary</text>
+  <text x="202" y="174" font-size="10" text-anchor="middle" fill="var(--muted)">else → primary</text>
+  <line x1="98" y1="73" x2="138" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="98" y1="119" x2="138" y2="124" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="98" y1="175" x2="138" y2="150" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="320" y="58" width="160" height="48" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="400" y="80" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">primary queue</text>
+  <text x="400" y="97" font-size="10" text-anchor="middle" fill="var(--muted)">normal shards · for A, B</text>
+  <rect x="540" y="58" width="150" height="48" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="615" y="86" font-size="12" text-anchor="middle" fill="var(--ink)">primary worker</text>
+  <rect x="320" y="150" width="160" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="400" y="172" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">secondary queue</text>
+  <text x="400" y="190" font-size="10" text-anchor="middle" fill="var(--muted)">own shards · for C</text>
+  <rect x="540" y="150" width="150" height="52" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
+  <text x="615" y="180" font-size="12" text-anchor="middle" fill="var(--ink)">secondary worker</text>
+  <line x1="266" y1="100" x2="320" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="266" y1="150" x2="320" y2="176" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <line x1="480" y1="82" x2="540" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="480" y1="176" x2="540" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="234" font-size="11" text-anchor="middle" fill="var(--muted)">physical isolation: once C is redirected, the primary instantly serves A, B — a noisy tenant can't block others</text>
+</svg>
 
 <table class="t">
   <tr><th>check</th><th>trigger</th><th>meaning</th></tr>
@@ -1200,6 +1270,44 @@ _ZH15.append(r"""
 <h2>observation 那条线的完整一生</h2>
 <p>把最复杂的 <code>processObservationEventList</code> 拆开看，从一堆事件到写回库，正好七步：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="processObservationEventList 七步流水线：1 幂等跳过、2 按时间排序、3 读 ClickHouse 底稿、4 事件转记录后 mergeRecords 合并、5 补 input/output、6 算 token 与成本、7 入 ClickhouseWriter 写库队列，IngestionService 自己从不直接写库">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="18" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 幂等跳过</text>
+  <text x="93" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">查 Redis 去重</text>
+  <rect x="193" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 按时间排序</text>
+  <text x="268" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">create 先于 update</text>
+  <rect x="368" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 读 CH 底稿</text>
+  <text x="443" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">已存在行当基线</text>
+  <rect x="543" y="46" width="150" height="54" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="618" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 合并</text>
+  <text x="618" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeRecords 左折叠</text>
+  <rect x="18" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 补 input/output</text>
+  <text x="93" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">回找最新非空</text>
+  <rect x="193" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑥ 算 token+成本</text>
+  <text x="268" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">getGenerationUsage</text>
+  <rect x="368" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑦ 入写库队列</text>
+  <text x="443" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">addToQueue</text>
+  <rect x="543" y="140" width="150" height="54" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="618" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="618" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">批写落盘（L17）</text>
+  <line x1="168" y1="73" x2="193" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="73" x2="368" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="73" x2="543" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="618" y1="100" x2="618" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="618" y1="122" x2="93" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="93" y1="122" x2="93" y2="140" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="168" y1="167" x2="193" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="167" x2="368" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="167" x2="543" y2="167" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">IngestionService 只合并、从不直接写库——第 7 步只把最终记录塞进批写器队列</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>幂等跳过</h4><p>先查 Redis：这个 fileKey 最近几分钟处理过吗？处理过就<strong>直接跳过</strong>（配合第 13 课「事件 id 当文件名」，重复投递不重复算）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>按时间排序</h4><p><code>toTimeSortedEventList</code> 把事件按 <code>timestamp</code> 排好；同一时刻 create 排在 update 前。</p></div></div>
@@ -1346,6 +1454,44 @@ data and multi-version SDKs</strong>.</p>
 _EN15.append(r"""
 <h2>The full life of the observation line</h2>
 <p>Unpack the most complex <code>processObservationEventList</code> and the path from a pile of events to a DB write is exactly seven steps:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="processObservationEventList seven-step pipeline: 1 idempotency skip, 2 sort by time, 3 read the ClickHouse base row, 4 events to records then mergeRecords, 5 backfill input/output, 6 compute token and cost, 7 enqueue into the ClickhouseWriter; IngestionService never writes the DB directly">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="18" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 idempotency skip</text>
+  <text x="93" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">dedup via Redis</text>
+  <rect x="193" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 sort by time</text>
+  <text x="268" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">create before update</text>
+  <rect x="368" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 read CH base</text>
+  <text x="443" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">existing row as baseline</text>
+  <rect x="543" y="46" width="150" height="54" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="618" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 merge</text>
+  <text x="618" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeRecords left-fold</text>
+  <rect x="18" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 backfill in/out</text>
+  <text x="93" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">latest non-empty</text>
+  <rect x="193" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">6 token+cost</text>
+  <text x="268" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">getGenerationUsage</text>
+  <rect x="368" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">7 enqueue write</text>
+  <text x="443" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">addToQueue</text>
+  <rect x="543" y="140" width="150" height="54" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="618" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="618" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">batched persist (L17)</text>
+  <line x1="168" y1="73" x2="193" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="73" x2="368" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="73" x2="543" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="618" y1="100" x2="618" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="618" y1="122" x2="93" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="93" y1="122" x2="93" y2="140" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="168" y1="167" x2="193" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="167" x2="368" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="167" x2="543" y2="167" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">IngestionService only merges, never writes directly — step 7 just drops the final record into the writer's queue</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with Lesson 13's "event id as filename", redelivery never double-counts).</p></div></div>
@@ -1497,6 +1643,32 @@ _ZH16.append(r"""
 <p>computed 这条路的起点，是把你上报的<strong>模型名字符串</strong>（如 <code>gpt-4o-2024-08-06</code>）对应到一条<strong>价目记录</strong>。这事由 <code>findModel</code> 在
 Postgres 的 <code>models</code> 表上完成，靠的是一句正则匹配：</p>
 
+<svg viewBox="0 0 720 250" role="img" aria-label="findModel 把上报模型名 gpt-4o-2024-08-06 拿到 Postgres models 表上，用 Postgres 正则运算符逐行套 match_pattern，命中后按 project_id 优先、start_date 倒序取一条，得到价格 tiers 与 tokenizer_id">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="16" y="60" width="190" height="50" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="111" y="82" font-size="11" text-anchor="middle" fill="var(--muted)">上报模型名</text>
+  <text x="111" y="100" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">gpt-4o-2024-08-06</text>
+  <text x="111" y="130" font-size="10" text-anchor="middle" fill="var(--muted)">findModel(...)</text>
+  <line x1="206" y1="85" x2="236" y2="85" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="236" y="30" width="300" height="178" rx="10" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="248" y="50" font-size="11" font-weight="700" fill="var(--accent-ink)">Postgres models 表 · 每行一条正则 match_pattern</text>
+  <rect x="248" y="60" width="276" height="30" rx="5" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="256" y="79" font-size="10" fill="var(--ink)">(?i)^(openai/)?(gpt-4o-2024-08-06)$　✓命中</text>
+  <rect x="248" y="96" width="276" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="256" y="114" font-size="10" fill="var(--muted)">(?i)^(openai/)?(gpt-4o)$</text>
+  <rect x="248" y="130" width="276" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="256" y="148" font-size="10" fill="var(--muted)">(?i)^(claude-3-5-sonnet-.*)$</text>
+  <text x="248" y="180" font-size="9" fill="var(--muted)">WHERE project_id=? OR NULL</text>
+  <text x="248" y="196" font-size="9" fill="var(--muted)">ORDER BY project_id, start_date DESC · LIMIT 1</text>
+  <line x1="536" y1="85" x2="566" y2="85" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="566" y="56" width="140" height="104" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="636" y="78" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">命中行</text>
+  <text x="636" y="102" font-size="10.5" text-anchor="middle" fill="var(--ink)">→ 价格 tiers</text>
+  <text x="636" y="124" font-size="10.5" text-anchor="middle" fill="var(--ink)">→ tokenizer_id</text>
+  <text x="636" y="142" font-size="9" text-anchor="middle" fill="var(--muted)">（定分词器）</text>
+  <text x="360" y="234" font-size="11" text-anchor="middle" fill="var(--muted)">项目模型盖过全局、新价盖过旧价：正则给灵活、project_id 给覆盖权、start_date 给时间维度</text>
+</svg>
+
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">怎么匹配</span><span class="name">model ~ match_pattern</span></div><div class="ld">每条 model 记录带一个<strong>正则</strong> <code>match_pattern</code>；用 Postgres 的 <code>~</code> 运算符拿你的模型名去套。正则允许大小写不敏感、可选的提供商前缀等灵活写法。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">谁优先</span><span class="name">项目模型 &gt; 全局模型</span></div><div class="ld"><code>WHERE project_id = ? OR project_id IS NULL</code>，再 <code>ORDER BY project_id</code>——你<strong>自定义的模型价格盖过内置的</strong>，方便覆盖默认定价或加自有模型。</div></div>
@@ -1636,6 +1808,32 @@ _EN16.append(r"""
 <h2>Model matching: one regex to the price</h2>
 <p>The computed path begins by mapping your reported <strong>model-name string</strong> (e.g. <code>gpt-4o-2024-08-06</code>) to a <strong>price
 record</strong>. <code>findModel</code> does this on Postgres's <code>models</code> table, via a single regex match:</p>
+
+<svg viewBox="0 0 720 250" role="img" aria-label="findModel takes the reported model name gpt-4o-2024-08-06 to the Postgres models table, tests each row's match_pattern with the regex operator, then picks one ordered by project_id priority and start_date desc, yielding price tiers and tokenizer_id">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="16" y="60" width="190" height="50" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="111" y="82" font-size="11" text-anchor="middle" fill="var(--muted)">reported model name</text>
+  <text x="111" y="100" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">gpt-4o-2024-08-06</text>
+  <text x="111" y="130" font-size="10" text-anchor="middle" fill="var(--muted)">findModel(...)</text>
+  <line x1="206" y1="85" x2="236" y2="85" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="236" y="30" width="300" height="178" rx="10" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="248" y="50" font-size="11" font-weight="700" fill="var(--accent-ink)">Postgres models · each row a regex match_pattern</text>
+  <rect x="248" y="60" width="276" height="30" rx="5" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="256" y="79" font-size="10" fill="var(--ink)">(?i)^(openai/)?(gpt-4o-2024-08-06)$　✓match</text>
+  <rect x="248" y="96" width="276" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="256" y="114" font-size="10" fill="var(--muted)">(?i)^(openai/)?(gpt-4o)$</text>
+  <rect x="248" y="130" width="276" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="256" y="148" font-size="10" fill="var(--muted)">(?i)^(claude-3-5-sonnet-.*)$</text>
+  <text x="248" y="180" font-size="9" fill="var(--muted)">WHERE project_id=? OR NULL</text>
+  <text x="248" y="196" font-size="9" fill="var(--muted)">ORDER BY project_id, start_date DESC · LIMIT 1</text>
+  <line x1="536" y1="85" x2="566" y2="85" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="566" y="56" width="140" height="104" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="636" y="78" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">matched row</text>
+  <text x="636" y="102" font-size="10.5" text-anchor="middle" fill="var(--ink)">→ price tiers</text>
+  <text x="636" y="124" font-size="10.5" text-anchor="middle" fill="var(--ink)">→ tokenizer_id</text>
+  <text x="636" y="142" font-size="9" text-anchor="middle" fill="var(--muted)">(picks tokenizer)</text>
+  <text x="360" y="234" font-size="11" text-anchor="middle" fill="var(--muted)">project model beats global, new price beats old: regex gives flex, project_id gives override, start_date gives time</text>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">how it matches</span><span class="name">model ~ match_pattern</span></div><div class="ld">Each model row carries a <strong>regex</strong> <code>match_pattern</code>; Postgres's <code>~</code> operator tests your model name against it. The regex allows case-insensitivity, an optional provider prefix, and other flexible forms.</div></div>
@@ -1803,6 +2001,31 @@ _ZH17.append(r"""
 只有汇到一处，才能把来自无数任务的零散记录<strong>真正攒成大批</strong>；如果每个任务各写各的，批就永远攒不大。写入时还带<strong>退避重试</strong>（<code>maxAttempts</code>），
 遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和第 12 课摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
 
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 的内存缓冲是易失的，崩溃会丢这批；但 S3 事件账本绝不丢、队列任务在写库成功前不 ack，于是 worker 半路崩溃时任务会重投、从 S3 重读重合并重写，数据一条不少，持久性由上游兜底所以这层敢用易失缓冲换吞吐">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="44" width="210" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="123" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 · 事件账本</text>
+  <text x="123" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">绝不丢 · 持久层</text>
+  <rect x="18" y="120" width="210" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="144" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">队列任务</text>
+  <text x="123" y="162" font-size="10" text-anchor="middle" fill="var(--muted)">写库成功前不 ack</text>
+  <line x1="228" y1="70" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="228" y1="146" x2="268" y2="130" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="268" y="72" width="190" height="92" rx="10" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="363" y="96" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="363" y="114" font-size="10.5" text-anchor="middle" fill="var(--muted)">内存缓冲（易失·攒大批）</text>
+  <text x="363" y="140" font-size="10.5" text-anchor="middle" fill="var(--ink)">⚡ 崩溃 → 这批丢失</text>
+  <line x1="458" y1="118" x2="500" y2="118" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="500" y="84" width="200" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="600" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickHouse 最终行</text>
+  <text x="600" y="132" font-size="10.5" text-anchor="middle" fill="var(--ink)">数据一条不少</text>
+  <line x1="363" y1="164" x2="363" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="363" y1="196" x2="123" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="123" y1="196" x2="123" y2="172" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="243" y="214" font-size="10" text-anchor="middle" fill="var(--muted)">崩了就重投：从 S3 重读 → 重合并 → 重写</text>
+  <text x="360" y="236" font-size="11" text-anchor="middle" fill="var(--muted)">持久性由 S3 + 队列兜底，这一层才敢用易失内存缓冲去换写入吞吐</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>🧩 单例 + 按表队列</h4><p>一个进程一个 writer，把所有任务的记录汇聚成大批；按表分队列，让 traces/observations/scores 各自满批、并行刷，互不阻塞。</p></div>
   <div class="col"><h4>🛡️ 批量写 + 退避重试</h4><p>一次 INSERT 写整批（<code>JSONEachRow</code>），失败按 <code>maxAttempts</code> 退避重试；超长批自动拆分。把「写得快」和「写得稳」一起拿下。</p></div>
@@ -1951,6 +2174,31 @@ wrote on its own, batches would never grow. Writes carry <strong>backoff retry</
 "<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
 every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
 
+<svg viewBox="0 0 720 250" role="img" aria-label="The ClickhouseWriter in-memory buffer is volatile and a crash drops that batch; but the S3 event ledger never loses data and the queue job is not acked until the write succeeds, so when the worker crashes mid-way the job is redelivered, re-read from S3, re-merged and re-written, losing nothing; durability is handled upstream so this layer dares to trade a volatile buffer for write throughput">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="44" width="210" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="123" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 · event ledger</text>
+  <text x="123" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">never loses · durable</text>
+  <rect x="18" y="120" width="210" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="144" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">queue job</text>
+  <text x="123" y="162" font-size="10" text-anchor="middle" fill="var(--muted)">not acked until write ok</text>
+  <line x1="228" y1="70" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="228" y1="146" x2="268" y2="130" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="268" y="72" width="190" height="92" rx="10" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="363" y="96" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="363" y="114" font-size="10.5" text-anchor="middle" fill="var(--muted)">memory buffer (volatile · batches)</text>
+  <text x="363" y="140" font-size="10.5" text-anchor="middle" fill="var(--ink)">⚡ crash → batch lost</text>
+  <line x1="458" y1="118" x2="500" y2="118" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="500" y="84" width="200" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="600" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickHouse final row</text>
+  <text x="600" y="132" font-size="10.5" text-anchor="middle" fill="var(--ink)">nothing lost</text>
+  <line x1="363" y1="164" x2="363" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="363" y1="196" x2="123" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="123" y1="196" x2="123" y2="172" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="243" y="214" font-size="10" text-anchor="middle" fill="var(--muted)">crash ⇒ redeliver: re-read S3 → re-merge → re-write</text>
+  <text x="360" y="236" font-size="11" text-anchor="middle" fill="var(--muted)">durability handled by S3 + queue, so this layer dares to trade a volatile buffer for write throughput</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>🧩 singleton + per-table queues</h4><p>One writer per process gathers all jobs' records into big batches; per-table queues let traces/observations/scores each fill and flush in parallel, never blocking each other.</p></div>
   <div class="col"><h4>🛡️ bulk write + backoff retry</h4><p>One INSERT per whole batch (<code>JSONEachRow</code>); failures retry with <code>maxAttempts</code> backoff; oversized batches auto-split. "Fast" and "stable" together.</p></div>
@@ -2093,6 +2341,30 @@ _ZH18.append(r"""
 <strong>正是第 13 课那套原生事件格式</strong>。接着它把结果一分为二：<strong>observation</strong> 类直接交给 <code>IngestionService.mergeAndWrite</code>（第 15 课），
 <strong>trace</strong> 等非 observation 再走一遍 <code>processEventBatch</code>（第 12 课）。从这里开始，OTel 来的数据和原生 SDK 来的数据<strong>再无分别</strong>：
 同样的合并、同样的算 token/成本、同样的批量落盘。</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="原生 SDK 摄取走精确通道、OTel span 经适配器翻译走兼容通道，两条路都产出第 13 课的原生 IngestionEventType 数组，从此汇入同一后端：mergeAndWrite 合并、算 token 与成本、ClickhouseWriter 批量落盘，OTel 与原生再无分别">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="180" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="106" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">原生 SDK 摄取</text>
+  <text x="106" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">精确通道（L12–13）</text>
+  <rect x="16" y="152" width="150" height="52" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="91" y="176" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">OTel span</text>
+  <text x="91" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">兼容通道（本课）</text>
+  <rect x="186" y="152" width="170" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="271" y="176" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">适配器翻译</text>
+  <text x="271" y="194" font-size="9.5" text-anchor="middle" fill="var(--muted)">processToIngestionEvents</text>
+  <rect x="300" y="84" width="180" height="72" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="390" y="114" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">IngestionEventType[]</text>
+  <text x="390" y="134" font-size="10" text-anchor="middle" fill="var(--muted)">L13 原生事件格式</text>
+  <line x1="196" y1="70" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="356" y1="178" x2="390" y2="156" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="512" y="84" width="192" height="84" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="608" y="108" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">殊途同归 · 同一后端</text>
+  <text x="608" y="128" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeAndWrite · 算 token/成本</text>
+  <text x="608" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">ClickhouseWriter 批写（L15–17）</text>
+  <line x1="480" y1="120" x2="512" y2="126" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="224" font-size="11" text-anchor="middle" fill="var(--muted)">从这一步起，OTel 与原生 SDK 再无分别——同样合并、同样算成本、同样批量落盘</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🟦 原生摄取（第 12–13 课）</h4><p>你用 Langfuse SDK，<strong>直接说它的母语</strong>——事件就是它定义的 schema，字段精确、无需猜测。这是「精确通道」。</p></div>
@@ -2242,6 +2514,30 @@ _EN18.append(r"""
 <code>IngestionService.mergeAndWrite</code> (Lesson 15), <strong>trace</strong> and other non-observations run through <code>processEventBatch</code> (Lesson
 12). From here on, OTel-sourced data and native-SDK data are <strong>indistinguishable</strong>: the same merge, the same token/cost calculation, the same
 batched persistence.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="native SDK ingestion takes the precise channel, OTel spans go through the adapter on the compatibility channel, both produce Lesson 13's native IngestionEventType array and from there converge into one backend: mergeAndWrite, token and cost calculation, ClickhouseWriter batched persistence, OTel and native become indistinguishable">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="180" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="106" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">native SDK ingestion</text>
+  <text x="106" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">precise channel (L12–13)</text>
+  <rect x="16" y="152" width="150" height="52" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="91" y="176" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">OTel span</text>
+  <text x="91" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">compat channel (here)</text>
+  <rect x="186" y="152" width="170" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="271" y="176" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">adapter translates</text>
+  <text x="271" y="194" font-size="9.5" text-anchor="middle" fill="var(--muted)">processToIngestionEvents</text>
+  <rect x="300" y="84" width="180" height="72" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="390" y="114" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">IngestionEventType[]</text>
+  <text x="390" y="134" font-size="10" text-anchor="middle" fill="var(--muted)">L13 native event format</text>
+  <line x1="196" y1="70" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="356" y1="178" x2="390" y2="156" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="512" y="84" width="192" height="84" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="608" y="108" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">converge · one backend</text>
+  <text x="608" y="128" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeAndWrite · token/cost</text>
+  <text x="608" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">ClickhouseWriter batch (L15–17)</text>
+  <line x1="480" y1="120" x2="512" y2="126" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="224" font-size="11" text-anchor="middle" fill="var(--muted)">from here on, OTel and native SDK are indistinguishable — same merge, same cost, same batched persistence</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🟦 native ingestion (L12–13)</h4><p>You use the Langfuse SDK and <strong>speak its mother tongue</strong> directly — events are exactly its schema, fields precise, no guessing. The "precise channel".</p></div>
@@ -2404,6 +2700,27 @@ _ZH19.append(r"""
 这个「有时效」也顺带管住了<strong>访问控制</strong>：下载链接由服务端在鉴权之后才签发、且很快过期，媒体既不会被公开裸奔在互联网上、也不会绕过项目边界（第 10 课）被别的租户读到。
 整个生命周期里，几 MB 的二进制<strong>只在 SDK 和 S3 之间流动</strong>，Langfuse 的应用层和 ClickHouse 全程只碰那个轻飘飘的引用串——这正是把笨重负载挡在热路径之外的关键。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="取用媒体的反向路径：程序用 mediaId 请求 GET /api/public/media，Langfuse 应用层鉴权后签发一个有时效的 S3 下载 URL，程序凭它直接从 S3 媒体桶取回 blob 本体；应用层与 ClickHouse 全程只碰引用串，URL 很快过期且不跨项目边界">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="20" y="78" width="150" height="60" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="104" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">UI / 你的程序</text>
+  <text x="95" y="122" font-size="10" text-anchor="middle" fill="var(--muted)">只拿到引用串</text>
+  <rect x="250" y="32" width="200" height="62" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="58" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse 应用层</text>
+  <text x="350" y="78" font-size="10" text-anchor="middle" fill="var(--muted)">鉴权 → 签 presigned GET</text>
+  <rect x="520" y="120" width="180" height="62" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="610" y="146" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 媒体桶</text>
+  <text x="610" y="166" font-size="10" text-anchor="middle" fill="var(--muted)">blob 本体（几 MB）</text>
+  <line x1="170" y1="95" x2="250" y2="66" stroke="var(--blue)" stroke-width="2"></line>
+  <text x="184" y="74" font-size="11" font-weight="700" fill="var(--accent-ink)">①</text>
+  <line x1="250" y1="84" x2="170" y2="110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="196" y="104" font-size="11" font-weight="700" fill="var(--accent-ink)">②</text>
+  <line x1="170" y1="124" x2="520" y2="150" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="330" y="132" font-size="11" font-weight="700" fill="var(--accent-ink)">③</text>
+  <text x="360" y="200" font-size="10.5" text-anchor="middle" fill="var(--muted)">① 请求 mediaId → ② 应用层鉴权后签有时效 URL → ③ 凭 URL 直接取 S3 本体</text>
+  <text x="360" y="216" font-size="10" text-anchor="middle" fill="var(--muted)">应用层与 ClickHouse 全程只碰引用串；URL 很快过期、不跨项目边界（L10）</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>😖 假如塞进 ClickHouse</h4><p>input 列里躺着几 MB base64，宽表体积暴涨；连「查最近 100 条 trace」这种<strong>压根不碰图</strong>的查询，也要扫过这些大字段，全表跟着变慢——一颗老鼠屎坏一锅汤。</p></div>
   <div class="col"><h4>😀 分离到 S3</h4><p>ClickHouse 只存几十字节引用，宽表<strong>始终精瘦</strong>、扫描飞快；图片躺在便宜的对象存储里，要用才按 id 取。各自待在最适合的地方，<strong>互不拖累</strong>，这也是第 7 课「双存储分工」在媒体场景的延续。</p></div>
@@ -2540,6 +2857,27 @@ fetches the body from S3 with it. That "time-limited" also handles <strong>acces
 and expires quickly, so media is neither left publicly exposed nor readable across the project boundary (Lesson 10) by another tenant. Across the whole
 lifecycle, the multi-MB binary <strong>only flows between the SDK and S3</strong>; Langfuse's app layer and ClickHouse only ever touch the featherweight
 reference string — exactly what keeps bulky payloads off the hot path.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="The reverse retrieval path: your code requests GET /api/public/media with a mediaId, Langfuse's app layer signs a time-limited S3 download URL after auth, and the code fetches the blob body directly from the S3 media bucket; the app layer and ClickHouse only ever touch the reference string, and the URL expires fast and never crosses the project boundary">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="20" y="78" width="150" height="60" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="104" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">UI / your code</text>
+  <text x="95" y="122" font-size="10" text-anchor="middle" fill="var(--muted)">has only the reference</text>
+  <rect x="250" y="32" width="200" height="62" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="58" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse app layer</text>
+  <text x="350" y="78" font-size="10" text-anchor="middle" fill="var(--muted)">auth → sign presigned GET</text>
+  <rect x="520" y="120" width="180" height="62" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="610" y="146" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 media bucket</text>
+  <text x="610" y="166" font-size="10" text-anchor="middle" fill="var(--muted)">blob body (several MB)</text>
+  <line x1="170" y1="95" x2="250" y2="66" stroke="var(--blue)" stroke-width="2"></line>
+  <text x="184" y="74" font-size="11" font-weight="700" fill="var(--accent-ink)">1</text>
+  <line x1="250" y1="84" x2="170" y2="110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="196" y="104" font-size="11" font-weight="700" fill="var(--accent-ink)">2</text>
+  <line x1="170" y1="124" x2="520" y2="150" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="330" y="132" font-size="11" font-weight="700" fill="var(--accent-ink)">3</text>
+  <text x="360" y="200" font-size="10.5" text-anchor="middle" fill="var(--muted)">1 request mediaId → 2 app signs a time-limited URL after auth → 3 fetch the body straight from S3</text>
+  <text x="360" y="216" font-size="10" text-anchor="middle" fill="var(--muted)">app layer and ClickHouse only touch the reference; the URL expires fast and never crosses the project boundary (L10)</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>😖 if stuffed into ClickHouse</h4><p>Several MB of base64 sit in the input column, the wide table bloats; even a query like "fetch the latest 100 traces" that <strong>never touches the image</strong> must scan past these huge fields, slowing the whole table — one bad apple spoils the barrel.</p></div>

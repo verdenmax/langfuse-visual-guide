@@ -450,6 +450,31 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 只有汇到一处，才能把来自无数任务的零散记录<strong>真正攒成大批</strong>；如果每个任务各写各的，批就永远攒不大。写入时还带<strong>退避重试</strong>（<code>maxAttempts</code>），
 遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和第 12 课摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
 
+<svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 的内存缓冲是易失的，崩溃会丢这批；但 S3 事件账本绝不丢、队列任务在写库成功前不 ack，于是 worker 半路崩溃时任务会重投、从 S3 重读重合并重写，数据一条不少，持久性由上游兜底所以这层敢用易失缓冲换吞吐">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="44" width="210" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="123" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 · 事件账本</text>
+  <text x="123" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">绝不丢 · 持久层</text>
+  <rect x="18" y="120" width="210" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="144" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">队列任务</text>
+  <text x="123" y="162" font-size="10" text-anchor="middle" fill="var(--muted)">写库成功前不 ack</text>
+  <line x1="228" y1="70" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="228" y1="146" x2="268" y2="130" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="268" y="72" width="190" height="92" rx="10" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="363" y="96" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="363" y="114" font-size="10.5" text-anchor="middle" fill="var(--muted)">内存缓冲（易失·攒大批）</text>
+  <text x="363" y="140" font-size="10.5" text-anchor="middle" fill="var(--ink)">⚡ 崩溃 → 这批丢失</text>
+  <line x1="458" y1="118" x2="500" y2="118" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="500" y="84" width="200" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="600" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickHouse 最终行</text>
+  <text x="600" y="132" font-size="10.5" text-anchor="middle" fill="var(--ink)">数据一条不少</text>
+  <line x1="363" y1="164" x2="363" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="363" y1="196" x2="123" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="123" y1="196" x2="123" y2="172" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="243" y="214" font-size="10" text-anchor="middle" fill="var(--muted)">崩了就重投：从 S3 重读 → 重合并 → 重写</text>
+  <text x="360" y="236" font-size="11" text-anchor="middle" fill="var(--muted)">持久性由 S3 + 队列兜底，这一层才敢用易失内存缓冲去换写入吞吐</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>🧩 单例 + 按表队列</h4><p>一个进程一个 writer，把所有任务的记录汇聚成大批；按表分队列，让 traces/observations/scores 各自满批、并行刷，互不阻塞。</p></div>
   <div class="col"><h4>🛡️ 批量写 + 退避重试</h4><p>一次 INSERT 写整批（<code>JSONEachRow</code>），失败按 <code>maxAttempts</code> 退避重试；超长批自动拆分。把「写得快」和「写得稳」一起拿下。</p></div>
@@ -640,6 +665,31 @@ wrote on its own, batches would never grow. Writes carry <strong>backoff retry</
 "string too long" errors <strong>split the batch</strong> and retry — chasing big batches without letting one bad record drag down the whole batch. This
 "<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
 every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
+
+<svg viewBox="0 0 720 250" role="img" aria-label="The ClickhouseWriter in-memory buffer is volatile and a crash drops that batch; but the S3 event ledger never loses data and the queue job is not acked until the write succeeds, so when the worker crashes mid-way the job is redelivered, re-read from S3, re-merged and re-written, losing nothing; durability is handled upstream so this layer dares to trade a volatile buffer for write throughput">
+  <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
+  <rect x="18" y="44" width="210" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="123" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">S3 · event ledger</text>
+  <text x="123" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">never loses · durable</text>
+  <rect x="18" y="120" width="210" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="144" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">queue job</text>
+  <text x="123" y="162" font-size="10" text-anchor="middle" fill="var(--muted)">not acked until write ok</text>
+  <line x1="228" y1="70" x2="268" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="228" y1="146" x2="268" y2="130" stroke="var(--faint)" stroke-width="1.5"></line>
+  <rect x="268" y="72" width="190" height="92" rx="10" fill="var(--amber-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="363" y="96" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="363" y="114" font-size="10.5" text-anchor="middle" fill="var(--muted)">memory buffer (volatile · batches)</text>
+  <text x="363" y="140" font-size="10.5" text-anchor="middle" fill="var(--ink)">⚡ crash → batch lost</text>
+  <line x1="458" y1="118" x2="500" y2="118" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="500" y="84" width="200" height="68" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="600" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickHouse final row</text>
+  <text x="600" y="132" font-size="10.5" text-anchor="middle" fill="var(--ink)">nothing lost</text>
+  <line x1="363" y1="164" x2="363" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="363" y1="196" x2="123" y2="196" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="123" y1="196" x2="123" y2="172" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="243" y="214" font-size="10" text-anchor="middle" fill="var(--muted)">crash ⇒ redeliver: re-read S3 → re-merge → re-write</text>
+  <text x="360" y="236" font-size="11" text-anchor="middle" fill="var(--muted)">durability handled by S3 + queue, so this layer dares to trade a volatile buffer for write throughput</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🧩 singleton + per-table queues</h4><p>One writer per process gathers all jobs' records into big batches; per-table queues let traces/observations/scores each fill and flush in parallel, never blocking each other.</p></div>

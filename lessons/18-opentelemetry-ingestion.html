@@ -441,6 +441,30 @@ OtelIngestionQueue.<span class="fn">getInstance</span>({ shardingKey: <span clas
 <strong>trace</strong> 等非 observation 再走一遍 <code>processEventBatch</code>（第 12 课）。从这里开始，OTel 来的数据和原生 SDK 来的数据<strong>再无分别</strong>：
 同样的合并、同样的算 token/成本、同样的批量落盘。</p>
 
+<svg viewBox="0 0 720 240" role="img" aria-label="原生 SDK 摄取走精确通道、OTel span 经适配器翻译走兼容通道，两条路都产出第 13 课的原生 IngestionEventType 数组，从此汇入同一后端：mergeAndWrite 合并、算 token 与成本、ClickhouseWriter 批量落盘，OTel 与原生再无分别">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="180" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="106" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">原生 SDK 摄取</text>
+  <text x="106" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">精确通道（L12–13）</text>
+  <rect x="16" y="152" width="150" height="52" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="91" y="176" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">OTel span</text>
+  <text x="91" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">兼容通道（本课）</text>
+  <rect x="186" y="152" width="170" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="271" y="176" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">适配器翻译</text>
+  <text x="271" y="194" font-size="9.5" text-anchor="middle" fill="var(--muted)">processToIngestionEvents</text>
+  <rect x="300" y="84" width="180" height="72" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="390" y="114" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">IngestionEventType[]</text>
+  <text x="390" y="134" font-size="10" text-anchor="middle" fill="var(--muted)">L13 原生事件格式</text>
+  <line x1="196" y1="70" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="356" y1="178" x2="390" y2="156" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="512" y="84" width="192" height="84" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="608" y="108" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">殊途同归 · 同一后端</text>
+  <text x="608" y="128" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeAndWrite · 算 token/成本</text>
+  <text x="608" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">ClickhouseWriter 批写（L15–17）</text>
+  <line x1="480" y1="120" x2="512" y2="126" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="224" font-size="11" text-anchor="middle" fill="var(--muted)">从这一步起，OTel 与原生 SDK 再无分别——同样合并、同样算成本、同样批量落盘</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>🟦 原生摄取（第 12–13 课）</h4><p>你用 Langfuse SDK，<strong>直接说它的母语</strong>——事件就是它定义的 schema，字段精确、无需猜测。这是「精确通道」。</p></div>
   <div class="col"><h4>🔌 OTel 摄取（本课）</h4><p>你用 OpenTelemetry，<strong>需要翻译</strong>——适配器从异构约定里<strong>尽力推断</strong>字段。灵活但有语义损耗，是「兼容通道」。两者最终汇入同一后端。</p></div>
@@ -632,6 +656,30 @@ stream — the adapter must translate span events too to fully reconstruct the c
 <code>IngestionService.mergeAndWrite</code> (Lesson 15), <strong>trace</strong> and other non-observations run through <code>processEventBatch</code> (Lesson
 12). From here on, OTel-sourced data and native-SDK data are <strong>indistinguishable</strong>: the same merge, the same token/cost calculation, the same
 batched persistence.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="native SDK ingestion takes the precise channel, OTel spans go through the adapter on the compatibility channel, both produce Lesson 13's native IngestionEventType array and from there converge into one backend: mergeAndWrite, token and cost calculation, ClickhouseWriter batched persistence, OTel and native become indistinguishable">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="180" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="106" y="68" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">native SDK ingestion</text>
+  <text x="106" y="86" font-size="10" text-anchor="middle" fill="var(--muted)">precise channel (L12–13)</text>
+  <rect x="16" y="152" width="150" height="52" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="91" y="176" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">OTel span</text>
+  <text x="91" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">compat channel (here)</text>
+  <rect x="186" y="152" width="170" height="52" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="271" y="176" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">adapter translates</text>
+  <text x="271" y="194" font-size="9.5" text-anchor="middle" fill="var(--muted)">processToIngestionEvents</text>
+  <rect x="300" y="84" width="180" height="72" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="390" y="114" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">IngestionEventType[]</text>
+  <text x="390" y="134" font-size="10" text-anchor="middle" fill="var(--muted)">L13 native event format</text>
+  <line x1="196" y1="70" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="356" y1="178" x2="390" y2="156" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="512" y="84" width="192" height="84" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="608" y="108" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">converge · one backend</text>
+  <text x="608" y="128" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeAndWrite · token/cost</text>
+  <text x="608" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">ClickhouseWriter batch (L15–17)</text>
+  <line x1="480" y1="120" x2="512" y2="126" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="224" font-size="11" text-anchor="middle" fill="var(--muted)">from here on, OTel and native SDK are indistinguishable — same merge, same cost, same batched persistence</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🟦 native ingestion (L12–13)</h4><p>You use the Langfuse SDK and <strong>speak its mother tongue</strong> directly — events are exactly its schema, fields precise, no guessing. The "precise channel".</p></div>

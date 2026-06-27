@@ -444,6 +444,44 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
 <h2>observation 那条线的完整一生</h2>
 <p>把最复杂的 <code>processObservationEventList</code> 拆开看，从一堆事件到写回库，正好七步：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="processObservationEventList 七步流水线：1 幂等跳过、2 按时间排序、3 读 ClickHouse 底稿、4 事件转记录后 mergeRecords 合并、5 补 input/output、6 算 token 与成本、7 入 ClickhouseWriter 写库队列，IngestionService 自己从不直接写库">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="18" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 幂等跳过</text>
+  <text x="93" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">查 Redis 去重</text>
+  <rect x="193" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 按时间排序</text>
+  <text x="268" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">create 先于 update</text>
+  <rect x="368" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 读 CH 底稿</text>
+  <text x="443" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">已存在行当基线</text>
+  <rect x="543" y="46" width="150" height="54" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="618" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 合并</text>
+  <text x="618" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeRecords 左折叠</text>
+  <rect x="18" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 补 input/output</text>
+  <text x="93" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">回找最新非空</text>
+  <rect x="193" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑥ 算 token+成本</text>
+  <text x="268" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">getGenerationUsage</text>
+  <rect x="368" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑦ 入写库队列</text>
+  <text x="443" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">addToQueue</text>
+  <rect x="543" y="140" width="150" height="54" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="618" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="618" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">批写落盘（L17）</text>
+  <line x1="168" y1="73" x2="193" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="73" x2="368" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="73" x2="543" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="618" y1="100" x2="618" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="618" y1="122" x2="93" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="93" y1="122" x2="93" y2="140" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="168" y1="167" x2="193" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="167" x2="368" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="167" x2="543" y2="167" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">IngestionService 只合并、从不直接写库——第 7 步只把最终记录塞进批写器队列</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>幂等跳过</h4><p>先查 Redis：这个 fileKey 最近几分钟处理过吗？处理过就<strong>直接跳过</strong>（配合第 13 课「事件 id 当文件名」，重复投递不重复算）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>按时间排序</h4><p><code>toTimeSortedEventList</code> 把事件按 <code>timestamp</code> 排好；同一时刻 create 排在 update 前。</p></div></div>
@@ -633,6 +671,44 @@ data and multi-version SDKs</strong>.</p>
 
 <h2>The full life of the observation line</h2>
 <p>Unpack the most complex <code>processObservationEventList</code> and the path from a pile of events to a DB write is exactly seven steps:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="processObservationEventList seven-step pipeline: 1 idempotency skip, 2 sort by time, 3 read the ClickHouse base row, 4 events to records then mergeRecords, 5 backfill input/output, 6 compute token and cost, 7 enqueue into the ClickhouseWriter; IngestionService never writes the DB directly">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="18" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 idempotency skip</text>
+  <text x="93" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">dedup via Redis</text>
+  <rect x="193" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 sort by time</text>
+  <text x="268" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">create before update</text>
+  <rect x="368" y="46" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 read CH base</text>
+  <text x="443" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">existing row as baseline</text>
+  <rect x="543" y="46" width="150" height="54" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="618" y="69" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 merge</text>
+  <text x="618" y="86" font-size="9.5" text-anchor="middle" fill="var(--muted)">mergeRecords left-fold</text>
+  <rect x="18" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="93" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 backfill in/out</text>
+  <text x="93" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">latest non-empty</text>
+  <rect x="193" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="268" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">6 token+cost</text>
+  <text x="268" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">getGenerationUsage</text>
+  <rect x="368" y="140" width="150" height="54" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="443" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">7 enqueue write</text>
+  <text x="443" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">addToQueue</text>
+  <rect x="543" y="140" width="150" height="54" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="618" y="163" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">ClickhouseWriter</text>
+  <text x="618" y="180" font-size="9.5" text-anchor="middle" fill="var(--muted)">batched persist (L17)</text>
+  <line x1="168" y1="73" x2="193" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="73" x2="368" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="73" x2="543" y2="73" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="618" y1="100" x2="618" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="618" y1="122" x2="93" y2="122" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="93" y1="122" x2="93" y2="140" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <line x1="168" y1="167" x2="193" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="343" y1="167" x2="368" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="518" y1="167" x2="543" y2="167" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">IngestionService only merges, never writes directly — step 7 just drops the final record into the writer's queue</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with Lesson 13's "event id as filename", redelivery never double-counts).</p></div></div>
