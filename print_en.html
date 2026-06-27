@@ -1920,6 +1920,29 @@ runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse s
 <strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
 main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
 
+<p>So what does "a stream of typed little events" actually look like? In the source, every event is the same <strong>envelope</strong>: a <code>base</code> (id + timestamp + metadata), then <code>extend</code>ed with a <code>type</code> (a value from the <code>eventTypes</code> map) and a <code>body</code> (the fields specific to that type). One LLM call may have the SDK send a <code>generation-create</code> to start and a <code>generation-update</code> to finish — same envelope, different type, sent in batches, merged by id by the worker (rehearsed in Lesson 5).</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">event envelope + event types</span></div>
+  <pre class="code"><span class="cm">// every reported event is "the same envelope": base + type + body</span>
+<span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                              <span class="cm">// unique id of this event</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),  <span class="cm">// when it happened (later wins on merge)</span>
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),  <span class="cm">// the "type" tag on the envelope</span>
+  body: CreateGenerationBody,                <span class="cm">// fields specific to this type</span>
+});
+
+<span class="cm">// the valid values of type (excerpt) — one interaction split into these little events</span>
+<span class="kw">export const</span> eventTypes = {
+  TRACE_CREATE: <span class="st">"trace-create"</span>,        SCORE_CREATE: <span class="st">"score-create"</span>,
+  GENERATION_CREATE: <span class="st">"generation-create"</span>, GENERATION_UPDATE: <span class="st">"generation-update"</span>,
+  SPAN_CREATE: <span class="st">"span-create"</span>,  EVENT_CREATE: <span class="st">"event-create"</span>,  …
+} <span class="kw">as const</span>;</pre>
+</div>
+
 
 <h2>Two entries: native SDK vs OpenTelemetry</h2>
 <p>Why support both? Because they serve two kinds of users:</p>
@@ -2915,6 +2938,23 @@ open a browser to the Langfuse UI. The repo also ships <strong>several compose f
 stack, variants per scenario</strong>" is exactly how the earlier "four-dependency complexity" gets folded into a few yml files — you needn't
 hand-install each database or wire the network; compose strings it all together. Grasp this topology and you'll not only "get it running" but
 also know which container's logs to check when something breaks.</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example (excerpt, grouped by "4 infra + auth")</span><span class="ln">config = wiring</span></div>
+  <pre class="code"><span class="cm"># ① Postgres — metadata: config/users/permissions (L07 OLTP)</span>
+DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
+<span class="cm"># ② ClickHouse — massive trace/observation/score events (L08 columnar)</span>
+CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
+CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
+<span class="cm"># ③ Redis — ingestion queue + cache (where L12's "receive fast" lands)</span>
+REDIS_HOST=localhost   REDIS_PORT=6379
+<span class="cm"># ④ S3 / MinIO — bulky payloads & media (L18); MinIO is a local S3 stand-in</span>
+LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
+LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
+<span class="cm"># auth & secrets — Zod-validated at startup, miss one = fail to start (L51)</span>
+NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
+SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashing (L49 createShaHash)</span></pre>
+</div>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>

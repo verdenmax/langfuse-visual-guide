@@ -411,6 +411,29 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 它不该决定你的应用怎么跑，只是<strong>旁观并记录</strong>。这也呼应了第 1 课的定位：Langfuse 站在你应用<strong>旁边</strong>，而不是<strong>里面</strong>。
 正因为埋点是「旁路」的，它出问题（比如网络抖动发不出去）也<strong>不应拖垮你的主流程</strong>——SDK 通常会异步、批量、失败可丢地发送，把对应用的影响压到最低。把交互拆成「一串带类型的小事件」而不是「一个大对象」，正是为了让它们能分批、增量、乱序地发送。</p>
 
+<p>那「一串带类型的小事件」到底长什么样？源码里每个事件都是同一个<strong>信封</strong>：一个 <code>base</code>（id + timestamp + metadata），再 <code>extend</code> 出 <code>type</code>（取值来自 <code>eventTypes</code> 映射）和 <code>body</code>（这种类型特有的字段）。一次 LLM 调用，SDK 可能发 <code>generation-create</code> 起头、<code>generation-update</code> 收尾——同一个信封、不同的 type，分批送达，worker 再按 id 合并（第 5 课已预演过）。</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">事件信封 + 事件类型</span></div>
+  <pre class="code"><span class="cm">// 每个上报事件都是「同一个信封」：base + type + body</span>
+<span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                              <span class="cm">// 这条事件的唯一 id</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),  <span class="cm">// 何时发生（合并冲突以更晚者为准）</span>
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),  <span class="cm">// 信封上的「类型」标签</span>
+  body: CreateGenerationBody,                <span class="cm">// 这种类型特有的字段</span>
+});
+
+<span class="cm">// type 的合法取值（节选）——一次交互拆成这些小事件</span>
+<span class="kw">export const</span> eventTypes = {
+  TRACE_CREATE: <span class="st">"trace-create"</span>,        SCORE_CREATE: <span class="st">"score-create"</span>,
+  GENERATION_CREATE: <span class="st">"generation-create"</span>, GENERATION_UPDATE: <span class="st">"generation-update"</span>,
+  SPAN_CREATE: <span class="st">"span-create"</span>,  EVENT_CREATE: <span class="st">"event-create"</span>,  …
+} <span class="kw">as const</span>;</pre>
+</div>
+
 
 <h2>两种入口：原生 SDK vs OpenTelemetry</h2>
 <p>为什么要同时支持两条入口？因为它们服务两类用户：</p>
@@ -591,6 +614,29 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse sits <strong>beside</strong> your app, not
 <strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
 main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
+
+<p>So what does "a stream of typed little events" actually look like? In the source, every event is the same <strong>envelope</strong>: a <code>base</code> (id + timestamp + metadata), then <code>extend</code>ed with a <code>type</code> (a value from the <code>eventTypes</code> map) and a <code>body</code> (the fields specific to that type). One LLM call may have the SDK send a <code>generation-create</code> to start and a <code>generation-update</code> to finish — same envelope, different type, sent in batches, merged by id by the worker (rehearsed in Lesson 5).</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">event envelope + event types</span></div>
+  <pre class="code"><span class="cm">// every reported event is "the same envelope": base + type + body</span>
+<span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                              <span class="cm">// unique id of this event</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),  <span class="cm">// when it happened (later wins on merge)</span>
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),  <span class="cm">// the "type" tag on the envelope</span>
+  body: CreateGenerationBody,                <span class="cm">// fields specific to this type</span>
+});
+
+<span class="cm">// the valid values of type (excerpt) — one interaction split into these little events</span>
+<span class="kw">export const</span> eventTypes = {
+  TRACE_CREATE: <span class="st">"trace-create"</span>,        SCORE_CREATE: <span class="st">"score-create"</span>,
+  GENERATION_CREATE: <span class="st">"generation-create"</span>, GENERATION_UPDATE: <span class="st">"generation-update"</span>,
+  SPAN_CREATE: <span class="st">"span-create"</span>,  EVENT_CREATE: <span class="st">"event-create"</span>,  …
+} <span class="kw">as const</span>;</pre>
+</div>
 
 
 <h2>Two entries: native SDK vs OpenTelemetry</h2>

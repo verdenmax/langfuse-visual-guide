@@ -444,6 +444,23 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
 你不需要手动一个个装数据库、配网络，compose 替你把这些都串好了。理解了这张拓扑，你不仅会「跑起来」，遇到问题也知道该去哪个容器看日志。</p>
 
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example（节选，按「4 基础设施 + 认证」分组）</span><span class="ln">配置即接线</span></div>
+  <pre class="code"><span class="cm"># ① Postgres —— 配置/用户/权限等元数据（第7课 OLTP）</span>
+DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
+<span class="cm"># ② ClickHouse —— 海量 trace/observation/score 事件（第8课列存）</span>
+CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
+CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
+<span class="cm"># ③ Redis —— 摄取队列 + 缓存（第12课快接收的落点）</span>
+REDIS_HOST=localhost   REDIS_PORT=6379
+<span class="cm"># ④ S3 / MinIO —— 大块负载与媒体（第18课）；MinIO 是本地 S3 替身</span>
+LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
+LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
+<span class="cm"># 认证与密钥 —— 启动时由 Zod 校验，缺一即启动失败（第51课）</span>
+NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
+SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（第49课 createShaHash）</span></pre>
+</div>
+
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>四个基础设施依赖，对自托管者是不是负担？</strong> 坦白说，是——相比「一个二进制 + 一个 SQLite」，Langfuse 的自托管门槛确实更高。但这正是第 7 课那条取舍的<strong>部署侧后果</strong>：
@@ -623,6 +640,23 @@ open a browser to the Langfuse UI. The repo also ships <strong>several compose f
 stack, variants per scenario</strong>" is exactly how the earlier "four-dependency complexity" gets folded into a few yml files — you needn't
 hand-install each database or wire the network; compose strings it all together. Grasp this topology and you'll not only "get it running" but
 also know which container's logs to check when something breaks.</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example (excerpt, grouped by "4 infra + auth")</span><span class="ln">config = wiring</span></div>
+  <pre class="code"><span class="cm"># ① Postgres — metadata: config/users/permissions (L07 OLTP)</span>
+DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
+<span class="cm"># ② ClickHouse — massive trace/observation/score events (L08 columnar)</span>
+CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
+CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
+<span class="cm"># ③ Redis — ingestion queue + cache (where L12's "receive fast" lands)</span>
+REDIS_HOST=localhost   REDIS_PORT=6379
+<span class="cm"># ④ S3 / MinIO — bulky payloads & media (L18); MinIO is a local S3 stand-in</span>
+LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
+LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
+<span class="cm"># auth & secrets — Zod-validated at startup, miss one = fail to start (L51)</span>
+NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
+SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashing (L49 createShaHash)</span></pre>
+</div>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>

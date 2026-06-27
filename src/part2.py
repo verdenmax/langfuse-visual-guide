@@ -80,6 +80,29 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 <p>关键观察：你只是<strong>在原有业务代码旁边「顺手记一笔」</strong>，并没有改变 <code>call_llm</code> 本身的逻辑。好的埋点应当<strong>尽量不侵入</strong>——
 它不该决定你的应用怎么跑，只是<strong>旁观并记录</strong>。这也呼应了第 1 课的定位：Langfuse 站在你应用<strong>旁边</strong>，而不是<strong>里面</strong>。
 正因为埋点是「旁路」的，它出问题（比如网络抖动发不出去）也<strong>不应拖垮你的主流程</strong>——SDK 通常会异步、批量、失败可丢地发送，把对应用的影响压到最低。把交互拆成「一串带类型的小事件」而不是「一个大对象」，正是为了让它们能分批、增量、乱序地发送。</p>
+
+<p>那「一串带类型的小事件」到底长什么样？源码里每个事件都是同一个<strong>信封</strong>：一个 <code>base</code>（id + timestamp + metadata），再 <code>extend</code> 出 <code>type</code>（取值来自 <code>eventTypes</code> 映射）和 <code>body</code>（这种类型特有的字段）。一次 LLM 调用，SDK 可能发 <code>generation-create</code> 起头、<code>generation-update</code> 收尾——同一个信封、不同的 type，分批送达，worker 再按 id 合并（第 5 课已预演过）。</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">事件信封 + 事件类型</span></div>
+  <pre class="code"><span class="cm">// 每个上报事件都是「同一个信封」：base + type + body</span>
+<span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                              <span class="cm">// 这条事件的唯一 id</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),  <span class="cm">// 何时发生（合并冲突以更晚者为准）</span>
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),  <span class="cm">// 信封上的「类型」标签</span>
+  body: CreateGenerationBody,                <span class="cm">// 这种类型特有的字段</span>
+});
+
+<span class="cm">// type 的合法取值（节选）——一次交互拆成这些小事件</span>
+<span class="kw">export const</span> eventTypes = {
+  TRACE_CREATE: <span class="st">"trace-create"</span>,        SCORE_CREATE: <span class="st">"score-create"</span>,
+  GENERATION_CREATE: <span class="st">"generation-create"</span>, GENERATION_UPDATE: <span class="st">"generation-update"</span>,
+  SPAN_CREATE: <span class="st">"span-create"</span>,  EVENT_CREATE: <span class="st">"event-create"</span>,  …
+} <span class="kw">as const</span>;</pre>
+</div>
 """)
 
 _ZH6.append(r"""
@@ -217,6 +240,29 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse sits <strong>beside</strong> your app, not
 <strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
 main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
+
+<p>So what does "a stream of typed little events" actually look like? In the source, every event is the same <strong>envelope</strong>: a <code>base</code> (id + timestamp + metadata), then <code>extend</code>ed with a <code>type</code> (a value from the <code>eventTypes</code> map) and a <code>body</code> (the fields specific to that type). One LLM call may have the SDK send a <code>generation-create</code> to start and a <code>generation-update</code> to finish — same envelope, different type, sent in batches, merged by id by the worker (rehearsed in Lesson 5).</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">event envelope + event types</span></div>
+  <pre class="code"><span class="cm">// every reported event is "the same envelope": base + type + body</span>
+<span class="kw">const</span> base = z.<span class="fn">object</span>({
+  id: idSchema,                              <span class="cm">// unique id of this event</span>
+  timestamp: z.iso.<span class="fn">datetime</span>({ offset: <span class="kw">true</span> }),  <span class="cm">// when it happened (later wins on merge)</span>
+  metadata: jsonSchema.<span class="fn">nullish</span>(),
+});
+<span class="kw">const</span> generationCreateEvent = base.<span class="fn">extend</span>({
+  type: z.<span class="fn">literal</span>(eventTypes.GENERATION_CREATE),  <span class="cm">// the "type" tag on the envelope</span>
+  body: CreateGenerationBody,                <span class="cm">// fields specific to this type</span>
+});
+
+<span class="cm">// the valid values of type (excerpt) — one interaction split into these little events</span>
+<span class="kw">export const</span> eventTypes = {
+  TRACE_CREATE: <span class="st">"trace-create"</span>,        SCORE_CREATE: <span class="st">"score-create"</span>,
+  GENERATION_CREATE: <span class="st">"generation-create"</span>, GENERATION_UPDATE: <span class="st">"generation-update"</span>,
+  SPAN_CREATE: <span class="st">"span-create"</span>,  EVENT_CREATE: <span class="st">"event-create"</span>,  …
+} <span class="kw">as const</span>;</pre>
+</div>
 """)
 
 _EN6.append(r"""
@@ -1522,6 +1568,23 @@ _ZH11.append(r"""
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
 你不需要手动一个个装数据库、配网络，compose 替你把这些都串好了。理解了这张拓扑，你不仅会「跑起来」，遇到问题也知道该去哪个容器看日志。</p>
 
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example（节选，按「4 基础设施 + 认证」分组）</span><span class="ln">配置即接线</span></div>
+  <pre class="code"><span class="cm"># ① Postgres —— 配置/用户/权限等元数据（第7课 OLTP）</span>
+DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
+<span class="cm"># ② ClickHouse —— 海量 trace/observation/score 事件（第8课列存）</span>
+CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
+CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
+<span class="cm"># ③ Redis —— 摄取队列 + 缓存（第12课快接收的落点）</span>
+REDIS_HOST=localhost   REDIS_PORT=6379
+<span class="cm"># ④ S3 / MinIO —— 大块负载与媒体（第18课）；MinIO 是本地 S3 替身</span>
+LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
+LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
+<span class="cm"># 认证与密钥 —— 启动时由 Zod 校验，缺一即启动失败（第51课）</span>
+NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
+SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（第49课 createShaHash）</span></pre>
+</div>
+
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>四个基础设施依赖，对自托管者是不是负担？</strong> 坦白说，是——相比「一个二进制 + 一个 SQLite」，Langfuse 的自托管门槛确实更高。但这正是第 7 课那条取舍的<strong>部署侧后果</strong>：
@@ -1657,6 +1720,23 @@ open a browser to the Langfuse UI. The repo also ships <strong>several compose f
 stack, variants per scenario</strong>" is exactly how the earlier "four-dependency complexity" gets folded into a few yml files — you needn't
 hand-install each database or wire the network; compose strings it all together. Grasp this topology and you'll not only "get it running" but
 also know which container's logs to check when something breaks.</p>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example (excerpt, grouped by "4 infra + auth")</span><span class="ln">config = wiring</span></div>
+  <pre class="code"><span class="cm"># ① Postgres — metadata: config/users/permissions (L07 OLTP)</span>
+DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
+<span class="cm"># ② ClickHouse — massive trace/observation/score events (L08 columnar)</span>
+CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
+CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
+<span class="cm"># ③ Redis — ingestion queue + cache (where L12's "receive fast" lands)</span>
+REDIS_HOST=localhost   REDIS_PORT=6379
+<span class="cm"># ④ S3 / MinIO — bulky payloads & media (L18); MinIO is a local S3 stand-in</span>
+LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
+LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
+<span class="cm"># auth & secrets — Zod-validated at startup, miss one = fail to start (L51)</span>
+NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
+SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashing (L49 createShaHash)</span></pre>
+</div>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
