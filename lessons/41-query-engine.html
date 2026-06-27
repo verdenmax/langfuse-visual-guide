@@ -446,6 +446,33 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>为什么值得造这台引擎</h2>
 <p>把声明编译成 SQL，本可以让每个 widget 自己拼字符串。但 Langfuse 偏要造一台统一引擎，因为它一次解决了四个问题：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="查询引擎是一个小型指标语言的编译器：上层用 view、dimensions、metrics、filters 声明式描述要什么指标（与物理无关、注入安全），引擎内部四件事语义层逻辑名换 SQL、参数化防注入、视图版本化 v1/v2、一引擎多消费，向下编译成参数化 ClickHouse SQL，仪表盘 L40、监控 L33、实验聚合共用它所以同一指标永远算出同一个数">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="36" width="420" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="234" y="56" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 上层声明（声明式 · 与物理无关 · 注入安全）</text>
+  <text x="234" y="72" font-size="9.5" text-anchor="middle" fill="var(--muted)">view + dimensions + metrics + filters</text>
+  <line x1="234" y1="80" x2="234" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="92" width="420" height="86" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="110" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 查询引擎 = 指标语言的编译器</text>
+  <rect x="36" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">语义层：逻辑名 ↔ SQL（解耦）</text>
+  <rect x="240" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">参数化：值走 parameters（防注入）</text>
+  <rect x="36" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">视图版本化：v1/v2（不破历史）</text>
+  <rect x="240" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">一引擎多消费（口径一致）</text>
+  <line x1="234" y1="178" x2="234" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="190" width="420" height="34" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="234" y="211" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 参数化 SQL → ClickHouse 执行</text>
+  <rect x="466" y="92" width="238" height="86" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="585" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一引擎多消费</text>
+  <text x="585" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">仪表盘 L40 · 监控 L33</text>
+  <text x="585" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">· 实验聚合</text>
+  <text x="585" y="170" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">→ 同一指标永远同一个数</text>
+  <line x1="444" y1="135" x2="466" y2="135" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>设计</th><th>解决什么</th><th>呼应</th></tr></thead>
   <tbody>
@@ -625,6 +652,33 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
 
 <h2>Why it's worth building this engine</h2>
 <p>Compiling a declaration to SQL could let each widget assemble strings itself. But Langfuse insists on one unified engine, because it solves four problems at once:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="the query engine is a small metric-language compiler: the top declares what metric it wants with view, dimensions, metrics and filters (physical-agnostic, injection-safe); inside, the engine does four things — semantic layer mapping logical names to SQL, parameterization against injection, view versioning v1/v2, and one-engine-many-consumers; it compiles down to parameterized ClickHouse SQL, and because dashboards (L40), monitors (L33) and experiment aggregation all share it, the same metric always computes the same number">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="36" width="420" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="234" y="56" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 declaration (declarative · physical-agnostic · safe)</text>
+  <text x="234" y="72" font-size="9.5" text-anchor="middle" fill="var(--muted)">view + dimensions + metrics + filters</text>
+  <line x1="234" y1="80" x2="234" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="92" width="420" height="86" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="110" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 query engine = a metric-language compiler</text>
+  <rect x="36" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">semantic layer: name ↔ SQL</text>
+  <rect x="240" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">parameterized (no injection)</text>
+  <rect x="36" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">view versioning: v1/v2</text>
+  <rect x="240" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">one engine, many consumers</text>
+  <line x1="234" y1="178" x2="234" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="190" width="420" height="34" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="234" y="211" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 parameterized SQL → ClickHouse</text>
+  <rect x="466" y="92" width="238" height="86" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="585" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one engine, many consumers</text>
+  <text x="585" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">dashboards L40 · monitors L33</text>
+  <text x="585" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">· experiment aggregation</text>
+  <text x="585" y="170" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">→ same metric, same number</text>
+  <line x1="444" y1="135" x2="466" y2="135" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>design</th><th>what it solves</th><th>echoes</th></tr></thead>

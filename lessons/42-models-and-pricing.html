@@ -434,6 +434,38 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>合起来：一次调用的成本是怎么算出来的</h2>
 <p>把 matchPattern 和 pricingTiers 串起来，就还原了第 16 课「成本 = 用量 × 单价」的完整链条。<code>default-model-prices.json</code> 这 158 条种子价会被 <code>upsertDefaultModelPrices</code> 灌进数据库的 Model/Price 表；之后每条调用都走这条计价线：</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="一次调用的计价线五步：① 拿 observation 报告的模型名，② 用 matchPattern 正则匹配到 Model 条目（含 tokenizerId 与 pricingTiers），③ SDK 没报用量时按 tokenizerId 分词数 token，④ matchPricingTier 按用量选中价目档拿到 prices，⑤ 对每种用量用 prices 乘用量逐项相加，得总成本，还原第16课成本等于用量乘单价">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 拿模型名</text>
+  <text x="80" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">us.anthropic</text>
+  <text x="80" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">.claude-…</text>
+  <rect x="156" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="220" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 匹配 Model</text>
+  <text x="220" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPattern 正则</text>
+  <text x="220" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ tiers + tokenizer</text>
+  <rect x="296" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 数 token</text>
+  <text x="360" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">(SDK 没报时)</text>
+  <text x="360" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">tokenizerId 分词</text>
+  <rect x="436" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 选档</text>
+  <text x="500" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPricingTier</text>
+  <text x="500" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ prices 价目</text>
+  <rect x="576" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="640" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 分项算钱</text>
+  <text x="640" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">prices[项] × 用量</text>
+  <text x="640" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">逐项相加</text>
+  <line x1="144" y1="82" x2="156" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="82" x2="296" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="82" x2="436" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="564" y1="82" x2="576" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="160" y="148" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="173" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">总成本 = Σ(各项单价 × 各项用量)</text>
+  <line x1="640" y1="122" x2="440" y2="148" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">还原第 16 课「成本 = 用量 × 单价」的完整链条</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>拿模型名</h4><p>从一条 observation（generation）取出它报告的模型名，如 <code>us.anthropic.claude-...-v1:0</code>。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>匹配 Model</h4><p>用模型名去试各条 <code>matchPattern</code> 正则，命中的就是这次该用的价目条目（含 tokenizerId 与 pricingTiers）。</p></div></div>
@@ -599,6 +631,38 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 
 <h2>Put together: how a call's cost is computed</h2>
 <p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="a call's pricing line in five steps: 1 take the model name the observation reported, 2 match it with a matchPattern regex to a Model entry (with tokenizerId and pricingTiers), 3 if the SDK reported no usage, tokenize by tokenizerId to count tokens, 4 matchPricingTier picks the tier by usage to get prices, 5 multiply prices by usage per item and sum, giving total cost, restoring Lesson 16's cost equals usage times price">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 model name</text>
+  <text x="80" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">us.anthropic</text>
+  <text x="80" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">.claude-…</text>
+  <rect x="156" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="220" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 match Model</text>
+  <text x="220" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPattern regex</text>
+  <text x="220" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ tiers + tokenizer</text>
+  <rect x="296" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 count tokens</text>
+  <text x="360" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">(if SDK omitted)</text>
+  <text x="360" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">tokenizerId</text>
+  <rect x="436" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 pick tier</text>
+  <text x="500" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPricingTier</text>
+  <text x="500" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ prices</text>
+  <rect x="576" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="640" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 sum per item</text>
+  <text x="640" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">prices[i] × usage</text>
+  <text x="640" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">added up</text>
+  <line x1="144" y1="82" x2="156" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="82" x2="296" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="82" x2="436" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="564" y1="82" x2="576" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="160" y="148" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="173" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">total cost = Σ(price per item × usage per item)</text>
+  <line x1="640" y1="122" x2="440" y2="148" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">restoring Lesson 16's full "cost = usage × price" chain</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>

@@ -749,6 +749,38 @@ _ZH39.append(r"""
 <h2>可复用的积木：结构化 schema 与工具</h2>
 <p>除了凭证，现代 LLM 调用还常带两样东西：<strong>结构化输出 schema</strong>（要求模型按固定 JSON 形状返回，第 29 课裁判正靠它）和<strong>工具/函数定义</strong>（让模型能「调用」外部能力）。Langfuse 把它们也建成可复用的实体——<code>LlmSchema</code> 和 <code>LlmTool</code>，于是你在 Playground 里定义一次，评估、实验里都能直接拿来用。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="三块可复用积木 LlmApiKeys 连接、LlmSchema 结构化输出、LlmTool 工具函数，汇入统一的 fetchLLMCompletion 引擎，被 Playground、评估（L29 裁判）、实验（L36 对比）三个消费者共用，在 Playground 定义一次别处直接复用">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">三块可复用积木 → 一台引擎 → 三个消费者</text>
+  <rect x="16" y="44" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmApiKeys · 连接</text>
+  <text x="104" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">凭证 · adapter · baseURL</text>
+  <rect x="16" y="98" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmSchema · 结构化输出</text>
+  <text x="104" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">{score, reasoning}</text>
+  <rect x="16" y="152" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmTool · 工具/函数</text>
+  <text x="104" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">名字 + 参数 schema</text>
+  <rect x="256" y="86" width="190" height="72" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="351" y="116" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">fetchLLMCompletion</text>
+  <text x="351" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">统一引擎</text>
+  <rect x="512" y="44" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Playground</text>
+  <text x="608" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">交互试 prompt</text>
+  <rect x="512" y="98" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">评估（L29 裁判）</text>
+  <text x="608" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">靠 schema 稳定返回</text>
+  <rect x="512" y="152" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">实验（L36 对比）</text>
+  <text x="608" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">逐题跑应用</text>
+  <line x1="192" y1="66" x2="256" y2="100" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="120" x2="256" y2="122" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="174" x2="256" y2="144" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="446" y1="100" x2="512" y2="66" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="122" x2="512" y2="120" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="144" x2="512" y2="174" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>LlmSchema · 结构化输出</h4><p>定义模型必须遵守的 JSON 形状（如 <code>{score, reasoning}</code>）。这正是第 29 课裁判能稳定返回「分数+理由」的底层依赖——同一套 schema 机制，被裁判与 Playground 共用。</p></div>
   <div class="col"><h4>LlmTool · 函数/工具</h4><p>定义模型可调用的工具签名（名字、参数 schema）。让模型在 Playground 里就能演示「函数调用」式的 agent 行为，定义沉淀下来供别处复用。</p></div>
@@ -888,6 +920,38 @@ _EN39.append(r"""
 _EN39.append(r"""
 <h2>Reusable building blocks: structured schemas and tools</h2>
 <p>Besides credentials, modern LLM calls often carry two things: a <strong>structured-output schema</strong> (requiring the model to return a fixed JSON shape, which Lesson 29's judge relies on) and <strong>tool/function definitions</strong> (letting the model "call" external capabilities). Langfuse models these as reusable entities too—<code>LlmSchema</code> and <code>LlmTool</code>—so you define them once in the Playground and reuse them in evals and experiments.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="three reusable blocks LlmApiKeys (connection), LlmSchema (structured output) and LlmTool (tools/functions) feed one shared fetchLLMCompletion engine, consumed by three surfaces: the Playground, evaluation (L29 judge) and experiments (L36 comparison); define once in the Playground and reuse everywhere">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">three reusable blocks → one engine → three consumers</text>
+  <rect x="16" y="44" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmApiKeys · connection</text>
+  <text x="104" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">creds · adapter · baseURL</text>
+  <rect x="16" y="98" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmSchema · structured</text>
+  <text x="104" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">{score, reasoning}</text>
+  <rect x="16" y="152" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmTool · tools/fns</text>
+  <text x="104" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">name + param schema</text>
+  <rect x="256" y="86" width="190" height="72" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="351" y="116" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">fetchLLMCompletion</text>
+  <text x="351" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">one engine</text>
+  <rect x="512" y="44" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Playground</text>
+  <text x="608" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">test a prompt</text>
+  <rect x="512" y="98" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">eval (L29 judge)</text>
+  <text x="608" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">schema → stable JSON</text>
+  <rect x="512" y="152" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">experiments (L36)</text>
+  <text x="608" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">app per item</text>
+  <line x1="192" y1="66" x2="256" y2="100" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="120" x2="256" y2="122" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="174" x2="256" y2="144" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="446" y1="100" x2="512" y2="66" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="122" x2="512" y2="120" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="144" x2="512" y2="174" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>LlmSchema · structured output</h4><p>Defines the JSON shape the model must obey (e.g. <code>{score, reasoning}</code>). This is the underlying dependency that lets Lesson 29's judge reliably return "score + reasoning"—the same schema mechanism shared by the judge and the Playground.</p></div>

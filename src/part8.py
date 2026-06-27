@@ -394,6 +394,33 @@ _ZH41.append(r"""
 <h2>为什么值得造这台引擎</h2>
 <p>把声明编译成 SQL，本可以让每个 widget 自己拼字符串。但 Langfuse 偏要造一台统一引擎，因为它一次解决了四个问题：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="查询引擎是一个小型指标语言的编译器：上层用 view、dimensions、metrics、filters 声明式描述要什么指标（与物理无关、注入安全），引擎内部四件事语义层逻辑名换 SQL、参数化防注入、视图版本化 v1/v2、一引擎多消费，向下编译成参数化 ClickHouse SQL，仪表盘 L40、监控 L33、实验聚合共用它所以同一指标永远算出同一个数">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="36" width="420" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="234" y="56" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 上层声明（声明式 · 与物理无关 · 注入安全）</text>
+  <text x="234" y="72" font-size="9.5" text-anchor="middle" fill="var(--muted)">view + dimensions + metrics + filters</text>
+  <line x1="234" y1="80" x2="234" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="92" width="420" height="86" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="110" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 查询引擎 = 指标语言的编译器</text>
+  <rect x="36" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">语义层：逻辑名 ↔ SQL（解耦）</text>
+  <rect x="240" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">参数化：值走 parameters（防注入）</text>
+  <rect x="36" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">视图版本化：v1/v2（不破历史）</text>
+  <rect x="240" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">一引擎多消费（口径一致）</text>
+  <line x1="234" y1="178" x2="234" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="190" width="420" height="34" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="234" y="211" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 参数化 SQL → ClickHouse 执行</text>
+  <rect x="466" y="92" width="238" height="86" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="585" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一引擎多消费</text>
+  <text x="585" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">仪表盘 L40 · 监控 L33</text>
+  <text x="585" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">· 实验聚合</text>
+  <text x="585" y="170" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">→ 同一指标永远同一个数</text>
+  <line x1="444" y1="135" x2="466" y2="135" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>设计</th><th>解决什么</th><th>呼应</th></tr></thead>
   <tbody>
@@ -534,6 +561,33 @@ _EN41.append(r"""
 <h2>Why it's worth building this engine</h2>
 <p>Compiling a declaration to SQL could let each widget assemble strings itself. But Langfuse insists on one unified engine, because it solves four problems at once:</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="the query engine is a small metric-language compiler: the top declares what metric it wants with view, dimensions, metrics and filters (physical-agnostic, injection-safe); inside, the engine does four things — semantic layer mapping logical names to SQL, parameterization against injection, view versioning v1/v2, and one-engine-many-consumers; it compiles down to parameterized ClickHouse SQL, and because dashboards (L40), monitors (L33) and experiment aggregation all share it, the same metric always computes the same number">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="36" width="420" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="234" y="56" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 declaration (declarative · physical-agnostic · safe)</text>
+  <text x="234" y="72" font-size="9.5" text-anchor="middle" fill="var(--muted)">view + dimensions + metrics + filters</text>
+  <line x1="234" y1="80" x2="234" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="92" width="420" height="86" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="110" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 query engine = a metric-language compiler</text>
+  <rect x="36" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">semantic layer: name ↔ SQL</text>
+  <rect x="240" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">parameterized (no injection)</text>
+  <rect x="36" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">view versioning: v1/v2</text>
+  <rect x="240" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">one engine, many consumers</text>
+  <line x1="234" y1="178" x2="234" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="190" width="420" height="34" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="234" y="211" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 parameterized SQL → ClickHouse</text>
+  <rect x="466" y="92" width="238" height="86" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="585" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one engine, many consumers</text>
+  <text x="585" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">dashboards L40 · monitors L33</text>
+  <text x="585" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">· experiment aggregation</text>
+  <text x="585" y="170" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">→ same metric, same number</text>
+  <line x1="444" y1="135" x2="466" y2="135" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>design</th><th>what it solves</th><th>echoes</th></tr></thead>
   <tbody>
@@ -671,6 +725,38 @@ _ZH42.append(r"""
 <h2>合起来：一次调用的成本是怎么算出来的</h2>
 <p>把 matchPattern 和 pricingTiers 串起来，就还原了第 16 课「成本 = 用量 × 单价」的完整链条。<code>default-model-prices.json</code> 这 158 条种子价会被 <code>upsertDefaultModelPrices</code> 灌进数据库的 Model/Price 表；之后每条调用都走这条计价线：</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="一次调用的计价线五步：① 拿 observation 报告的模型名，② 用 matchPattern 正则匹配到 Model 条目（含 tokenizerId 与 pricingTiers），③ SDK 没报用量时按 tokenizerId 分词数 token，④ matchPricingTier 按用量选中价目档拿到 prices，⑤ 对每种用量用 prices 乘用量逐项相加，得总成本，还原第16课成本等于用量乘单价">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 拿模型名</text>
+  <text x="80" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">us.anthropic</text>
+  <text x="80" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">.claude-…</text>
+  <rect x="156" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="220" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 匹配 Model</text>
+  <text x="220" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPattern 正则</text>
+  <text x="220" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ tiers + tokenizer</text>
+  <rect x="296" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 数 token</text>
+  <text x="360" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">(SDK 没报时)</text>
+  <text x="360" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">tokenizerId 分词</text>
+  <rect x="436" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 选档</text>
+  <text x="500" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPricingTier</text>
+  <text x="500" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ prices 价目</text>
+  <rect x="576" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="640" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 分项算钱</text>
+  <text x="640" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">prices[项] × 用量</text>
+  <text x="640" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">逐项相加</text>
+  <line x1="144" y1="82" x2="156" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="82" x2="296" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="82" x2="436" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="564" y1="82" x2="576" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="160" y="148" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="173" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">总成本 = Σ(各项单价 × 各项用量)</text>
+  <line x1="640" y1="122" x2="440" y2="148" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">还原第 16 课「成本 = 用量 × 单价」的完整链条</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>拿模型名</h4><p>从一条 observation（generation）取出它报告的模型名，如 <code>us.anthropic.claude-...-v1:0</code>。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>匹配 Model</h4><p>用模型名去试各条 <code>matchPattern</code> 正则，命中的就是这次该用的价目条目（含 tokenizerId 与 pricingTiers）。</p></div></div>
@@ -796,6 +882,38 @@ _EN42.append(r"""
 _EN42.append(r"""
 <h2>Put together: how a call's cost is computed</h2>
 <p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="a call's pricing line in five steps: 1 take the model name the observation reported, 2 match it with a matchPattern regex to a Model entry (with tokenizerId and pricingTiers), 3 if the SDK reported no usage, tokenize by tokenizerId to count tokens, 4 matchPricingTier picks the tier by usage to get prices, 5 multiply prices by usage per item and sum, giving total cost, restoring Lesson 16's cost equals usage times price">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 model name</text>
+  <text x="80" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">us.anthropic</text>
+  <text x="80" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">.claude-…</text>
+  <rect x="156" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="220" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 match Model</text>
+  <text x="220" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPattern regex</text>
+  <text x="220" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ tiers + tokenizer</text>
+  <rect x="296" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 count tokens</text>
+  <text x="360" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">(if SDK omitted)</text>
+  <text x="360" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">tokenizerId</text>
+  <rect x="436" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 pick tier</text>
+  <text x="500" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPricingTier</text>
+  <text x="500" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ prices</text>
+  <rect x="576" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="640" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 sum per item</text>
+  <text x="640" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">prices[i] × usage</text>
+  <text x="640" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">added up</text>
+  <line x1="144" y1="82" x2="156" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="82" x2="296" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="82" x2="436" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="564" y1="82" x2="576" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="160" y="148" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="173" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">total cost = Σ(price per item × usage per item)</text>
+  <line x1="640" y1="122" x2="440" y2="148" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">restoring Lesson 16's full "cost = usage × price" chain</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>
@@ -947,6 +1065,25 @@ _ZH43.append(r"""
 <h2>两本不同的账：平台计费 vs 你的花费告警</h2>
 <p>容易混淆的是：Part 8 里出现了<strong>两种「钱」</strong>，方向正好相反。一种是<strong>平台向你收费</strong>（本课的计量，按观测数报 Stripe）；另一种是<strong>你自己的 LLM 花费</strong>（第 16、42 课算出的成本）。后者还配了一个 <strong>花费告警（cloudSpendAlert）</strong>队列：盯着你这个月在各家 provider 上的 LLM 开销，越过你设的阈值就提醒你——这是帮<strong>你</strong>管好<strong>你的</strong>钱，和平台怎么收你的费是两码事。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="Part 8 里两种方向相反的钱：① 平台计费，方向是平台向你收费，按观测数每小时报 Stripe，走 cloudUsageMeteringQueue 讲究恰好一次；② 花费告警，方向是帮你管你的 LLM 花费，盯你在各 provider 的成本，走 cloudSpendAlertQueue，越过阈值就告警；自托管没有①不收平台费，但②那样的成本观测照用">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 平台计费（平台 → 收你的费）</text>
+  <text x="40" y="90" font-size="9.5" fill="var(--ink)">方向：平台 → 收你的费</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">按观测数 / 每小时报 Stripe</text>
+  <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
+  <text x="40" y="150" font-size="9.5" fill="var(--muted)">讲究「恰好一次」</text>
+  <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
+  <text x="360" y="126" font-size="9" text-anchor="middle" fill="var(--muted)">方向相反</text>
+  <rect x="374" y="42" width="322" height="132" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="535" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 花费告警（帮你 → 管你的钱）</text>
+  <text x="390" y="90" font-size="9.5" fill="var(--ink)">方向：帮你 → 管你的 LLM 花费</text>
+  <text x="390" y="110" font-size="9.5" fill="var(--ink)">盯你在 OpenAI/Anthropic 的成本</text>
+  <text x="390" y="130" font-size="9.5" fill="var(--muted)">cloudSpendAlertQueue</text>
+  <text x="390" y="150" font-size="9.5" fill="var(--muted)">越过阈值就告警（L16/42 成本）</text>
+  <text x="360" y="200" font-size="10" text-anchor="middle" fill="var(--muted)">自托管：没有 ①（不收平台费），但 ② 那样的成本观测照用</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>① 平台计量（本课主线）</h4><p>方向：平台 → 收你的费。按<strong>观测数</strong>每小时报 Stripe，Cloud 专属。<code>cloudUsageMeteringQueue</code>。讲究「恰好一次」。</p></div>
   <div class="col"><h4>② 花费告警（cloudSpendAlert）</h4><p>方向：帮你 → 管你的 LLM 花费。盯你在 OpenAI/Anthropic 等的成本，越阈值就告警。<code>cloudSpendAlertQueue</code>（CloudSpendAlertJob）。</p></div>
@@ -1083,6 +1220,25 @@ _EN43.append(r"""
 _EN43.append(r"""
 <h2>Two different ledgers: platform billing vs your spend alerts</h2>
 <p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="two kinds of money in opposite directions: 1 platform billing, the platform charges you, reporting observation counts hourly to Stripe via cloudUsageMeteringQueue with exactly-once care; 2 spend alerts, helping you manage your LLM spend, watching your provider costs via cloudSpendAlertQueue and pinging you over a threshold; self-host has no 1 (no platform fee) but still uses 2-style cost observation">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 platform billing (platform → charges you)</text>
+  <text x="40" y="90" font-size="9.5" fill="var(--ink)">direction: platform → charges you</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by observation count / hourly → Stripe</text>
+  <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
+  <text x="40" y="150" font-size="9.5" fill="var(--muted)">cares about "exactly once"</text>
+  <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
+  <text x="360" y="126" font-size="9" text-anchor="middle" fill="var(--muted)">opposite</text>
+  <rect x="374" y="42" width="322" height="132" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="535" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 spend alerts (helps you → manage)</text>
+  <text x="390" y="90" font-size="9.5" fill="var(--ink)">direction: helps you → your LLM spend</text>
+  <text x="390" y="110" font-size="9.5" fill="var(--ink)">watches your OpenAI/Anthropic cost</text>
+  <text x="390" y="130" font-size="9.5" fill="var(--muted)">cloudSpendAlertQueue</text>
+  <text x="390" y="150" font-size="9.5" fill="var(--muted)">alerts over a threshold (L16/42 cost)</text>
+  <text x="360" y="200" font-size="10" text-anchor="middle" fill="var(--muted)">self-host: no 1 (no platform fee), but still uses 2-style cost observation</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>

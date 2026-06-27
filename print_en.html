@@ -9079,6 +9079,38 @@ This lesson covers them, focusing on an unavoidable security topic: a provider's
 <h2>Reusable building blocks: structured schemas and tools</h2>
 <p>Besides credentials, modern LLM calls often carry two things: a <strong>structured-output schema</strong> (requiring the model to return a fixed JSON shape, which Lesson 29's judge relies on) and <strong>tool/function definitions</strong> (letting the model "call" external capabilities). Langfuse models these as reusable entities too—<code>LlmSchema</code> and <code>LlmTool</code>—so you define them once in the Playground and reuse them in evals and experiments.</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="three reusable blocks LlmApiKeys (connection), LlmSchema (structured output) and LlmTool (tools/functions) feed one shared fetchLLMCompletion engine, consumed by three surfaces: the Playground, evaluation (L29 judge) and experiments (L36 comparison); define once in the Playground and reuse everywhere">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">three reusable blocks → one engine → three consumers</text>
+  <rect x="16" y="44" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmApiKeys · connection</text>
+  <text x="104" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">creds · adapter · baseURL</text>
+  <rect x="16" y="98" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmSchema · structured</text>
+  <text x="104" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">{score, reasoning}</text>
+  <rect x="16" y="152" width="176" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">LlmTool · tools/fns</text>
+  <text x="104" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">name + param schema</text>
+  <rect x="256" y="86" width="190" height="72" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="351" y="116" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">fetchLLMCompletion</text>
+  <text x="351" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">one engine</text>
+  <rect x="512" y="44" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="62" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Playground</text>
+  <text x="608" y="79" font-size="8.5" text-anchor="middle" fill="var(--muted)">test a prompt</text>
+  <rect x="512" y="98" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">eval (L29 judge)</text>
+  <text x="608" y="133" font-size="8.5" text-anchor="middle" fill="var(--muted)">schema → stable JSON</text>
+  <rect x="512" y="152" width="192" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="608" y="170" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">experiments (L36)</text>
+  <text x="608" y="187" font-size="8.5" text-anchor="middle" fill="var(--muted)">app per item</text>
+  <line x1="192" y1="66" x2="256" y2="100" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="120" x2="256" y2="122" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="174" x2="256" y2="144" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="446" y1="100" x2="512" y2="66" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="122" x2="512" y2="120" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="446" y1="144" x2="512" y2="174" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>LlmSchema · structured output</h4><p>Defines the JSON shape the model must obey (e.g. <code>{score, reasoning}</code>). This is the underlying dependency that lets Lesson 29's judge reliably return "score + reasoning"—the same schema mechanism shared by the judge and the Playground.</p></div>
   <div class="col"><h4>LlmTool · function/tool</h4><p>Defines tool signatures the model can call (name, parameter schema). It lets the model demonstrate "function-calling" agent behavior right in the Playground, with the definition saved for reuse elsewhere.</p></div>
@@ -9435,6 +9467,33 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
 <h2>Why it's worth building this engine</h2>
 <p>Compiling a declaration to SQL could let each widget assemble strings itself. But Langfuse insists on one unified engine, because it solves four problems at once:</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="the query engine is a small metric-language compiler: the top declares what metric it wants with view, dimensions, metrics and filters (physical-agnostic, injection-safe); inside, the engine does four things — semantic layer mapping logical names to SQL, parameterization against injection, view versioning v1/v2, and one-engine-many-consumers; it compiles down to parameterized ClickHouse SQL, and because dashboards (L40), monitors (L33) and experiment aggregation all share it, the same metric always computes the same number">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="36" width="420" height="44" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="234" y="56" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 declaration (declarative · physical-agnostic · safe)</text>
+  <text x="234" y="72" font-size="9.5" text-anchor="middle" fill="var(--muted)">view + dimensions + metrics + filters</text>
+  <line x1="234" y1="80" x2="234" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="92" width="420" height="86" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="110" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 query engine = a metric-language compiler</text>
+  <rect x="36" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">semantic layer: name ↔ SQL</text>
+  <rect x="240" y="118" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">parameterized (no injection)</text>
+  <rect x="36" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="132" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">view versioning: v1/v2</text>
+  <rect x="240" y="148" width="192" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="336" y="165" font-size="9" text-anchor="middle" fill="var(--ink)">one engine, many consumers</text>
+  <line x1="234" y1="178" x2="234" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="24" y="190" width="420" height="34" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="234" y="211" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 parameterized SQL → ClickHouse</text>
+  <rect x="466" y="92" width="238" height="86" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="585" y="116" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one engine, many consumers</text>
+  <text x="585" y="136" font-size="9.5" text-anchor="middle" fill="var(--muted)">dashboards L40 · monitors L33</text>
+  <text x="585" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">· experiment aggregation</text>
+  <text x="585" y="170" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">→ same metric, same number</text>
+  <line x1="444" y1="135" x2="466" y2="135" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>design</th><th>what it solves</th><th>echoes</th></tr></thead>
   <tbody>
@@ -9605,6 +9664,38 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 
 <h2>Put together: how a call's cost is computed</h2>
 <p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="a call's pricing line in five steps: 1 take the model name the observation reported, 2 match it with a matchPattern regex to a Model entry (with tokenizerId and pricingTiers), 3 if the SDK reported no usage, tokenize by tokenizerId to count tokens, 4 matchPricingTier picks the tier by usage to get prices, 5 multiply prices by usage per item and sum, giving total cost, restoring Lesson 16's cost equals usage times price">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 model name</text>
+  <text x="80" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">us.anthropic</text>
+  <text x="80" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">.claude-…</text>
+  <rect x="156" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="220" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 match Model</text>
+  <text x="220" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPattern regex</text>
+  <text x="220" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ tiers + tokenizer</text>
+  <rect x="296" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 count tokens</text>
+  <text x="360" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">(if SDK omitted)</text>
+  <text x="360" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">tokenizerId</text>
+  <rect x="436" y="42" width="128" height="80" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 pick tier</text>
+  <text x="500" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">matchPricingTier</text>
+  <text x="500" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">→ prices</text>
+  <rect x="576" y="42" width="128" height="80" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="640" y="64" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 sum per item</text>
+  <text x="640" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">prices[i] × usage</text>
+  <text x="640" y="98" font-size="8" text-anchor="middle" fill="var(--muted)">added up</text>
+  <line x1="144" y1="82" x2="156" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="82" x2="296" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="82" x2="436" y2="82" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="564" y1="82" x2="576" y2="82" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="160" y="148" width="400" height="40" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="173" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">total cost = Σ(price per item × usage per item)</text>
+  <line x1="640" y1="122" x2="440" y2="148" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">restoring Lesson 16's full "cost = usage × price" chain</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>
@@ -9787,6 +9878,25 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 <h2>Two different ledgers: platform billing vs your spend alerts</h2>
 <p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="two kinds of money in opposite directions: 1 platform billing, the platform charges you, reporting observation counts hourly to Stripe via cloudUsageMeteringQueue with exactly-once care; 2 spend alerts, helping you manage your LLM spend, watching your provider costs via cloudSpendAlertQueue and pinging you over a threshold; self-host has no 1 (no platform fee) but still uses 2-style cost observation">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 platform billing (platform → charges you)</text>
+  <text x="40" y="90" font-size="9.5" fill="var(--ink)">direction: platform → charges you</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by observation count / hourly → Stripe</text>
+  <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
+  <text x="40" y="150" font-size="9.5" fill="var(--muted)">cares about "exactly once"</text>
+  <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
+  <text x="360" y="126" font-size="9" text-anchor="middle" fill="var(--muted)">opposite</text>
+  <rect x="374" y="42" width="322" height="132" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="535" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 spend alerts (helps you → manage)</text>
+  <text x="390" y="90" font-size="9.5" fill="var(--ink)">direction: helps you → your LLM spend</text>
+  <text x="390" y="110" font-size="9.5" fill="var(--ink)">watches your OpenAI/Anthropic cost</text>
+  <text x="390" y="130" font-size="9.5" fill="var(--muted)">cloudSpendAlertQueue</text>
+  <text x="390" y="150" font-size="9.5" fill="var(--muted)">alerts over a threshold (L16/42 cost)</text>
+  <text x="360" y="200" font-size="10" text-anchor="middle" fill="var(--muted)">self-host: no 1 (no platform fee), but still uses 2-style cost observation</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
