@@ -107,6 +107,38 @@ _ZH44.append(r"""
 <h2>不止 SSRF：投递还要稳、要可信</h2>
 <p>挡住 SSRF 只是「不出事」。要让 webhook 真正<strong>可靠又可信</strong>，投递环节还有几道操作性的硬化——它们共同构成「请求外部世界」这件事的完整工程姿态：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="Langfuse worker 向外部 endpoint 发 webhook 前，请求要穿过六道投递硬化：SSRF 防御防借你打内网偷云凭证、签名 HMAC 防伪造篡改、状态校验 2xx 防悄悄失败、超时防对方挂起拖死 worker、重试指数退避防临时抖动、自动停用防对死端点无限锤；凡向外部世界发请求都当不可信不可靠对待">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">向外部世界发请求：6 道硬化，各防一种「外部世界怎么坑你」</text>
+  <rect x="14" y="86" width="120" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="74" y="110" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse</text>
+  <text x="74" y="126" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">worker</text>
+  <rect x="152" y="40" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="58" font-size="9.5" font-weight="700" fill="var(--accent-ink)">SSRF 防御</text>
+  <text x="162" y="74" font-size="8" fill="var(--muted)">防借你打内网/偷云凭证</text>
+  <rect x="152" y="90" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="108" font-size="9.5" font-weight="700" fill="var(--accent-ink)">签名 HMAC</text>
+  <text x="162" y="124" font-size="8" fill="var(--muted)">防伪造/篡改 · x-langfuse-signature</text>
+  <rect x="152" y="140" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="158" font-size="9.5" font-weight="700" fill="var(--accent-ink)">状态校验 2xx</text>
+  <text x="162" y="174" font-size="8" fill="var(--muted)">防悄悄失败被当成功</text>
+  <rect x="360" y="40" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="58" font-size="9.5" font-weight="700" fill="var(--accent-ink)">超时 AbortController</text>
+  <text x="370" y="74" font-size="8" fill="var(--muted)">防对方挂起拖死 worker</text>
+  <rect x="360" y="90" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="108" font-size="9.5" font-weight="700" fill="var(--accent-ink)">重试（指数退避）</text>
+  <text x="370" y="124" font-size="8" fill="var(--muted)">防临时抖动 → 最终送达</text>
+  <rect x="360" y="140" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="158" font-size="9.5" font-weight="700" fill="var(--accent-ink)">自动停用</text>
+  <text x="370" y="174" font-size="8" fill="var(--muted)">防对死端点无限锤</text>
+  <rect x="574" y="86" width="130" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="110" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">外部 endpoint</text>
+  <text x="639" y="126" font-size="8.5" text-anchor="middle" fill="var(--muted)">用户填的 URL</text>
+  <line x1="134" y1="114" x2="152" y2="114" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="560" y1="114" x2="574" y2="114" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">凡向外部世界发请求，一律当不可信、不可靠对待</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>硬化</th><th>怎么做</th><th>防什么</th></tr></thead>
   <tbody>
@@ -228,6 +260,38 @@ _EN44.append(r"""
 _EN44.append(r"""
 <h2>Beyond SSRF: delivery must be reliable and trustworthy</h2>
 <p>Blocking SSRF only gets you "no disaster." To make webhooks truly <strong>reliable and trustworthy</strong>, the delivery path needs several more operational hardenings — together they form the complete engineering posture for "calling the outside world":</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="before the Langfuse worker sends a webhook to an external endpoint, the request passes six delivery hardenings: SSRF defense against using you to hit internal networks or steal cloud credentials, HMAC signing against forgery and tampering, 2xx status check against silent failure, timeout against a hung peer dragging down the worker, retry with exponential backoff against transient blips, and auto-disable against hammering a dead endpoint; treat every outbound request as untrusted and unreliable">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">calling the outside world: 6 hardenings, each guarding a specific threat</text>
+  <rect x="14" y="86" width="120" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="74" y="110" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse</text>
+  <text x="74" y="126" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">worker</text>
+  <rect x="152" y="40" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="58" font-size="9.5" font-weight="700" fill="var(--accent-ink)">SSRF defense</text>
+  <text x="162" y="74" font-size="8" fill="var(--muted)">vs internal-net / credential theft</text>
+  <rect x="152" y="90" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="108" font-size="9.5" font-weight="700" fill="var(--accent-ink)">HMAC signature</text>
+  <text x="162" y="124" font-size="8" fill="var(--muted)">vs forgery/tamper · x-langfuse-signature</text>
+  <rect x="152" y="140" width="200" height="44" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="162" y="158" font-size="9.5" font-weight="700" fill="var(--accent-ink)">2xx status check</text>
+  <text x="162" y="174" font-size="8" fill="var(--muted)">vs silent failure</text>
+  <rect x="360" y="40" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="58" font-size="9.5" font-weight="700" fill="var(--accent-ink)">timeout (AbortController)</text>
+  <text x="370" y="74" font-size="8" fill="var(--muted)">vs a hung peer dragging worker</text>
+  <rect x="360" y="90" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="108" font-size="9.5" font-weight="700" fill="var(--accent-ink)">retry (backoff)</text>
+  <text x="370" y="124" font-size="8" fill="var(--muted)">vs transient blips → eventual delivery</text>
+  <rect x="360" y="140" width="200" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="370" y="158" font-size="9.5" font-weight="700" fill="var(--accent-ink)">auto-disable</text>
+  <text x="370" y="174" font-size="8" fill="var(--muted)">vs hammering a dead endpoint</text>
+  <rect x="574" y="86" width="130" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="110" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">external endpoint</text>
+  <text x="639" y="126" font-size="8.5" text-anchor="middle" fill="var(--muted)">user-supplied URL</text>
+  <line x1="134" y1="114" x2="152" y2="114" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="560" y1="114" x2="574" y2="114" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="208" font-size="10" text-anchor="middle" fill="var(--muted)">treat every outbound request as untrusted and unreliable</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>Hardening</th><th>How</th><th>Guards against</th></tr></thead>
@@ -374,6 +438,26 @@ _ZH45.append(r"""
 <h2>另一条线：notificationQueue 站内通知</h2>
 <p>Slack 是「往外发」的通知；还有一类是「站内」的通知——比如有人在评论里 <strong>@你</strong>。这类走独立的 <code>notificationQueue</code>：一个标准的 BullMQ 消费者，按 <code>type</code> 分发，目前处理 <code>COMMENT_MENTION</code>（评论提及），代码里明确留了「未来可加更多通知类型」的扩展点。它和 webhook/Slack 是<strong>并列</strong>的投递机制——平台把「怎么通知人」这件事，拆成了几条各司其职的通道。</p>
 
+<svg viewBox="0 0 720 200" role="img" aria-label="一个通知源（如监控告警或评论@你）扇出到三条并列的投递通道：webhook（L44 填 URL 推 JSON，Langfuse 是发起方不持凭据，风险是 SSRF，对接任意系统）、Slack（本课 OAuth 授权加密 bot 令牌、按频道发 Block Kit 富消息，团队协作）、站内 notificationQueue（COMMENT_MENTION 等，不出 Langfuse，把人拉回应用现场）">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">一个通知源 → 三条并列的投递通道，各司其职</text>
+  <rect x="16" y="80" width="160" height="52" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="96" y="102" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">通知源</text>
+  <text x="96" y="120" font-size="8.5" text-anchor="middle" fill="var(--muted)">监控告警 / 评论@你</text>
+  <rect x="216" y="34" width="488" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="228" y="52" font-size="10.5" font-weight="700" fill="var(--accent-ink)">📮 webhook（L44）</text>
+  <text x="228" y="70" font-size="8.5" fill="var(--muted)">填 URL 推 JSON · Langfuse 是发起方不持凭据 · 风险=SSRF · 任意系统</text>
+  <rect x="216" y="88" width="488" height="46" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="228" y="106" font-size="10.5" font-weight="700" fill="var(--accent-ink)">💬 Slack（本课）</text>
+  <text x="228" y="124" font-size="8.5" fill="var(--muted)">OAuth 授权 · 加密 bot 令牌 · 按频道发 Block Kit 富消息 · 团队协作</text>
+  <rect x="216" y="142" width="488" height="46" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="228" y="160" font-size="10.5" font-weight="700" fill="var(--accent-ink)">🔔 站内（notificationQueue）</text>
+  <text x="228" y="178" font-size="8.5" fill="var(--muted)">COMMENT_MENTION 等 · 不出 Langfuse · 把人拉回应用现场</text>
+  <line x1="176" y1="100" x2="216" y2="57" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="176" y1="106" x2="216" y2="111" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="176" y1="112" x2="216" y2="165" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>📮 webhook（第44课）</h4><p>最通用：填个 URL、推 JSON。Langfuse 是发起方、不持凭据，风险集中在 SSRF。适合对接<strong>任意自定义系统</strong>。</p></div>
   <div class="col"><h4>💬 Slack（本课）</h4><p>最精致：OAuth 授权、加密令牌、按频道发 Block Kit 富消息。持「代表你」的令牌，能力大、保管严。适合<strong>团队协作通知</strong>。</p></div>
@@ -505,6 +589,26 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 _EN45.append(r"""
 <h2>Another line: the notificationQueue for in-app notifications</h2>
 <p>Slack is an "outbound" notification; there's another kind — "in-app" — like someone <strong>@-mentioning you</strong> in a comment. That goes through a separate <code>notificationQueue</code>: a standard BullMQ consumer that dispatches by <code>type</code>, currently handling <code>COMMENT_MENTION</code>, with an explicit "future notification types can be added here" extension point in the code. It sits <strong>alongside</strong> webhook/Slack as a delivery mechanism — the platform splits "how to notify people" into several channels, each with its own job.</p>
+
+<svg viewBox="0 0 720 200" role="img" aria-label="one notification source (such as a monitor alert or a comment @-mention) fans out to three parallel delivery channels: webhook (L44, fill a URL push JSON, Langfuse is the initiator holding no credentials, risk is SSRF, for any system), Slack (this lesson, OAuth-authorized encrypted bot token, channel-targeted Block Kit rich messages, for team collaboration), and in-app notificationQueue (COMMENT_MENTION etc., never leaves Langfuse, pulls people back into the app)">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">one source → three parallel delivery channels, each with its own job</text>
+  <rect x="16" y="80" width="160" height="52" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="96" y="102" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">notification source</text>
+  <text x="96" y="120" font-size="8.5" text-anchor="middle" fill="var(--muted)">monitor alert / @-mention</text>
+  <rect x="216" y="34" width="488" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="228" y="52" font-size="10.5" font-weight="700" fill="var(--accent-ink)">📮 webhook (L44)</text>
+  <text x="228" y="70" font-size="8.5" fill="var(--muted)">fill URL, push JSON · Langfuse holds no credentials · risk=SSRF · any system</text>
+  <rect x="216" y="88" width="488" height="46" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="228" y="106" font-size="10.5" font-weight="700" fill="var(--accent-ink)">💬 Slack (this lesson)</text>
+  <text x="228" y="124" font-size="8.5" fill="var(--muted)">OAuth · encrypted bot token · channel-targeted Block Kit · team collaboration</text>
+  <rect x="216" y="142" width="488" height="46" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="228" y="160" font-size="10.5" font-weight="700" fill="var(--accent-ink)">🔔 in-app (notificationQueue)</text>
+  <text x="228" y="178" font-size="8.5" fill="var(--muted)">COMMENT_MENTION etc. · never leaves Langfuse · pulls people back in</text>
+  <line x1="176" y1="100" x2="216" y2="57" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="176" y1="106" x2="216" y2="111" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="176" y1="112" x2="216" y2="165" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>📮 webhook (Lesson 44)</h4><p>Most generic: fill a URL, push JSON. Langfuse is the initiator holding no credentials; risk concentrates on SSRF. Best for wiring up <strong>any custom system</strong>.</p></div>
@@ -901,6 +1005,36 @@ _ZH47.append(r"""
 <h2>批量导出：流式 → 文件 → 限时链接 → 邮件</h2>
 <p>导出任务是一台<strong>状态机</strong>（<code>BatchExportStatus</code>：QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED），和第 30 课 eval 的 JobExecution、第 35 课数据集运行同根同源。一进来先<strong>校验状态</strong>（已取消就跳过、非 QUEUED 也跳过——幂等防重复执行），置为 PROCESSING。核心是<strong>流式管道</strong>：<code>getDatabaseReadStreamPaginated</code> 分页读出命中的行，<code>pipeline</code> 一行行经 <code>streamTransformations[format]</code> 转成 CSV/JSON，<code>uploadFileBuffered</code> 分片传进对象存储（和第 46 课同一个 StorageService）。传完生成一个<strong>限时签名 URL</strong>（<code>getSignedUrl(expiresInSeconds)</code>），把状态置 COMPLETED、记下 <code>url</code> 和 <code>expiresAt</code>，最后<strong>发邮件</strong>把下载链接送到用户邮箱。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="批量导出流式管道五步：① 分页读 getDatabaseReadStreamPaginated 命中行，② 逐行经 streamTransformations 转 CSV 或 JSON 内存恒定，③ uploadFileBuffered 分片传进 S3 或 GCS，④ getSignedUrl 生成限时签名下载链接记 expiresAt，⑤ sendBatchExportSuccessEmail 把下载链接发到用户邮箱；整个任务是 QUEUED 到 PROCESSING 到 COMPLETED 的状态机，幂等防重复执行">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">导出状态机：QUEUED → PROCESSING → COMPLETED（幂等防重复执行）</text>
+  <rect x="16" y="46" width="128" height="84" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 流式查</text>
+  <text x="80" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">分页读命中行</text>
+  <text x="80" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">getDatabaseRead…</text>
+  <rect x="156" y="46" width="128" height="84" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="220" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 转格式</text>
+  <text x="220" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">逐行 CSV/JSON</text>
+  <text x="220" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">内存恒定</text>
+  <rect x="296" y="46" width="128" height="84" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 传存储</text>
+  <text x="360" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">uploadFileBuffered</text>
+  <text x="360" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">→ S3 / GCS</text>
+  <rect x="436" y="46" width="128" height="84" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 限时链接</text>
+  <text x="500" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">getSignedUrl</text>
+  <text x="500" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">记 expiresAt</text>
+  <rect x="576" y="46" width="128" height="84" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 发邮件</text>
+  <text x="640" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">下载链接</text>
+  <text x="640" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">→ 用户邮箱</text>
+  <line x1="144" y1="88" x2="156" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="88" x2="296" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="88" x2="436" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="564" y1="88" x2="576" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="158" font-size="10" text-anchor="middle" fill="var(--muted)">流式管道全程内存恒定：几万行也不撑爆；限时签名 URL 不长期公开数据</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>校验状态 + 置 PROCESSING</h4><p>已 CANCELLED → 跳过；非 QUEUED → 跳过（防同一任务被重复执行）。否则 <code>update({status: PROCESSING})</code> 占住它。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>流式查 + 转格式</h4><p><code>getDatabaseReadStreamPaginated</code> 分页读命中行；<code>pipeline</code> 逐行经 <code>streamTransformations[format]</code> 转 CSV/JSON——内存恒定，几万行也不撑爆。</p></div></div>
@@ -1030,6 +1164,36 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 _EN47.append(r"""
 <h2>Batch export: stream → file → time-limited link → email</h2>
 <p>An export job is a <strong>state machine</strong> (<code>BatchExportStatus</code>: QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED), of the same lineage as Lesson 30's eval JobExecution and Lesson 35's dataset runs. On entry it first <strong>validates status</strong> (skip if CANCELLED, skip if not QUEUED — idempotent guard against re-execution), sets PROCESSING. The core is a <strong>streaming pipeline</strong>: <code>getDatabaseReadStreamPaginated</code> reads the matched rows by page, <code>pipeline</code> transforms them row by row through <code>streamTransformations[format]</code> into CSV/JSON, <code>uploadFileBuffered</code> multipart-uploads into object storage (the same StorageService as Lesson 46). After upload it generates a <strong>time-limited signed URL</strong> (<code>getSignedUrl(expiresInSeconds)</code>), sets status COMPLETED, records <code>url</code> and <code>expiresAt</code>, and finally <strong>emails</strong> the download link to the user.</p>
+
+<svg viewBox="0 0 720 210" role="img" aria-label="the streaming batch-export pipeline in five steps: 1 page-read the matched rows via getDatabaseReadStreamPaginated, 2 transform row by row through streamTransformations into CSV or JSON at constant memory, 3 uploadFileBuffered multipart-uploads into S3 or GCS, 4 getSignedUrl makes a time-limited signed download link recording expiresAt, 5 sendBatchExportSuccessEmail emails the link to the user; the whole job is a QUEUED to PROCESSING to COMPLETED state machine, idempotent against re-execution">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">export state machine: QUEUED → PROCESSING → COMPLETED (idempotent)</text>
+  <rect x="16" y="46" width="128" height="84" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="80" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 stream read</text>
+  <text x="80" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">page-read rows</text>
+  <text x="80" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">getDatabaseRead…</text>
+  <rect x="156" y="46" width="128" height="84" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="220" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 transform</text>
+  <text x="220" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">row → CSV/JSON</text>
+  <text x="220" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">constant memory</text>
+  <rect x="296" y="46" width="128" height="84" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 upload</text>
+  <text x="360" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">uploadFileBuffered</text>
+  <text x="360" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">→ S3 / GCS</text>
+  <rect x="436" y="46" width="128" height="84" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="500" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 signed URL</text>
+  <text x="500" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">getSignedUrl</text>
+  <text x="500" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">time-limited</text>
+  <rect x="576" y="46" width="128" height="84" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="68" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 email</text>
+  <text x="640" y="88" font-size="8" text-anchor="middle" fill="var(--muted)">download link</text>
+  <text x="640" y="102" font-size="8" text-anchor="middle" fill="var(--muted)">→ user inbox</text>
+  <line x1="144" y1="88" x2="156" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="284" y1="88" x2="296" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="424" y1="88" x2="436" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="564" y1="88" x2="576" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="158" font-size="10" text-anchor="middle" fill="var(--muted)">constant memory throughout: tens of thousands of rows won't blow up; the signed URL never exposes data long-term</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>Validate status + set PROCESSING</h4><p>CANCELLED → skip; not QUEUED → skip (guard against re-executing the same job). Otherwise <code>update({status: PROCESSING})</code> claims it.</p></div></div>
