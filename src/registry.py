@@ -69,4 +69,5 @@ CONTENT = {
     "50-open-core-and-entitlements.html": part10.LESSON_50,
     "51-self-observability-and-config.html": part10.LESSON_51,
     "52-data-lifecycle-and-deletion.html": part10.LESSON_52,
+    "53-build-test-dev-workflow.html": part10.LESSON_53,
 }

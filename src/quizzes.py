@@ -3685,6 +3685,76 @@ QUIZZES = {
             },
         ],
     },
+    "53-build-test-dev-workflow.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Turborepo 的内容哈希缓存让 Langfuse 的多包构建变快。它的核心机制是？",
+                    "en": "Turborepo's content-hash cache makes Langfuse's multi-package builds fast. What's its core mechanism?",
+                },
+                "opts": [
+                    {
+                        "zh": "把每个任务的输入(源码+依赖+环境变量)算一个哈希；只要哈希和上次一模一样，就直接重放上次缓存的outputs(dist/.next)、跳过真正构建。于是改了web、shared没动时，shared缓存秒重放，只重建web——「只重建真正改了的包」",
+                        "en": "hash each task's inputs (source+deps+env vars); if the hash is identical to last time, directly replay the previously-cached outputs (dist/.next) and skip the real build. So when web changed but shared didn't, shared's cache replays in seconds and only web rebuilds — 'rebuild only what actually changed'",
+                    },
+                    {"zh": "把所有包压缩成一个文件来加速", "en": "compresses all packages into one file to speed up"},
+                    {"zh": "并行编译所有包，不管有没有改", "en": "compiles all packages in parallel regardless of changes"},
+                    {"zh": "缓存数据库查询结果", "en": "caches database query results"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "几十个包若每次都全量构建，会慢到无法忍受。Turbo 的关键洞察是：一个构建任务本质是「输入→输出」的纯函数，只要输入没变，输出就一定一样，那就没必要重算。它把每个任务的全部输入（该包源码 + 它依赖的包 + 相关环境变量）算成一个内容哈希；下次跑时先比哈希，命中就把上次存下的 outputs（turbo.json 里声明的 dist/、.next/）原样吐出，完全跳过编译。于是你只改了 web 的一个文件、shared 纹丝未动时，shared 的输入哈希不变、缓存秒重放，Turbo 只老实重建 web。这让「增量构建」名副其实，CI 上大部分包没变、缓存全中，几十个包可能几秒就过。",
+                    "en": "With dozens of packages, building everything every time would be unbearably slow. Turbo's key insight: a build task is essentially a pure function 'inputs→outputs', so if inputs are unchanged the output must be identical, no need to recompute. It hashes each task's full inputs (that package's source + the packages it depends on + relevant env vars) into a content hash; next run it compares hashes first, and on a hit spits back the previously-stored outputs (the dist/, .next/ declared in turbo.json) verbatim, fully skipping compilation. So when you changed one web file and shared is untouched, shared's input hash is unchanged, its cache replays in seconds, and Turbo dutifully rebuilds only web. This makes 'incremental build' live up to its name; on CI most packages unchanged, all cache hits, dozens of packages may pass in seconds.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "turbo.json 里，build/lint/test 都是 cache:true，但 dev 和 db:generate 故意设了 cache:false。这个区分背后的判断标准是？",
+                    "en": "In turbo.json, build/lint/test are cache:true, but dev and db:generate deliberately set cache:false. What's the criterion behind this distinction?",
+                },
+                "opts": [
+                    {
+                        "zh": "一个任务能否缓存，取决于它的全部效果是否都体现在可声明的outputs里。build/lint产出确定的文件可缓存；但dev是常驻服务(没有最终产物)、db:generate把Prisma类型写进node_modules(缓存只重放日志、恢复不了这个副作用)——凡有「藏在别处的副作用」的任务必须cache:false",
+                        "en": "whether a task can be cached depends on whether all its effects are captured in declarable outputs. build/lint produce definite files and are cacheable; but dev is a long-running service (no final product), db:generate writes Prisma types into node_modules (the cache only replays logs and can't restore this side effect) — any task with 'side effects hidden elsewhere' must be cache:false",
+                    },
+                    {"zh": "dev 和 db:generate 运行太快，缓存没意义", "en": "dev and db:generate run too fast for caching to matter"},
+                    {"zh": "只有构建产物才值得缓存，其他都不缓存", "en": "only build artifacts are worth caching, nothing else"},
+                    {"zh": "cache:false 是为了节省磁盘空间", "en": "cache:false is to save disk space"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "缓存的前提是「纯函数式」：同样输入必然产生同样的、能被完整重放的输出。build 满足——给定源码+依赖，产物就是 dist/、.next/ 那些文件，存下来下次原样吐出即可。但 dev 是 persistent 常驻服务，它的「输出」是一个一直跑着的进程，根本没有可缓存的「最终产物」。db:generate 更隐蔽：它真正的效果是把 Prisma 生成的类型写进 node_modules，而 Turbo 缓存命中只会重放当时的日志、并不会真的把文件再写进 node_modules（turbo.json 专门有注释点破），于是在干净的 CI 机器上若缓存它，会出现「日志显示成功、类型却没生成」的诡异故障。所以普适判据是：任务的全部效果是否都落在可声明的 outputs 里？凡有起进程、写 node_modules、改外部状态这类「藏在别处的副作用」，就必须 cache:false。",
+                    "en": "Caching presupposes 'pure-functional': the same inputs necessarily produce the same, fully-replayable output. build qualifies — given source+deps, the products are those dist/, .next/ files, stored and spat back verbatim. But dev is a persistent long-running service; its 'output' is a continuously-running process with no cacheable 'final product'. db:generate is subtler: its real effect is writing Prisma-generated types into node_modules, and a Turbo cache hit only replays the logs of that time, not actually re-writing the files into node_modules (turbo.json has a comment pointing this out), so caching it on a clean CI runner causes the weird failure of 'logs say success but types weren't generated'. So the universal criterion: are all of a task's effects captured in declarable outputs? Any task with 'side effects hidden elsewhere' — starting a process, writing node_modules, changing external state — must be cache:false.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 把 web/worker/shared/ee 放进同一个 monorepo，而不是每个包一个独立仓库（polyrepo）。monorepo 最突出的好处是？",
+                    "en": "Langfuse puts web/worker/shared/ee in one monorepo rather than one repo per package (polyrepo). The most prominent benefit of a monorepo is?",
+                },
+                "opts": [
+                    {
+                        "zh": "跨包改动的原子性：改一个shared接口并同时更新所有调用它的web/worker代码，可以一个commit、一个PR、一次CI全搞定，永远不出现「shared发了新版但web还没升级」的中间断裂态；外加代码共享零摩擦、统一工具链",
+                        "en": "atomicity of cross-package changes: changing a shared interface and updating all the web/worker code calling it can be done in one commit, one PR, one CI run, never an intermediate broken state of 'shared released a new version but web hasn't upgraded'; plus frictionless code sharing and a unified toolchain",
+                    },
+                    {"zh": "monorepo 让每个包的代码量更少", "en": "a monorepo makes each package's code smaller"},
+                    {"zh": "monorepo 不需要任何构建工具", "en": "a monorepo needs no build tools at all"},
+                    {"zh": "monorepo 自动让代码运行更快", "en": "a monorepo automatically makes code run faster"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "polyrepo（一包一仓库）下，改一个被多处依赖的 shared 接口是件痛事：你得先在 shared 仓库改完、发版，再到 web、worker 仓库分别升级依赖、改调用、各自发版——这期间必然存在「shared 已是新版、web 还是旧版」的不一致窗口，跨仓库的原子性根本无法保证。monorepo 把它们放一起后，这种改动就是一个 commit、一个 PR、一次 CI 的事，要么全过要么全不过，永远一致。此外还有代码直接 import（不必发包）、一套 lint/test/构建配置管全部等好处。代价是仓库变大、构建变重——但这恰恰由 Turbo 的缓存来摊平。所以「monorepo + Turbo」往往绑定出现：前者给协作的原子性，后者还构建的速度。",
+                    "en": "Under polyrepo (one repo per package), changing a widely-depended-on shared interface is painful: you must change and release in the shared repo first, then upgrade deps, fix calls, and release separately in the web and worker repos — during which there's inevitably an inconsistency window of 'shared is new, web is still old', and cross-repo atomicity simply can't be guaranteed. With a monorepo, such a change is one commit, one PR, one CI run, all-pass-or-all-fail, always consistent. Plus direct imports (no publishing), one lint/test/build config ruling all. The cost is a larger repo and heavier builds — which is exactly amortized by Turbo's cache. So 'monorepo + Turbo' often appear bundled: the former gives collaborative atomicity, the latter returns build speed.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课（也是「平台与运维」的收尾）讲的是「开发者每天的循环」——monorepo 让跨包改动原子化、Turbo 让重建只花在改了的地方、dx 让新人一条命令上手、seed 让 bug 可廉价复现。请回想你参与过的项目：从 clone 代码到能跑起来要几步、花多久？哪些「隐形的工程基建」最影响你的开发幸福感？如果让你为一个新项目投资「开发者体验」，你会优先做哪三件事，为什么？",
+                "en": "This lesson (also the close of 'Platform & Operations') is about the developer's daily loop — the monorepo makes cross-package changes atomic, Turbo spends rebuild effort only where it changed, dx gets newcomers productive in one command, seed makes bugs cheaply reproducible. Recall projects you've joined: from cloning the code to getting it running, how many steps and how long? Which 'invisible engineering infrastructure' most affects your development happiness? If investing in 'developer experience' for a new project, which three things would you prioritize, and why?",
+            },
+        ],
+    },
 }
 
 

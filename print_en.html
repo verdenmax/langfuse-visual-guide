@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 52 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 53 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -389,6 +389,7 @@ details[open] > summary { list-style: none; }
   <li>Open-core & entitlements</li>
   <li>Self-observability & config</li>
   <li>Data lifecycle & deletion</li>
+  <li>Build, test & dev workflow</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -10574,6 +10575,186 @@ This lesson covers three deletions (auto-clean by retention period, on-demand tr
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>This lesson recurs on a theme: in distributed systems, 'safely doing big side-effectful things' relies on a few moves — deletion keeps a retry anchor, migrations use state for resumability, locks ensure single-worker execution. Drawing on your experience: what pitfalls have you hit in 'bulk deletion or data migration across multiple systems/stores' (mid-way failure, orphan data, duplicate execution)? How did you ensure 'no-dup-no-miss, resumable'? And if the data also involves compliant deletion (e.g. GDPR right to be forgotten), what additional requirements arise?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Build, test & dev workflow</h1>
+
+<p class="lead">
+You've seen Langfuse from ingestion to operations. The last lesson takes a different angle: how is the platform <strong>itself built, tested, and iterated</strong>? The answer hides in three things. ① <strong>pnpm monorepo</strong> — the four packages web, worker, shared, ee live in <strong>one repo</strong>, sharing code with a tool-enforced dependency direction. ② <strong>Turborepo</strong> — a <strong>task pipeline + content-hash cache</strong> that makes "change one package, rebuild only that package" possible, turning dozens of packages' builds/CI from "full every time, slow to a crawl" into "seconds, incremental." ③ <strong>one-command dev workflow</strong> — a single <code>dx</code> command spins up a full local environment from scratch (install deps → bring up Docker infra → reset DBs → seed data → run), plus a <strong>seed CLI</strong> for realistic test data in one command.
+As the close of Part 10 (Platform & Operations), this lesson is about the <strong>developer's daily loop</strong> — whether a project is approachable and maintainable often hides in this unglamorous engineering infrastructure.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture this engineering infrastructure as an efficiently-run <strong>"central kitchen."</strong> The <strong>monorepo</strong> puts all stations (front-of-house web, back kitchen worker, shared seasoning bench shared, special window ee) <strong>in the same building</strong> — to change a sauce recipe all stations use (code in shared), change it once and every station syncs instantly, no need to notify each one door to door.
+  <strong>Turbo's cache</strong> is like a chef with stunning memory: he <strong>remembers each dish's "ingredient fingerprint,"</strong> and as long as a dish's ingredients are <strong>identical</strong> to last time, he <strong>serves the previously-made dish directly</strong>, never remaking it (a cache hit, instant); only the few dishes whose ingredients changed go back on the stove. So even with dozens of dishes on the menu, each service only remakes "the few that actually changed."
+  And the <strong>dx one-command</strong> is "<strong>startup automation</strong>" for a new chef: one order, and water/electric/gas all on, stove preheated, prep done — <strong>from empty kitchen to ready-to-serve in one step</strong>, no fumbling through a dozen pages of manual to configure for half a day.
+</div>
+
+
+<h2>Monorepo: four packages one repo, dependency direction enforced</h2>
+<p>Langfuse is a <strong>monorepo (one repo, many packages)</strong>: <code>pnpm-workspace.yaml</code> puts <strong>web</strong> (Next.js app), <strong>worker</strong> (queue consumers), <strong>packages/shared</strong> (shared domain/DB/queue contracts), and <strong>ee</strong> (enterprise package) in one repo. The benefit is <strong>instant code-sharing linkage</strong>: change a type or function in shared and web and worker see it immediately, an atomic cross-package change in one commit — no multi-repo cycle of release, upgrade, re-align. The package manager is <strong>pnpm</strong> (<code>preinstall: only-allow pnpm</code> forces pnpm only, no npm/yarn mixing), with a <code>minimumReleaseAge</code> set (a new dependency must have been published for some days before it can be installed, <strong>against supply-chain poisoning</strong>).</p>
+
+<p>And the dependency direction is <strong>disciplined</strong>: <code>web → shared</code>, <code>worker → shared</code>, <code>ee → shared</code>, while <strong>shared depends on no one</strong> (never reverse-imports web/worker/ee). This "the lower layer doesn't depend on the upper" iron rule makes shared a clean foundation — anyone can safely reuse it without being polluted by upper-layer specifics. The next section shows Turbo <strong>follows this dependency graph</strong> to auto-order builds.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="pnpm monorepo: the three upper packages web/worker/ee all depend on the lower packages/shared, which depends on no one (clean foundation); same repo, code-sharing linkage, atomic cross-package change in one commit; pnpm enforced (only-allow) + minimumReleaseAge against supply-chain poisoning">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One repo holds four packages; dependencies only point down</text>
+  <rect x="120" y="40" width="150" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="195" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">web</text><text x="195" y="76" text-anchor="middle" font-size="6.2" fill="var(--muted)">Next.js app (UI+tRPC+REST)</text>
+  <rect x="290" y="40" width="150" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="365" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">worker</text><text x="365" y="76" text-anchor="middle" font-size="6.2" fill="var(--muted)">queue consumers / background</text>
+  <rect x="460" y="40" width="140" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="530" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ee</text><text x="530" y="76" text-anchor="middle" font-size="6.2" fill="var(--muted)">enterprise package (L50)</text>
+  <rect x="220" y="138" width="280" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">packages/shared (clean foundation)</text><text x="360" y="177" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">domain · DB(Prisma/ClickHouse) · queue contracts · repos</text><text x="360" y="188" text-anchor="middle" font-size="6.0" fill="var(--faint)">never reverse-depends on web/worker/ee</text>
+  <line x1="195" y1="88" x2="300" y2="136" stroke="var(--blue)" stroke-width="1.4"/><polygon points="300,136 291,132 289,140" fill="var(--blue)"/>
+  <line x1="365" y1="88" x2="360" y2="136" stroke="var(--blue)" stroke-width="1.4"/><polygon points="360,136 356,127 364,127" fill="var(--blue)"/>
+  <line x1="530" y1="88" x2="420" y2="136" stroke="var(--accent)" stroke-width="1.4"/><polygon points="420,136 431,132 429,140" fill="var(--accent)"/>
+  <text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--faint)">Dependencies only point down: upper uses lower, lower doesn't know upper</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm enforced (only-allow) + minimumReleaseAge against supply-chain poisoning; same repo, atomic cross-package commit</text>
+</svg>
+<div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>, <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">upper</span><span class="name">web / worker / ee</span></div><div class="ld">Three independently-deployable/runnable "application-layer" packages: web is full-stack Next.js, worker is background queue consumers, ee is enterprise features. They all <strong>depend on</strong> shared and avoid coupling directly to each other.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">foundation</span><span class="name">packages/shared</span></div><div class="ld">Domain models, Prisma/ClickHouse access, queue names and payload contracts, the repository layer — the platform-wide core. <strong>It imports no upper layer</strong>, so it can be safely reused and independently tested. This "foundation doesn't depend on floors" discipline is key to a monorepo not rotting.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">manage</span><span class="name">pnpm workspaces</span></div><div class="ld">pnpm shares deps via hard links, saving disk and fast; <code>only-allow pnpm</code> prevents lockfile conflicts from mixed package managers; <code>minimumReleaseAge</code> refuses "just published days ago" versions, leaving a window for supply-chain poisoning to be discovered.</div></div>
+</div>
+
+
+<h2>Turborepo: task pipeline + content-hash cache</h2>
+<p>With dozens of packages, building/checking everything every time would be unbearably slow. <strong>Turborepo</strong> solves it with two moves: <strong>① task pipeline (dependsOn)</strong> — each task in <code>turbo.json</code> declares its dependencies, and the <code>^build</code> in <code>build</code>'s <code>dependsOn: ["db:generate", "^build"]</code> means "<strong>run build in all dependency packages first</strong>." So Turbo follows the previous section's dependency graph to <strong>auto-derive the topological order</strong>: shared builds first, then web/worker — you don't hand-write the order. <strong>② content-hash cache (cache + outputs)</strong> — Turbo hashes each task's <strong>inputs</strong> (source + deps + env vars); as long as the hash is <strong>identical</strong> to last time, it <strong>directly replays the cached output</strong> (the <code>dist/</code>, <code>.next/</code> declared in <code>outputs</code>), <strong>skipping the actual build</strong>.</p>
+
+<p>The power of this move is "<strong>rebuild only what actually changed</strong>": you edit one web file, shared untouched — Turbo sees shared's input hash unchanged, <strong>replays its cache in seconds</strong>, and dutifully rebuilds only web. On CI it's a lifesaver: most packages unchanged, all cache hits, dozens of packages' builds may pass in seconds. Note some tasks <strong>deliberately don't cache</strong> (<code>cache: false</code>): <code>dev</code> (a long-running service, <code>persistent: true</code>), <code>db:generate</code> (Prisma writes types into node_modules, a <strong>side effect a cache-log replay can't restore</strong>, as turbo.json's comment specifically explains) — <strong>any task with "side effects that can't be restored by replaying logs" must not be cached</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 235" role="img" aria-label="Turbo task pipeline + cache: dependsOn's ^build lets Turbo auto-order builds topologically by the dependency graph (shared first then web/worker); content-hash cache hashes inputs (source+deps+env), on a hit replays cached outputs (dist/.next) skipping the build, rebuilding only changed packages; dev/db:generate and other side-effecting tasks are cache:false">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Order by the dep graph + replay cache if unchanged</text>
+  <rect x="24" y="44" width="200" height="80" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">① task pipeline dependsOn</text><text x="124" y="82" text-anchor="middle" font-size="6.4" fill="var(--muted)">build: ["db:generate", "^build"]</text><text x="124" y="95" text-anchor="middle" font-size="6.2" fill="var(--muted)">^build = build all deps first</text><text x="124" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">shared → web/worker auto-topology</text>
+  <rect x="270" y="40" width="200" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="370" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② hash the inputs</text><text x="370" y="76" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">source + deps + env</text><text x="370" y="88" text-anchor="middle" font-size="6.0" fill="var(--muted)">one fingerprint per task</text>
+  <rect x="270" y="108" width="95" height="50" rx="8" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="317" y="126" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--teal)">hash hit</text><text x="317" y="140" text-anchor="middle" font-size="5.8" fill="var(--muted)">replay cached outputs</text><text x="317" y="150" text-anchor="middle" font-size="5.6" fill="var(--faint)">dist/.next instant</text>
+  <rect x="375" y="108" width="95" height="50" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="422" y="126" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--accent-ink)">hash changed</text><text x="422" y="140" text-anchor="middle" font-size="5.8" fill="var(--muted)">actually rebuild it</text><text x="422" y="150" text-anchor="middle" font-size="5.6" fill="var(--faint)">only the changed</text>
+  <rect x="510" y="56" width="185" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="602" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">CI lifesaver</text><text x="602" y="92" text-anchor="middle" font-size="6.0" fill="var(--muted)">most unchanged→all hits→seconds</text>
+  <rect x="510" y="116" width="185" height="56" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="602" y="134" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">cache: false (no cache)</text><text x="602" y="150" text-anchor="middle" font-size="6.0" fill="var(--muted)">dev(persistent) · db:generate(writes node_modules)</text><text x="602" y="162" text-anchor="middle" font-size="5.8" fill="var(--faint)">side effects, log-replay can't restore</text>
+  <line x1="224" y1="72" x2="268" y2="68" stroke="var(--accent)" stroke-width="1.3"/><polygon points="268,68 259,67 261,75" fill="var(--accent)"/>
+  <line x1="340" y1="96" x2="320" y2="106" stroke="var(--teal)" stroke-width="1.2"/><line x1="400" y1="96" x2="420" y2="106" stroke="var(--accent)" stroke-width="1.2"/>
+  <line x1="470" y1="80" x2="508" y2="80" stroke="var(--faint)" stroke-width="1"/>
+  <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">Edit one web file, shared untouched → shared cache replays in seconds, only web rebuilds; dozens of packages no longer full every time</text>
+  <text x="360" y="218" text-anchor="middle" font-size="8" fill="var(--faint)">Principle: pure-functional tasks (inputs determine outputs) are cacheable; side-effecting ones (start a service, write node_modules) must be cache:false</text>
+</svg>
+<div class="figcap"><b>Turbo pipeline + cache</b>: <code>turbo.json</code> <code>build.dependsOn ["db:generate","^build"]</code> (<code>^</code> = build deps first, topological), <code>outputs ["dist/**",".next/**"]</code>, <code>cache: true</code>; <code>lint/typecheck/build:check/test</code> likewise <code>cache: true</code>. <code>dev</code>/<code>db:generate</code> <code>cache: false</code> (dev <code>persistent: true</code>; db:generate's comment explicitly: "writes node_modules, cache only replays logs and can't restore the side effect").</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">turbo.json</span><span class="ln">task pipeline + cache declarations</span></div>
+  <pre class="code"><span class="cm">// each task declares: who it depends on, what it outputs, whether it caches</span>
+"tasks": {
+  "build": {
+    "dependsOn": [<span class="st">"db:generate"</span>, <span class="st">"^build"</span>],   <span class="cm">// ^build = build all deps first (topological)</span>
+    "outputs": [<span class="st">"dist/**"</span>, <span class="st">".next/**"</span>, <span class="st">"!.next/cache/**"</span>],  <span class="cm">// these artifacts go in the cache</span>
+    "cache": <span class="kw">true</span>                              <span class="cm">// inputs unchanged → replay cache, skip build</span>
+  },
+  "dev": {
+    "cache": <span class="kw">false</span>,                             <span class="cm">// long-running service, can't cache</span>
+    "persistent": <span class="kw">true</span>,
+    "dependsOn": [<span class="st">"db:generate"</span>]
+  },
+  "db:generate": {                            <span class="cm">// Prisma writes types into node_modules —</span>
+    "inputs": [<span class="st">"…/schema.prisma"</span>],
+    "cache": <span class="kw">false</span>                             <span class="cm">// cache only replays logs, can't restore this side effect</span>
+  }
+}</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🧭 auto topological order</h4><p><code>^build</code> lets Turbo order by the dependency graph: shared first, web/worker after. You declare "who it depends on", the tool computes the order — no hand-written mistakes.</p></div>
+  <div class="col"><h4>⚡ cache replay</h4><p>Input hash unchanged → replay last outputs, skip the build. Rebuild only what actually changed; on CI all cache hits, dozens of packages pass in seconds.</p></div>
+  <div class="col"><h4>🎯 --filter scoping</h4><p><code>turbo run dev --filter=web</code> scopes the operation precisely to one package, running only web without disturbing others — focus on just the piece in front of you.</p></div>
+</div>
+
+
+<h2>One-command dev: from empty environment to running, in one step</h2>
+<p>How much must a newcomer do after cloning the code to get it running? Install deps, start DB/Redis/ClickHouse, create tables, seed test data, then launch… a dozen manual steps, one slip and you're stuck for hours. Langfuse compresses this long chain into one command, <code>dx</code> (developer experience): <code>pnpm i</code> installs deps → <code>infra:dev:up</code> brings up local infra via docker compose → resets PG/ClickHouse → <code>db:seed:examples</code> seeds example data → <code>dev</code> runs it. There are also <code>dx-f</code> (force reset), <code>dx:skip-infra</code> (skip infra), and other variants for different scenarios. All commands go through <code>turbo run</code> or <code>pnpm --filter</code>, and <strong>--filter scopes an operation precisely to a single package</strong> (<code>dev:web</code> = <code>turbo run dev --filter=web</code>).</p>
+
+<p>Test data is handled by the <strong>seed CLI</strong> (<code>packages/shared/scripts/seeder/</code>): it generates realistic trace/observation/score, long sessions, bulk data by <strong>scenario</strong> — for local debugging, stress-testing list performance, reproducing bugs. This is far more reliable than hand-writing SQL inserts or force-stuffing ClickHouse, and is a key tool for "making bugs cheaply reproducible."</p>
+
+<table class="t">
+  <thead><tr><th>Dev task</th><th>Command</th><th>Behind it</th></tr></thead>
+  <tbody>
+    <tr><td>One-command full local env</td><td><code>pnpm dx</code></td><td>install→docker infra→reset DBs→seed→dev, all-in-one</td></tr>
+    <tr><td>Develop only web / worker</td><td><code>pnpm dev:web</code> / <code>dev:worker</code></td><td><code>turbo run dev --filter=web</code>, <b>--filter scopes to one package</b></td></tr>
+    <tr><td>Build / check / test</td><td><code>pnpm build</code> / <code>lint</code> / <code>tc</code> / <code>test</code></td><td>all via <code>turbo run</code>, enjoying topology + cache</td></tr>
+    <tr><td>Seed realistic test data</td><td><code>pnpm seed</code></td><td>seed CLI generates trace/session/bulk data by scenario</td></tr>
+    <tr><td>Local infrastructure</td><td><code>infra:dev:up/down</code></td><td>docker compose to start/stop PG/Redis/ClickHouse etc.</td></tr>
+  </tbody>
+</table>
+
+<p>Read this lesson together and "how good is the developer experience" is really a chain of engineering decisions that <strong>minimize friction</strong>: the monorepo makes cross-package changes one commit, Turbo spends rebuild effort only where it actually changed, dx gets newcomers productive in one command, seed reproduces bugs without hand-assembling data. This infrastructure is usually invisible, yet it <strong>concretely decides how fast a team iterates and how stably it maintains</strong> — a fitting, down-to-earth close to "Platform & Operations."</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>What exactly is a monorepo (all packages in one repo) better at versus a polyrepo (one package per repo), and what does it sacrifice?</strong> The biggest win is <strong>"atomicity of cross-package changes"</strong>: when you change an interface in shared and simultaneously update all the web/worker code calling it, a monorepo does it all in <strong>one commit, one PR, one CI run</strong> — there's never an intermediate broken state of "shared released a new version but web hasn't upgraded." Next is <strong>frictionless code sharing</strong> (import directly, no publishing) and a <strong>unified toolchain</strong> (one lint/test/build config rules all). The cost: the repo grows larger and builds/CI are naturally heavier — which is exactly the problem Turbo's cache solves. So "monorepo + Turbo" almost always appears bundled: the monorepo brings collaborative atomicity, and Turbo's content-hash cache amortizes its build cost. <strong>Choosing a monorepo is essentially trading "build-tool complexity" for "collaboration and consistency simplicity" — for a product of tightly-collaborating packages, a very worthwhile trade.</strong><br><br>
+  <strong>Why does Turbo distinguish "cacheable" from "uncacheable (cache:false)" tasks? Wouldn't caching everything be faster?</strong> Because caching <strong>presupposes "pure-functional" — the same inputs necessarily produce the same, fully-replayable outputs</strong>. <code>build</code> qualifies: given source + deps, the products are those <code>dist/</code>, <code>.next/</code> files; the cache stores them and spits them back next time. But <code>dev</code> is a <strong>long-running service</strong> (persistent); its "output" is a continuously-running process with no "final product" to cache; <code>db:generate</code> is subtler — its real effect is <strong>writing Prisma types into node_modules</strong>, and a Turbo cache hit only "replays the logs of that time" and <strong>doesn't actually re-write the files into node_modules</strong> (turbo.json has a comment specifically pointing this out), so caching it on a clean CI runner causes the weird failure of "logs say success, but the types weren't actually generated." This gives a universal criterion: <strong>whether a task can be cached depends on whether all its effects are captured in declarable outputs; any task with "side effects hidden elsewhere" (start a process, write node_modules, change external state) must be cache:false.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points (Part 10 finale)</div>
+  <ul>
+    <li><strong>pnpm monorepo</strong>: web/worker/packages/shared/ee in one repo; dependencies point only down (web/worker/ee → shared, shared doesn't reverse-depend); pnpm enforced (only-allow) + <code>minimumReleaseAge</code> against supply-chain poisoning. Shared code, atomic one-commit changes.</li>
+    <li><strong>Turbo task pipeline</strong>: <code>dependsOn</code>'s <code>^build</code> lets Turbo <strong>auto-order builds topologically</strong> by the dependency graph (shared first, web/worker after), no hand-writing the order.</li>
+    <li><strong>Turbo content-hash cache</strong>: hash the inputs (source+deps+env); if unchanged, <strong>replay cached outputs, skip the build</strong> — "rebuild only what actually changed," all cache hits on CI may pass in seconds. <code>build/lint/typecheck/test</code> are all cacheable.</li>
+    <li><strong>Side-effecting tasks cache:false</strong>: <code>dev</code> (long-running service), <code>db:generate</code> (writes node_modules) — effects not in declarable outputs, unrestorable by log replay, must not cache. Criterion: are all effects captured in outputs?</li>
+    <li><strong>One-command dev + seed</strong>: <code>dx</code> goes from empty environment to running in one command (install→docker infra→reset DBs→seed→dev); <code>--filter</code> scopes to one package; the seed CLI generates realistic test data by scenario (making bugs cheaply reproducible). Minimizing dev friction is the baseline of "maintainable."</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Turborepo's content-hash cache makes Langfuse's multi-package builds fast. What's its core mechanism?</div>
+  <ol class="opts">
+    <li>compiles all packages in parallel regardless of changes</li>
+    <li>compresses all packages into one file to speed up</li>
+    <li>hash each task's inputs (source+deps+env vars); if the hash is identical to last time, directly replay the previously-cached outputs (dist/.next) and skip the real build. So when web changed but shared didn't, shared's cache replays in seconds and only web rebuilds — 'rebuild only what actually changed'</li>
+    <li>caches database query results</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. With dozens of packages, building everything every time would be unbearably slow. Turbo's key insight: a build task is essentially a pure function 'inputs→outputs', so if inputs are unchanged the output must be identical, no need to recompute. It hashes each task's full inputs (that package's source + the packages it depends on + relevant env vars) into a content hash; next run it compares hashes first, and on a hit spits back the previously-stored outputs (the dist/, .next/ declared in turbo.json) verbatim, fully skipping compilation. So when you changed one web file and shared is untouched, shared's input hash is unchanged, its cache replays in seconds, and Turbo dutifully rebuilds only web. This makes 'incremental build' live up to its name; on CI most packages unchanged, all cache hits, dozens of packages may pass in seconds.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. In turbo.json, build/lint/test are cache:true, but dev and db:generate deliberately set cache:false. What's the criterion behind this distinction?</div>
+  <ol class="opts">
+    <li>whether a task can be cached depends on whether all its effects are captured in declarable outputs. build/lint produce definite files and are cacheable; but dev is a long-running service (no final product), db:generate writes Prisma types into node_modules (the cache only replays logs and can't restore this side effect) — any task with 'side effects hidden elsewhere' must be cache:false</li>
+    <li>cache:false is to save disk space</li>
+    <li>dev and db:generate run too fast for caching to matter</li>
+    <li>only build artifacts are worth caching, nothing else</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Caching presupposes 'pure-functional': the same inputs necessarily produce the same, fully-replayable output. build qualifies — given source+deps, the products are those dist/, .next/ files, stored and spat back verbatim. But dev is a persistent long-running service; its 'output' is a continuously-running process with no cacheable 'final product'. db:generate is subtler: its real effect is writing Prisma-generated types into node_modules, and a Turbo cache hit only replays the logs of that time, not actually re-writing the files into node_modules (turbo.json has a comment pointing this out), so caching it on a clean CI runner causes the weird failure of 'logs say success but types weren't generated'. So the universal criterion: are all of a task's effects captured in declarable outputs? Any task with 'side effects hidden elsewhere' — starting a process, writing node_modules, changing external state — must be cache:false.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse puts web/worker/shared/ee in one monorepo rather than one repo per package (polyrepo). The most prominent benefit of a monorepo is?</div>
+  <ol class="opts">
+    <li>atomicity of cross-package changes: changing a shared interface and updating all the web/worker code calling it can be done in one commit, one PR, one CI run, never an intermediate broken state of 'shared released a new version but web hasn't upgraded'; plus frictionless code sharing and a unified toolchain</li>
+    <li>a monorepo needs no build tools at all</li>
+    <li>a monorepo makes each package's code smaller</li>
+    <li>a monorepo automatically makes code run faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Under polyrepo (one repo per package), changing a widely-depended-on shared interface is painful: you must change and release in the shared repo first, then upgrade deps, fix calls, and release separately in the web and worker repos — during which there's inevitably an inconsistency window of 'shared is new, web is still old', and cross-repo atomicity simply can't be guaranteed. With a monorepo, such a change is one commit, one PR, one CI run, all-pass-or-all-fail, always consistent. Plus direct imports (no publishing), one lint/test/build config ruling all. The cost is a larger repo and heavier builds — which is exactly amortized by Turbo's cache. So 'monorepo + Turbo' often appear bundled: the former gives collaborative atomicity, the latter returns build speed.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson (also the close of 'Platform & Operations') is about the developer's daily loop — the monorepo makes cross-package changes atomic, Turbo spends rebuild effort only where it changed, dx gets newcomers productive in one command, seed makes bugs cheaply reproducible. Recall projects you've joined: from cloning the code to getting it running, how many steps and how long? Which 'invisible engineering infrastructure' most affects your development happiness? If investing in 'developer experience' for a new project, which three things would you prioritize, and why?</li>
   </ul>
 </div>
 </div>
