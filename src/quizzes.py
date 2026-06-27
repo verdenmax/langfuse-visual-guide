@@ -3475,6 +3475,76 @@ QUIZZES = {
             },
         ],
     },
+    "50-open-core-and-entitlements.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "关于 Langfuse 的 open-core 模式，下面哪种理解是正确的？",
+                    "en": "Regarding Langfuse's open-core model, which understanding is correct?",
+                },
+                "opts": [
+                    {
+                        "zh": "整个仓库的代码全是开源的（包括审计日志、数据保留等企业功能），免费与付费的区别只在「运行时这个组织的 plan 能不能启用某功能」，而不在「代码是否公开」——能不能用与有没有代码彻底解耦",
+                        "en": "the entire repo's code is all open source (including enterprise features like audit logs, data retention); free vs paid lies only in 'whether this org's plan can enable a feature at runtime', not in 'whether the code is public'—can-use and has-code are fully decoupled",
+                    },
+                    {"zh": "企业功能的代码是闭源的，开源的只有核心部分", "en": "enterprise-feature code is closed; only the core is open"},
+                    {"zh": "所有功能都免费，Langfuse 靠捐赠盈利", "en": "all features are free; Langfuse profits from donations"},
+                    {"zh": "付费功能在编译时被移除，开源版没有这些代码", "en": "paid features are stripped at compile time; the open-source version lacks the code"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "open-core 常被误解为「一半开源一半闭源」，但 Langfuse 不是：连审计日志、数据保留、多租户 SSO 这些企业功能的代码都在公开仓库里（ee/ 与 shared/.../ee/），你能读、能学、能自己改。真正划出商业边界的，是一层轻薄的运行时门控——组织挂的 plan + hasEntitlement 闸。所以「能不能用」取决于你的 plan，而非「代码在不在」。这种把代码透明性与商业可持续性同时拿到的设计，正是 open-core 的精巧之处：100% 公开 + 一层 entitlement 门控。",
+                    "en": "Open-core is often misread as 'half open, half closed', but Langfuse isn't: even audit logs, data retention, multi-tenant SSO code is in the public repo (ee/ and shared/.../ee/)—you can read, learn, modify it. What actually draws the commercial boundary is a thin runtime gate—the org's plan + hasEntitlement. So 'can use' depends on your plan, not 'does the code exist'. This design—getting code transparency and commercial sustainability at once—is open-core's elegance: 100% public + a layer of entitlement gating.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "hasEntitlement 在找不到组织的 plan 时，用 `org?.plan ?? \"oss\"` 兜底成免费的 oss，而不是默认报错或默认给最高权限。这个默认值的选择体现了什么原则？",
+                    "en": "When hasEntitlement can't find an org's plan, it falls back to free oss via `org?.plan ?? \"oss\"`, rather than erroring or defaulting to highest privileges. What principle does this default reflect?",
+                },
+                "opts": [
+                    {
+                        "zh": "fail-safe（失败安全）默认：默认值应是「权限最小、影响最轻」的那个。若默认给最高权限，plan 因 bug/迁移读不到时会意外解锁所有付费功能(漏损+越权)；兜底到 oss 则开源用户开箱即用、付费功能默认关——与登录默认拒、IP解析失败默认拦同源",
+                        "en": "fail-safe default: the default should be 'least privilege, lightest impact'. Defaulting to highest privileges would accidentally unlock all paid features when plan can't be read due to a bug/migration (leak + overreach); falling back to oss lets open-source users work out of the box with paid features off by default—same lineage as login-defaults-deny, IP-resolution-failure-defaults-block",
+                    },
+                    {"zh": "为了让代码更短", "en": "to make the code shorter"},
+                    {"zh": "oss 查询比其他 plan 快", "en": "oss queries are faster than other plans"},
+                    {"zh": "为了兼容老版本数据库", "en": "for compatibility with old database versions"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "默认值的方向是个安全决策。设想 plan 字段因某个 bug、数据迁移、或字段缺失而读不到：若默认给最高权限，这个组织会瞬间解锁所有付费功能——商业上是漏损、安全上是越权；若默认报错，又会让绝大多数本就是 oss 的自托管开源用户用不了。兜底到 oss 两全：开源用户(最常见路径)开箱即用，付费功能默认关、必须由明确 plan/license 主动打开。这与第44课「IP 解析失败默认拦截」、第48课「登录默认拒绝」是同一条 fail-safe 原则——拿不准时，选权限最小、影响最轻的那个默认。",
+                    "en": "The direction of a default is a security decision. Suppose the plan field can't be read due to a bug, data migration, or missing field: defaulting to highest privileges instantly unlocks all paid features for that org—a commercial leak and a privilege overreach; defaulting to error stalls the vast majority of self-hosted open-source users who are oss anyway. Falling back to oss gets both: open-source users (the common path) work out of the box, paid features off by default, opened only by an explicit plan/license. Same fail-safe principle as Lesson 44's 'IP-resolution failure defaults to block' and Lesson 48's 'login defaults to deny'—when unsure, pick the least-privilege, lightest-impact default.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 把「哪个 plan 能用哪些功能」收进一张声明式的 entitlementAccess 总表，所有功能门口只调同一个 hasEntitlement 闸，而不是在各功能里散写「if plan==pro」。这样做最大的好处是？",
+                    "en": "Langfuse folds 'which plan can use which features' into one declarative entitlementAccess master table, with every feature calling the same hasEntitlement gate, rather than scattering 'if plan==pro' across features. The biggest benefit is?",
+                },
+                "opts": [
+                    {
+                        "zh": "把易变的商业规则从稳定的功能逻辑里抽出、集中声明：加套餐/调额度/把功能从pro下放到core，只需改总表一行，功能代码不动；想知道某plan包含什么，读表一行即可——便于演进与审计，避免散落判断改漏改错",
+                        "en": "extracting volatile commercial rules from stable feature logic and declaring them centrally: adding a tier/adjusting a quota/demoting a feature from pro to core needs editing one table row, feature code untouched; to know what a plan includes, read one row—easing evolution and auditing, avoiding scattered checks being missed or mis-edited",
+                    },
+                    {"zh": "总表查询比散落的 if 判断运行更快", "en": "the master table runs faster than scattered if checks"},
+                    {"zh": "这样就不需要 plan 概念了", "en": "this eliminates the need for the plan concept"},
+                    {"zh": "总表能自动生成计费账单", "en": "the master table auto-generates billing invoices"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "商业 plan 是会频繁变动的：加一档套餐、调一次额度、把某功能从 pro 下放到 core，都很常见。如果「pro 才能用 X」散落在几十处功能代码里，每次调整都要全仓搜改，极易漏、易错、还难复盘「到底哪个 plan 能用什么」。收进一张声明式总表后：改商业策略=改表的一行，功能代码完全不动；查「pro 包含什么」=读表一行。这与第49课 RBAC 用「角色→scope」总表是同一种智慧——把易变规则从稳定逻辑里抽出、集中声明，让系统能跟上商业节奏，也让权限/权益一目了然、可审计。",
+                    "en": "Commercial plans change frequently: adding a tier, adjusting a quota, demoting a feature from pro to core are all common. If 'only pro can use X' is scattered across dozens of feature sites, every change means a repo-wide search-and-edit—easy to miss, error-prone, hard to review 'which plan can use what'. Folded into one declarative master table: change strategy = edit one row, feature code untouched; check 'what pro includes' = read one row. Same wisdom as Lesson 49's RBAC 'role→scope' table—extract volatile rules from stable logic and declare centrally, keeping the system in step with the business and making permissions/entitlements auditable at a glance.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "open-core 让 Langfuse「代码全公开 + 商业可持续」两者兼得：100% 开源，靠一层轻薄的运行时门控（plan + entitlement + license）划出商业边界。请谈谈你的看法：相比「纯开源（全免费）」和「纯闭源（全收费）」，open-core 在商业与社区之间的取舍是什么？它对使用者（能读到全部代码、能自托管、但企业功能要授权）是更友好还是更受限？如果你要把一个项目商业化，会选哪种模式，为什么？",
+                "en": "Open-core lets Langfuse have both 'fully public code + commercial sustainability': 100% open source, with a thin runtime gate (plan + entitlement + license) drawing the commercial boundary. Share your view: versus 'pure open source (all free)' and 'pure closed (all paid)', what trade-off does open-core strike between business and community? For users (can read all the code, can self-host, but enterprise features need a license), is it friendlier or more restrictive? If commercializing a project of your own, which model would you choose, and why?",
+            },
+        ],
+    },
 }
 
 

@@ -564,3 +564,280 @@ _EN49.append(r"""
 """)
 
 LESSON_49 = {"zh": "\n".join(_ZH49), "en": "\n".join(_EN49)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L50 · 开源核与权益 / Open-core & entitlements
+# ══════════════════════════════════════════════════════════════════════
+_ZH50 = []
+_EN50 = []
+
+# (L50 sections below)
+
+_ZH50.append(r"""
+<p class="lead">
+Langfuse 是<strong>开源</strong>的——你现在读的这套源码，从摄取到查询、从评估到自动化，<strong>全都摆在公开仓库里</strong>。但它又是一家<strong>公司</strong>，得靠卖东西活下去。这两件事怎么共存？答案是 <strong>open-core（开源核）</strong>商业模式：核心免费开源，少数<strong>企业级功能</strong>（审计日志、数据保留策略、多租户 SSO、admin API…）需要<strong>付费计划或企业许可证</strong>才能启用。妙的是，这些「付费功能」的代码<strong>也是开源的、就在这个仓库里</strong>——你能读、能学，但要在生产里用，得有相应的 <strong>plan（计划）</strong>。
+这一课讲这套「门票系统」怎么用极少的代码实现：一张 <code>entitlementAccess</code> 总表把每个 plan 映射到「能用哪些功能、各有什么额度」，一个 <code>hasEntitlement()</code> 函数就是所有功能门口的那道闸。还会看到自托管版怎么用一把 <code>langfuse_ee_</code> 开头的许可证密钥解锁企业功能。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  open-core 像一家<strong>「菜谱全公开的餐厅」</strong>：它把<strong>所有菜的做法</strong>都印在墙上、任人抄走自己回家做（开源——代码全公开、可自托管）。那它靠什么赚钱？靠<strong>会员制的「招牌服务」</strong>：普通客人能吃到绝大多数菜（免费核心功能），但某些<strong>高级服务</strong>——比如「专属包厢」「无限续杯」「私人厨师上门」（审计日志、无限额度、多租户 SSO）——得<strong>办张会员卡（plan）</strong>才享受。
+  关键在于餐厅怎么<strong>验会员</strong>：门口不是每个服务各设一个保安，而是<strong>一张总表</strong>写明「金卡能享哪些服务、银卡哪些、普通客人哪些」，再加<strong>一个统一的验卡动作</strong>——你点任何高级服务，服务员都只做同一件事：<strong>查你的卡在不在这张服务的允许名单里</strong>（<code>hasEntitlement</code>）。自己在家照菜谱做（自托管）也想解锁高级服务？那得买一张<strong>「企业授权证书」</strong>（<code>langfuse_ee_</code> 许可证密钥）。
+</div>
+""")
+
+# (L50 sec1 below)
+
+_ZH50.append(r"""
+<h2>开源核：全代码开放，少数功能按 plan 解锁</h2>
+<p>先厘清一个常见误解：open-core <strong>不是「一半开源一半闭源」</strong>。Langfuse 这个仓库里<strong>所有功能的代码都是开放的</strong>——包括那些「企业级」功能。区别只在<strong>运行时能不能启用</strong>：每个组织挂着一个 <code>plan</code>，免费的默认是 <code>"oss"</code>（自托管开源版），付费的有云上三档 <code>cloud:hobby / core / pro / enterprise</code>，以及自托管两档 <code>self-hosted:pro / enterprise</code>。<code>isCloudPlan</code> / <code>isSelfHostedPlan</code> 这两个小助手按前缀区分它们。功能用不用得了，全看你的 plan 在不在那张允许名单里。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="开源核模型：整个仓库代码全开放(核心+企业级功能都能读)，但运行时按组织的plan解锁——oss免费(自托管开源)、cloud三档(hobby/core/pro/enterprise)、self-hosted两档(pro/enterprise)；plan决定能启用哪些entitlement">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">代码全公开；功能按 plan 解锁</text>
+  <rect x="30" y="40" width="300" height="180" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="180" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">整个仓库（全部开源）</text>
+  <rect x="48" y="74" width="264" height="48" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="180" y="94" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">免费核心（人人可用）</text><text x="180" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">摄取·查询·评估·prompt·dashboard…</text>
+  <rect x="48" y="130" width="264" height="78" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="180" y="150" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">企业级功能（代码也开源！）</text><text x="180" y="166" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">审计日志·数据保留·多租户SSO</text><text x="180" y="178" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">admin API·定时blob导出·UI定制…</text><text x="180" y="194" text-anchor="middle" font-size="6.0" fill="var(--faint)">能读能学，但启用要 plan/license</text>
+  <rect x="390" y="46" width="305" height="168" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="542" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">组织的 plan 决定能启用哪些</text>
+  <rect x="406" y="78" width="135" height="30" rx="6" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="473" y="97" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--teal)">oss（默认·免费）</text>
+  <rect x="552" y="78" width="130" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="617" y="91" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:hobby/core</text><text x="617" y="102" text-anchor="middle" font-size="5.6" fill="var(--muted)">云·入门</text>
+  <rect x="406" y="116" width="135" height="32" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="473" y="129" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:pro/enterprise</text><text x="473" y="140" text-anchor="middle" font-size="5.6" fill="var(--muted)">云·高级</text>
+  <rect x="552" y="116" width="130" height="32" rx="6" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="617" y="129" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">self-hosted:pro</text><text x="617" y="140" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">/enterprise</text>
+  <text x="542" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">isCloudPlan / isSelfHostedPlan 按前缀区分</text>
+  <text x="542" y="188" text-anchor="middle" font-size="6.6" fill="var(--faint)">plan 越高，allow 名单越长、额度越大</text>
+  <text x="542" y="204" text-anchor="middle" font-size="6.6" fill="var(--faint)">下一节：entitlementAccess 总表 + hasEntitlement 闸</text>
+  <line x1="330" y1="168" x2="388" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="388,130 379,131 383,138" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>开源核分层</b>：代码全在仓库里（<code>web/src/features/entitlements/*</code>、<code>packages/shared/src/server/ee/*</code> 也开源）。Plan 见 <code>plans.ts:21</code>（<code>type Plan = keyof typeof planLabels</code>，含 cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise），默认 <code>"oss"</code>；<code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> 按前缀判断。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">免费</span><span class="name">oss 开源核（默认 plan）</span></div><div class="ld">自托管下来直接能用的全部核心：摄取、查询、评估、prompt、dashboard、自动化……占了功能的绝大多数。组织没有付费 plan 时，<code>plan ?? "oss"</code> 兜底到这里——<strong>默认落到免费，而非默认付费</strong>。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">付费</span><span class="name">cloud / self-hosted 各档</span></div><div class="ld">云上 hobby→core→pro→enterprise、自托管 pro→enterprise，逐级解锁更多企业功能、放宽更多额度。同一套代码，按 plan 给不同组织开不同的「门」。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">透明</span><span class="name">企业功能也开源</span></div><div class="ld">关键区别于「闭源商业版」：审计日志、数据保留、多租户 SSO 这些企业功能的<strong>代码同样公开</strong>，放在 <code>ee/</code> 与 <code>shared/.../ee/</code>。你能审计、能学习、能给自己改——只是生产启用需要授权。</div></div>
+</div>
+""")
+
+# (L50 sec2 below)
+
+_ZH50.append(r"""
+<h2>一张总表 + 一道闸：entitlementAccess 与 hasEntitlement</h2>
+<p>整套「门票系统」的心脏，是一张 <code>entitlementAccess: Record&lt;Plan, {entitlements, entitlementLimits}&gt;</code> 总表，把<strong>每个 plan</strong> 映射到两样东西：<strong>① entitlements</strong>（二元开关：某功能<strong>有/没有</strong>，如 <code>data-retention</code>、<code>audit-logs</code>、<code>admin-api</code>）；<strong>② entitlementLimits</strong>（数值额度：某资源<strong>能用多少</strong>，如 <code>organization-member-count</code>、<code>data-access-days</code>、<code>monitor-count</code>，值是<strong>数字</strong>表示有上限，或 <code>false</code> 表示无限）。比如 <code>cloud:hobby</code> 限 2 个成员、30 天数据、1 个标注队列；<code>cloud:core</code> 放宽到成员无限、90 天；<code>cloud:pro</code> 再加上 <code>data-retention</code> 功能。</p>
+
+<p>所有功能门口就一道闸：<code>hasEntitlement({ sessionUser, orgId, entitlement })</code>。它的逻辑朴素得让人安心：<strong>① admin 直接放行</strong>；<strong>② 找到所属组织、取其 <code>plan</code>，没有就兜底成 <code>"oss"</code></strong>；<strong>③ 查这个 plan 的 entitlements 名单里<strong>含不含</strong>所求功能</strong>。就这三步。功能代码里不写「if plan==pro」散落各处，而是统一问这道闸——和第 49 课 RBAC「问 scope」如出一辙：<strong>把「谁能用什么」收敛到一张表 + 一个函数</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="entitlement闸：功能代码调hasEntitlement(orgId,entitlement)，先admin放行，再取org.plan(无则oss兜底)，查entitlementAccess[plan].entitlements是否includes该功能，是则放行否则拒绝；entitlementLimits管数值额度number或false无限">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">所有功能共用一道闸：hasEntitlement</text>
+  <rect x="24" y="60" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="99" y="82" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">功能代码</text><text x="99" y="98" text-anchor="middle" font-size="6.2" fill="var(--muted)">想用 data-retention？</text><text x="99" y="109" text-anchor="middle" font-size="6.0" fill="var(--faint)">先问闸</text>
+  <rect x="205" y="48" width="170" height="92" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="290" y="68" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">hasEntitlement</text><text x="290" y="85" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">① admin？→ 直接放行</text><text x="290" y="99" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">② org.plan ?? "oss"</text><text x="290" y="113" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">③ 查 plan 名单 includes?</text><text x="290" y="130" text-anchor="middle" font-size="5.8" fill="var(--faint)">默认兜底到免费，不是付费</text>
+  <rect x="410" y="44" width="285" height="68" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="552" y="62" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">entitlementAccess 总表 Record&lt;Plan,…&gt;</text><text x="552" y="79" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:hobby → {entitlements:[…], limits:{members:2,days:30}}</text><text x="552" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:core → {…, members:false(无限), days:90}</text><text x="552" y="105" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:pro → {+data-retention, queues:false}</text>
+  <rect x="410" y="124" width="285" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="552" y="141" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">entitlementLimits：数值额度</text><text x="552" y="155" text-anchor="middle" font-size="6.0" fill="var(--muted)">number=有上限 · false=无限（hasEntitlementLimit 查）</text>
+  <rect x="205" y="166" width="170" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="290" y="184" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">含 → 放行 / 不含 → 拒绝</text><text x="290" y="198" text-anchor="middle" font-size="6.0" fill="var(--muted)">功能据此显示/启用或隐藏/禁用</text>
+  <line x1="174" y1="88" x2="203" y2="92" stroke="var(--accent)" stroke-width="1.3"/><polygon points="203,92 194,88 194,96" fill="var(--accent)"/>
+  <line x1="375" y1="92" x2="408" y2="86" stroke="var(--accent)" stroke-width="1.3"/><polygon points="408,86 399,84 400,92" fill="var(--accent)"/>
+  <line x1="290" y1="140" x2="290" y2="164" stroke="var(--teal)" stroke-width="1.3"/><polygon points="290,164 286,155 294,155" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>总表 + 闸</b>：<code>entitlements.ts:54</code> <code>entitlementAccess: Record&lt;Plan, {entitlements, entitlementLimits}&gt;</code>（entitlements:6 二元功能、entitlementLimits:38 数值额度 <code>number|false</code>）。<code>hasEntitlement.ts:17</code>：<code>:18</code> admin→true、<code>:25</code> <code>org.plan ?? "oss"</code>、<code>:40</code> <code>entitlementAccess[plan].entitlements.includes(entitlement)</code>。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/entitlements/constants/entitlements.ts · server/hasEntitlement.ts</span><span class="ln">总表 + 闸</span></div>
+  <pre class="code"><span class="cm">// 二元功能开关 + 数值额度（number=有上限 / false=无限）</span>
+<span class="kw">export const</span> entitlements = [<span class="st">"audit-logs"</span>, <span class="st">"data-retention"</span>, <span class="st">"admin-api"</span>,
+  <span class="st">"cloud-multi-tenant-sso"</span>, <span class="st">"scheduled-blob-exports"</span>, …] <span class="kw">as const</span>;
+
+<span class="kw">export const</span> entitlementAccess: Record&lt;Plan, {…}&gt; = {
+  <span class="st">"cloud:hobby"</span>: { entitlements: […], entitlementLimits: {
+                     <span class="st">"organization-member-count"</span>: <span class="st">2</span>, <span class="st">"data-access-days"</span>: <span class="st">30</span> } },
+  <span class="st">"cloud:core"</span>:  { entitlements: […], entitlementLimits: {
+                     <span class="st">"organization-member-count"</span>: <span class="kw">false</span><span class="cm">/*无限*/</span>, <span class="st">"data-access-days"</span>: <span class="st">90</span> } },
+  <span class="st">"cloud:pro"</span>:   { entitlements: [… <span class="st">"data-retention"</span>], … },
+  <span class="cm">// self-hosted:pro/enterprise, cloud:enterprise …</span>
+};
+
+<span class="cm">// 所有功能门口的同一道闸</span>
+<span class="kw">export const</span> <span class="fn">hasEntitlement</span> = (p) =&gt; {
+  <span class="kw">if</span> (p.sessionUser.admin) <span class="kw">return true</span>;                 <span class="cm">// admin 直接放行</span>
+  <span class="kw">const</span> plan = org?.plan ?? <span class="st">"oss"</span>;                     <span class="cm">// 默认兜底到免费版</span>
+  <span class="kw">return</span> entitlementAccess[plan].entitlements.<span class="fn">includes</span>(p.entitlement);
+};</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🔘 entitlement（二元）</h4><p>某功能<strong>有或没有</strong>：<code>audit-logs</code>、<code>data-retention</code>、<code>admin-api</code>、<code>cloud-multi-tenant-sso</code>…由 <code>hasEntitlement</code> 查「plan 名单含不含」，返回 true/false。</p></div>
+  <div class="col"><h4>🔢 entitlementLimit（数值）</h4><p>某资源<strong>能用多少</strong>：<code>organization-member-count</code>、<code>data-access-days</code>、<code>monitor-count</code>…值是 <strong>number</strong>（有上限）或 <code>false</code>（无限），由 <code>hasEntitlementLimit</code> 查。</p></div>
+  <div class="col"><h4>🔑 license（自托管）</h4><p>自托管解锁企业层：<code>LANGFUSE_EE_LICENSE_KEY</code> 以 <code>langfuse_ee_</code> 开头才算企业（<code>langfuse_pro_</code> 不算）；Cloud 任何区域天然有企业功能。</p></div>
+</div>
+""")
+
+# (L50 sec3 below)
+
+_ZH50.append(r"""
+<h2>自托管的解锁钥匙：EE 许可证</h2>
+<p>云上版本由 Langfuse 托管，plan 写在数据库里。但<strong>自己部署</strong>的版本怎么证明「我买了企业版」？靠一把<strong>许可证密钥</strong>。<code>isEnterpriseLicenseAvailable()</code> 的判断很干脆：<strong>① 是 Langfuse Cloud（任何区域）→ 直接有企业功能</strong>；<strong>② 自托管 → 看环境变量 <code>LANGFUSE_EE_LICENSE_KEY</code> 是否以 <code>langfuse_ee_</code> 开头</strong>。注意一个细节：<code>langfuse_pro_</code> 开头的 Pro 许可证<strong>不算</strong>企业级——前缀本身就编码了授权层级。这把钥匙插对了，自托管实例才解锁那些企业 entitlement。</p>
+
+<table class="t">
+  <thead><tr><th>问题</th><th>open-core 的答案</th></tr></thead>
+  <tbody>
+    <tr><td>企业功能的代码闭源吗？</td><td><b>不</b>，全在公开仓库（<code>ee/</code>、<code>shared/.../ee/</code>），能读能学能自改</td></tr>
+    <tr><td>那靠什么区分免费/付费？</td><td>运行时的 <b>plan</b> + <code>hasEntitlement</code> 闸，而非「代码有没有」</td></tr>
+    <tr><td>没有 plan 的组织怎么办？</td><td><code>plan ?? "oss"</code> <b>兜底到免费</b>——默认最安全的（最少权益），不是默认付费</td></tr>
+    <tr><td>自托管怎么解锁企业版？</td><td>设 <code>LANGFUSE_EE_LICENSE_KEY=langfuse_ee_…</code>（Pro 的 <code>langfuse_pro_</code> 不算企业）</td></tr>
+    <tr><td>EE 代码放哪、谁能依赖它？</td><td>独立包 <code>@langfuse/ee</code>；依赖方向 <code>web → @langfuse/ee → @langfuse/shared</code></td></tr>
+  </tbody>
+</table>
+
+<p>把这张表连起来看，open-core 的精巧就清楚了：<strong>「能不能用」与「有没有代码」彻底解耦</strong>。代码 100% 公开（透明、可审计、社区可贡献），而商业边界靠一层<strong>轻薄的运行时门控</strong>（plan + entitlement + license）划出。这让 Langfuse 既是真开源、又能有可持续的商业模式——两者不矛盾。</p>
+""")
+
+_ZH50.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么把「能不能用某功能」做成一道统一的 <code>hasEntitlement</code> 闸 + 一张 <code>entitlementAccess</code> 总表，而不是在每个功能里各自写「if plan == pro」？</strong> 这和第 49 课 RBAC 用「角色→scope」是同一种智慧，原因也一样：<strong>收敛权威、便于演进与审计</strong>。商业 plan 会变——加一档套餐、调一次额度、把某功能从 pro 下放到 core，都是常事。如果「pro 才能用 X」这种判断散落在几十处功能代码里，每次调整都要全仓库搜改，极易漏、易错、还难复盘「到底哪个 plan 能用什么」。把它收进一张声明式总表后：调整商业策略=改这张表的一行，功能代码完全不动；想知道「pro 包含什么」=读表的一行。<strong>把易变的商业规则从稳定的功能逻辑里抽出来、集中声明，是让系统能跟上商业节奏的关键。</strong><br><br>
+  <strong>为什么没有 plan 的组织要默认兜底成 <code>"oss"</code>（免费），而不是报错或默认给最高权限？</strong> 这是一个<strong>「fail-safe（失败安全）」默认值</strong>的选择，方向很重要。如果默认给最高权限，一旦某组织的 plan 字段因 bug、迁移、数据缺失而读不到，它就会<strong>意外解锁所有付费功能</strong>——商业上漏损、安全上越权。如果默认报错，又会让「绝大多数自托管开源用户」（他们本就该是 oss）寸步难行。兜底到 <code>"oss"</code> 恰好两全：开源用户开箱即用（这是最常见、最该顺滑的路径），而付费功能<strong>默认是关的</strong>、必须由明确的 plan 或 license 主动打开。<strong>安全的默认值，应该是「权限最小、影响最轻」的那一个</strong>——entitlement 默认关、登录默认拒、IP 解析失败默认拦（第 44 课），都是同一条原则的不同侧影。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>open-core ≠ 半闭源</strong>：Langfuse 全部功能（含企业级）的代码都在公开仓库，可读可学可自改。免费与付费的区别在<strong>运行时能否启用</strong>，不在「有没有代码」。</li>
+    <li><strong>plan 分层</strong>：组织挂一个 <code>plan</code>，默认 <code>"oss"</code>（免费自托管），付费有 cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise；<code>isCloudPlan</code>/<code>isSelfHostedPlan</code> 按前缀分。</li>
+    <li><strong>总表 + 一道闸</strong>：<code>entitlementAccess: Record&lt;Plan,{entitlements, entitlementLimits}&gt;</code> 把每个 plan 映射到「有哪些二元功能 + 各资源额度(number/false无限)」；<code>hasEntitlement</code>（admin→true、<code>plan ?? "oss"</code>、<code>includes</code>）是所有功能共用的那道闸——收敛权威、便于演进，同第49课 RBAC 一脉。</li>
+    <li><strong>EE 许可证</strong>：<code>isEnterpriseLicenseAvailable</code>——Cloud(任何区域)有企业功能；自托管看 <code>LANGFUSE_EE_LICENSE_KEY</code> 是否 <code>langfuse_ee_</code> 开头（<code>langfuse_pro_</code> 不算企业，前缀编码授权层级）。</li>
+    <li><strong>fail-safe 默认</strong>：无 plan 兜底到 <code>"oss"</code>（最小权益、付费功能默认关），而非默认报错或默认全开——与「登录默认拒、IP 解析失败默认拦」同源的安全默认观。EE 代码在独立包 <code>@langfuse/ee</code>，依赖方向 <code>web→ee→shared</code>。</li>
+  </ul>
+</div>
+""")
+
+_EN50.append(r"""
+<p class="lead">
+Langfuse is <strong>open source</strong> — the source you're reading, from ingestion to query, from evaluation to automation, is <strong>all laid out in a public repo</strong>. Yet it's also a <strong>company</strong> that must sell something to survive. How do these coexist? The answer is the <strong>open-core</strong> business model: the core is free and open, while a few <strong>enterprise features</strong> (audit logs, data-retention policy, multi-tenant SSO, admin API…) require a <strong>paid plan or enterprise license</strong> to enable. The clever part: the code for these "paid features" is <strong>also open, right here in this repo</strong> — you can read and learn it, but to use it in production you need the corresponding <strong>plan</strong>.
+This lesson shows how that "ticket system" is implemented with very little code: one <code>entitlementAccess</code> master table mapping each plan to "which features, with what limits," and one <code>hasEntitlement()</code> function that is the single gate in front of every feature. You'll also see how a self-hosted version unlocks enterprise features with a license key starting with <code>langfuse_ee_</code>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Open-core is like a <strong>"restaurant with a fully-public recipe book"</strong>: it prints <strong>every dish's recipe</strong> on the wall, free for anyone to copy and cook at home (open source — code fully public, self-hostable). So how does it make money? Through a <strong>membership for "signature service"</strong>: regular guests can eat the vast majority of dishes (free core features), but some <strong>premium services</strong> — a "private room," "unlimited refills," "a personal chef at home" (audit logs, unlimited quotas, multi-tenant SSO) — require a <strong>membership card (plan)</strong>.
+  The key is how the restaurant <strong>verifies membership</strong>: not a separate bouncer per service, but <strong>one master table</strong> stating "gold card enjoys these services, silver these, regular guests these," plus <strong>one unified card-check action</strong> — for any premium service, the waiter does the same one thing: <strong>check whether your card is on that service's allow list</strong> (<code>hasEntitlement</code>). Cooking from the recipe at home (self-hosting) and want premium service too? Then buy an <strong>"enterprise license certificate"</strong> (a <code>langfuse_ee_</code> license key).
+</div>
+
+<h2>Open core: all code open, a few features unlocked by plan</h2>
+<p>First clear up a common misconception: open-core is <strong>not "half open-source, half closed"</strong>. In this Langfuse repo <strong>all features' code is open</strong> — including the "enterprise" ones. The difference is only <strong>whether they can be enabled at runtime</strong>: each org carries a <code>plan</code>, free defaults to <code>"oss"</code> (self-hosted open-source), paid has three cloud tiers <code>cloud:hobby / core / pro / enterprise</code> plus two self-hosted <code>self-hosted:pro / enterprise</code>. The helpers <code>isCloudPlan</code> / <code>isSelfHostedPlan</code> distinguish them by prefix. Whether a feature works hinges entirely on whether your plan is on its allow list.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Open-core model: the entire repo code is open (core + enterprise features both readable), but unlocked at runtime by the org's plan — oss free (self-hosted open-source), cloud tiers (hobby/core/pro/enterprise), self-hosted tiers (pro/enterprise); the plan decides which entitlements can be enabled">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Code all public; features unlocked by plan</text>
+  <rect x="30" y="40" width="300" height="180" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="180" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">the entire repo (all open source)</text>
+  <rect x="48" y="74" width="264" height="48" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="180" y="94" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">free core (everyone)</text><text x="180" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">ingest·query·eval·prompt·dashboard…</text>
+  <rect x="48" y="130" width="264" height="78" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="180" y="150" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">enterprise features (code also open!)</text><text x="180" y="166" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">audit logs·data retention·multi-tenant SSO</text><text x="180" y="178" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">admin API·scheduled blob export·UI customization…</text><text x="180" y="194" text-anchor="middle" font-size="6.0" fill="var(--faint)">read & learn, but enabling needs plan/license</text>
+  <rect x="390" y="46" width="305" height="168" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="542" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">the org's plan decides what can be enabled</text>
+  <rect x="406" y="78" width="135" height="30" rx="6" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="473" y="97" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--teal)">oss (default · free)</text>
+  <rect x="552" y="78" width="130" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="617" y="91" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:hobby/core</text><text x="617" y="102" text-anchor="middle" font-size="5.6" fill="var(--muted)">cloud · entry</text>
+  <rect x="406" y="116" width="135" height="32" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="473" y="129" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:pro/enterprise</text><text x="473" y="140" text-anchor="middle" font-size="5.6" fill="var(--muted)">cloud · premium</text>
+  <rect x="552" y="116" width="130" height="32" rx="6" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="617" y="129" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">self-hosted:pro</text><text x="617" y="140" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">/enterprise</text>
+  <text x="542" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">isCloudPlan / isSelfHostedPlan distinguish by prefix</text>
+  <text x="542" y="188" text-anchor="middle" font-size="6.6" fill="var(--faint)">higher plan = longer allow list, larger quotas</text>
+  <text x="542" y="204" text-anchor="middle" font-size="6.6" fill="var(--faint)">next: entitlementAccess master table + hasEntitlement gate</text>
+  <line x1="330" y1="168" x2="388" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="388,130 379,131 383,138" fill="var(--accent)"/>
+</svg>
+<div class="figcap"><b>Open-core layering</b>: the code is all in the repo (<code>web/src/features/entitlements/*</code>, <code>packages/shared/src/server/ee/*</code> are open too). Plans at <code>plans.ts:21</code> (<code>type Plan = keyof typeof planLabels</code>, including cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise), defaulting to <code>"oss"</code>; <code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> judge by prefix.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">free</span><span class="name">oss open core (default plan)</span></div><div class="ld">Everything a self-host install runs out of the box: ingestion, query, eval, prompt, dashboard, automation… the vast majority of features. When an org has no paid plan, <code>plan ?? "oss"</code> falls back here — <strong>defaulting to free, not to paid</strong>.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">paid</span><span class="name">cloud / self-hosted tiers</span></div><div class="ld">Cloud hobby→core→pro→enterprise, self-hosted pro→enterprise, progressively unlocking more enterprise features and loosening more quotas. Same code, different "doors" opened for different orgs by plan.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">transparent</span><span class="name">enterprise features are open too</span></div><div class="ld">The key difference from a "closed-source commercial edition": the <strong>code</strong> for audit logs, data retention, multi-tenant SSO is <strong>equally public</strong>, in <code>ee/</code> and <code>shared/.../ee/</code>. You can audit, learn, and modify it for yourself — only production enablement needs a license.</div></div>
+</div>
+""")
+
+_EN50.append(r"""
+<h2>One master table + one gate: entitlementAccess and hasEntitlement</h2>
+<p>The heart of the whole "ticket system" is one <code>entitlementAccess: Record&lt;Plan, {entitlements, entitlementLimits}&gt;</code> master table, mapping <strong>each plan</strong> to two things: <strong>① entitlements</strong> (binary switches: a feature <strong>on/off</strong>, like <code>data-retention</code>, <code>audit-logs</code>, <code>admin-api</code>); <strong>② entitlementLimits</strong> (numeric quotas: how much of a resource you may use, like <code>organization-member-count</code>, <code>data-access-days</code>, <code>monitor-count</code> — the value is a <strong>number</strong> for a cap, or <code>false</code> for unlimited). For example <code>cloud:hobby</code> caps at 2 members, 30 days of data, 1 annotation queue; <code>cloud:core</code> loosens to unlimited members, 90 days; <code>cloud:pro</code> additionally adds the <code>data-retention</code> feature.</p>
+
+<p>There's just one gate in front of every feature: <code>hasEntitlement({ sessionUser, orgId, entitlement })</code>. Its logic is reassuringly plain: <strong>① admin passes outright</strong>; <strong>② find the owning org, take its <code>plan</code>, falling back to <code>"oss"</code> if none</strong>; <strong>③ check whether this plan's entitlements list <strong>includes</strong> the requested feature</strong>. Just those three steps. Feature code doesn't scatter "if plan==pro" everywhere but asks this one gate — exactly like Lesson 49's RBAC "ask the scope": <strong>converge "who can use what" into one table + one function</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="entitlement gate: feature code calls hasEntitlement(orgId,entitlement), admin passes first, then take org.plan (fall back to oss if none), check whether entitlementAccess[plan].entitlements includes the feature, allow if yes else deny; entitlementLimits manage numeric quotas number or false unlimited">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">All features share one gate: hasEntitlement</text>
+  <rect x="24" y="60" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="99" y="82" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">feature code</text><text x="99" y="98" text-anchor="middle" font-size="6.2" fill="var(--muted)">want data-retention?</text><text x="99" y="109" text-anchor="middle" font-size="6.0" fill="var(--faint)">ask the gate first</text>
+  <rect x="205" y="48" width="170" height="92" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="290" y="68" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">hasEntitlement</text><text x="290" y="85" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">① admin? → pass outright</text><text x="290" y="99" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">② org.plan ?? "oss"</text><text x="290" y="113" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">③ plan list includes?</text><text x="290" y="130" text-anchor="middle" font-size="5.8" fill="var(--faint)">defaults to free, not paid</text>
+  <rect x="410" y="44" width="285" height="68" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="552" y="62" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">entitlementAccess master Record&lt;Plan,…&gt;</text><text x="552" y="79" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:hobby → {entitlements:[…], limits:{members:2,days:30}}</text><text x="552" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:core → {…, members:false(unlimited), days:90}</text><text x="552" y="105" text-anchor="middle" font-size="6.2" fill="var(--muted)">cloud:pro → {+data-retention, queues:false}</text>
+  <rect x="410" y="124" width="285" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="552" y="141" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">entitlementLimits: numeric quotas</text><text x="552" y="155" text-anchor="middle" font-size="6.0" fill="var(--muted)">number=capped · false=unlimited (hasEntitlementLimit checks)</text>
+  <rect x="205" y="166" width="170" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="290" y="184" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">includes → allow / not → deny</text><text x="290" y="198" text-anchor="middle" font-size="6.0" fill="var(--muted)">feature shows/enables or hides/disables</text>
+  <line x1="174" y1="88" x2="203" y2="92" stroke="var(--accent)" stroke-width="1.3"/><polygon points="203,92 194,88 194,96" fill="var(--accent)"/>
+  <line x1="375" y1="92" x2="408" y2="86" stroke="var(--accent)" stroke-width="1.3"/><polygon points="408,86 399,84 400,92" fill="var(--accent)"/>
+  <line x1="290" y1="140" x2="290" y2="164" stroke="var(--teal)" stroke-width="1.3"/><polygon points="290,164 286,155 294,155" fill="var(--teal)"/>
+</svg>
+<div class="figcap"><b>Master table + gate</b>: <code>entitlements.ts:54</code> <code>entitlementAccess: Record&lt;Plan, {entitlements, entitlementLimits}&gt;</code> (entitlements:6 binary features, entitlementLimits:38 numeric quotas <code>number|false</code>). <code>hasEntitlement.ts:17</code>: <code>:18</code> admin→true, <code>:25</code> <code>org.plan ?? "oss"</code>, <code>:40</code> <code>entitlementAccess[plan].entitlements.includes(entitlement)</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/entitlements/constants/entitlements.ts · server/hasEntitlement.ts</span><span class="ln">master table + gate</span></div>
+  <pre class="code"><span class="cm">// binary feature switches + numeric quotas (number=capped / false=unlimited)</span>
+<span class="kw">export const</span> entitlements = [<span class="st">"audit-logs"</span>, <span class="st">"data-retention"</span>, <span class="st">"admin-api"</span>,
+  <span class="st">"cloud-multi-tenant-sso"</span>, <span class="st">"scheduled-blob-exports"</span>, …] <span class="kw">as const</span>;
+
+<span class="kw">export const</span> entitlementAccess: Record&lt;Plan, {…}&gt; = {
+  <span class="st">"cloud:hobby"</span>: { entitlements: […], entitlementLimits: {
+                     <span class="st">"organization-member-count"</span>: <span class="st">2</span>, <span class="st">"data-access-days"</span>: <span class="st">30</span> } },
+  <span class="st">"cloud:core"</span>:  { entitlements: […], entitlementLimits: {
+                     <span class="st">"organization-member-count"</span>: <span class="kw">false</span><span class="cm">/*unlimited*/</span>, <span class="st">"data-access-days"</span>: <span class="st">90</span> } },
+  <span class="st">"cloud:pro"</span>:   { entitlements: [… <span class="st">"data-retention"</span>], … },
+  <span class="cm">// self-hosted:pro/enterprise, cloud:enterprise …</span>
+};
+
+<span class="cm">// the same one gate in front of every feature</span>
+<span class="kw">export const</span> <span class="fn">hasEntitlement</span> = (p) =&gt; {
+  <span class="kw">if</span> (p.sessionUser.admin) <span class="kw">return true</span>;                 <span class="cm">// admin passes outright</span>
+  <span class="kw">const</span> plan = org?.plan ?? <span class="st">"oss"</span>;                     <span class="cm">// default fall back to free</span>
+  <span class="kw">return</span> entitlementAccess[plan].entitlements.<span class="fn">includes</span>(p.entitlement);
+};</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🔘 entitlement (binary)</h4><p>A feature <strong>on or off</strong>: <code>audit-logs</code>, <code>data-retention</code>, <code>admin-api</code>, <code>cloud-multi-tenant-sso</code>… <code>hasEntitlement</code> checks "is it in the plan's list", returning true/false.</p></div>
+  <div class="col"><h4>🔢 entitlementLimit (numeric)</h4><p>How much of a resource: <code>organization-member-count</code>, <code>data-access-days</code>, <code>monitor-count</code>… the value is a <strong>number</strong> (capped) or <code>false</code> (unlimited), checked by <code>hasEntitlementLimit</code>.</p></div>
+  <div class="col"><h4>🔑 license (self-host)</h4><p>Self-hosting unlocks the enterprise tier: <code>LANGFUSE_EE_LICENSE_KEY</code> must start with <code>langfuse_ee_</code> to count as enterprise (<code>langfuse_pro_</code> doesn't); Cloud in any region has enterprise features natively.</p></div>
+</div>
+""")
+
+_EN50.append(r"""
+<h2>The self-hosted unlock key: the EE license</h2>
+<p>The cloud version is hosted by Langfuse, with the plan written in the database. But how does a <strong>self-deployed</strong> version prove "I bought enterprise"? Via a <strong>license key</strong>. <code>isEnterpriseLicenseAvailable()</code>'s decision is crisp: <strong>① is it Langfuse Cloud (any region) → enterprise features directly</strong>; <strong>② self-hosted → check whether the env var <code>LANGFUSE_EE_LICENSE_KEY</code> starts with <code>langfuse_ee_</code></strong>. Note one detail: a Pro license starting with <code>langfuse_pro_</code> does <strong>not</strong> count as enterprise — the prefix itself encodes the authorization tier. With this key plugged in correctly, a self-hosted instance unlocks those enterprise entitlements.</p>
+
+<table class="t">
+  <thead><tr><th>Question</th><th>Open-core's answer</th></tr></thead>
+  <tbody>
+    <tr><td>Is enterprise-feature code closed?</td><td><b>No</b>, all in the public repo (<code>ee/</code>, <code>shared/.../ee/</code>), readable, learnable, self-modifiable</td></tr>
+    <tr><td>Then what distinguishes free/paid?</td><td>the runtime <b>plan</b> + <code>hasEntitlement</code> gate, not "whether the code exists"</td></tr>
+    <tr><td>What about orgs with no plan?</td><td><code>plan ?? "oss"</code> <b>falls back to free</b> — defaults to the safest (least entitlement), not to paid</td></tr>
+    <tr><td>How does self-hosting unlock enterprise?</td><td>set <code>LANGFUSE_EE_LICENSE_KEY=langfuse_ee_…</code> (Pro's <code>langfuse_pro_</code> isn't enterprise)</td></tr>
+    <tr><td>Where's EE code, who can depend on it?</td><td>a separate package <code>@langfuse/ee</code>; dependency direction <code>web → @langfuse/ee → @langfuse/shared</code></td></tr>
+  </tbody>
+</table>
+
+<p>Connect the rows and open-core's elegance is clear: <strong>"can use" and "has code" are fully decoupled</strong>. The code is 100% public (transparent, auditable, community-contributable), while the commercial boundary is drawn by a <strong>thin runtime gate</strong> (plan + entitlement + license). This lets Langfuse be truly open source AND have a sustainable business model — the two aren't in conflict.</p>
+""")
+
+_EN50.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why make "can you use a feature" a unified <code>hasEntitlement</code> gate + one <code>entitlementAccess</code> master table, rather than "if plan == pro" in each feature?</strong> Same wisdom as Lesson 49's RBAC "role→scope," for the same reason: <strong>converge authority, ease evolution and auditing</strong>. Commercial plans change — adding a tier, adjusting a quota, demoting a feature from pro to core are all routine. If "pro can use X" judgments are scattered across dozens of feature sites, every change means a repo-wide search-and-edit, easy to miss, error-prone, and hard to review "which plan can use what." Folding it into one declarative master table: change commercial strategy = edit one row of this table, feature code untouched; want to know "what does pro include" = read one row. <strong>Extracting volatile commercial rules from stable feature logic and declaring them centrally is the key to keeping the system in step with the business.</strong><br><br>
+  <strong>Why does an org with no plan default to <code>"oss"</code> (free), rather than erroring or defaulting to the highest privileges?</strong> This is a <strong>"fail-safe" default</strong> choice, and the direction matters. Default to the highest privileges and the moment an org's plan field can't be read (a bug, a migration, missing data), it <strong>accidentally unlocks all paid features</strong> — a commercial leak and a privilege overreach. Default to erroring and you stall "the vast majority of self-hosted open-source users" (who should be oss anyway). Falling back to <code>"oss"</code> gets both right: open-source users work out of the box (the most common, smoothest path), while paid features are <strong>off by default</strong>, opened only by an explicit plan or license. <strong>A safe default should be the one with "least privilege, lightest impact"</strong> — entitlement defaults off, login defaults deny, IP-resolution failure defaults block (Lesson 44) — all facets of the same principle.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Open-core ≠ half-closed</strong>: all Langfuse features' code (incl. enterprise) is in the public repo, readable, learnable, self-modifiable. Free vs paid lies in <strong>runtime enablement</strong>, not "whether the code exists."</li>
+    <li><strong>Plan tiering</strong>: an org carries a <code>plan</code>, defaulting to <code>"oss"</code> (free self-host), paid has cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise; <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> split by prefix.</li>
+    <li><strong>Master table + one gate</strong>: <code>entitlementAccess: Record&lt;Plan,{entitlements, entitlementLimits}&gt;</code> maps each plan to "which binary features + each resource's quota (number/false unlimited)"; <code>hasEntitlement</code> (admin→true, <code>plan ?? "oss"</code>, <code>includes</code>) is the shared gate in front of every feature — converging authority, easing evolution, of one lineage with Lesson 49's RBAC.</li>
+    <li><strong>EE license</strong>: <code>isEnterpriseLicenseAvailable</code> — Cloud (any region) has enterprise features; self-hosting checks whether <code>LANGFUSE_EE_LICENSE_KEY</code> starts with <code>langfuse_ee_</code> (<code>langfuse_pro_</code> isn't enterprise; the prefix encodes the tier).</li>
+    <li><strong>Fail-safe default</strong>: no plan falls back to <code>"oss"</code> (least entitlement, paid features off by default), not defaulting to error or all-on — the same safe-default view as "login defaults deny, IP-resolution failure defaults block." EE code lives in a separate package <code>@langfuse/ee</code>, dependency direction <code>web→ee→shared</code>.</li>
+  </ul>
+</div>
+""")
+
+LESSON_50 = {"zh": "\n".join(_ZH50), "en": "\n".join(_EN50)}
