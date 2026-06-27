@@ -391,6 +391,35 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>变量映射：把 trace 的哪一部分递给裁判</h2>
 <p>模板里写的是 <code>{{question}}</code> <code>{{answer}}</code> 这样的占位符——它们怎么变成真实内容？靠<strong>变量映射</strong>：每个模板变量声明它来自哪个 <code>langfuseObject</code>（trace / observation / dataset_item）的哪一列（<code>selectedColumnId</code>，如 input/output/metadata）。执行时，<code>extractVariablesFromTracingData</code> 按映射去真实的 trace 里把值一个个取出来。</p>
 
+<svg viewBox="0 0 720 240" role="img" aria-label="变量映射四步：模板里的占位符 question/answer/context，经变量映射声明各自来自 trace.input、trace.output、retriever observation 的 output 列，执行时按映射从真实 trace 提取值，再 compileEvalPrompt 填进占位符喂给裁判 LLM；提取阶段保留原始数据形状，仅在喂 LLM 的边界才拍平成字符串">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">{{占位符}} 怎么变成真实内容：映射 → 提取 → 编译</text>
+  <rect x="16" y="50" width="158" height="88" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 模板</text>
+  <text x="28" y="92" font-size="9.5" fill="var(--ink)">{{question}}</text>
+  <text x="28" y="110" font-size="9.5" fill="var(--ink)">{{answer}}</text>
+  <text x="28" y="128" font-size="9.5" fill="var(--ink)">{{context}}</text>
+  <rect x="196" y="50" width="186" height="88" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="289" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 变量映射</text>
+  <text x="208" y="92" font-size="9" fill="var(--ink)">question ← trace.input</text>
+  <text x="208" y="110" font-size="9" fill="var(--ink)">answer ← trace.output</text>
+  <text x="208" y="128" font-size="9" fill="var(--ink)">context ← obs[retriever]</text>
+  <rect x="404" y="50" width="150" height="88" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="479" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 提取真实值</text>
+  <text x="416" y="94" font-size="9" fill="var(--muted)">extractVariables…</text>
+  <text x="416" y="112" font-size="9" fill="var(--muted)">去 trace 那一列取值</text>
+  <text x="416" y="130" font-size="9" fill="var(--muted)">{var, value}</text>
+  <rect x="576" y="50" width="128" height="88" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 编译填入</text>
+  <text x="588" y="94" font-size="9" fill="var(--muted)">compileEvalPrompt</text>
+  <text x="588" y="112" font-size="9" fill="var(--ink)">→ 喂给裁判 LLM</text>
+  <line x1="174" y1="94" x2="196" y2="94" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="382" y1="94" x2="404" y2="94" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="94" x2="576" y2="94" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="176" font-size="10" text-anchor="middle" fill="var(--muted)">提取阶段保留原始数据形状（供代码 eval, L31）</text>
+  <text x="360" y="198" font-size="10" text-anchor="middle" fill="var(--accent-ink)">仅在 compileEvalPrompt 喂 LLM 的边界，才 parseUnknownToString 拍平成字符串</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>模板变量（你写的占位符）</h4><p><code>{{question}}</code> → 用户的问题<br><code>{{answer}}</code> → 模型的回答<br><code>{{context}}</code> → 检索到的资料<br>模板只认名字，不关心数据从哪来。</p></div>
   <div class="col"><h4>映射（你配的对应关系）</h4><p><code>question</code> ← trace.input<br><code>answer</code> ← trace.output<br><code>context</code> ← observation[retriever].output<br>每条映射 = {templateVariable, langfuseObject, selectedColumnId}。</p></div>
@@ -576,6 +605,35 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
 
 <h2>Variable mapping: which part of the trace to hand the judge</h2>
 <p>The template holds placeholders like <code>{{question}}</code> <code>{{answer}}</code>—how do they become real content? Via the <strong>variable mapping</strong>: each template variable declares which <code>langfuseObject</code> (trace / observation / dataset_item) and which column (<code>selectedColumnId</code>, e.g. input/output/metadata) it comes from. At execution, <code>extractVariablesFromTracingData</code> pulls each value from the real trace per the mapping.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="variable mapping in four steps: template placeholders question/answer/context, the variable mapping declares each comes from trace.input, trace.output, and the retriever observation's output column, at execution the real values are extracted from the trace, then compileEvalPrompt fills them into the placeholders for the judge LLM; extraction preserves the raw data shape and only flattens to a string at the LLM boundary">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">how {{placeholders}} become real content: mapping → extract → compile</text>
+  <rect x="16" y="50" width="158" height="88" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 template</text>
+  <text x="28" y="92" font-size="9.5" fill="var(--ink)">{{question}}</text>
+  <text x="28" y="110" font-size="9.5" fill="var(--ink)">{{answer}}</text>
+  <text x="28" y="128" font-size="9.5" fill="var(--ink)">{{context}}</text>
+  <rect x="196" y="50" width="186" height="88" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="289" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 variable mapping</text>
+  <text x="208" y="92" font-size="9" fill="var(--ink)">question ← trace.input</text>
+  <text x="208" y="110" font-size="9" fill="var(--ink)">answer ← trace.output</text>
+  <text x="208" y="128" font-size="9" fill="var(--ink)">context ← obs[retriever]</text>
+  <rect x="404" y="50" width="150" height="88" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="479" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 extract values</text>
+  <text x="416" y="94" font-size="9" fill="var(--muted)">extractVariables…</text>
+  <text x="416" y="112" font-size="9" fill="var(--muted)">read that trace column</text>
+  <text x="416" y="130" font-size="9" fill="var(--muted)">{var, value}</text>
+  <rect x="576" y="50" width="128" height="88" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 compile</text>
+  <text x="588" y="94" font-size="9" fill="var(--muted)">compileEvalPrompt</text>
+  <text x="588" y="112" font-size="9" fill="var(--ink)">→ to judge LLM</text>
+  <line x1="174" y1="94" x2="196" y2="94" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="382" y1="94" x2="404" y2="94" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="94" x2="576" y2="94" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="176" font-size="10" text-anchor="middle" fill="var(--muted)">extraction preserves the raw data shape (for code eval, L31)</text>
+  <text x="360" y="198" font-size="10" text-anchor="middle" fill="var(--accent-ink)">only at compileEvalPrompt (the LLM boundary) is it parseUnknownToString-flattened to text</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>Template variables (your placeholders)</h4><p><code>{{question}}</code> → the user's question<br><code>{{answer}}</code> → the model's answer<br><code>{{context}}</code> → retrieved material<br>The template only knows names, not where data comes from.</p></div>

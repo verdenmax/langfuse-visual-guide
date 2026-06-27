@@ -110,6 +110,29 @@ _ZH28.append(r"""
   <div class="col"><h4>挂在哪（四选一）</h4><p><code>traceId</code> 整条 trace；<code>observationId</code> trace 里某一步；<code>sessionId</code> 整个会话；<code>datasetRunId</code> 某次数据集运行——<strong>必须恰有一个非空</strong>。</p></div>
 </div>
 <p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="一条 score 有四个引用字段 traceId、observationId、sessionId、datasetRunId，必须恰好一个非空：本例 traceId 指向整条 trace，其余三者为空但同样可挂到某一步 observation、整个 session 或一次数据集运行，同一 score 模型覆盖从单步到整批实验的所有评估粒度">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="20" y="52" width="210" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="125" y="74" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一条 score</text>
+  <text x="34" y="98" font-size="10.5" font-weight="700" fill="var(--accent-ink)">traceId = t-42  ✓</text>
+  <text x="34" y="122" font-size="10" fill="var(--muted)">observationId = null</text>
+  <text x="34" y="146" font-size="10" fill="var(--muted)">sessionId = null</text>
+  <text x="34" y="170" font-size="10" fill="var(--muted)">datasetRunId = null</text>
+  <text x="34" y="192" font-size="9.5" fill="var(--ink)">约束：恰好一个非空</text>
+  <rect x="430" y="46" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
+  <text x="444" y="70" font-size="10.5" fill="var(--ink)">trace · 整条回答好不好</text>
+  <rect x="430" y="92" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="116" font-size="10.5" fill="var(--muted)">observation · 某一步准不准</text>
+  <rect x="430" y="138" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="162" font-size="10.5" fill="var(--muted)">session · 整个会话</text>
+  <rect x="430" y="184" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="208" font-size="10.5" fill="var(--muted)">数据集运行 · 一次实验（L34/35）</text>
+  <line x1="230" y1="98" x2="430" y2="65" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="230" y1="122" x2="430" y2="111" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="230" y1="146" x2="430" y2="157" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="230" y1="170" x2="430" y2="203" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+</svg>
 """)
 
 # (spark + key below)
@@ -232,6 +255,29 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <div class="col"><h4>attached to (one of)</h4><p><code>traceId</code> the whole trace; <code>observationId</code> one step within; <code>sessionId</code> the whole session; <code>datasetRunId</code> one dataset run—<strong>exactly one must be non-null</strong>.</p></div>
 </div>
 <p>This "one-of-four attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation</strong> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). One score model covers every evaluation granularity, from a single step to a whole batch experiment. Source: <code>packages/shared/src/domain/scores.ts:89-133</code>.</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="a score has four reference fields traceId, observationId, sessionId, datasetRunId and exactly one must be non-null: here traceId points at the whole trace while the other three are null but could equally attach to one observation, a whole session, or a dataset run, so one score model covers every granularity from a single step to a whole batch experiment">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="20" y="52" width="210" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="125" y="74" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one score</text>
+  <text x="34" y="98" font-size="10.5" font-weight="700" fill="var(--accent-ink)">traceId = t-42  ✓</text>
+  <text x="34" y="122" font-size="10" fill="var(--muted)">observationId = null</text>
+  <text x="34" y="146" font-size="10" fill="var(--muted)">sessionId = null</text>
+  <text x="34" y="170" font-size="10" fill="var(--muted)">datasetRunId = null</text>
+  <text x="34" y="192" font-size="9.5" fill="var(--ink)">rule: exactly one non-null</text>
+  <rect x="430" y="46" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
+  <text x="444" y="70" font-size="10.5" fill="var(--ink)">trace · whole answer good?</text>
+  <rect x="430" y="92" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="116" font-size="10.5" fill="var(--muted)">observation · this step accurate?</text>
+  <rect x="430" y="138" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="162" font-size="10.5" fill="var(--muted)">session · whole conversation</text>
+  <rect x="430" y="184" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="208" font-size="10.5" fill="var(--muted)">dataset run · one experiment (L34/35)</text>
+  <line x1="230" y1="98" x2="430" y2="65" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="230" y1="122" x2="430" y2="111" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="230" y1="146" x2="430" y2="157" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="230" y1="170" x2="430" y2="203" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+</svg>
 """)
 
 _EN28.append(r"""
@@ -315,6 +361,35 @@ _ZH29.append(r"""
 _ZH29.append(r"""
 <h2>变量映射：把 trace 的哪一部分递给裁判</h2>
 <p>模板里写的是 <code>{{question}}</code> <code>{{answer}}</code> 这样的占位符——它们怎么变成真实内容？靠<strong>变量映射</strong>：每个模板变量声明它来自哪个 <code>langfuseObject</code>（trace / observation / dataset_item）的哪一列（<code>selectedColumnId</code>，如 input/output/metadata）。执行时，<code>extractVariablesFromTracingData</code> 按映射去真实的 trace 里把值一个个取出来。</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="变量映射四步：模板里的占位符 question/answer/context，经变量映射声明各自来自 trace.input、trace.output、retriever observation 的 output 列，执行时按映射从真实 trace 提取值，再 compileEvalPrompt 填进占位符喂给裁判 LLM；提取阶段保留原始数据形状，仅在喂 LLM 的边界才拍平成字符串">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">{{占位符}} 怎么变成真实内容：映射 → 提取 → 编译</text>
+  <rect x="16" y="50" width="158" height="88" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 模板</text>
+  <text x="28" y="92" font-size="9.5" fill="var(--ink)">{{question}}</text>
+  <text x="28" y="110" font-size="9.5" fill="var(--ink)">{{answer}}</text>
+  <text x="28" y="128" font-size="9.5" fill="var(--ink)">{{context}}</text>
+  <rect x="196" y="50" width="186" height="88" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="289" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 变量映射</text>
+  <text x="208" y="92" font-size="9" fill="var(--ink)">question ← trace.input</text>
+  <text x="208" y="110" font-size="9" fill="var(--ink)">answer ← trace.output</text>
+  <text x="208" y="128" font-size="9" fill="var(--ink)">context ← obs[retriever]</text>
+  <rect x="404" y="50" width="150" height="88" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="479" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 提取真实值</text>
+  <text x="416" y="94" font-size="9" fill="var(--muted)">extractVariables…</text>
+  <text x="416" y="112" font-size="9" fill="var(--muted)">去 trace 那一列取值</text>
+  <text x="416" y="130" font-size="9" fill="var(--muted)">{var, value}</text>
+  <rect x="576" y="50" width="128" height="88" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 编译填入</text>
+  <text x="588" y="94" font-size="9" fill="var(--muted)">compileEvalPrompt</text>
+  <text x="588" y="112" font-size="9" fill="var(--ink)">→ 喂给裁判 LLM</text>
+  <line x1="174" y1="94" x2="196" y2="94" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="382" y1="94" x2="404" y2="94" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="94" x2="576" y2="94" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="176" font-size="10" text-anchor="middle" fill="var(--muted)">提取阶段保留原始数据形状（供代码 eval, L31）</text>
+  <text x="360" y="198" font-size="10" text-anchor="middle" fill="var(--accent-ink)">仅在 compileEvalPrompt 喂 LLM 的边界，才 parseUnknownToString 拍平成字符串</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>模板变量（你写的占位符）</h4><p><code>{{question}}</code> → 用户的问题<br><code>{{answer}}</code> → 模型的回答<br><code>{{context}}</code> → 检索到的资料<br>模板只认名字，不关心数据从哪来。</p></div>
@@ -463,6 +538,35 @@ _EN29.append(r"""
 _EN29.append(r"""
 <h2>Variable mapping: which part of the trace to hand the judge</h2>
 <p>The template holds placeholders like <code>{{question}}</code> <code>{{answer}}</code>—how do they become real content? Via the <strong>variable mapping</strong>: each template variable declares which <code>langfuseObject</code> (trace / observation / dataset_item) and which column (<code>selectedColumnId</code>, e.g. input/output/metadata) it comes from. At execution, <code>extractVariablesFromTracingData</code> pulls each value from the real trace per the mapping.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="variable mapping in four steps: template placeholders question/answer/context, the variable mapping declares each comes from trace.input, trace.output, and the retriever observation's output column, at execution the real values are extracted from the trace, then compileEvalPrompt fills them into the placeholders for the judge LLM; extraction preserves the raw data shape and only flattens to a string at the LLM boundary">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">how {{placeholders}} become real content: mapping → extract → compile</text>
+  <rect x="16" y="50" width="158" height="88" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 template</text>
+  <text x="28" y="92" font-size="9.5" fill="var(--ink)">{{question}}</text>
+  <text x="28" y="110" font-size="9.5" fill="var(--ink)">{{answer}}</text>
+  <text x="28" y="128" font-size="9.5" fill="var(--ink)">{{context}}</text>
+  <rect x="196" y="50" width="186" height="88" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="289" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 variable mapping</text>
+  <text x="208" y="92" font-size="9" fill="var(--ink)">question ← trace.input</text>
+  <text x="208" y="110" font-size="9" fill="var(--ink)">answer ← trace.output</text>
+  <text x="208" y="128" font-size="9" fill="var(--ink)">context ← obs[retriever]</text>
+  <rect x="404" y="50" width="150" height="88" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="479" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 extract values</text>
+  <text x="416" y="94" font-size="9" fill="var(--muted)">extractVariables…</text>
+  <text x="416" y="112" font-size="9" fill="var(--muted)">read that trace column</text>
+  <text x="416" y="130" font-size="9" fill="var(--muted)">{var, value}</text>
+  <rect x="576" y="50" width="128" height="88" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 compile</text>
+  <text x="588" y="94" font-size="9" fill="var(--muted)">compileEvalPrompt</text>
+  <text x="588" y="112" font-size="9" fill="var(--ink)">→ to judge LLM</text>
+  <line x1="174" y1="94" x2="196" y2="94" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="382" y1="94" x2="404" y2="94" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="94" x2="576" y2="94" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="176" font-size="10" text-anchor="middle" fill="var(--muted)">extraction preserves the raw data shape (for code eval, L31)</text>
+  <text x="360" y="198" font-size="10" text-anchor="middle" fill="var(--accent-ink)">only at compileEvalPrompt (the LLM boundary) is it parseUnknownToString-flattened to text</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>Template variables (your placeholders)</h4><p><code>{{question}}</code> → the user's question<br><code>{{answer}}</code> → the model's answer<br><code>{{context}}</code> → retrieved material<br>The template only knows names, not where data comes from.</p></div>
@@ -624,6 +728,38 @@ _ZH30.append(r"""
 <h2>三道闸：去重、采样、延迟</h2>
 <p>匹配上了，也不一定立刻开工单。<code>createEvalJobs</code> 在创建前串了三道闸——每一道都解决一个真实的生产问题：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="createEvalJobs 建单前串三道闸：匹配上的评估器与 trace 先过去重闸（已有工单则跳过）、再过采样闸（random 大于 sampling 则跳过）、最后过延迟闸（带 config.delay 毫秒入队等数据到齐），通过后落一行 PENDING 的 JobExecution；另有反向闸把后来不再匹配 filter 的未完成工单标为 CANCELLED">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">createEvalJobs：建单前串三道闸</text>
+  <rect x="12" y="62" width="120" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="72" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">(评估器, trace)</text>
+  <text x="72" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">匹配上</text>
+  <rect x="146" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="208" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 去重</text>
+  <text x="208" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">已有工单？</text>
+  <text x="208" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">是 → 跳过</text>
+  <rect x="288" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 采样</text>
+  <text x="350" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">random &gt; sampling</text>
+  <text x="350" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">中 → 跳过</text>
+  <rect x="430" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="492" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 延迟</text>
+  <text x="492" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">带 delay 入队</text>
+  <text x="492" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">等数据到齐</text>
+  <rect x="572" y="62" width="134" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">JobExecution</text>
+  <text x="639" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">PENDING</text>
+  <line x1="132" y1="88" x2="146" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="270" y1="88" x2="288" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="412" y1="88" x2="430" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="88" x2="572" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="208" y="150" width="304" height="28" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"></rect>
+  <text x="360" y="168" font-size="9.5" text-anchor="middle" fill="var(--muted)">跳过（不建单）</text>
+  <line x1="208" y1="122" x2="280" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="350" y1="122" x2="350" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--accent-ink)">反向闸：trace 后来不再匹配 filter → 未完成工单标 CANCELLED（排除 COMPLETED）</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>闸门</th><th>它问什么</th><th>不通过会怎样</th><th>解决的问题</th></tr></thead>
   <tbody>
@@ -784,6 +920,38 @@ _EN30.append(r"""
 _EN30.append(r"""
 <h2>Three gates: dedup, sampling, delay</h2>
 <p>A match doesn't mean a ticket opens immediately. Before creating, <code>createEvalJobs</code> chains three gates—each solving a real production problem:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="before creating, createEvalJobs chains three gates: a matched evaluator-and-trace first passes the dedup gate (skip if a job already exists), then the sampling gate (skip if random is greater than sampling), then the delay gate (enqueue with config.delay ms to let data settle); passing all three writes a PENDING JobExecution row, and a reverse gate marks unfinished jobs CANCELLED when a trace no longer matches the filter">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">createEvalJobs: three gates before opening a ticket</text>
+  <rect x="12" y="62" width="120" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="72" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">(evaluator, trace)</text>
+  <text x="72" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">matched</text>
+  <rect x="146" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="208" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 dedup</text>
+  <text x="208" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">job exists?</text>
+  <text x="208" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">yes → skip</text>
+  <rect x="288" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 sampling</text>
+  <text x="350" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">random &gt; sampling</text>
+  <text x="350" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">out → skip</text>
+  <rect x="430" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="492" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 delay</text>
+  <text x="492" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">enqueue +delay</text>
+  <text x="492" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">let data settle</text>
+  <rect x="572" y="62" width="134" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">JobExecution</text>
+  <text x="639" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">PENDING</text>
+  <line x1="132" y1="88" x2="146" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="270" y1="88" x2="288" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="412" y1="88" x2="430" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="88" x2="572" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="208" y="150" width="304" height="28" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"></rect>
+  <text x="360" y="168" font-size="9.5" text-anchor="middle" fill="var(--muted)">skip (no ticket)</text>
+  <line x1="208" y1="122" x2="280" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="350" y1="122" x2="350" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--accent-ink)">reverse gate: a trace that no longer matches the filter → unfinished job marked CANCELLED (excludes COMPLETED)</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>gate</th><th>what it asks</th><th>if it fails</th><th>problem solved</th></tr></thead>
@@ -981,6 +1149,40 @@ _ZH31.append(r"""
 <h2>沙箱的铁律：禁网络、限大小、限时</h2>
 <p>既然要跑用户代码，平台就得用一圈<strong>硬约束</strong>把它框死。这些约束不是 UI 提示，而是<strong>执行层强制</strong>的——超了就直接报特定错误码。最值得玩味的是「禁网络」：它<strong>一箭双雕</strong>，既挡住安全风险，又保住确定性。</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="跑用户评估器代码的沙箱被六道执行层硬约束框死：禁网络（防 SSRF 与数据外泄并保确定性）、限时（超时报 TIMEOUT）、源码不超过 256KB（SOURCE_TOO_LARGE）、输入不超过 5.5MB（PAYLOAD_TOO_LARGE）、结果不超过 256KB（RESULT_TOO_LARGE）、结果必须是含至少一条的 scores 数组（INVALID_RESULT）">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">执行层强制的硬约束：超了就直接报特定错误码</text>
+  <rect x="260" y="66" width="200" height="104" rx="12" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="360" y="92" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">沙箱（执行层强制）</text>
+  <text x="360" y="114" font-size="9.5" text-anchor="middle" fill="var(--ink)">evaluate(payload)</text>
+  <text x="360" y="134" font-size="9.5" text-anchor="middle" fill="var(--muted)">node vm / Lambda</text>
+  <text x="360" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">无 fetch / require</text>
+  <rect x="16" y="62" width="216" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="28" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">禁网络（一箭双雕）</text>
+  <text x="28" y="100" font-size="9" fill="var(--muted)">防 SSRF/外泄 + 保确定性</text>
+  <rect x="16" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">限时</text>
+  <text x="28" y="152" font-size="9" fill="var(--muted)">超时 → TIMEOUT</text>
+  <rect x="16" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">源码 ≤ 256KB</text>
+  <text x="28" y="204" font-size="9" fill="var(--muted)">→ SOURCE_TOO_LARGE</text>
+  <rect x="488" y="62" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">输入 ≤ 5.5MB</text>
+  <text x="500" y="100" font-size="9" fill="var(--muted)">→ PAYLOAD_TOO_LARGE</text>
+  <rect x="488" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">结果 ≤ 256KB</text>
+  <text x="500" y="152" font-size="9" fill="var(--muted)">→ RESULT_TOO_LARGE</text>
+  <rect x="488" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">结果须 {scores:[≥1]}</text>
+  <text x="500" y="204" font-size="9" fill="var(--muted)">→ INVALID_RESULT</text>
+  <line x1="232" y1="85" x2="260" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="232" y1="137" x2="260" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="232" y1="189" x2="260" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="85" x2="460" y2="100" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="137" x2="460" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="189" x2="460" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>铁律</th><th>具体限制</th><th>为什么</th></tr></thead>
   <tbody>
@@ -1123,6 +1325,40 @@ _EN31.append(r"""
 <h2>The sandbox's iron rules: no network, size caps, time limit</h2>
 <p>Since it runs user code, the platform must box it in with <strong>hard constraints</strong>. These aren't UI hints—they're <strong>enforced at the execution layer</strong>: exceed one and you get a specific error code. The most intriguing is "no network": it <strong>kills two birds</strong>, blocking security risk and preserving determinism.</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="the sandbox running user evaluator code is boxed in by six execution-layer hard constraints: no network (blocks SSRF and exfiltration and preserves determinism), time limit (TIMEOUT), source no larger than 256KB (SOURCE_TOO_LARGE), input no larger than 5.5MB (PAYLOAD_TOO_LARGE), result no larger than 256KB (RESULT_TOO_LARGE), and the result must be a scores array with at least one entry (INVALID_RESULT)">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">enforced at the execution layer: exceed one → a specific error code</text>
+  <rect x="260" y="66" width="200" height="104" rx="12" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="360" y="92" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">sandbox (enforced)</text>
+  <text x="360" y="114" font-size="9.5" text-anchor="middle" fill="var(--ink)">evaluate(payload)</text>
+  <text x="360" y="134" font-size="9.5" text-anchor="middle" fill="var(--muted)">node vm / Lambda</text>
+  <text x="360" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">no fetch / require</text>
+  <rect x="16" y="62" width="216" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="28" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">no network (two birds)</text>
+  <text x="28" y="100" font-size="9" fill="var(--muted)">blocks SSRF/exfil + determinism</text>
+  <rect x="16" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">time limit</text>
+  <text x="28" y="152" font-size="9" fill="var(--muted)">over → TIMEOUT</text>
+  <rect x="16" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">source ≤ 256KB</text>
+  <text x="28" y="204" font-size="9" fill="var(--muted)">→ SOURCE_TOO_LARGE</text>
+  <rect x="488" y="62" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">input ≤ 5.5MB</text>
+  <text x="500" y="100" font-size="9" fill="var(--muted)">→ PAYLOAD_TOO_LARGE</text>
+  <rect x="488" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">result ≤ 256KB</text>
+  <text x="500" y="152" font-size="9" fill="var(--muted)">→ RESULT_TOO_LARGE</text>
+  <rect x="488" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">result must be {scores:[≥1]}</text>
+  <text x="500" y="204" font-size="9" fill="var(--muted)">→ INVALID_RESULT</text>
+  <line x1="232" y1="85" x2="260" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="232" y1="137" x2="260" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="232" y1="189" x2="260" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="85" x2="460" y2="100" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="137" x2="460" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="189" x2="460" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>iron rule</th><th>the limit</th><th>why</th></tr></thead>
   <tbody>
@@ -1236,6 +1472,29 @@ _ZH32.append(r"""
 _ZH32.append(r"""
 <h2>队列的数据模型：一张评分表 + 一筐待评对象</h2>
 <p>标注队列的数据模型只有两个主角。<strong>AnnotationQueue</strong> 是「评审任务」本身：有名字、描述，最关键是一组 <code>scoreConfigIds</code>——它<strong>绑定第 28 课的 score config</strong>，规定这个队列里每位评审员要填哪几项分、每项什么刻度（统一了大家的尺）。<strong>AnnotationQueueItem</strong> 是「筐里的一份待评对象」：指向一条 trace/observation/session，带一个 PENDING→COMPLETED 的状态。</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="标注队列数据模型：AnnotationQueue 评审任务带 name、description 和 scoreConfigIds 数组绑定第28课的 score config 统一这个队列的尺；它一对多包含 AnnotationQueueItem 待评对象，每个 item 有 objectType/objectId 指向 TRACE/OBSERVATION/SESSION、status 从 PENDING 到 COMPLETED、lockedAt 五分钟软锁、annotatorUserId；另有 AnnotationQueueAssignment 把队列指派给评审员">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="214" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="123" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueue（评审任务）</text>
+  <text x="30" y="90" font-size="9.5" fill="var(--ink)">name · description</text>
+  <text x="30" y="112" font-size="9.5" fill="var(--ink)">scoreConfigIds[]</text>
+  <text x="30" y="132" font-size="9.5" fill="var(--muted)">→ 绑定 L28 score config</text>
+  <text x="30" y="150" font-size="9.5" fill="var(--muted)">（统一这个队列的尺）</text>
+  <rect x="270" y="44" width="232" height="120" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="386" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueueItem（待评对象）</text>
+  <text x="284" y="90" font-size="9.5" fill="var(--ink)">objectType / objectId</text>
+  <text x="284" y="110" font-size="9.5" fill="var(--ink)">status: PENDING → COMPLETED</text>
+  <text x="284" y="130" font-size="9.5" fill="var(--muted)">lockedAt（5 分钟软锁）</text>
+  <text x="284" y="150" font-size="9.5" fill="var(--muted)">annotatorUserId / completedAt</text>
+  <rect x="540" y="58" width="164" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="622" y="80" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">评的对象</text>
+  <text x="622" y="100" font-size="9" text-anchor="middle" fill="var(--muted)">TRACE/OBSERVATION/SESSION</text>
+  <line x1="230" y1="104" x2="270" y2="104" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="250" y="96" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 : N</text>
+  <line x1="502" y1="92" x2="540" y2="86" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="196" font-size="10" text-anchor="middle" fill="var(--muted)">另有 AnnotationQueueAssignment：把队列结构化指派给特定评审员（谁该评哪个队列）</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>字段</th><th>含义</th><th>为什么重要</th></tr></thead>
@@ -1391,6 +1650,29 @@ _EN32.append(r"""
 _EN32.append(r"""
 <h2>The queue's data model: one scoring sheet + a basket of objects</h2>
 <p>The annotation queue's data model has just two protagonists. <strong>AnnotationQueue</strong> is the "review task" itself: a name, a description, and crucially a set of <code>scoreConfigIds</code>—it <strong>binds Lesson 28's score configs</strong>, dictating which scores each reviewer in this queue must fill and on what scale (unifying everyone's ruler). <strong>AnnotationQueueItem</strong> is "one object to review in the basket": pointing at a trace/observation/session, with a PENDING→COMPLETED status.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="the annotation queue data model: AnnotationQueue (a review task) has name, description and a scoreConfigIds array binding Lesson 28's score configs to unify this queue's ruler; it contains one-to-many AnnotationQueueItems, each with objectType/objectId pointing at a TRACE/OBSERVATION/SESSION, a status from PENDING to COMPLETED, lockedAt for the five-minute soft lock, and annotatorUserId; AnnotationQueueAssignment assigns queues to reviewers">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="214" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="123" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueue (review task)</text>
+  <text x="30" y="90" font-size="9.5" fill="var(--ink)">name · description</text>
+  <text x="30" y="112" font-size="9.5" fill="var(--ink)">scoreConfigIds[]</text>
+  <text x="30" y="132" font-size="9.5" fill="var(--muted)">→ binds L28 score config</text>
+  <text x="30" y="150" font-size="9.5" fill="var(--muted)">(unifies this queue's ruler)</text>
+  <rect x="270" y="44" width="232" height="120" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="386" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueueItem (one to review)</text>
+  <text x="284" y="90" font-size="9.5" fill="var(--ink)">objectType / objectId</text>
+  <text x="284" y="110" font-size="9.5" fill="var(--ink)">status: PENDING → COMPLETED</text>
+  <text x="284" y="130" font-size="9.5" fill="var(--muted)">lockedAt (5-min soft lock)</text>
+  <text x="284" y="150" font-size="9.5" fill="var(--muted)">annotatorUserId / completedAt</text>
+  <rect x="540" y="58" width="164" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="622" y="80" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">the object</text>
+  <text x="622" y="100" font-size="9" text-anchor="middle" fill="var(--muted)">TRACE/OBSERVATION/SESSION</text>
+  <line x1="230" y1="104" x2="270" y2="104" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="250" y="96" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 : N</text>
+  <line x1="502" y1="92" x2="540" y2="86" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="196" font-size="10" text-anchor="middle" fill="var(--muted)">also AnnotationQueueAssignment: structurally assigns queues to specific reviewers (who reviews which queue)</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>field</th><th>meaning</th><th>why it matters</th></tr></thead>

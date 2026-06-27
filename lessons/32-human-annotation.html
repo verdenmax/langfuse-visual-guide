@@ -388,6 +388,29 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>队列的数据模型：一张评分表 + 一筐待评对象</h2>
 <p>标注队列的数据模型只有两个主角。<strong>AnnotationQueue</strong> 是「评审任务」本身：有名字、描述，最关键是一组 <code>scoreConfigIds</code>——它<strong>绑定第 28 课的 score config</strong>，规定这个队列里每位评审员要填哪几项分、每项什么刻度（统一了大家的尺）。<strong>AnnotationQueueItem</strong> 是「筐里的一份待评对象」：指向一条 trace/observation/session，带一个 PENDING→COMPLETED 的状态。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="标注队列数据模型：AnnotationQueue 评审任务带 name、description 和 scoreConfigIds 数组绑定第28课的 score config 统一这个队列的尺；它一对多包含 AnnotationQueueItem 待评对象，每个 item 有 objectType/objectId 指向 TRACE/OBSERVATION/SESSION、status 从 PENDING 到 COMPLETED、lockedAt 五分钟软锁、annotatorUserId；另有 AnnotationQueueAssignment 把队列指派给评审员">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="214" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="123" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueue（评审任务）</text>
+  <text x="30" y="90" font-size="9.5" fill="var(--ink)">name · description</text>
+  <text x="30" y="112" font-size="9.5" fill="var(--ink)">scoreConfigIds[]</text>
+  <text x="30" y="132" font-size="9.5" fill="var(--muted)">→ 绑定 L28 score config</text>
+  <text x="30" y="150" font-size="9.5" fill="var(--muted)">（统一这个队列的尺）</text>
+  <rect x="270" y="44" width="232" height="120" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="386" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueueItem（待评对象）</text>
+  <text x="284" y="90" font-size="9.5" fill="var(--ink)">objectType / objectId</text>
+  <text x="284" y="110" font-size="9.5" fill="var(--ink)">status: PENDING → COMPLETED</text>
+  <text x="284" y="130" font-size="9.5" fill="var(--muted)">lockedAt（5 分钟软锁）</text>
+  <text x="284" y="150" font-size="9.5" fill="var(--muted)">annotatorUserId / completedAt</text>
+  <rect x="540" y="58" width="164" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="622" y="80" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">评的对象</text>
+  <text x="622" y="100" font-size="9" text-anchor="middle" fill="var(--muted)">TRACE/OBSERVATION/SESSION</text>
+  <line x1="230" y1="104" x2="270" y2="104" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="250" y="96" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 : N</text>
+  <line x1="502" y1="92" x2="540" y2="86" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="196" font-size="10" text-anchor="middle" fill="var(--muted)">另有 AnnotationQueueAssignment：把队列结构化指派给特定评审员（谁该评哪个队列）</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>字段</th><th>含义</th><th>为什么重要</th></tr></thead>
   <tbody>
@@ -578,6 +601,29 @@ Three focuses: the queue's <strong>data model</strong> (bound to a set of score 
 
 <h2>The queue's data model: one scoring sheet + a basket of objects</h2>
 <p>The annotation queue's data model has just two protagonists. <strong>AnnotationQueue</strong> is the "review task" itself: a name, a description, and crucially a set of <code>scoreConfigIds</code>—it <strong>binds Lesson 28's score configs</strong>, dictating which scores each reviewer in this queue must fill and on what scale (unifying everyone's ruler). <strong>AnnotationQueueItem</strong> is "one object to review in the basket": pointing at a trace/observation/session, with a PENDING→COMPLETED status.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="the annotation queue data model: AnnotationQueue (a review task) has name, description and a scoreConfigIds array binding Lesson 28's score configs to unify this queue's ruler; it contains one-to-many AnnotationQueueItems, each with objectType/objectId pointing at a TRACE/OBSERVATION/SESSION, a status from PENDING to COMPLETED, lockedAt for the five-minute soft lock, and annotatorUserId; AnnotationQueueAssignment assigns queues to reviewers">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="44" width="214" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="123" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueue (review task)</text>
+  <text x="30" y="90" font-size="9.5" fill="var(--ink)">name · description</text>
+  <text x="30" y="112" font-size="9.5" fill="var(--ink)">scoreConfigIds[]</text>
+  <text x="30" y="132" font-size="9.5" fill="var(--muted)">→ binds L28 score config</text>
+  <text x="30" y="150" font-size="9.5" fill="var(--muted)">(unifies this queue's ruler)</text>
+  <rect x="270" y="44" width="232" height="120" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="386" y="66" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">AnnotationQueueItem (one to review)</text>
+  <text x="284" y="90" font-size="9.5" fill="var(--ink)">objectType / objectId</text>
+  <text x="284" y="110" font-size="9.5" fill="var(--ink)">status: PENDING → COMPLETED</text>
+  <text x="284" y="130" font-size="9.5" fill="var(--muted)">lockedAt (5-min soft lock)</text>
+  <text x="284" y="150" font-size="9.5" fill="var(--muted)">annotatorUserId / completedAt</text>
+  <rect x="540" y="58" width="164" height="56" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="622" y="80" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">the object</text>
+  <text x="622" y="100" font-size="9" text-anchor="middle" fill="var(--muted)">TRACE/OBSERVATION/SESSION</text>
+  <line x1="230" y1="104" x2="270" y2="104" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="250" y="96" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 : N</text>
+  <line x1="502" y1="92" x2="540" y2="86" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="196" font-size="10" text-anchor="middle" fill="var(--muted)">also AnnotationQueueAssignment: structurally assigns queues to specific reviewers (who reviews which queue)</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>field</th><th>meaning</th><th>why it matters</th></tr></thead>

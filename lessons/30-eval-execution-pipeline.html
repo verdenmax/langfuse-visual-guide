@@ -397,6 +397,38 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>三道闸：去重、采样、延迟</h2>
 <p>匹配上了，也不一定立刻开工单。<code>createEvalJobs</code> 在创建前串了三道闸——每一道都解决一个真实的生产问题：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="createEvalJobs 建单前串三道闸：匹配上的评估器与 trace 先过去重闸（已有工单则跳过）、再过采样闸（random 大于 sampling 则跳过）、最后过延迟闸（带 config.delay 毫秒入队等数据到齐），通过后落一行 PENDING 的 JobExecution；另有反向闸把后来不再匹配 filter 的未完成工单标为 CANCELLED">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">createEvalJobs：建单前串三道闸</text>
+  <rect x="12" y="62" width="120" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="72" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">(评估器, trace)</text>
+  <text x="72" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">匹配上</text>
+  <rect x="146" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="208" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 去重</text>
+  <text x="208" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">已有工单？</text>
+  <text x="208" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">是 → 跳过</text>
+  <rect x="288" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 采样</text>
+  <text x="350" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">random &gt; sampling</text>
+  <text x="350" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">中 → 跳过</text>
+  <rect x="430" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="492" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 延迟</text>
+  <text x="492" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">带 delay 入队</text>
+  <text x="492" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">等数据到齐</text>
+  <rect x="572" y="62" width="134" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">JobExecution</text>
+  <text x="639" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">PENDING</text>
+  <line x1="132" y1="88" x2="146" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="270" y1="88" x2="288" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="412" y1="88" x2="430" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="88" x2="572" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="208" y="150" width="304" height="28" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"></rect>
+  <text x="360" y="168" font-size="9.5" text-anchor="middle" fill="var(--muted)">跳过（不建单）</text>
+  <line x1="208" y1="122" x2="280" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="350" y1="122" x2="350" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--accent-ink)">反向闸：trace 后来不再匹配 filter → 未完成工单标 CANCELLED（排除 COMPLETED）</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>闸门</th><th>它问什么</th><th>不通过会怎样</th><th>解决的问题</th></tr></thead>
   <tbody>
@@ -593,6 +625,38 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
 
 <h2>Three gates: dedup, sampling, delay</h2>
 <p>A match doesn't mean a ticket opens immediately. Before creating, <code>createEvalJobs</code> chains three gates—each solving a real production problem:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="before creating, createEvalJobs chains three gates: a matched evaluator-and-trace first passes the dedup gate (skip if a job already exists), then the sampling gate (skip if random is greater than sampling), then the delay gate (enqueue with config.delay ms to let data settle); passing all three writes a PENDING JobExecution row, and a reverse gate marks unfinished jobs CANCELLED when a trace no longer matches the filter">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">createEvalJobs: three gates before opening a ticket</text>
+  <rect x="12" y="62" width="120" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="72" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">(evaluator, trace)</text>
+  <text x="72" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">matched</text>
+  <rect x="146" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="208" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 dedup</text>
+  <text x="208" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">job exists?</text>
+  <text x="208" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">yes → skip</text>
+  <rect x="288" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="350" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 sampling</text>
+  <text x="350" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">random &gt; sampling</text>
+  <text x="350" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">out → skip</text>
+  <rect x="430" y="56" width="124" height="66" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="492" y="76" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 delay</text>
+  <text x="492" y="94" font-size="9" text-anchor="middle" fill="var(--ink)">enqueue +delay</text>
+  <text x="492" y="110" font-size="9" text-anchor="middle" fill="var(--muted)">let data settle</text>
+  <rect x="572" y="62" width="134" height="52" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="639" y="84" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">JobExecution</text>
+  <text x="639" y="100" font-size="9.5" text-anchor="middle" fill="var(--muted)">PENDING</text>
+  <line x1="132" y1="88" x2="146" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="270" y1="88" x2="288" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="412" y1="88" x2="430" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="554" y1="88" x2="572" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="208" y="150" width="304" height="28" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"></rect>
+  <text x="360" y="168" font-size="9.5" text-anchor="middle" fill="var(--muted)">skip (no ticket)</text>
+  <line x1="208" y1="122" x2="280" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <line x1="350" y1="122" x2="350" y2="150" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="4 3"></line>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--accent-ink)">reverse gate: a trace that no longer matches the filter → unfinished job marked CANCELLED (excludes COMPLETED)</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>gate</th><th>what it asks</th><th>if it fails</th><th>problem solved</th></tr></thead>

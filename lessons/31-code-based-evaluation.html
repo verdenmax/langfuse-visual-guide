@@ -424,6 +424,40 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>沙箱的铁律：禁网络、限大小、限时</h2>
 <p>既然要跑用户代码，平台就得用一圈<strong>硬约束</strong>把它框死。这些约束不是 UI 提示，而是<strong>执行层强制</strong>的——超了就直接报特定错误码。最值得玩味的是「禁网络」：它<strong>一箭双雕</strong>，既挡住安全风险，又保住确定性。</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="跑用户评估器代码的沙箱被六道执行层硬约束框死：禁网络（防 SSRF 与数据外泄并保确定性）、限时（超时报 TIMEOUT）、源码不超过 256KB（SOURCE_TOO_LARGE）、输入不超过 5.5MB（PAYLOAD_TOO_LARGE）、结果不超过 256KB（RESULT_TOO_LARGE）、结果必须是含至少一条的 scores 数组（INVALID_RESULT）">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">执行层强制的硬约束：超了就直接报特定错误码</text>
+  <rect x="260" y="66" width="200" height="104" rx="12" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="360" y="92" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">沙箱（执行层强制）</text>
+  <text x="360" y="114" font-size="9.5" text-anchor="middle" fill="var(--ink)">evaluate(payload)</text>
+  <text x="360" y="134" font-size="9.5" text-anchor="middle" fill="var(--muted)">node vm / Lambda</text>
+  <text x="360" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">无 fetch / require</text>
+  <rect x="16" y="62" width="216" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="28" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">禁网络（一箭双雕）</text>
+  <text x="28" y="100" font-size="9" fill="var(--muted)">防 SSRF/外泄 + 保确定性</text>
+  <rect x="16" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">限时</text>
+  <text x="28" y="152" font-size="9" fill="var(--muted)">超时 → TIMEOUT</text>
+  <rect x="16" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">源码 ≤ 256KB</text>
+  <text x="28" y="204" font-size="9" fill="var(--muted)">→ SOURCE_TOO_LARGE</text>
+  <rect x="488" y="62" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">输入 ≤ 5.5MB</text>
+  <text x="500" y="100" font-size="9" fill="var(--muted)">→ PAYLOAD_TOO_LARGE</text>
+  <rect x="488" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">结果 ≤ 256KB</text>
+  <text x="500" y="152" font-size="9" fill="var(--muted)">→ RESULT_TOO_LARGE</text>
+  <rect x="488" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">结果须 {scores:[≥1]}</text>
+  <text x="500" y="204" font-size="9" fill="var(--muted)">→ INVALID_RESULT</text>
+  <line x1="232" y1="85" x2="260" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="232" y1="137" x2="260" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="232" y1="189" x2="260" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="85" x2="460" y2="100" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="137" x2="460" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="189" x2="460" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>铁律</th><th>具体限制</th><th>为什么</th></tr></thead>
   <tbody>
@@ -605,6 +639,40 @@ But there's a sharp problem here: the evaluator code is <strong>written by users
 
 <h2>The sandbox's iron rules: no network, size caps, time limit</h2>
 <p>Since it runs user code, the platform must box it in with <strong>hard constraints</strong>. These aren't UI hints—they're <strong>enforced at the execution layer</strong>: exceed one and you get a specific error code. The most intriguing is "no network": it <strong>kills two birds</strong>, blocking security risk and preserving determinism.</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="the sandbox running user evaluator code is boxed in by six execution-layer hard constraints: no network (blocks SSRF and exfiltration and preserves determinism), time limit (TIMEOUT), source no larger than 256KB (SOURCE_TOO_LARGE), input no larger than 5.5MB (PAYLOAD_TOO_LARGE), result no larger than 256KB (RESULT_TOO_LARGE), and the result must be a scores array with at least one entry (INVALID_RESULT)">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">enforced at the execution layer: exceed one → a specific error code</text>
+  <rect x="260" y="66" width="200" height="104" rx="12" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"></rect>
+  <text x="360" y="92" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">sandbox (enforced)</text>
+  <text x="360" y="114" font-size="9.5" text-anchor="middle" fill="var(--ink)">evaluate(payload)</text>
+  <text x="360" y="134" font-size="9.5" text-anchor="middle" fill="var(--muted)">node vm / Lambda</text>
+  <text x="360" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">no fetch / require</text>
+  <rect x="16" y="62" width="216" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="28" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">no network (two birds)</text>
+  <text x="28" y="100" font-size="9" fill="var(--muted)">blocks SSRF/exfil + determinism</text>
+  <rect x="16" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">time limit</text>
+  <text x="28" y="152" font-size="9" fill="var(--muted)">over → TIMEOUT</text>
+  <rect x="16" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="28" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">source ≤ 256KB</text>
+  <text x="28" y="204" font-size="9" fill="var(--muted)">→ SOURCE_TOO_LARGE</text>
+  <rect x="488" y="62" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="82" font-size="10.5" font-weight="700" fill="var(--accent-ink)">input ≤ 5.5MB</text>
+  <text x="500" y="100" font-size="9" fill="var(--muted)">→ PAYLOAD_TOO_LARGE</text>
+  <rect x="488" y="114" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="134" font-size="10.5" font-weight="700" fill="var(--accent-ink)">result ≤ 256KB</text>
+  <text x="500" y="152" font-size="9" fill="var(--muted)">→ RESULT_TOO_LARGE</text>
+  <rect x="488" y="166" width="216" height="46" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="500" y="186" font-size="10.5" font-weight="700" fill="var(--accent-ink)">result must be {scores:[≥1]}</text>
+  <text x="500" y="204" font-size="9" fill="var(--muted)">→ INVALID_RESULT</text>
+  <line x1="232" y1="85" x2="260" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="232" y1="137" x2="260" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="232" y1="189" x2="260" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="85" x2="460" y2="100" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="137" x2="460" y2="118" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="488" y1="189" x2="460" y2="140" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>iron rule</th><th>the limit</th><th>why</th></tr></thead>
