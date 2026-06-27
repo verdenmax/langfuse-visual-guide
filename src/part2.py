@@ -445,6 +445,56 @@ _ZH7.append(r"""
   它解决的问题，是否值得它带来的长期运维成本。
 </div>
 
+<h2>同一个 project：两侧各存一半</h2>
+<p>把抽象落到真实表上：同一个 <code>project</code>，控制面在 Postgres 里是一个可改的<strong>行</strong>（配置、关系、强一致），数据面在 ClickHouse 里则化身为一张<strong>宽事件表</strong>（append、列存、后写覆盖）。两侧靠同一把 <code>project_id</code> 缝合——左边定义它，右边用它分区和排序。</p>
+<svg viewBox="0 0 720 272" role="img" aria-label="左侧 Postgres 控制面装 projects、api_keys、datasets、prompts 等可改的行；右侧 ClickHouse 数据面装 traces、observations、scores 宽事件表，用 ReplacingMergeTree 列存按 project_id 加月分区；同一个 project_id 贯穿两侧">
+  <rect x="0" y="0" width="720" height="272" fill="var(--bg)"></rect>
+  <rect x="24" y="40" width="316" height="190" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="40" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">Postgres · 控制面（OLTP）</text>
+  <text x="40" y="82" font-size="11" fill="var(--muted)">行存 · 强一致 · 可改可删 · 精确单条</text>
+  <rect x="42" y="92" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="108" font-size="12" fill="var(--ink)">projects　·　organizations（配置/枢纽）</text>
+  <rect x="42" y="122" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="138" font-size="12" fill="var(--ink)">api_keys　·　memberships（鉴权/权限）</text>
+  <rect x="42" y="152" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="168" font-size="12" fill="var(--ink)">datasets　·　prompts（产品配置）</text>
+  <rect x="42" y="182" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="198" font-size="12" fill="var(--ink)">dashboards　·　automations（控制面）</text>
+  <rect x="380" y="40" width="316" height="190" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="396" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">ClickHouse · 数据面（OLAP）</text>
+  <text x="396" y="82" font-size="11" fill="var(--muted)">列存 · append · 后写覆盖 · 海量扫描聚合</text>
+  <rect x="398" y="92" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="111" font-size="12" fill="var(--ink)">traces　（一次调用的根）</text>
+  <rect x="398" y="128" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="147" font-size="12" fill="var(--ink)">observations　（每一步 LLM/工具）</text>
+  <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="183" font-size="12" fill="var(--ink)">scores　（评估/打分）</text>
+  <text x="396" y="216" font-size="11" fill="var(--muted)">ReplacingMergeTree · ORDER BY (project_id, toDate(ts), id)</text>
+  <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">同一把 project_id 贯穿两侧：左边定义它，右边用它分区 + 排序</text>
+</svg>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">prisma/schema.prisma　·　clickhouse/migrations/unclustered/0001_traces.up.sql</span><span class="ln">控制面 vs 数据面</span></div>
+  <pre class="code"><span class="cm">// ── 控制面：Postgres 里 project 是一个「可改的行」（schema.prisma）──</span>
+<span class="kw">model</span> <span class="fn">Project</span> {
+  id            String  @id @default(cuid())
+  orgId         String  @map(<span class="st">"org_id"</span>)
+  name          String
+  retentionDays Int?    @map(<span class="st">"retention_days"</span>)   <span class="cm">// 配置：强一致、随时可改</span>
+  apiKeys       ApiKey[]                          <span class="cm">// 关系：OLTP 按主键精确取</span>
+}
+
+<span class="cm">-- ── 数据面：ClickHouse 里同一 project 的 trace 是「宽事件行」（0001_traces.up.sql）──</span>
+<span class="kw">CREATE TABLE</span> <span class="fn">traces</span> (
+  `id` String,
+  `timestamp` DateTime64(3),
+  `project_id` String,                            <span class="cm">-- 同一把 project_id</span>
+  ...
+) <span class="kw">ENGINE</span> = ReplacingMergeTree(event_ts, is_deleted)
+  <span class="kw">PARTITION BY</span> toYYYYMM(timestamp)               <span class="cm">-- 按月裁剪</span>
+  <span class="kw">ORDER BY</span> (project_id, toDate(timestamp), id); <span class="cm">-- project 内连续聚簇</span></pre>
+</div>
+
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
@@ -572,6 +622,56 @@ of every later path lesson.</p>
   slow; without the Redis queue, ingestion can't go async to absorb spikes; without S3, big fields and media bloat the database and you
   can't replay. In other words, these four aren't "add because we can" — each <strong>earned its existence</strong>. That's also the
   test for "should we add another store": does the problem it solves justify its long-term operational cost?
+</div>
+
+<h2>One project: each side stores half</h2>
+<p>Grounding the abstraction in real tables: the same <code>project</code> lives in Postgres as an editable <strong>row</strong> (config, relations, strong consistency) and in ClickHouse as a <strong>wide-event table</strong> (append, columnar, later-write-wins). The two halves are stitched by the same <code>project_id</code> — the left side defines it, the right side partitions and sorts by it.</p>
+<svg viewBox="0 0 720 272" role="img" aria-label="left Postgres control plane holds editable rows projects, api_keys, datasets, prompts; right ClickHouse data plane holds wide-event tables traces, observations, scores via ReplacingMergeTree columnar partitioned by project_id and month; the same project_id runs through both sides">
+  <rect x="0" y="0" width="720" height="272" fill="var(--bg)"></rect>
+  <rect x="24" y="40" width="316" height="190" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="40" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">Postgres · control plane (OLTP)</text>
+  <text x="40" y="82" font-size="11" fill="var(--muted)">row store · strong consistency · editable · one row by key</text>
+  <rect x="42" y="92" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="108" font-size="12" fill="var(--ink)">projects　·　organizations (config/hub)</text>
+  <rect x="42" y="122" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="138" font-size="12" fill="var(--ink)">api_keys　·　memberships (auth/perms)</text>
+  <rect x="42" y="152" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="168" font-size="12" fill="var(--ink)">datasets　·　prompts (product config)</text>
+  <rect x="42" y="182" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="198" font-size="12" fill="var(--ink)">dashboards　·　automations (control)</text>
+  <rect x="380" y="40" width="316" height="190" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="396" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane (OLAP)</text>
+  <text x="396" y="82" font-size="11" fill="var(--muted)">columnar · append · later-write-wins · scan + aggregate</text>
+  <rect x="398" y="92" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="111" font-size="12" fill="var(--ink)">traces　(root of one call)</text>
+  <rect x="398" y="128" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="147" font-size="12" fill="var(--ink)">observations　(each LLM/tool step)</text>
+  <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="183" font-size="12" fill="var(--ink)">scores　(evals/grades)</text>
+  <text x="396" y="216" font-size="11" fill="var(--muted)">ReplacingMergeTree · ORDER BY (project_id, toDate(ts), id)</text>
+  <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">the same project_id runs through both: the left defines it, the right partitions + sorts by it</text>
+</svg>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">prisma/schema.prisma　·　clickhouse/migrations/unclustered/0001_traces.up.sql</span><span class="ln">control plane vs data plane</span></div>
+  <pre class="code"><span class="cm">// ── Control plane: in Postgres a project is an "editable row" (schema.prisma) ──</span>
+<span class="kw">model</span> <span class="fn">Project</span> {
+  id            String  @id @default(cuid())
+  orgId         String  @map(<span class="st">"org_id"</span>)
+  name          String
+  retentionDays Int?    @map(<span class="st">"retention_days"</span>)   <span class="cm">// config: strongly consistent, editable anytime</span>
+  apiKeys       ApiKey[]                          <span class="cm">// relation: OLTP fetches by key</span>
+}
+
+<span class="cm">-- ── Data plane: in ClickHouse the same project's trace is a "wide-event row" (0001_traces.up.sql) ──</span>
+<span class="kw">CREATE TABLE</span> <span class="fn">traces</span> (
+  `id` String,
+  `timestamp` DateTime64(3),
+  `project_id` String,                            <span class="cm">-- the same project_id</span>
+  ...
+) <span class="kw">ENGINE</span> = ReplacingMergeTree(event_ts, is_deleted)
+  <span class="kw">PARTITION BY</span> toYYYYMM(timestamp)               <span class="cm">-- prune by month</span>
+  <span class="kw">ORDER BY</span> (project_id, toDate(timestamp), id); <span class="cm">-- clustered within a project</span></pre>
 </div>
 
 <div class="card key">

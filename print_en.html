@@ -2176,6 +2176,56 @@ of every later path lesson.</p>
   test for "should we add another store": does the problem it solves justify its long-term operational cost?
 </div>
 
+<h2>One project: each side stores half</h2>
+<p>Grounding the abstraction in real tables: the same <code>project</code> lives in Postgres as an editable <strong>row</strong> (config, relations, strong consistency) and in ClickHouse as a <strong>wide-event table</strong> (append, columnar, later-write-wins). The two halves are stitched by the same <code>project_id</code> — the left side defines it, the right side partitions and sorts by it.</p>
+<svg viewBox="0 0 720 272" role="img" aria-label="left Postgres control plane holds editable rows projects, api_keys, datasets, prompts; right ClickHouse data plane holds wide-event tables traces, observations, scores via ReplacingMergeTree columnar partitioned by project_id and month; the same project_id runs through both sides">
+  <rect x="0" y="0" width="720" height="272" fill="var(--bg)"></rect>
+  <rect x="24" y="40" width="316" height="190" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="40" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">Postgres · control plane (OLTP)</text>
+  <text x="40" y="82" font-size="11" fill="var(--muted)">row store · strong consistency · editable · one row by key</text>
+  <rect x="42" y="92" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="108" font-size="12" fill="var(--ink)">projects　·　organizations (config/hub)</text>
+  <rect x="42" y="122" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="138" font-size="12" fill="var(--ink)">api_keys　·　memberships (auth/perms)</text>
+  <rect x="42" y="152" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="168" font-size="12" fill="var(--ink)">datasets　·　prompts (product config)</text>
+  <rect x="42" y="182" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="52" y="198" font-size="12" fill="var(--ink)">dashboards　·　automations (control)</text>
+  <rect x="380" y="40" width="316" height="190" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="396" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane (OLAP)</text>
+  <text x="396" y="82" font-size="11" fill="var(--muted)">columnar · append · later-write-wins · scan + aggregate</text>
+  <rect x="398" y="92" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="111" font-size="12" fill="var(--ink)">traces　(root of one call)</text>
+  <rect x="398" y="128" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="147" font-size="12" fill="var(--ink)">observations　(each LLM/tool step)</text>
+  <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="408" y="183" font-size="12" fill="var(--ink)">scores　(evals/grades)</text>
+  <text x="396" y="216" font-size="11" fill="var(--muted)">ReplacingMergeTree · ORDER BY (project_id, toDate(ts), id)</text>
+  <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">the same project_id runs through both: the left defines it, the right partitions + sorts by it</text>
+</svg>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">prisma/schema.prisma　·　clickhouse/migrations/unclustered/0001_traces.up.sql</span><span class="ln">control plane vs data plane</span></div>
+  <pre class="code"><span class="cm">// ── Control plane: in Postgres a project is an "editable row" (schema.prisma) ──</span>
+<span class="kw">model</span> <span class="fn">Project</span> {
+  id            String  @id @default(cuid())
+  orgId         String  @map(<span class="st">"org_id"</span>)
+  name          String
+  retentionDays Int?    @map(<span class="st">"retention_days"</span>)   <span class="cm">// config: strongly consistent, editable anytime</span>
+  apiKeys       ApiKey[]                          <span class="cm">// relation: OLTP fetches by key</span>
+}
+
+<span class="cm">-- ── Data plane: in ClickHouse the same project's trace is a "wide-event row" (0001_traces.up.sql) ──</span>
+<span class="kw">CREATE TABLE</span> <span class="fn">traces</span> (
+  `id` String,
+  `timestamp` DateTime64(3),
+  `project_id` String,                            <span class="cm">-- the same project_id</span>
+  ...
+) <span class="kw">ENGINE</span> = ReplacingMergeTree(event_ts, is_deleted)
+  <span class="kw">PARTITION BY</span> toYYYYMM(timestamp)               <span class="cm">-- prune by month</span>
+  <span class="kw">ORDER BY</span> (project_id, toDate(timestamp), id); <span class="cm">-- clustered within a project</span></pre>
+</div>
+
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
