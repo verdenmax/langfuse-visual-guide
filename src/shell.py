@@ -887,6 +887,7 @@ def index_page(lesson_prefix="lessons/"):
   <div class="topbar-inner">
     <span class="home">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></span>
     <span class="pill"><span class="lang-zh">共 {total} 课 · {nparts} 个部分</span><span class="lang-en">{total} lesson{'' if total == 1 else 's'} · {nparts} part{'' if nparts == 1 else 's'}</span></span>
+    <a class="pill" href="glossary.html"><span class="lang-zh">📖 术语表</span><span class="lang-en">📖 Glossary</span></a>
     <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
   </div>
   <div class="progress"><span style="width:100%"></span></div>
@@ -917,4 +918,151 @@ def index_page(lesson_prefix="lessons/"):
 </div>
 <script>{LANG_JS}</script>
 <script>{SEARCH_JS}</script>
+</body></html>"""
+
+
+# ---- glossary / concept index ----------------------------------------------
+# (term_zh, term_en, def_zh, def_en, lesson_filename). Grouped by the lesson's
+# Part at render time. Each term links to the lesson that introduces it.
+GLOSSARY = [
+    ("宽事件", "wide event", "把一次操作的全部上下文(输入/输出/模型/用量/耗时)塞进一行又宽又富的事件，保住高基数以事后任意切片", "one row holding all of an operation's context (input/output/model/usage/latency), preserving high cardinality to slice any way later", "02-observability-2-and-wide-events.html"),
+    ("可观测性 2.0", "Observability 2.0", "以宽事件为唯一分析单位、记录一切，取代 metrics/logs/traces 三件套", "treat wide events as the single analytical unit, recording everything, replacing the metrics/logs/traces trio", "02-observability-2-and-wide-events.html"),
+    ("unknown unknowns", "unknown unknowns", "事前没想到要问的问题；宽事件+高基数让你事后仍能回答", "questions you didn't know to ask; wide events + high cardinality let you answer them later", "02-observability-2-and-wide-events.html"),
+    ("trace", "trace", "一次完整调用的根、关联句柄，挂载多个 observation", "the root of one full call, a correlation handle holding observations", "03-three-pillars-deep.html"),
+    ("observation", "observation", "trace 里的一步(SPAN/EVENT/GENERATION… 共 10 型)，真正承载数据", "one step in a trace (SPAN/EVENT/GENERATION…, 10 types), the actual data carrier", "03-three-pillars-deep.html"),
+    ("score", "score", "评估的原子单位(name/value/dataType/source)，挂在 trace 或 observation 上", "the atomic unit of evaluation (name/value/dataType/source), attached to a trace or observation", "03-three-pillars-deep.html"),
+    ("窄腰依赖", "narrow waist", "web/worker/ee 都依赖 shared，shared 不反向依赖——单向收口", "web/worker/ee depend on shared, shared depends on none — a one-way waist", "04-project-map-monorepo.html"),
+    ("事件信封", "event envelope", "摄取事件的统一外壳(id/type/timestamp/body)，body 按类型判别联合", "the unified wrapper of an ingestion event (id/type/timestamp/body); body is a discriminated union", "06-instrumenting-an-llm-app.html"),
+    ("OLTP vs OLAP", "OLTP vs OLAP", "事务型(精确单条+强一致, Postgres) vs 分析型(海量扫描聚合, ClickHouse)", "transactional (precise single-row + strong consistency, Postgres) vs analytical (massive scan + aggregation, ClickHouse)", "07-dual-store-architecture.html"),
+    ("控制面 / 数据面", "control plane / data plane", "Postgres 存配置元数据(控制面)，ClickHouse 存遥测洪流(数据面)", "Postgres holds config metadata (control plane), ClickHouse holds the telemetry flood (data plane)", "07-dual-store-architecture.html"),
+    ("ReplacingMergeTree", "ReplacingMergeTree", "ClickHouse 引擎：同主键后写覆盖先写，查询时合并去重保留最新", "a ClickHouse engine: later write of the same key wins, dedup-merge at query keeping the latest", "08-clickhouse-wide-events.html"),
+    ("排序键", "ordering key", "ClickHouse 表的物理排序(project_id 打头)，决定查询能少扫多少", "a table's physical sort (project_id first) deciding how little a query scans", "08-clickhouse-wide-events.html"),
+    ("多租户", "multi-tenancy", "每张表/查询/消息都带 projectId；project 硬隔离、environment 软切片", "projectId on every table/query/message; project = hard isolation, environment = soft slice", "10-multi-tenancy.html"),
+    ("project_id", "project_id", "贯穿全栈的硬隔离键，焊进 ClickHouse 排序键前缀", "the hard isolation key threaded through the stack, welded into the CH ordering-key prefix", "10-multi-tenancy.html"),
+    ("摄取队列", "ingestion queue", "Redis+BullMQ 队列放 fileKey 指针、本体在 S3，是 web(快)与 worker(慢)的交接点", "a Redis+BullMQ queue holding a fileKey pointer (body in S3), the handoff between web and worker", "14-ingestion-queue.html"),
+    ("分片", "sharding", "按 projectId-eventBodyId 哈希取模把队列摊成 N 条，同实体永远同 shard", "hash-mod splits the queue into N shards; one entity always lands on the same shard", "14-ingestion-queue.html"),
+    ("IngestionService / mergeAndWrite", "IngestionService / mergeAndWrite", "把同一实体的多条事件 merge 成一条记录，再交批写器", "merges an entity's multiple events into one record, then hands it to the batch writer", "15-ingestion-service.html"),
+    ("ClickhouseWriter", "ClickhouseWriter", "单例批写器：每表内存队列，攒满或定时批量 INSERT", "a singleton batch writer: per-table memory queue, bulk INSERT on size or timer", "17-clickhouse-writer.html"),
+    ("OTLP", "OTLP", "OpenTelemetry 的传输协议；适配器把 span 映射成原生摄取事件", "OpenTelemetry's wire protocol; an adapter maps spans to native ingestion events", "18-opentelemetry-ingestion.html"),
+    ("presigned URL", "presigned URL", "服务端签发的有时效直传/下载地址，让大块负载绕过应用层", "a server-signed time-limited upload/download URL letting bulky payloads bypass the app layer", "19-media-blob-storage.html"),
+    ("内容寻址去重", "content-addressed dedup", "按 sha256 指纹判同一性，相同字节只存一份", "identity by sha256 fingerprint; identical bytes are stored once", "19-media-blob-storage.html"),
+    ("tRPC", "tRPC", "前后端共享类型的内部 API；改后端字段，前端编译即报错", "a type-shared internal API; change a backend field and the front-end compile breaks", "21-trpc-backbone.html"),
+    ("queryClickhouse", "queryClickhouse", "统一执行器：给每条查询套 OTel/标签/退避重试/资源错误包装", "the unified executor wrapping every query with OTel/tags/backoff-retry/error-wrap", "22-repository-layer.html"),
+    ("回看时间窗", "look-back window", "利用观测集中在 trace 之后的有界时间，避免跨表全表扫", "exploit that observations cluster in a bounded window after the trace, avoiding full scans", "22-repository-layer.html"),
+    ("FilterState", "FilterState", "UI 过滤的中间契约，编译成参数化的 ClickHouse/Postgres SQL", "the intermediate contract for UI filters, compiled to parameterized ClickHouse/Postgres SQL", "23-filtering-search-bar.html"),
+    ("RBAC", "RBAC", "角色→scope 映射；判权限问角色是否含该 scope，前端隐藏+后端强制", "role→scope mapping; check the role contains the scope, front-end hide + back-end enforce", "21-trpc-backbone.html"),
+    ("session", "session", "traces 按 session_id 分组的派生视图，非新实体、永远一致", "a derived view of traces grouped by session_id, not a new entity, always consistent", "26-sessions.html"),
+    ("dataType", "dataType", "score 的刻度：NUMERIC / CATEGORICAL / BOOLEAN(锁死的特殊分类)", "a score's scale: NUMERIC / CATEGORICAL / BOOLEAN (a locked special category)", "28-scoring-model.html"),
+    ("score config", "score config", "某 name 的 schema：声明刻度与约束、强制校验以保证可比", "a name's schema: declares scale & constraints, enforced for comparability", "28-scoring-model.html"),
+    ("LLM-as-a-judge", "LLM-as-a-judge", "用一个 LLM 给另一个的输出打分，结构化输出 {score,reasoning}", "use one LLM to score another's output, with structured output {score,reasoning}", "29-llm-as-a-judge.html"),
+    ("JobExecution", "JobExecution", "eval 工单的状态机 PENDING→COMPLETED/ERROR/CANCELLED/DELAYED", "the eval ticket's state machine PENDING→COMPLETED/ERROR/CANCELLED/DELAYED", "30-eval-execution-pipeline.html"),
+    ("沙箱", "sandbox", "跑用户评估器代码的隔离环境：禁网络、限大小、限时", "the isolated environment running user eval code: no network, size caps, timeout", "31-code-based-evaluation.html"),
+    ("标注队列", "annotation queue", "绑一组 scoreConfigIds 的人工评审任务，含待评 item 与 5 分钟软锁", "a human-review task binding scoreConfigIds, with items to review + a 5-minute soft lock", "32-human-annotation.html"),
+    ("monitor / severity", "monitor / severity", "把质量监测从拉变推：越阈值告警，severity 状态机只在变化时 emit", "turn quality monitoring from pull to push: alert on threshold, severity emits only on change", "33-monitors-and-alerting.html"),
+    ("数据集", "dataset", "一组测试用例(input/expectedOutput/metadata)，题可从真实 trace 提拔", "a set of test cases (input/expectedOutput/metadata), promotable from real traces", "34-datasets-and-items.html"),
+    ("SCD Type 2", "SCD Type 2", "数据项用 validFrom/validTo 双时态版本化；改题=关旧版+插新版", "bitemporal item versioning via validFrom/validTo; editing = close old + insert new", "34-datasets-and-items.html"),
+    ("dataset run", "dataset run", "某配置在整套题上的一次「考试」，run item 钉住题目版本", "one 'exam' of a config over the whole set; run items pin the question version", "35-dataset-runs.html"),
+    ("实验对比", "experiment comparison", "prompt×数据集×模型服务端自动跑，靠 baseline+增量做决策", "prompt × dataset × model run server-side, decided via baseline + deltas", "36-experiments-and-comparison.html"),
+    ("prompt label", "prompt label", "指向某 prompt 版本的可移动指针(production/latest)，零部署发布/回滚", "a movable pointer to a prompt version (production/latest), zero-deploy release/rollback", "37-prompt-management.html"),
+    ("epoch 失效", "epoch invalidation", "缓存 key 嵌项目级令牌；改动只转令牌、旧 key 按 TTL 过期(O(1) 不漏)", "the cache key embeds a project epoch token; rotate to invalidate, old keys expire by TTL (O(1))", "38-prompt-serving-caching.html"),
+    ("fetchLLMCompletion", "fetchLLMCompletion", "Playground、评估、实验共用的统一 LLM 调用引擎", "the one LLM-call engine shared by the Playground, evaluation, and experiments", "39-playground-llm-connections.html"),
+    ("AES-256-GCM", "AES-256-GCM", "认证加密：authTag 防篡改、随机 IV，用于存 provider API key", "authenticated encryption (authTag anti-tamper, random IV) used to store provider API keys", "39-playground-llm-connections.html"),
+    ("widget / 查询引擎", "widget / query engine", "声明式查询(view+dimensions+metrics+filters)，引擎编译成 ClickHouse SQL", "a declarative query (view+dimensions+metrics+filters) the engine compiles to ClickHouse SQL", "41-query-engine.html"),
+    ("语义层", "semantic layer", "把逻辑名(如 totalCost)映射到真实 SQL 列/表达式的字典", "a dictionary mapping logical names (e.g. totalCost) to real SQL columns/expressions", "41-query-engine.html"),
+    ("matchPattern / matchPricingTier", "matchPattern / matchPricingTier", "一条正则统一各家模型命名 + 按用量选中价目档", "one regex unifies model naming + tier selection picks the price by usage", "42-models-and-pricing.html"),
+    ("exactly-once", "exactly-once", "计量必须不重不漏：cronJobs 锁 + 整点对齐 + 20 分钟兜底接管", "metering must neither double nor miss: cronJobs lock + hour-align + 20-min takeover", "43-cloud-usage-metering.html"),
+    ("自动化 Trigger→Action", "automation Trigger→Action", "事件触发器(何时)绑动作(webhook/Slack/GitHub，做什么)", "an event Trigger (when) bound to an Action (webhook/Slack/GitHub, what)", "44-automations-webhooks.html"),
+    ("SSRF", "SSRF", "服务器被诱导请求内网/元数据接口；纵深防御+fail-closed+请求时校验真实 IP", "the server tricked into hitting internal/metadata endpoints; defended in depth + fail-closed + real-IP check at request time", "44-automations-webhooks.html"),
+    ("fan-out", "fan-out", "一个调度员按项目扇出 N 个处理任务(评估/集成/删除)", "one scheduler fans out N per-project processing jobs (eval/integration/deletion)", "46-analytics-integrations.html"),
+    ("增量水位", "watermark (lastSyncAt)", "只同步上次之后的新数据，带缓冲与按日切块", "sync only data since last time, with a buffer and day-sized chunks", "46-analytics-integrations.html"),
+    ("幂等", "idempotency", "同一操作重复执行不出错、不翻倍副作用——批量操作的铁律", "repeating an operation neither errors nor doubles side effects — the iron rule for batch actions", "47-batch-exports-and-actions.html"),
+    ("JWT session", "JWT session", "无状态自带签名身份的会话，本地验签利于多实例水平扩展", "a stateless self-signed session; local verification scales horizontally across instances", "48-auth-and-sessions.html"),
+    ("API key 两层哈希", "API key two-tier hash", "fastHashedSecretKey(sha256 快查) + hashedSecretKey(bcrypt 安全)", "fastHashedSecretKey (sha256 for fast lookup) + hashedSecretKey (bcrypt for security)", "49-rbac-apikeys-scim.html"),
+    ("SCIM", "SCIM", "让 Okta/AzureAD 自动开通/注销 Langfuse 用户的标准协议(EE)", "a standard protocol letting Okta/AzureAD auto-provision/deprovision users (EE)", "49-rbac-apikeys-scim.html"),
+    ("entitlement", "entitlement", "运行时功能门控：entitlementAccess 总表 + hasEntitlement 一道闸", "runtime feature gating: one entitlementAccess table + one hasEntitlement gate", "50-open-core-and-entitlements.html"),
+    ("开源核", "open core", "全代码开放(含企业功能)，免费/付费的区别在运行时能否启用", "all code is open (incl. enterprise); free vs paid is runtime enablement, not code presence", "50-open-core-and-entitlements.html"),
+    ("dogfooding / instrumentAsync", "dogfooding / instrumentAsync", "Langfuse 用同一套 OTel 观测自己；instrumentAsync 是 span 包装器", "Langfuse observes itself with the same OTel; instrumentAsync is a span wrapper", "51-self-observability-and-config.html"),
+    ("配置即校验", "config-as-validation", "所有 env 过 Zod 启动即校验：fail-fast + 类型安全 + server/client 边界", "all env validated by Zod at boot: fail-fast + type-safe + server/client boundary", "51-self-observability-and-config.html"),
+    ("数据保留", "data retention", "按 retentionDays 自动跨三存储清旧数据(EE)", "auto-delete old data across all three stores by retentionDays (EE)", "52-data-lifecycle-and-deletion.html"),
+    ("后台迁移", "background migration", "给亿万行的表在线做手术，state 可断点续传、单 worker 锁", "online schema surgery on billions of rows; state is resumable, single-worker lock", "52-data-lifecycle-and-deletion.html"),
+    ("monorepo / Turbo", "monorepo / Turbo", "一个仓库 + Turbo 内容哈希缓存，只重建真正改了的包", "one repo + Turbo content-hash cache rebuilding only the packages that actually changed", "53-build-test-dev-workflow.html"),
+]
+
+
+def glossary_page(lesson_prefix="lessons/"):
+    """Bilingual glossary / concept index. Terms grouped by the lesson's Part,
+    each linking to the lesson that introduces it. Reuses GLOSSARY_JS (per-lang
+    table.t row filtering) for search."""
+    # fname -> (lesson_num, part_zh, part_en); part order follows PAGES.
+    pmeta = {}
+    part_order = []
+    for i, (fname, tz, te, pz, pe) in enumerate(PAGES):
+        pmeta[fname] = (i + 1, pz, pe)
+        if (pz, pe) not in part_order:
+            part_order.append((pz, pe))
+
+    def lang_block(lang):
+        ids = ("qglzh", "qglzhc", "qglzhe") if lang == "zh" else ("qglen", "qglenc", "qglene")
+        ph = "🔎 搜索术语 / 概念…" if lang == "zh" else "🔎 Search a term / concept…"
+        empty = "没有匹配的术语，换个关键词。" if lang == "zh" else "No matching term, try another keyword."
+        out = [f'<div class="lang-{lang}">']
+        out.append(
+            f'<div class="toc-search"><input id="{ids[0]}" type="search" placeholder="{esc(ph)}" '
+            f'autocomplete="off" aria-label="search glossary"><span class="qcount" id="{ids[1]}"></span></div>'
+        )
+        for pz, pe in part_order:
+            terms = [g for g in GLOSSARY if pmeta.get(g[4], (0,))[0] and pmeta[g[4]][1] == pz]
+            if not terms:
+                continue
+            terms.sort(key=lambda g: pmeta[g[4]][0])
+            out.append(f"<h2>{esc(pz if lang == 'zh' else pe)}</h2>")
+            rows = []
+            for tz, te, dz, de, fname in terms:
+                num = pmeta[fname][0]
+                term = esc(tz if lang == "zh" else te)
+                desc = esc(dz if lang == "zh" else de)
+                rows.append(
+                    f'<tr><td><b>{term}</b></td><td>{desc}</td>'
+                    f'<td><a class="xref" href="{lesson_prefix}{fname}">L{num:02d}</a></td></tr>'
+                )
+            head = ("术语", "一句话定义", "课") if lang == "zh" else ("Term", "One-line definition", "Lesson")
+            out.append(
+                f'<table class="t"><tr><th>{head[0]}</th><th>{head[1]}</th><th>{head[2]}</th></tr>'
+                + "".join(rows) + "</table>"
+            )
+        out.append(f'<div class="toc-empty" id="{ids[2]}">{esc(empty)}</div>')
+        out.append("</div>")
+        return "\n".join(out)
+
+    body = lang_block("zh") + "\n" + lang_block("en")
+    title_tag = "术语表 / Glossary · Langfuse 图解教程"
+    desc = "Langfuse 图解教程的术语表：核心概念一句话定义 + 跳转到对应课程。"
+    nterms = len(GLOSSARY)
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{LANG_BOOT}
+<title>{esc(title_tag)}</title>
+{head_meta(title_tag, desc, og_type="website")}
+<style>{CSS}</style>
+</head><body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="home" href="index.html">🪢 <b class="lang-zh">Langfuse 图解教程</b><b class="lang-en">Langfuse Visual Guide</b></a>
+    <span class="pill"><span class="lang-zh">术语表 · {nterms} 个概念</span><span class="lang-en">Glossary · {nterms} concepts</span></span>
+    <button class="langtoggle" onclick="lvgToggleLang()" aria-label="switch language"><span class="lang-zh">EN</span><span class="lang-en">中</span></button>
+  </div>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="part">{bi("术语表 / 概念索引", "Glossary / Concept index")}</div>
+    <h1><span class="lang-zh">核心概念速查</span><span class="lang-en">Core concepts at a glance</span></h1>
+    <p class="lead">{bi("每个核心概念一句话定义，点右侧「课」跳到首次讲解它的那一课。用上方搜索框过滤。", "A one-line definition for each core concept; click the lesson on the right to jump to where it's introduced. Filter with the search box above.")}</p>
+  </div>
+  {body}
+  <div class="footnav"><a class="prev" href="index.html"><div class="dir">{bi("← 返回", "← Back")}</div><div class="ttl">{bi("目录", "Contents")}</div></a></div>
+</div>
+<script>{LANG_JS}</script>
+<script>{GLOSSARY_JS}</script>
 </body></html>"""

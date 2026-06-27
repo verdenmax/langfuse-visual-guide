@@ -27,6 +27,9 @@ ALLOW_MISSING = {
 
 def page_files():
     yield os.path.join(ROOT, "index.html")
+    glossary = os.path.join(ROOT, "glossary.html")
+    if os.path.exists(glossary):
+        yield glossary
     lessons = os.path.join(ROOT, "lessons")
     if os.path.isdir(lessons):
         for name in sorted(os.listdir(lessons)):

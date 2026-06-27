@@ -44,6 +44,9 @@ def build():
     with open(os.path.join(ROOT, shell.INDEX_FILE), "w", encoding="utf-8") as f:
         f.write(shell.index_page(lesson_prefix="lessons/"))
     written.append(shell.INDEX_FILE)
+    with open(os.path.join(ROOT, "glossary.html"), "w", encoding="utf-8") as f:
+        f.write(shell.glossary_page(lesson_prefix="lessons/"))
+    written.append("glossary.html")
     return written
 
 

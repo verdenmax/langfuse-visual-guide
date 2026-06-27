@@ -109,6 +109,18 @@ def check_xrefs(lesson_html_by_name):
         add("ERR", "lessons", f"only {linked}/{total} inter-lesson refs auto-linked (<80%); autolink regressed")
 
 
+def check_glossary():
+    """The glossary page must exist, carry enough terms, and only link to real lessons."""
+    if len(shell.GLOSSARY) < 50:
+        add("ERR", "glossary", f"only {len(shell.GLOSSARY)} terms (want >= 50)")
+    for entry in shell.GLOSSARY:
+        fname = entry[4]
+        if fname not in ORDER:
+            add("ERR", "glossary", f"term {entry[0]!r} links to unknown lesson {fname!r}")
+    if not os.path.exists(os.path.join(ROOT, "glossary.html")):
+        add("ERR", "glossary.html", "missing (run build.py)")
+
+
 def check_lesson(fname, html):
     for tag in ("div", "details", "table", "pre", "summary"):
         check_balance(fname, html, tag)
@@ -199,6 +211,7 @@ def main():
 
     check_subtitles()
     check_xrefs(lesson_html)
+    check_glossary()
 
     index_path = os.path.join(ROOT, shell.INDEX_FILE)
     with open(index_path, encoding="utf-8") as fh:
