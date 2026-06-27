@@ -388,6 +388,54 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>拆开「行」与「指标」</b>：UI 并行发 <code>traces.all</code>（行）+ <code>traces.metrics</code>（指标）；<code>joinTableCoreAndMetrics</code> 按 id 合并、即使指标缺席也返回 <code>success</code>，所以表格先用行渲染、指标后到再填。源码：<code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>、<code>services/traces-ui-table-service.ts:206</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 206" role="img" aria-label="trace 列表 UI 真实例子：顶部过滤芯片与列头(时间/名称/用户/延迟/成本/Tokens/分数)，下面几行 trace，底部分页。列对齐 web 的列定义，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：trace 列表长什么样</text>
+  <rect x="20" y="30" width="680" height="24" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="32" y="46" font-size="7.8" fill="var(--muted)">过滤：</text><rect x="68" y="34" width="92" height="16" rx="8" fill="var(--blue-soft)"/><text x="114" y="46" text-anchor="middle" font-size="7" fill="var(--blue)">env = prod</text><rect x="168" y="34" width="110" height="16" rx="8" fill="var(--accent-soft)"/><text x="223" y="46" text-anchor="middle" font-size="7" fill="var(--accent-ink)">score ≥ 0.5</text>
+  <rect x="20" y="58" width="680" height="22" fill="var(--accent-soft)"/>
+  <text x="40" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">时间</text>
+  <text x="150" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">名称</text>
+  <text x="250" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">用户</text>
+  <text x="335" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">延迟</text>
+  <text x="420" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">成本</text>
+  <text x="500" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Tokens</text>
+  <text x="590" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">分数</text>
+  <rect x="20" y="80" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="96" font-size="7.6" fill="var(--ink)">12:00:01</text>
+  <text x="150" y="96" font-size="7.6" fill="var(--ink)">chat-support</text>
+  <text x="250" y="96" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="96" font-size="7.6" fill="var(--ink)">1.93s</text>
+  <text x="420" y="96" font-size="7.6" fill="var(--ink)">$0.004</text>
+  <text x="500" y="96" font-size="7.6" fill="var(--ink)">600</text>
+  <text x="590" y="96" font-size="7.6" fill="var(--accent-ink)">0.9 ✓</text>
+  <rect x="20" y="104" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="120" font-size="7.6" fill="var(--ink)">11:58:40</text>
+  <text x="150" y="120" font-size="7.6" fill="var(--ink)">summarize</text>
+  <text x="250" y="120" font-size="7.6" fill="var(--ink)">u_17</text>
+  <text x="335" y="120" font-size="7.6" fill="var(--ink)">3.10s</text>
+  <text x="420" y="120" font-size="7.6" fill="var(--ink)">$0.011</text>
+  <text x="500" y="120" font-size="7.6" fill="var(--ink)">1.2k</text>
+  <text x="590" y="120" font-size="7.6" fill="var(--ink)">0.7</text>
+  <rect x="20" y="128" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="144" font-size="7.6" fill="var(--ink)">11:55:02</text>
+  <text x="150" y="144" font-size="7.6" fill="var(--ink)">classify</text>
+  <text x="250" y="144" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="144" font-size="7.6" fill="var(--ink)">0.42s</text>
+  <text x="420" y="144" font-size="7.6" fill="var(--ink)">$0.000</text>
+  <text x="500" y="144" font-size="7.6" fill="var(--ink)">120</text>
+  <text x="590" y="144" font-size="7.6" fill="var(--accent-ink)">1.0 ✓</text>
+  <rect x="20" y="152" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="168" font-size="7.6" fill="var(--ink)">11:51:30</text>
+  <text x="150" y="168" font-size="7.6" fill="var(--ink)">agent-run</text>
+  <text x="250" y="168" font-size="7.6" fill="var(--ink)">u_88</text>
+  <text x="335" y="168" font-size="7.6" fill="var(--ink)">6.30s</text>
+  <text x="420" y="168" font-size="7.6" fill="var(--ink)">$0.028</text>
+  <text x="500" y="168" font-size="7.6" fill="var(--ink)">3.4k</text>
+  <text x="590" y="168" font-size="7.6" fill="var(--red)">0.4 ✗</text>
+  <text x="32" y="194" font-size="7.5" fill="var(--muted)">1–4 / 12,480 traces</text><rect x="600" y="182" width="40" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="620" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">‹ ›</text>
+</svg>
+<div class="figcap"><b>宽表的「紧凑表示」</b>（列对齐 web 的列定义；<b>值为示例</b>）：列表页把 ClickHouse 宽行投影成<b>几列关键信息</b>（时间/名称/用户/延迟/成本/tokens/分数），配顶部过滤芯片（来自<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>的 <code>FilterState</code>）和分页。海量 trace 不全拉，只取当前页的列与行——这正是仓储层 <code>LIMIT</code> + 列投影的用户侧呈现。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/traces-ui-table-service.ts</span><span class="ln">getTracesTableGeneric :206</span></div>
@@ -580,6 +628,54 @@ used: rows back, the table renders immediately; metrics back, they're <strong>me
   <text x="360" y="206" text-anchor="middle" font-size="8.5" fill="var(--faint)">key: compact rows don't depend on metrics, so the table is usable before metrics finish — perceived latency goes from "slowest call" to "fastest call"</text>
 </svg>
 <div class="figcap"><b>Splitting "rows" from "metrics"</b>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns <code>success</code> even when metrics are absent, so the table renders from rows and fills metrics later. Source: <code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>, <code>services/traces-ui-table-service.ts:206</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 206" role="img" aria-label="Trace-list UI real example: filter chips and column headers (Time/Name/User/Latency/Cost/Tokens/Scores) on top, a few trace rows below, pagination at the bottom. Columns per the web column definitions, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: what the trace list looks like</text>
+  <rect x="20" y="30" width="680" height="24" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="32" y="46" font-size="7.8" fill="var(--muted)">filter:</text><rect x="68" y="34" width="92" height="16" rx="8" fill="var(--blue-soft)"/><text x="114" y="46" text-anchor="middle" font-size="7" fill="var(--blue)">env = prod</text><rect x="168" y="34" width="110" height="16" rx="8" fill="var(--accent-soft)"/><text x="223" y="46" text-anchor="middle" font-size="7" fill="var(--accent-ink)">score ≥ 0.5</text>
+  <rect x="20" y="58" width="680" height="22" fill="var(--accent-soft)"/>
+  <text x="40" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Time</text>
+  <text x="150" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Name</text>
+  <text x="250" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">User</text>
+  <text x="335" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Latency</text>
+  <text x="420" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Cost</text>
+  <text x="500" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Tokens</text>
+  <text x="590" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Scores</text>
+  <rect x="20" y="80" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="96" font-size="7.6" fill="var(--ink)">12:00:01</text>
+  <text x="150" y="96" font-size="7.6" fill="var(--ink)">chat-support</text>
+  <text x="250" y="96" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="96" font-size="7.6" fill="var(--ink)">1.93s</text>
+  <text x="420" y="96" font-size="7.6" fill="var(--ink)">$0.004</text>
+  <text x="500" y="96" font-size="7.6" fill="var(--ink)">600</text>
+  <text x="590" y="96" font-size="7.6" fill="var(--accent-ink)">0.9 ✓</text>
+  <rect x="20" y="104" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="120" font-size="7.6" fill="var(--ink)">11:58:40</text>
+  <text x="150" y="120" font-size="7.6" fill="var(--ink)">summarize</text>
+  <text x="250" y="120" font-size="7.6" fill="var(--ink)">u_17</text>
+  <text x="335" y="120" font-size="7.6" fill="var(--ink)">3.10s</text>
+  <text x="420" y="120" font-size="7.6" fill="var(--ink)">$0.011</text>
+  <text x="500" y="120" font-size="7.6" fill="var(--ink)">1.2k</text>
+  <text x="590" y="120" font-size="7.6" fill="var(--ink)">0.7</text>
+  <rect x="20" y="128" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="144" font-size="7.6" fill="var(--ink)">11:55:02</text>
+  <text x="150" y="144" font-size="7.6" fill="var(--ink)">classify</text>
+  <text x="250" y="144" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="144" font-size="7.6" fill="var(--ink)">0.42s</text>
+  <text x="420" y="144" font-size="7.6" fill="var(--ink)">$0.000</text>
+  <text x="500" y="144" font-size="7.6" fill="var(--ink)">120</text>
+  <text x="590" y="144" font-size="7.6" fill="var(--accent-ink)">1.0 ✓</text>
+  <rect x="20" y="152" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="168" font-size="7.6" fill="var(--ink)">11:51:30</text>
+  <text x="150" y="168" font-size="7.6" fill="var(--ink)">agent-run</text>
+  <text x="250" y="168" font-size="7.6" fill="var(--ink)">u_88</text>
+  <text x="335" y="168" font-size="7.6" fill="var(--ink)">6.30s</text>
+  <text x="420" y="168" font-size="7.6" fill="var(--ink)">$0.028</text>
+  <text x="500" y="168" font-size="7.6" fill="var(--ink)">3.4k</text>
+  <text x="590" y="168" font-size="7.6" fill="var(--red)">0.4 ✗</text>
+  <text x="32" y="194" font-size="7.5" fill="var(--muted)">1–4 of 12,480 traces</text><rect x="600" y="182" width="40" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="620" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">‹ ›</text>
+</svg>
+<div class="figcap"><b>The wide table's "compact representation"</b> (columns per the web column definitions; <b>values illustrative</b>): the list page projects ClickHouse wide rows into <b>a few key columns</b> (time/name/user/latency/cost/tokens/scores), with filter chips on top (the <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a> <code>FilterState</code>) and pagination. Huge trace volumes aren't fully fetched — only the current page's columns and rows, the user-facing side of the repository's <code>LIMIT</code> + column projection.</div>
 </div>
 
 <div class="codefile">

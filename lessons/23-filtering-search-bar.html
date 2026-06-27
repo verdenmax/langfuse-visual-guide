@@ -391,6 +391,23 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>一个抽象，两套后端</b>：<code>FilterState</code> + 列定义经工厂 <code>createFilterFromFilterState</code> 校验列/类型、注入强制 <code>project_id</code>，再编译成参数化 SQL。ClickHouse 栈在 <code>clickhouse-sql/</code>，Postgres 栈在 <code>filterToPrisma.ts</code>。源码：<code>queries/clickhouse-sql/factory.ts:37,217</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 228" role="img" aria-label="搜索栏真实例子：用户输入 name 等于 answer 且 userId 等于 u_42 且 total_cost 大于 0.003，被解析成 FilterState 数组，每项含 column/operator/value/type。结构对齐 interfaces/filters.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：搜索框输入 → FilterState 数组</text>
+  <rect x="40" y="34" width="640" height="30" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="54" y="53" font-size="8.5" font-family="monospace" fill="var(--ink)">name = "answer"  AND  userId = "u_42"  AND  total_cost &gt; 0.003</text><text x="664" y="53" text-anchor="end" font-size="11" fill="var(--blue)">🔍</text>
+  <line x1="360" y1="64" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">parse</text>
+  <rect x="40" y="82" width="640" height="138" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="54" y="100" font-size="8" font-family="monospace" fill="var(--muted)">FilterState = [</text>
+  <text x="66" y="116" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"name",      operator:"=", value:"answer", type:"string" },</text>
+  <text x="66" y="134" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"userId",    operator:"=", value:"u_42",   type:"string" },</text>
+  <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
+  <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
+  <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+</svg>
+<div class="figcap"><b>把自由文本变成结构化过滤</b>（结构对齐 <code>packages/shared/src/interfaces/filters.ts</code>；<b>值为示例</b>）：搜索框的一行输入被解析成一个 <code>FilterState</code> 数组，每项是 <code>{{column, operator, value, type}}</code>。结构化之后既能<b>校验</b>（类型/算子合法），又能安全地<b>编译成参数化 SQL</b> 下推到 ClickHouse——这也是搜索栏成为「所有可过滤视图的统一入口」的基础。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">编译 + 把关</span></div>
@@ -592,6 +609,23 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
   <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse stack: clickhouse-filter.ts (StringFilter/DateTimeFilter…) + factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres stack: filterToPrisma.ts → Prisma.Sql (Prisma tables: evals, audit…)</text>
 </svg>
 <div class="figcap"><b>One abstraction, two backends</b>: <code>FilterState</code> + column defs pass the factory <code>createFilterFromFilterState</code>, which verifies columns/types, injects the mandatory <code>project_id</code>, then compiles to parameterized SQL. ClickHouse stack in <code>clickhouse-sql/</code>, Postgres stack in <code>filterToPrisma.ts</code>. Source: <code>queries/clickhouse-sql/factory.ts:37,217</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 228" role="img" aria-label="Search-bar real example: the user types name = answer AND userId = u_42 AND total_cost > 0.003, parsed into a FilterState array where each item has column/operator/value/type. Shape per interfaces/filters.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: search-bar input → FilterState array</text>
+  <rect x="40" y="34" width="640" height="30" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="54" y="53" font-size="8.5" font-family="monospace" fill="var(--ink)">name = "answer"  AND  userId = "u_42"  AND  total_cost &gt; 0.003</text><text x="664" y="53" text-anchor="end" font-size="11" fill="var(--blue)">🔍</text>
+  <line x1="360" y1="64" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">parse</text>
+  <rect x="40" y="82" width="640" height="138" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="54" y="100" font-size="8" font-family="monospace" fill="var(--muted)">FilterState = [</text>
+  <text x="66" y="116" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"name",      operator:"=", value:"answer", type:"string" },</text>
+  <text x="66" y="134" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"userId",    operator:"=", value:"u_42",   type:"string" },</text>
+  <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
+  <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
+  <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+</svg>
+<div class="figcap"><b>Turning free text into structured filters</b> (shape per <code>packages/shared/src/interfaces/filters.ts</code>; <b>values illustrative</b>): one line in the search bar parses into a <code>FilterState</code> array, each item a <code>{{column, operator, value, type}}</code>. Once structured it can be <b>validated</b> (legal type/operator) and safely <b>compiled to parameterized SQL</b> pushed down to ClickHouse — the basis for the search bar becoming the unified entry for every filterable view.</div>
 </div>
 
 <div class="codefile">

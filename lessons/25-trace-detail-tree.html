@@ -391,6 +391,33 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>取全骨架、缓取血肉</b>：<code>byIdWithObservationsAndScores</code> 并行取观测树（<code>includeIO:false</code>）与评分，partition 出 CORRECTION 类分数、从观测起止派生 latency，返回<strong>不含 IO</strong> 的树；点开某节点才懒加载它的 IO。另有 <code>getAgentGraphData</code> 供 agent 图。源码：<code>web/src/server/api/routers/traces.ts:368,610</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="span 瀑布时间轴：横轴是时间，每个 observation 是一条按 start_time 偏移、按 latency 定宽的横条，父子缩进；关键路径高亮。读出谁在等谁、瓶颈在哪。基于 observation start_time/end_time，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：span 瀑布——按时间看一条 trace</text>
+  <line x1="60" y1="34" x2="60" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="140" y1="34" x2="140" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="220" y1="34" x2="220" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="300" y1="34" x2="300" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="380" y1="34" x2="380" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="460" y1="34" x2="460" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="540" y1="34" x2="540" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="620" y1="34" x2="620" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <text x="60" y="212" font-size="7" fill="var(--faint)">0s</text><text x="620" y="212" text-anchor="end" font-size="7" fill="var(--faint)">~2.5s →</text>
+  <text x="40" y="55" font-size="7.6" fill="var(--ink)">agent-run (SPAN)</text>
+  <rect x="60" y="58" width="560" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="626" y="69" font-size="7" fill="var(--muted)">2.4s</text>
+  <text x="70" y="87" font-size="7.6" fill="var(--ink)">retrieve (SPAN)</text>
+  <rect x="60" y="90" width="80" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="146" y="101" font-size="7" fill="var(--muted)">120ms</text>
+  <text x="70" y="119" font-size="7.6" fill="var(--ink)">plan (GEN gpt-4o)</text>
+  <rect x="150" y="122" width="150" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="306" y="133" font-size="7" fill="var(--muted)">0.6s</text>
+  <text x="70" y="151" font-size="7.6" fill="var(--ink)">tool: search (SPAN)</text>
+  <rect x="310" y="154" width="90" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="406" y="165" font-size="7" fill="var(--muted)">340ms</text>
+  <text x="100" y="183" font-size="7.6" fill="var(--ink)">summarize (GEN)</text>
+  <rect x="410" y="186" width="200" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="616" y="197" font-size="7" fill="var(--muted)">1.8s</text>
+  <rect x="150" y="58" width="14" height="142" fill="none"/>
+  <text x="40" y="200" font-size="7.5" fill="var(--red)">红框=关键路径：plan→summarize 两次 generation 串行，占了大半时长</text>
+</svg>
+<div class="figcap"><b>瀑布图把「时间」画出来</b>（基于 observation 的 <code>start_time/end_time</code>；<b>值为示例</b>）：每条横条按 <code>start_time</code> 左右偏移、按 <code>latency</code> 定宽，父子用缩进表示嵌套。一眼就能看出<b>谁在等谁、哪步最慢</b>——这里 <code>plan</code> 与 <code>summarize</code> 两次 generation 串行占了大半时长（关键路径）。这是 trace 详情页最有价值的一张图。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/routers/traces.ts</span><span class="ln">byIdWithObservationsAndScores :368</span></div>
@@ -579,6 +606,33 @@ whole <strong>observation tree</strong> and all of this trace's <strong>scores</
   <text x="80" y="190" font-size="9" fill="var(--ink)">▸ trace</text><text x="120" y="206" font-size="9" fill="var(--ink)">▸ span: retrieval</text><text x="200" y="222" font-size="9" fill="var(--muted)">• generation: LLM call (IO fetched on click)</text><text x="480" y="206" font-size="8" fill="var(--muted)">right: getAgentGraphData → agent graph view</text>
 </svg>
 <div class="figcap"><b>Fetch the skeleton, defer the flesh</b>: <code>byIdWithObservationsAndScores</code> fetches the observation tree (<code>includeIO:false</code>) and scores in parallel, partitions out CORRECTION-type scores, derives latency from observation start/end, returns the <strong>IO-less</strong> tree; opening a node lazy-loads its IO. Plus <code>getAgentGraphData</code> for the agent graph. Source: <code>web/src/server/api/routers/traces.ts:368,610</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="Span waterfall timeline: the x-axis is time, each observation is a horizontal bar offset by start_time and sized by latency, with parent/child indentation; the critical path is highlighted. Reads who waits on whom and where the bottleneck is. Based on observation start_time/end_time, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a span waterfall — a trace over time</text>
+  <line x1="60" y1="34" x2="60" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="140" y1="34" x2="140" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="220" y1="34" x2="220" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="300" y1="34" x2="300" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="380" y1="34" x2="380" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="460" y1="34" x2="460" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="540" y1="34" x2="540" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="620" y1="34" x2="620" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <text x="60" y="212" font-size="7" fill="var(--faint)">0s</text><text x="620" y="212" text-anchor="end" font-size="7" fill="var(--faint)">~2.5s →</text>
+  <text x="40" y="55" font-size="7.6" fill="var(--ink)">agent-run (SPAN)</text>
+  <rect x="60" y="58" width="560" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="626" y="69" font-size="7" fill="var(--muted)">2.4s</text>
+  <text x="70" y="87" font-size="7.6" fill="var(--ink)">retrieve (SPAN)</text>
+  <rect x="60" y="90" width="80" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="146" y="101" font-size="7" fill="var(--muted)">120ms</text>
+  <text x="70" y="119" font-size="7.6" fill="var(--ink)">plan (GEN gpt-4o)</text>
+  <rect x="150" y="122" width="150" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="306" y="133" font-size="7" fill="var(--muted)">0.6s</text>
+  <text x="70" y="151" font-size="7.6" fill="var(--ink)">tool: search (SPAN)</text>
+  <rect x="310" y="154" width="90" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="406" y="165" font-size="7" fill="var(--muted)">340ms</text>
+  <text x="100" y="183" font-size="7.6" fill="var(--ink)">summarize (GEN)</text>
+  <rect x="410" y="186" width="200" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="616" y="197" font-size="7" fill="var(--muted)">1.8s</text>
+  <rect x="150" y="58" width="14" height="142" fill="none"/>
+  <text x="40" y="200" font-size="7.5" fill="var(--red)">red box = critical path: the two serial generations plan→summarize dominate the duration</text>
+</svg>
+<div class="figcap"><b>The waterfall draws "time"</b> (based on observation <code>start_time/end_time</code>; <b>values illustrative</b>): each bar is offset by <code>start_time</code> and sized by <code>latency</code>, with indentation for nesting. At a glance you see <b>who waits on whom and which step is slowest</b> — here the two serial generations <code>plan</code> and <code>summarize</code> dominate the duration (the critical path). This is the trace detail page's most valuable figure.</div>
 </div>
 
 <div class="codefile">

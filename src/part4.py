@@ -56,6 +56,21 @@ _ZH20.append(r"""
 </svg>
 <div class="figcap"><b>三道门各服务各的客</b>：<b>tRPC</b>（<code>pages/api/trpc/[trpc].ts</code>）给自家 UI、类型安全；<b>REST</b>（<code>pages/api/public/**</code>）给外部 SDK、稳定带版本；<b>特殊语义</b>（App Router <code>app/api/**</code> 4 文件 + Pages Router 流式 SSE 端点）给 webhook 与流式。源码：<code>web/src/server/api/root.ts</code>、<code>web/src/features/public-api/</code>、<code>web/src/app/</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="web 应用分层栈：浏览器 -> Next.js 页面/api 路由 -> tRPC 路由器(过 protectedProjectProcedure 中间件) -> 仓储层 -> Postgres/ClickHouse。每层只跨清晰的边界。依据 web/src/server/api 与 pages">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次 web 请求穿过的分层</text>
+  <rect x="120" y="34" width="480" height="32" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="134" y="54" font-size="9.5" font-weight="700" fill="var(--blue)">浏览器 / React UI</text><text x="592" y="54" text-anchor="end" font-size="7.5" fill="var(--muted)">用户交互、渲染</text>
+  <line x1="360" y1="66" x2="360" y2="76" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,76 355,68 365,68" fill="var(--line)"/>
+  <rect x="120" y="76" width="480" height="32" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="134" y="96" font-size="9.5" font-weight="700" fill="var(--purple)">Next.js pages / /api 路由</text><text x="592" y="96" text-anchor="end" font-size="7.5" fill="var(--muted)">SSR + REST 入口</text>
+  <line x1="360" y1="108" x2="360" y2="118" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,118 355,110 365,110" fill="var(--line)"/>
+  <rect x="120" y="118" width="480" height="32" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="134" y="138" font-size="9.5" font-weight="700" fill="var(--accent)">tRPC 路由器 + 中间件</text><text x="592" y="138" text-anchor="end" font-size="7.5" fill="var(--muted)">protectedProjectProcedure 先校验归属</text>
+  <line x1="360" y1="150" x2="360" y2="160" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,160 355,152 365,152" fill="var(--line)"/>
+  <rect x="120" y="160" width="480" height="32" rx="7" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="134" y="180" font-size="9.5" font-weight="700" fill="var(--teal)">仓储层 repository</text><text x="592" y="180" text-anchor="end" font-size="7.5" fill="var(--muted)">封装 SQL，跨 PG/CH 取数</text>
+  <line x1="360" y1="192" x2="360" y2="202" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,202 355,194 365,194" fill="var(--line)"/>
+  <rect x="120" y="202" width="480" height="32" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="134" y="222" font-size="9.5" font-weight="700" fill="var(--amber)">Postgres · ClickHouse</text><text x="592" y="222" text-anchor="end" font-size="7.5" fill="var(--muted)">配置 + 宽事件</text>
+</svg>
+<div class="figcap"><b>请求逐层下穿</b>（依据 <code>web/src/server/api</code> 与 <code>web/src/pages</code>）：浏览器的动作经 Next.js 页面/<code>/api</code> 进来，落到 <b>tRPC 路由器</b>；中间件 <code>protectedProjectProcedure</code> <b>先</b>校验你属不属于这个 project，才进 <b>仓储层</b>去 Postgres/ClickHouse 取数。每层只跨一道清晰边界，便于测试与替换。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">三种 API 入口</span></div>
@@ -225,6 +240,21 @@ precisely at a <code>features/</code> subfolder.</p>
 </svg>
 <div class="figcap"><b>Three doors, each serving its own crowd</b>: <b>tRPC</b> (<code>pages/api/trpc/[trpc].ts</code>) for the UI, type-safe; <b>REST</b> (<code>pages/api/public/**</code>) for external SDKs, stable and versioned; <b>special semantics</b> (App Router <code>app/api/**</code> 4 files + a Pages-Router streaming SSE endpoint) for webhooks and streaming. Source: <code>web/src/server/api/root.ts</code>, <code>web/src/features/public-api/</code>, <code>web/src/app/</code>.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="Web app layered stack: browser -> Next.js pages//api routes -> tRPC routers (through the protectedProjectProcedure middleware) -> repository layer -> Postgres/ClickHouse. Each layer crosses one clear boundary. Per web/src/server/api and pages">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: the layers one web request crosses</text>
+  <rect x="120" y="34" width="480" height="32" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="134" y="54" font-size="9.5" font-weight="700" fill="var(--blue)">browser / React UI</text><text x="592" y="54" text-anchor="end" font-size="7.5" fill="var(--muted)">user interaction, render</text>
+  <line x1="360" y1="66" x2="360" y2="76" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,76 355,68 365,68" fill="var(--line)"/>
+  <rect x="120" y="76" width="480" height="32" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="134" y="96" font-size="9.5" font-weight="700" fill="var(--purple)">Next.js pages / /api routes</text><text x="592" y="96" text-anchor="end" font-size="7.5" fill="var(--muted)">SSR + REST entry</text>
+  <line x1="360" y1="108" x2="360" y2="118" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,118 355,110 365,110" fill="var(--line)"/>
+  <rect x="120" y="118" width="480" height="32" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="134" y="138" font-size="9.5" font-weight="700" fill="var(--accent)">tRPC routers + middleware</text><text x="592" y="138" text-anchor="end" font-size="7.5" fill="var(--muted)">protectedProjectProcedure checks membership first</text>
+  <line x1="360" y1="150" x2="360" y2="160" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,160 355,152 365,152" fill="var(--line)"/>
+  <rect x="120" y="160" width="480" height="32" rx="7" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="134" y="180" font-size="9.5" font-weight="700" fill="var(--teal)">repository layer</text><text x="592" y="180" text-anchor="end" font-size="7.5" fill="var(--muted)">wraps SQL, reads PG/CH</text>
+  <line x1="360" y1="192" x2="360" y2="202" stroke="var(--line)" stroke-width="1.4"/><polygon points="360,202 355,194 365,194" fill="var(--line)"/>
+  <rect x="120" y="202" width="480" height="32" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="134" y="222" font-size="9.5" font-weight="700" fill="var(--amber)">Postgres · ClickHouse</text><text x="592" y="222" text-anchor="end" font-size="7.5" fill="var(--muted)">config + wide events</text>
+</svg>
+<div class="figcap"><b>The request descends layer by layer</b> (per <code>web/src/server/api</code> and <code>web/src/pages</code>): a browser action enters via Next.js pages/<code>/api</code> and lands on the <b>tRPC routers</b>; the <code>protectedProjectProcedure</code> middleware checks project membership <b>first</b>, then the <b>repository layer</b> reads Postgres/ClickHouse. Each layer crosses one clear boundary — easy to test and swap.</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
@@ -392,6 +422,32 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
   <text x="360" y="222" text-anchor="middle" font-size="8.5" fill="var(--faint)">越往右关卡越多：定义一次中间件，每道门按需 .use() 挑选——RBAC 不必每个路由重写</text>
 </svg>
 <div class="figcap"><b>分层中间件，按需组合</b>：<code>publicProcedure</code>(OTel+错误处理) → <code>authenticatedProcedure</code>(+登录校验) → <code>protectedProjectProcedure</code>(+项目成员 RBAC)。还有 <code>protectedOrganizationProcedure</code>、<code>protectedGetTraceProcedure</code> 等变体。源码：<code>web/src/server/api/trpc.ts:238-583</code>。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="tRPC 时序图：React 组件经 tRPC client 发出带类型的 query，过 protectedProjectProcedure 中间件做归属校验，进入 procedure，调仓储层读 ClickHouse，结果按同一份类型原路返回。依据 web/src/server/api/trpc.ts">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次类型安全的 tRPC 调用</text>
+  <rect x="22" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--blue)"/><text x="80" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--blue)">React 组件</text>
+  <line x1="80" y1="58" x2="80" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="167" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--purple)"/><text x="225" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--purple)">tRPC client/link</text>
+  <line x1="225" y1="58" x2="225" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="317" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--accent)"/><text x="375" y="43" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent)">protectedProject</text><text x="375" y="53" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent)">Procedure</text>
+  <line x1="375" y1="58" x2="375" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="462" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--teal)"/><text x="520" y="43" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--teal)">procedure +</text><text x="520" y="53" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--teal)">仓储层</text>
+  <line x1="520" y1="58" x2="520" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="597" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--amber)"/><text x="655" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--amber)">ClickHouse</text>
+  <line x1="655" y1="58" x2="655" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <text x="152" y="72" text-anchor="middle" font-size="7.3" fill="var(--muted)">① trace.list (typed input)</text>
+  <line x1="80" y1="76" x2="216" y2="76" stroke="var(--blue)" stroke-width="1.3"/><polygon points="216,76 207,72 207,80" fill="var(--blue)"/>
+  <text x="300" y="104" text-anchor="middle" font-size="7.3" fill="var(--muted)">② 校验归属：属于此 project？</text>
+  <line x1="225" y1="108" x2="366" y2="108" stroke="var(--purple)" stroke-width="1.3"/><polygon points="366,108 357,104 357,112" fill="var(--purple)"/>
+  <text x="447" y="136" text-anchor="middle" font-size="7.3" fill="var(--muted)">③ 执行 + 调仓储</text>
+  <line x1="375" y1="140" x2="511" y2="140" stroke="var(--accent)" stroke-width="1.3"/><polygon points="511,140 502,136 502,144" fill="var(--accent)"/>
+  <text x="587" y="168" text-anchor="middle" font-size="7.3" fill="var(--muted)">④ SELECT … WHERE project_id</text>
+  <line x1="520" y1="172" x2="646" y2="172" stroke="var(--teal)" stroke-width="1.3"/><polygon points="646,172 637,168 637,176" fill="var(--teal)"/>
+  <text x="367" y="202" text-anchor="middle" font-size="7.3" fill="var(--muted)">⑤ rows → 同一类型原路返回</text>
+  <line x1="655" y1="206" x2="89" y2="206" stroke="var(--amber)" stroke-width="1.3" stroke-dasharray="5 3"/><polygon points="89,206 98,202 98,210" fill="var(--amber)"/>
+</svg>
+<div class="figcap"><b>一条类型从头贯到尾</b>（依据 <code>web/src/server/api/trpc.ts</code>）：组件发的 <code>query</code> 与服务端 <code>procedure</code> 共享<b>同一份 TypeScript 类型</b>，所以前后端对不齐会在编译期报错。关键一步是 <code>protectedProjectProcedure</code> 中间件——任何 procedure 跑之前<b>先</b>校验你属不属于这个 project（第 10、48 课鉴权）。</div>
 </div>
 
 <div class="codefile">
@@ -576,6 +632,32 @@ the layered <code>protectedProjectProcedure</code>.</p>
   <text x="360" y="222" text-anchor="middle" font-size="8.5" fill="var(--faint)">more checkpoints to the right: define middleware once, each door .use()s what it needs — no per-router RBAC rewrite</text>
 </svg>
 <div class="figcap"><b>Layered middleware, composed on demand</b>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project-member RBAC). Plus variants <code>protectedOrganizationProcedure</code>, <code>protectedGetTraceProcedure</code>. Source: <code>web/src/server/api/trpc.ts:238-583</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="tRPC sequence diagram: a React component sends a typed query via the tRPC client, the protectedProjectProcedure middleware checks membership, the procedure runs, calls the repository to read ClickHouse, and the result returns along the same shared types. Per web/src/server/api/trpc.ts">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one type-safe tRPC call</text>
+  <rect x="22" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--blue)"/><text x="80" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--blue)">React component</text>
+  <line x1="80" y1="58" x2="80" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="167" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--purple)"/><text x="225" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--purple)">tRPC client/link</text>
+  <line x1="225" y1="58" x2="225" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="317" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--accent)"/><text x="375" y="43" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent)">protectedProject</text><text x="375" y="53" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent)">Procedure</text>
+  <line x1="375" y1="58" x2="375" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="462" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--teal)"/><text x="520" y="43" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--teal)">procedure +</text><text x="520" y="53" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--teal)">repository</text>
+  <line x1="520" y1="58" x2="520" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <rect x="597" y="28" width="116" height="30" rx="6" fill="var(--panel-2)" stroke="var(--amber)"/><text x="655" y="47" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--amber)">ClickHouse</text>
+  <line x1="655" y1="58" x2="655" y2="230" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <text x="152" y="72" text-anchor="middle" font-size="7.3" fill="var(--muted)">① trace.list (typed input)</text>
+  <line x1="80" y1="76" x2="216" y2="76" stroke="var(--blue)" stroke-width="1.3"/><polygon points="216,76 207,72 207,80" fill="var(--blue)"/>
+  <text x="300" y="104" text-anchor="middle" font-size="7.3" fill="var(--muted)">② check membership in project?</text>
+  <line x1="225" y1="108" x2="366" y2="108" stroke="var(--purple)" stroke-width="1.3"/><polygon points="366,108 357,104 357,112" fill="var(--purple)"/>
+  <text x="447" y="136" text-anchor="middle" font-size="7.3" fill="var(--muted)">③ run + call repository</text>
+  <line x1="375" y1="140" x2="511" y2="140" stroke="var(--accent)" stroke-width="1.3"/><polygon points="511,140 502,136 502,144" fill="var(--accent)"/>
+  <text x="587" y="168" text-anchor="middle" font-size="7.3" fill="var(--muted)">④ SELECT … WHERE project_id</text>
+  <line x1="520" y1="172" x2="646" y2="172" stroke="var(--teal)" stroke-width="1.3"/><polygon points="646,172 637,168 637,176" fill="var(--teal)"/>
+  <text x="367" y="202" text-anchor="middle" font-size="7.3" fill="var(--muted)">⑤ rows → typed result back</text>
+  <line x1="655" y1="206" x2="89" y2="206" stroke="var(--amber)" stroke-width="1.3" stroke-dasharray="5 3"/><polygon points="89,206 98,202 98,210" fill="var(--amber)"/>
+</svg>
+<div class="figcap"><b>One type runs end to end</b> (per <code>web/src/server/api/trpc.ts</code>): the component's <code>query</code> and the server <code>procedure</code> share the <b>same TypeScript types</b>, so a front/back mismatch fails at compile time. The key step is the <code>protectedProjectProcedure</code> middleware — before any procedure runs it checks project membership <b>first</b> (Lessons 10, 48).</div>
 </div>
 
 <div class="codefile">
@@ -771,6 +853,26 @@ _ZH22.append(r"""
 </svg>
 <div class="figcap"><b>一个窗口，四样统一</b>：<code>queryClickhouse()</code> 给每条查询裹上 OTel span、<code>log_comment</code> 标签、退避重试、资源错误包装，再发往 ClickHouse（大读走 <code>queryClickhouseStream</code>/<code>WithProgress</code>）。源码：<code>packages/shared/src/server/repositories/clickhouse.ts:639</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="仓储层真实例子：一条参数化 ClickHouse 查询 SELECT FROM observations WHERE project_id 等于参数 ORDER BY start_time DESC LIMIT 50 FINAL，返回若干行真实列。依据 repositories 与 0002_observations">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：仓储层发出的一条 CH 查询与结果</text>
+  <rect x="20" y="32" width="680" height="84" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="52" font-size="8.5" font-family="monospace" fill="var(--accent)">SELECT</text><text x="92" y="52" font-size="8.5" font-family="monospace" fill="var(--code-ink)">id, name, type, start_time, total_cost, usage_details</text>
+  <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
+  <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
+  <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
+  <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
+  <line x1="28" y1="156" x2="692" y2="156" stroke="var(--line)"/>
+  <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
+  <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+</svg>
+<div class="figcap"><b>读路径的核心：参数化的列查询</b>（依据 <code>packages/shared/src/server/repositories</code> 与 <code>0002_observations</code>；<b>值为示例</b>）：仓储层永远带 <code>WHERE project_id = ?</code>（租户隔离）、<code>ORDER BY start_time</code>、<code>LIMIT</code>，并加 <code>FINAL</code> 取 ReplacingMergeTree 合并后的最新行。返回的若干行再被组装成列表/详情 UI 要的形状。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
@@ -930,6 +1032,26 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>One window, four things unified</b>: <code>queryClickhouse()</code> wraps each query with an OTel span, <code>log_comment</code> tags, backoff retry, and resource-error wrapping, then sends it to ClickHouse (big reads via <code>queryClickhouseStream</code>/<code>WithProgress</code>). Source: <code>packages/shared/src/server/repositories/clickhouse.ts:639</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="Repository real example: a parameterized ClickHouse query SELECT FROM observations WHERE project_id = param ORDER BY start_time DESC LIMIT 50 FINAL, returning rows of real columns. Per repositories and 0002_observations">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a CH query the repository runs, and its rows</text>
+  <rect x="20" y="32" width="680" height="84" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="52" font-size="8.5" font-family="monospace" fill="var(--accent)">SELECT</text><text x="92" y="52" font-size="8.5" font-family="monospace" fill="var(--code-ink)">id, name, type, start_time, total_cost, usage_details</text>
+  <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
+  <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
+  <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
+  <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
+  <line x1="28" y1="156" x2="692" y2="156" stroke="var(--line)"/>
+  <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
+  <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+</svg>
+<div class="figcap"><b>The heart of the read path: a parameterized column query</b> (per <code>packages/shared/src/server/repositories</code> and <code>0002_observations</code>; <b>values illustrative</b>): the repository always carries <code>WHERE project_id = ?</code> (tenant isolation), <code>ORDER BY start_time</code>, <code>LIMIT</code>, and adds <code>FINAL</code> to read the merged-latest rows from ReplacingMergeTree. The returned rows are then assembled into the shape the list/detail UI needs.</div>
 </div>
 
 <div class="codefile">
@@ -1095,6 +1217,23 @@ _ZH23.append(r"""
 </svg>
 <div class="figcap"><b>一个抽象，两套后端</b>：<code>FilterState</code> + 列定义经工厂 <code>createFilterFromFilterState</code> 校验列/类型、注入强制 <code>project_id</code>，再编译成参数化 SQL。ClickHouse 栈在 <code>clickhouse-sql/</code>，Postgres 栈在 <code>filterToPrisma.ts</code>。源码：<code>queries/clickhouse-sql/factory.ts:37,217</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 228" role="img" aria-label="搜索栏真实例子：用户输入 name 等于 answer 且 userId 等于 u_42 且 total_cost 大于 0.003，被解析成 FilterState 数组，每项含 column/operator/value/type。结构对齐 interfaces/filters.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：搜索框输入 → FilterState 数组</text>
+  <rect x="40" y="34" width="640" height="30" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="54" y="53" font-size="8.5" font-family="monospace" fill="var(--ink)">name = "answer"  AND  userId = "u_42"  AND  total_cost &gt; 0.003</text><text x="664" y="53" text-anchor="end" font-size="11" fill="var(--blue)">🔍</text>
+  <line x1="360" y1="64" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">parse</text>
+  <rect x="40" y="82" width="640" height="138" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="54" y="100" font-size="8" font-family="monospace" fill="var(--muted)">FilterState = [</text>
+  <text x="66" y="116" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"name",      operator:"=", value:"answer", type:"string" },</text>
+  <text x="66" y="134" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"userId",    operator:"=", value:"u_42",   type:"string" },</text>
+  <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
+  <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
+  <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+</svg>
+<div class="figcap"><b>把自由文本变成结构化过滤</b>（结构对齐 <code>packages/shared/src/interfaces/filters.ts</code>；<b>值为示例</b>）：搜索框的一行输入被解析成一个 <code>FilterState</code> 数组，每项是 <code>{{column, operator, value, type}}</code>。结构化之后既能<b>校验</b>（类型/算子合法），又能安全地<b>编译成参数化 SQL</b> 下推到 ClickHouse——这也是搜索栏成为「所有可过滤视图的统一入口」的基础。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/queries/clickhouse-sql/{factory,clickhouse-filter}.ts</span><span class="ln">编译 + 把关</span></div>
@@ -1257,6 +1396,23 @@ _EN23.append(r"""
   <rect x="120" y="188" width="480" height="50" rx="9" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--muted)">ClickHouse stack: clickhouse-filter.ts (StringFilter/DateTimeFilter…) + factory.ts</text><text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--muted)">Postgres stack: filterToPrisma.ts → Prisma.Sql (Prisma tables: evals, audit…)</text>
 </svg>
 <div class="figcap"><b>One abstraction, two backends</b>: <code>FilterState</code> + column defs pass the factory <code>createFilterFromFilterState</code>, which verifies columns/types, injects the mandatory <code>project_id</code>, then compiles to parameterized SQL. ClickHouse stack in <code>clickhouse-sql/</code>, Postgres stack in <code>filterToPrisma.ts</code>. Source: <code>queries/clickhouse-sql/factory.ts:37,217</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 228" role="img" aria-label="Search-bar real example: the user types name = answer AND userId = u_42 AND total_cost > 0.003, parsed into a FilterState array where each item has column/operator/value/type. Shape per interfaces/filters.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: search-bar input → FilterState array</text>
+  <rect x="40" y="34" width="640" height="30" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="54" y="53" font-size="8.5" font-family="monospace" fill="var(--ink)">name = "answer"  AND  userId = "u_42"  AND  total_cost &gt; 0.003</text><text x="664" y="53" text-anchor="end" font-size="11" fill="var(--blue)">🔍</text>
+  <line x1="360" y1="64" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">parse</text>
+  <rect x="40" y="82" width="640" height="138" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="54" y="100" font-size="8" font-family="monospace" fill="var(--muted)">FilterState = [</text>
+  <text x="66" y="116" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"name",      operator:"=", value:"answer", type:"string" },</text>
+  <text x="66" y="134" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"userId",    operator:"=", value:"u_42",   type:"string" },</text>
+  <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
+  <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
+  <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+</svg>
+<div class="figcap"><b>Turning free text into structured filters</b> (shape per <code>packages/shared/src/interfaces/filters.ts</code>; <b>values illustrative</b>): one line in the search bar parses into a <code>FilterState</code> array, each item a <code>{{column, operator, value, type}}</code>. Once structured it can be <b>validated</b> (legal type/operator) and safely <b>compiled to parameterized SQL</b> pushed down to ClickHouse — the basis for the search bar becoming the unified entry for every filterable view.</div>
 </div>
 
 <div class="codefile">
@@ -1426,6 +1582,54 @@ _ZH24.append(r"""
 </svg>
 <div class="figcap"><b>拆开「行」与「指标」</b>：UI 并行发 <code>traces.all</code>（行）+ <code>traces.metrics</code>（指标）；<code>joinTableCoreAndMetrics</code> 按 id 合并、即使指标缺席也返回 <code>success</code>，所以表格先用行渲染、指标后到再填。源码：<code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>、<code>services/traces-ui-table-service.ts:206</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 206" role="img" aria-label="trace 列表 UI 真实例子：顶部过滤芯片与列头(时间/名称/用户/延迟/成本/Tokens/分数)，下面几行 trace，底部分页。列对齐 web 的列定义，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：trace 列表长什么样</text>
+  <rect x="20" y="30" width="680" height="24" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="32" y="46" font-size="7.8" fill="var(--muted)">过滤：</text><rect x="68" y="34" width="92" height="16" rx="8" fill="var(--blue-soft)"/><text x="114" y="46" text-anchor="middle" font-size="7" fill="var(--blue)">env = prod</text><rect x="168" y="34" width="110" height="16" rx="8" fill="var(--accent-soft)"/><text x="223" y="46" text-anchor="middle" font-size="7" fill="var(--accent-ink)">score ≥ 0.5</text>
+  <rect x="20" y="58" width="680" height="22" fill="var(--accent-soft)"/>
+  <text x="40" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">时间</text>
+  <text x="150" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">名称</text>
+  <text x="250" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">用户</text>
+  <text x="335" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">延迟</text>
+  <text x="420" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">成本</text>
+  <text x="500" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Tokens</text>
+  <text x="590" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">分数</text>
+  <rect x="20" y="80" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="96" font-size="7.6" fill="var(--ink)">12:00:01</text>
+  <text x="150" y="96" font-size="7.6" fill="var(--ink)">chat-support</text>
+  <text x="250" y="96" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="96" font-size="7.6" fill="var(--ink)">1.93s</text>
+  <text x="420" y="96" font-size="7.6" fill="var(--ink)">$0.004</text>
+  <text x="500" y="96" font-size="7.6" fill="var(--ink)">600</text>
+  <text x="590" y="96" font-size="7.6" fill="var(--accent-ink)">0.9 ✓</text>
+  <rect x="20" y="104" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="120" font-size="7.6" fill="var(--ink)">11:58:40</text>
+  <text x="150" y="120" font-size="7.6" fill="var(--ink)">summarize</text>
+  <text x="250" y="120" font-size="7.6" fill="var(--ink)">u_17</text>
+  <text x="335" y="120" font-size="7.6" fill="var(--ink)">3.10s</text>
+  <text x="420" y="120" font-size="7.6" fill="var(--ink)">$0.011</text>
+  <text x="500" y="120" font-size="7.6" fill="var(--ink)">1.2k</text>
+  <text x="590" y="120" font-size="7.6" fill="var(--ink)">0.7</text>
+  <rect x="20" y="128" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="144" font-size="7.6" fill="var(--ink)">11:55:02</text>
+  <text x="150" y="144" font-size="7.6" fill="var(--ink)">classify</text>
+  <text x="250" y="144" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="144" font-size="7.6" fill="var(--ink)">0.42s</text>
+  <text x="420" y="144" font-size="7.6" fill="var(--ink)">$0.000</text>
+  <text x="500" y="144" font-size="7.6" fill="var(--ink)">120</text>
+  <text x="590" y="144" font-size="7.6" fill="var(--accent-ink)">1.0 ✓</text>
+  <rect x="20" y="152" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="168" font-size="7.6" fill="var(--ink)">11:51:30</text>
+  <text x="150" y="168" font-size="7.6" fill="var(--ink)">agent-run</text>
+  <text x="250" y="168" font-size="7.6" fill="var(--ink)">u_88</text>
+  <text x="335" y="168" font-size="7.6" fill="var(--ink)">6.30s</text>
+  <text x="420" y="168" font-size="7.6" fill="var(--ink)">$0.028</text>
+  <text x="500" y="168" font-size="7.6" fill="var(--ink)">3.4k</text>
+  <text x="590" y="168" font-size="7.6" fill="var(--red)">0.4 ✗</text>
+  <text x="32" y="194" font-size="7.5" fill="var(--muted)">1–4 / 12,480 traces</text><rect x="600" y="182" width="40" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="620" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">‹ ›</text>
+</svg>
+<div class="figcap"><b>宽表的「紧凑表示」</b>（列对齐 web 的列定义；<b>值为示例</b>）：列表页把 ClickHouse 宽行投影成<b>几列关键信息</b>（时间/名称/用户/延迟/成本/tokens/分数），配顶部过滤芯片（来自第 23 课的 <code>FilterState</code>）和分页。海量 trace 不全拉，只取当前页的列与行——这正是仓储层 <code>LIMIT</code> + 列投影的用户侧呈现。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/traces-ui-table-service.ts</span><span class="ln">getTracesTableGeneric :206</span></div>
@@ -1579,6 +1783,54 @@ used: rows back, the table renders immediately; metrics back, they're <strong>me
   <text x="360" y="206" text-anchor="middle" font-size="8.5" fill="var(--faint)">key: compact rows don't depend on metrics, so the table is usable before metrics finish — perceived latency goes from "slowest call" to "fastest call"</text>
 </svg>
 <div class="figcap"><b>Splitting "rows" from "metrics"</b>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns <code>success</code> even when metrics are absent, so the table renders from rows and fills metrics later. Source: <code>web/src/components/table/utils/joinTableCoreAndMetrics.ts:1</code>, <code>services/traces-ui-table-service.ts:206</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 206" role="img" aria-label="Trace-list UI real example: filter chips and column headers (Time/Name/User/Latency/Cost/Tokens/Scores) on top, a few trace rows below, pagination at the bottom. Columns per the web column definitions, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: what the trace list looks like</text>
+  <rect x="20" y="30" width="680" height="24" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="32" y="46" font-size="7.8" fill="var(--muted)">filter:</text><rect x="68" y="34" width="92" height="16" rx="8" fill="var(--blue-soft)"/><text x="114" y="46" text-anchor="middle" font-size="7" fill="var(--blue)">env = prod</text><rect x="168" y="34" width="110" height="16" rx="8" fill="var(--accent-soft)"/><text x="223" y="46" text-anchor="middle" font-size="7" fill="var(--accent-ink)">score ≥ 0.5</text>
+  <rect x="20" y="58" width="680" height="22" fill="var(--accent-soft)"/>
+  <text x="40" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Time</text>
+  <text x="150" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Name</text>
+  <text x="250" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">User</text>
+  <text x="335" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Latency</text>
+  <text x="420" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Cost</text>
+  <text x="500" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Tokens</text>
+  <text x="590" y="73" font-size="8" font-weight="700" fill="var(--accent-ink)">Scores</text>
+  <rect x="20" y="80" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="96" font-size="7.6" fill="var(--ink)">12:00:01</text>
+  <text x="150" y="96" font-size="7.6" fill="var(--ink)">chat-support</text>
+  <text x="250" y="96" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="96" font-size="7.6" fill="var(--ink)">1.93s</text>
+  <text x="420" y="96" font-size="7.6" fill="var(--ink)">$0.004</text>
+  <text x="500" y="96" font-size="7.6" fill="var(--ink)">600</text>
+  <text x="590" y="96" font-size="7.6" fill="var(--accent-ink)">0.9 ✓</text>
+  <rect x="20" y="104" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="120" font-size="7.6" fill="var(--ink)">11:58:40</text>
+  <text x="150" y="120" font-size="7.6" fill="var(--ink)">summarize</text>
+  <text x="250" y="120" font-size="7.6" fill="var(--ink)">u_17</text>
+  <text x="335" y="120" font-size="7.6" fill="var(--ink)">3.10s</text>
+  <text x="420" y="120" font-size="7.6" fill="var(--ink)">$0.011</text>
+  <text x="500" y="120" font-size="7.6" fill="var(--ink)">1.2k</text>
+  <text x="590" y="120" font-size="7.6" fill="var(--ink)">0.7</text>
+  <rect x="20" y="128" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="144" font-size="7.6" fill="var(--ink)">11:55:02</text>
+  <text x="150" y="144" font-size="7.6" fill="var(--ink)">classify</text>
+  <text x="250" y="144" font-size="7.6" fill="var(--ink)">u_42</text>
+  <text x="335" y="144" font-size="7.6" fill="var(--ink)">0.42s</text>
+  <text x="420" y="144" font-size="7.6" fill="var(--ink)">$0.000</text>
+  <text x="500" y="144" font-size="7.6" fill="var(--ink)">120</text>
+  <text x="590" y="144" font-size="7.6" fill="var(--accent-ink)">1.0 ✓</text>
+  <rect x="20" y="152" width="680" height="24" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="168" font-size="7.6" fill="var(--ink)">11:51:30</text>
+  <text x="150" y="168" font-size="7.6" fill="var(--ink)">agent-run</text>
+  <text x="250" y="168" font-size="7.6" fill="var(--ink)">u_88</text>
+  <text x="335" y="168" font-size="7.6" fill="var(--ink)">6.30s</text>
+  <text x="420" y="168" font-size="7.6" fill="var(--ink)">$0.028</text>
+  <text x="500" y="168" font-size="7.6" fill="var(--ink)">3.4k</text>
+  <text x="590" y="168" font-size="7.6" fill="var(--red)">0.4 ✗</text>
+  <text x="32" y="194" font-size="7.5" fill="var(--muted)">1–4 of 12,480 traces</text><rect x="600" y="182" width="40" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="620" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">‹ ›</text>
+</svg>
+<div class="figcap"><b>The wide table's "compact representation"</b> (columns per the web column definitions; <b>values illustrative</b>): the list page projects ClickHouse wide rows into <b>a few key columns</b> (time/name/user/latency/cost/tokens/scores), with filter chips on top (the Lesson 23 <code>FilterState</code>) and pagination. Huge trace volumes aren't fully fetched — only the current page's columns and rows, the user-facing side of the repository's <code>LIMIT</code> + column projection.</div>
 </div>
 
 <div class="codefile">
@@ -1741,6 +1993,33 @@ _ZH25.append(r"""
 </svg>
 <div class="figcap"><b>取全骨架、缓取血肉</b>：<code>byIdWithObservationsAndScores</code> 并行取观测树（<code>includeIO:false</code>）与评分，partition 出 CORRECTION 类分数、从观测起止派生 latency，返回<strong>不含 IO</strong> 的树；点开某节点才懒加载它的 IO。另有 <code>getAgentGraphData</code> 供 agent 图。源码：<code>web/src/server/api/routers/traces.ts:368,610</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="span 瀑布时间轴：横轴是时间，每个 observation 是一条按 start_time 偏移、按 latency 定宽的横条，父子缩进；关键路径高亮。读出谁在等谁、瓶颈在哪。基于 observation start_time/end_time，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：span 瀑布——按时间看一条 trace</text>
+  <line x1="60" y1="34" x2="60" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="140" y1="34" x2="140" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="220" y1="34" x2="220" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="300" y1="34" x2="300" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="380" y1="34" x2="380" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="460" y1="34" x2="460" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="540" y1="34" x2="540" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="620" y1="34" x2="620" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <text x="60" y="212" font-size="7" fill="var(--faint)">0s</text><text x="620" y="212" text-anchor="end" font-size="7" fill="var(--faint)">~2.5s →</text>
+  <text x="40" y="55" font-size="7.6" fill="var(--ink)">agent-run (SPAN)</text>
+  <rect x="60" y="58" width="560" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="626" y="69" font-size="7" fill="var(--muted)">2.4s</text>
+  <text x="70" y="87" font-size="7.6" fill="var(--ink)">retrieve (SPAN)</text>
+  <rect x="60" y="90" width="80" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="146" y="101" font-size="7" fill="var(--muted)">120ms</text>
+  <text x="70" y="119" font-size="7.6" fill="var(--ink)">plan (GEN gpt-4o)</text>
+  <rect x="150" y="122" width="150" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="306" y="133" font-size="7" fill="var(--muted)">0.6s</text>
+  <text x="70" y="151" font-size="7.6" fill="var(--ink)">tool: search (SPAN)</text>
+  <rect x="310" y="154" width="90" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="406" y="165" font-size="7" fill="var(--muted)">340ms</text>
+  <text x="100" y="183" font-size="7.6" fill="var(--ink)">summarize (GEN)</text>
+  <rect x="410" y="186" width="200" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="616" y="197" font-size="7" fill="var(--muted)">1.8s</text>
+  <rect x="150" y="58" width="14" height="142" fill="none"/>
+  <text x="40" y="200" font-size="7.5" fill="var(--red)">红框=关键路径：plan→summarize 两次 generation 串行，占了大半时长</text>
+</svg>
+<div class="figcap"><b>瀑布图把「时间」画出来</b>（基于 observation 的 <code>start_time/end_time</code>；<b>值为示例</b>）：每条横条按 <code>start_time</code> 左右偏移、按 <code>latency</code> 定宽，父子用缩进表示嵌套。一眼就能看出<b>谁在等谁、哪步最慢</b>——这里 <code>plan</code> 与 <code>summarize</code> 两次 generation 串行占了大半时长（关键路径）。这是 trace 详情页最有价值的一张图。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/routers/traces.ts</span><span class="ln">byIdWithObservationsAndScores :368</span></div>
@@ -1887,6 +2166,33 @@ whole <strong>observation tree</strong> and all of this trace's <strong>scores</
   <text x="80" y="190" font-size="9" fill="var(--ink)">▸ trace</text><text x="120" y="206" font-size="9" fill="var(--ink)">▸ span: retrieval</text><text x="200" y="222" font-size="9" fill="var(--muted)">• generation: LLM call (IO fetched on click)</text><text x="480" y="206" font-size="8" fill="var(--muted)">right: getAgentGraphData → agent graph view</text>
 </svg>
 <div class="figcap"><b>Fetch the skeleton, defer the flesh</b>: <code>byIdWithObservationsAndScores</code> fetches the observation tree (<code>includeIO:false</code>) and scores in parallel, partitions out CORRECTION-type scores, derives latency from observation start/end, returns the <strong>IO-less</strong> tree; opening a node lazy-loads its IO. Plus <code>getAgentGraphData</code> for the agent graph. Source: <code>web/src/server/api/routers/traces.ts:368,610</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="Span waterfall timeline: the x-axis is time, each observation is a horizontal bar offset by start_time and sized by latency, with parent/child indentation; the critical path is highlighted. Reads who waits on whom and where the bottleneck is. Based on observation start_time/end_time, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a span waterfall — a trace over time</text>
+  <line x1="60" y1="34" x2="60" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="140" y1="34" x2="140" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="220" y1="34" x2="220" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="300" y1="34" x2="300" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="380" y1="34" x2="380" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="460" y1="34" x2="460" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="540" y1="34" x2="540" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <line x1="620" y1="34" x2="620" y2="200" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="2 3"/>
+  <text x="60" y="212" font-size="7" fill="var(--faint)">0s</text><text x="620" y="212" text-anchor="end" font-size="7" fill="var(--faint)">~2.5s →</text>
+  <text x="40" y="55" font-size="7.6" fill="var(--ink)">agent-run (SPAN)</text>
+  <rect x="60" y="58" width="560" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="626" y="69" font-size="7" fill="var(--muted)">2.4s</text>
+  <text x="70" y="87" font-size="7.6" fill="var(--ink)">retrieve (SPAN)</text>
+  <rect x="60" y="90" width="80" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="146" y="101" font-size="7" fill="var(--muted)">120ms</text>
+  <text x="70" y="119" font-size="7.6" fill="var(--ink)">plan (GEN gpt-4o)</text>
+  <rect x="150" y="122" width="150" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="306" y="133" font-size="7" fill="var(--muted)">0.6s</text>
+  <text x="70" y="151" font-size="7.6" fill="var(--ink)">tool: search (SPAN)</text>
+  <rect x="310" y="154" width="90" height="14" rx="3" fill="var(--blue)" opacity="0.55"/><text x="406" y="165" font-size="7" fill="var(--muted)">340ms</text>
+  <text x="100" y="183" font-size="7.6" fill="var(--ink)">summarize (GEN)</text>
+  <rect x="410" y="186" width="200" height="14" rx="3" fill="var(--accent)" opacity="0.55" stroke="var(--red)" stroke-width="1.5"/><text x="616" y="197" font-size="7" fill="var(--muted)">1.8s</text>
+  <rect x="150" y="58" width="14" height="142" fill="none"/>
+  <text x="40" y="200" font-size="7.5" fill="var(--red)">red box = critical path: the two serial generations plan→summarize dominate the duration</text>
+</svg>
+<div class="figcap"><b>The waterfall draws "time"</b> (based on observation <code>start_time/end_time</code>; <b>values illustrative</b>): each bar is offset by <code>start_time</code> and sized by <code>latency</code>, with indentation for nesting. At a glance you see <b>who waits on whom and which step is slowest</b> — here the two serial generations <code>plan</code> and <code>summarize</code> dominate the duration (the critical path). This is the trace detail page's most valuable figure.</div>
 </div>
 
 <div class="codefile">
@@ -2048,6 +2354,18 @@ _ZH26.append(r"""
   <line x1="426" y1="114" x2="460" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="460,114 451,110 451,118" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>会话是分组出来的</b>：同一 <code>session_id</code> 的 traces 经 <code>GROUP BY session_id</code> 聚成一行会话；各指标是对组内 traces 的聚合——<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚 − 最早）、<code>session_total_cost</code>（求和）。源码：<code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="session 时间轴真实例子：sessionId 把同一用户多轮对话的若干 trace 按时间排成一条泳道，每个 trace 是一个小卡带延迟与分数，底部是会话总时长。基于 traces 的 sessionId，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 session 串起多条 trace</text>
+  <rect x="20" y="34" width="680" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="34" y="54" font-size="9.5" font-weight="700" fill="var(--accent-ink)">session · id=sess_7q · userId=u_42</text>
+  <line x1="40" y1="150" x2="680" y2="150" stroke="var(--line)"/><text x="40" y="172" font-size="7" fill="var(--faint)">10:00</text><text x="680" y="172" text-anchor="end" font-size="7" fill="var(--faint)">10:06 →</text>
+  <rect x="60" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="72" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 1 · trace</text><text x="72" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a1</text><text x="72" y="120" font-size="7.5" fill="var(--muted)">latency 1.9s · score 0.9</text><line x1="140" y1="134" x2="140" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="260" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="272" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 2 · trace</text><text x="272" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a2</text><text x="272" y="120" font-size="7.5" fill="var(--muted)">latency 3.1s · score 0.7</text><line x1="340" y1="134" x2="340" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="470" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="482" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 3 · trace</text><text x="482" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a3</text><text x="482" y="120" font-size="7.5" fill="var(--muted)">latency 0.4s · score 1.0</text><line x1="550" y1="134" x2="550" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">会话总时长 ≈ 6min · 3 轮 · 平均分 0.87</text>
+</svg>
+<div class="figcap"><b>session = 同一对话的多条 trace</b>（基于 <code>traces</code> 的 <code>sessionId</code>；<b>值为示例</b>）：每一轮用户问答是一条独立 <code>trace</code>，它们共享一个 <code>sessionId</code>，于是能按时间排成一条<b>对话泳道</b>。这样既能单看某轮的细节（钻进 trace 看第 25 课的瀑布），又能整体看一次会话的时长、轮数、平均分。</div>
 </div>
 
 <div class="codefile">
@@ -2216,6 +2534,18 @@ traces</strong>:</p>
   <line x1="426" y1="114" x2="460" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="460,114 451,110 451,118" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>A session is grouped out</b>: traces with the same <code>session_id</code> grouped by <code>GROUP BY session_id</code> into one session row; each metric is an aggregate over the grouped traces — <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum). Source: <code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Session timeline real example: a sessionId lines up several traces of one user's multi-turn conversation into one swimlane, each trace a chip with latency and score, total session duration at the bottom. Based on the traces sessionId, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a session strings several traces</text>
+  <rect x="20" y="34" width="680" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="34" y="54" font-size="9.5" font-weight="700" fill="var(--accent-ink)">session · id=sess_7q · userId=u_42</text>
+  <line x1="40" y1="150" x2="680" y2="150" stroke="var(--line)"/><text x="40" y="172" font-size="7" fill="var(--faint)">10:00</text><text x="680" y="172" text-anchor="end" font-size="7" fill="var(--faint)">10:06 →</text>
+  <rect x="60" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="72" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 1 · trace</text><text x="72" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a1</text><text x="72" y="120" font-size="7.5" fill="var(--muted)">latency 1.9s · score 0.9</text><line x1="140" y1="134" x2="140" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="260" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="272" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 2 · trace</text><text x="272" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a2</text><text x="272" y="120" font-size="7.5" fill="var(--muted)">latency 3.1s · score 0.7</text><line x1="340" y1="134" x2="340" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="470" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="482" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 3 · trace</text><text x="482" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a3</text><text x="482" y="120" font-size="7.5" fill="var(--muted)">latency 0.4s · score 1.0</text><line x1="550" y1="134" x2="550" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">session total ≈ 6min · 3 turns · avg score 0.87</text>
+</svg>
+<div class="figcap"><b>A session = several traces of one conversation</b> (based on the <code>sessionId</code> on <code>traces</code>; <b>values illustrative</b>): each user turn is its own <code>trace</code>; sharing a <code>sessionId</code> lets them line up into a <b>conversation swimlane</b>. You can drill into one turn's detail (the Lesson 25 waterfall) or view the whole session's duration, turn count and average score.</div>
 </div>
 
 <div class="codefile">
@@ -2399,6 +2729,24 @@ _ZH27.append(r"""
 </svg>
 <div class="figcap"><b>对外端点的统一流水线</b>：<code>createAuthedProjectAPIRoute</code> 依次跑鉴权（key→project，含访问级别）→ 限流 → Zod 校验 query/body → 在 OTel 上下文（<code>surface=publicapi</code>）里跑你的 handler → 校验响应（开发期防契约漂移）；请求体过大 → <code>PayloadTooLargeError</code>。源码：<code>web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="公共 REST API 真实例子：curl 带 Basic 认证 GET /api/public/traces/{id}，返回 JSON 含 id/name/observations 数组/scores 数组/totalCost/latency。端点对齐 web/src/pages/api/public/traces，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次公共 REST 调用与响应</text>
+  <rect x="20" y="32" width="680" height="34" rx="7" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="53" font-size="8.5" font-family="monospace" fill="var(--code-ink)"><tspan fill="var(--accent)">curl</tspan> -u pk:sk  <tspan fill="var(--blue)">GET</tspan>  https://cloud.langfuse.com/api/public/traces/chat_a1b2</text>
+  <line x1="360" y1="66" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">200 OK</text>
+  <rect x="20" y="82" width="680" height="144" rx="7" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="100" font-size="8" font-family="monospace" fill="var(--ink)">{ "id":"chat_a1b2", "name":"chat-support", "userId":"u_42",</text>
+  <text x="34" y="116" font-size="8" font-family="monospace" fill="var(--ink)">  "timestamp":"2025-…Z", "totalCost":0.0042, "latency":1.93,</text>
+  <text x="34" y="132" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "observations":[</text>
+  <text x="34" y="148" font-size="8" font-family="monospace" fill="var(--ink)">    {"id":"obs_7f","type":"GENERATION","model":"gpt-4o", …}, …</text>
+  <text x="34" y="164" font-size="8" font-family="monospace" fill="var(--accent-ink)">  ],</text>
+  <text x="34" y="180" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "scores":[ {"name":"helpfulness","value":0.9} ]</text>
+  <text x="34" y="196" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">同一套领域对象，REST/SDK/Fern 多语言客户端共用</text>
+</svg>
+<div class="figcap"><b>对外的同一套领域对象</b>（端点对齐 <code>web/src/pages/api/public/traces</code>；<b>值为示例</b>）：用 <code>pk:sk</code> 做 Basic 认证 <code>GET /api/public/traces/{{id}}</code>，拿回一个 JSON——里面是你在 UI 里看到的同一个 trace：<code>observations[]</code>、<code>scores[]</code>、<code>totalCost</code>、<code>latency</code>。Fern 据 API 定义生成多语言 SDK，所以 REST 和各语言客户端拿到的形状一致。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</span><span class="ln">路由工厂</span></div>
@@ -2563,6 +2911,24 @@ runs these gates:</p>
   <rect x="380" y="156" width="180" height="50" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="470" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">response validated (dev)</text><text x="470" y="192" text-anchor="middle" font-size="7" fill="var(--muted)">prevents contract drift</text>
 </svg>
 <div class="figcap"><b>The unified pipeline for external endpoints</b>: <code>createAuthedProjectAPIRoute</code> runs auth (key→project, incl. access level) → rate limit → Zod-validate query/body → the handler in an OTel context (<code>surface=publicapi</code>) → validate the response (dev, anti contract-drift); oversized body → <code>PayloadTooLargeError</code>. Source: <code>web/src/features/public-api/server/createAuthedProjectAPIRoute.ts</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Public REST API real example: curl with Basic auth GET /api/public/traces/{id}, returning JSON with id/name/observations[]/scores[]/totalCost/latency. Endpoint per web/src/pages/api/public/traces, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one public REST call and response</text>
+  <rect x="20" y="32" width="680" height="34" rx="7" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="53" font-size="8.5" font-family="monospace" fill="var(--code-ink)"><tspan fill="var(--accent)">curl</tspan> -u pk:sk  <tspan fill="var(--blue)">GET</tspan>  https://cloud.langfuse.com/api/public/traces/chat_a1b2</text>
+  <line x1="360" y1="66" x2="360" y2="80" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,80 355,72 365,72" fill="var(--accent)"/><text x="372" y="76" font-size="7.5" fill="var(--accent-ink)">200 OK</text>
+  <rect x="20" y="82" width="680" height="144" rx="7" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="100" font-size="8" font-family="monospace" fill="var(--ink)">{ "id":"chat_a1b2", "name":"chat-support", "userId":"u_42",</text>
+  <text x="34" y="116" font-size="8" font-family="monospace" fill="var(--ink)">  "timestamp":"2025-…Z", "totalCost":0.0042, "latency":1.93,</text>
+  <text x="34" y="132" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "observations":[</text>
+  <text x="34" y="148" font-size="8" font-family="monospace" fill="var(--ink)">    {"id":"obs_7f","type":"GENERATION","model":"gpt-4o", …}, …</text>
+  <text x="34" y="164" font-size="8" font-family="monospace" fill="var(--accent-ink)">  ],</text>
+  <text x="34" y="180" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "scores":[ {"name":"helpfulness","value":0.9} ]</text>
+  <text x="34" y="196" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">同一套领域对象，REST/SDK/Fern 多语言客户端共用</text>
+</svg>
+<div class="figcap"><b>The same domain objects, exposed</b> (endpoint per <code>web/src/pages/api/public/traces</code>; <b>values illustrative</b>): Basic-auth with <code>pk:sk</code> and <code>GET /api/public/traces/{{id}}</code> returns a JSON — the same trace you see in the UI: <code>observations[]</code>, <code>scores[]</code>, <code>totalCost</code>, <code>latency</code>. Fern generates multi-language SDKs from the API definition, so REST and every client get the same shape.</div>
 </div>
 
 <div class="codefile">

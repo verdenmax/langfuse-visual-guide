@@ -392,6 +392,26 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>一个窗口，四样统一</b>：<code>queryClickhouse()</code> 给每条查询裹上 OTel span、<code>log_comment</code> 标签、退避重试、资源错误包装，再发往 ClickHouse（大读走 <code>queryClickhouseStream</code>/<code>WithProgress</code>）。源码：<code>packages/shared/src/server/repositories/clickhouse.ts:639</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="仓储层真实例子：一条参数化 ClickHouse 查询 SELECT FROM observations WHERE project_id 等于参数 ORDER BY start_time DESC LIMIT 50 FINAL，返回若干行真实列。依据 repositories 与 0002_observations">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：仓储层发出的一条 CH 查询与结果</text>
+  <rect x="20" y="32" width="680" height="84" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="52" font-size="8.5" font-family="monospace" fill="var(--accent)">SELECT</text><text x="92" y="52" font-size="8.5" font-family="monospace" fill="var(--code-ink)">id, name, type, start_time, total_cost, usage_details</text>
+  <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
+  <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
+  <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
+  <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
+  <line x1="28" y1="156" x2="692" y2="156" stroke="var(--line)"/>
+  <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
+  <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+</svg>
+<div class="figcap"><b>读路径的核心：参数化的列查询</b>（依据 <code>packages/shared/src/server/repositories</code> 与 <code>0002_observations</code>；<b>值为示例</b>）：仓储层永远带 <code>WHERE project_id = ?</code>（租户隔离）、<code>ORDER BY start_time</code>、<code>LIMIT</code>，并加 <code>FINAL</code> 取 ReplacingMergeTree 合并后的最新行。返回的若干行再被组装成列表/详情 UI 要的形状。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/repositories/clickhouse.ts</span><span class="ln">queryClickhouse :639</span></div>
@@ -590,6 +610,26 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <line x1="430" y1="120" x2="486" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="486,120 477,116 477,124" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>One window, four things unified</b>: <code>queryClickhouse()</code> wraps each query with an OTel span, <code>log_comment</code> tags, backoff retry, and resource-error wrapping, then sends it to ClickHouse (big reads via <code>queryClickhouseStream</code>/<code>WithProgress</code>). Source: <code>packages/shared/src/server/repositories/clickhouse.ts:639</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="Repository real example: a parameterized ClickHouse query SELECT FROM observations WHERE project_id = param ORDER BY start_time DESC LIMIT 50 FINAL, returning rows of real columns. Per repositories and 0002_observations">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a CH query the repository runs, and its rows</text>
+  <rect x="20" y="32" width="680" height="84" rx="8" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="52" font-size="8.5" font-family="monospace" fill="var(--accent)">SELECT</text><text x="92" y="52" font-size="8.5" font-family="monospace" fill="var(--code-ink)">id, name, type, start_time, total_cost, usage_details</text>
+  <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
+  <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
+  <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
+  <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
+  <line x1="28" y1="156" x2="692" y2="156" stroke="var(--line)"/>
+  <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
+  <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+</svg>
+<div class="figcap"><b>The heart of the read path: a parameterized column query</b> (per <code>packages/shared/src/server/repositories</code> and <code>0002_observations</code>; <b>values illustrative</b>): the repository always carries <code>WHERE project_id = ?</code> (tenant isolation), <code>ORDER BY start_time</code>, <code>LIMIT</code>, and adds <code>FINAL</code> to read the merged-latest rows from ReplacingMergeTree. The returned rows are then assembled into the shape the list/detail UI needs.</div>
 </div>
 
 <div class="codefile">

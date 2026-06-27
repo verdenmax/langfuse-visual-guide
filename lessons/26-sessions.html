@@ -393,6 +393,18 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>会话是分组出来的</b>：同一 <code>session_id</code> 的 traces 经 <code>GROUP BY session_id</code> 聚成一行会话；各指标是对组内 traces 的聚合——<code>user_ids</code>（去重谁参与）、<code>trace_count</code>（计数）、<code>duration</code>（最晚 − 最早）、<code>session_total_cost</code>（求和）。源码：<code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="session 时间轴真实例子：sessionId 把同一用户多轮对话的若干 trace 按时间排成一条泳道，每个 trace 是一个小卡带延迟与分数，底部是会话总时长。基于 traces 的 sessionId，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 session 串起多条 trace</text>
+  <rect x="20" y="34" width="680" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="34" y="54" font-size="9.5" font-weight="700" fill="var(--accent-ink)">session · id=sess_7q · userId=u_42</text>
+  <line x1="40" y1="150" x2="680" y2="150" stroke="var(--line)"/><text x="40" y="172" font-size="7" fill="var(--faint)">10:00</text><text x="680" y="172" text-anchor="end" font-size="7" fill="var(--faint)">10:06 →</text>
+  <rect x="60" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="72" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 1 · trace</text><text x="72" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a1</text><text x="72" y="120" font-size="7.5" fill="var(--muted)">latency 1.9s · score 0.9</text><line x1="140" y1="134" x2="140" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="260" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="272" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 2 · trace</text><text x="272" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a2</text><text x="272" y="120" font-size="7.5" fill="var(--muted)">latency 3.1s · score 0.7</text><line x1="340" y1="134" x2="340" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="470" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="482" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 3 · trace</text><text x="482" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a3</text><text x="482" y="120" font-size="7.5" fill="var(--muted)">latency 0.4s · score 1.0</text><line x1="550" y1="134" x2="550" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">会话总时长 ≈ 6min · 3 轮 · 平均分 0.87</text>
+</svg>
+<div class="figcap"><b>session = 同一对话的多条 trace</b>（基于 <code>traces</code> 的 <code>sessionId</code>；<b>值为示例</b>）：每一轮用户问答是一条独立 <code>trace</code>，它们共享一个 <code>sessionId</code>，于是能按时间排成一条<b>对话泳道</b>。这样既能单看某轮的细节（钻进 trace 看<a class="xref" href="25-trace-detail-tree.html">第 25 课</a>的瀑布），又能整体看一次会话的时长、轮数、平均分。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/sessions-ui-table-service.ts</span><span class="ln">getSessionsTableGeneric :123</span></div>
@@ -599,6 +611,18 @@ traces</strong>:</p>
   <line x1="426" y1="114" x2="460" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="460,114 451,110 451,118" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>A session is grouped out</b>: traces with the same <code>session_id</code> grouped by <code>GROUP BY session_id</code> into one session row; each metric is an aggregate over the grouped traces — <code>user_ids</code> (distinct who), <code>trace_count</code> (count), <code>duration</code> (latest − earliest), <code>session_total_cost</code> (sum). Source: <code>packages/shared/src/server/services/sessions-ui-table-service.ts:86,123</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Session timeline real example: a sessionId lines up several traces of one user's multi-turn conversation into one swimlane, each trace a chip with latency and score, total session duration at the bottom. Based on the traces sessionId, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a session strings several traces</text>
+  <rect x="20" y="34" width="680" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="34" y="54" font-size="9.5" font-weight="700" fill="var(--accent-ink)">session · id=sess_7q · userId=u_42</text>
+  <line x1="40" y1="150" x2="680" y2="150" stroke="var(--line)"/><text x="40" y="172" font-size="7" fill="var(--faint)">10:00</text><text x="680" y="172" text-anchor="end" font-size="7" fill="var(--faint)">10:06 →</text>
+  <rect x="60" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="72" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 1 · trace</text><text x="72" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a1</text><text x="72" y="120" font-size="7.5" fill="var(--muted)">latency 1.9s · score 0.9</text><line x1="140" y1="134" x2="140" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="260" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="272" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 2 · trace</text><text x="272" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a2</text><text x="272" y="120" font-size="7.5" fill="var(--muted)">latency 3.1s · score 0.7</text><line x1="340" y1="134" x2="340" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <rect x="470" y="70" width="160" height="64" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="482" y="88" font-size="8.5" font-weight="700" fill="var(--blue)">turn 3 · trace</text><text x="482" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">chat_a3</text><text x="482" y="120" font-size="7.5" fill="var(--muted)">latency 0.4s · score 1.0</text><line x1="550" y1="134" x2="550" y2="150" stroke="var(--blue)" stroke-dasharray="2 2"/>
+  <text x="360" y="178" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">session total ≈ 6min · 3 turns · avg score 0.87</text>
+</svg>
+<div class="figcap"><b>A session = several traces of one conversation</b> (based on the <code>sessionId</code> on <code>traces</code>; <b>values illustrative</b>): each user turn is its own <code>trace</code>; sharing a <code>sessionId</code> lets them line up into a <b>conversation swimlane</b>. You can drill into one turn's detail (the <a class="xref" href="25-trace-detail-tree.html">Lesson 25</a> waterfall) or view the whole session's duration, turn count and average score.</div>
 </div>
 
 <div class="codefile">
