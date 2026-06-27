@@ -3784,8 +3784,8 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "宽事件主张把一次操作的全部上下文塞进一条又宽又富、写完基本不动的事件里；不可变则用「追加而非更新」承接这种高吞吐写入——改用「追加新行+查时合并」(ClickHouse AggregatingMergeTree)替代原地更新，避免更新逼出的读时去重隐藏成本",
-                        "en": "wide events advocate packing an operation's full context into one wide, rich event that basically doesn't move after writing; immutability handles this high-throughput write via 'append not update' — using 'append new rows + merge at query' (ClickHouse AggregatingMergeTree) instead of in-place update, avoiding the read-time-dedup hidden cost updates would force",
+                        "zh": "宽事件主张把一次操作的全部上下文塞进一条又宽又富、写完基本不动的事件里；不可变则用「追加而非更新」承接这种高吞吐写入——改用「追加新行+查时去重保留最新」(ClickHouse ReplacingMergeTree(event_ts,is_deleted)+FINAL)替代原地更新，避免更新逼出的读时去重隐藏成本",
+                        "en": "wide events advocate packing an operation's full context into one wide, rich event that basically doesn't move after writing; immutability handles this high-throughput write via 'append not update' — using 'append new rows + dedup at query keeping latest' (ClickHouse ReplacingMergeTree(event_ts,is_deleted)+FINAL) instead of in-place update, avoiding the read-time-dedup hidden cost updates would force",
                     },
                     {"zh": "宽事件和不可变其实是同一件事的两个名字", "en": "wide events and immutability are really two names for the same thing"},
                     {"zh": "不可变要求事件越窄越好，与宽事件矛盾", "en": "immutability requires the narrowest events, conflicting with wide events"},
@@ -3793,8 +3793,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "宽事件决定「数据长什么样」——以 observation 为单位、把全部上下文（输入输出模型用量耗时+高基数自定义属性）装进一条事件，trace 只是关联句柄。这种又宽又富、海量产生的事件，写入方式必须便宜且可扩展，于是不可变接力：写完就不动、只追加。为什么不更新？因为在几十亿行规模上，更新会逼着查询做读时去重，凭空增加隐藏成本。ClickHouse 的 AggregatingMergeTree 正是这个主题的落地——同一实体多次写入不原地改，而是追加新行、查询时按规则 final 合并。所以两者是共谋：宽事件定义了数据形状，不可变让这种形状的海量写入扛得住。",
-                    "en": "Wide events decide 'what the data looks like'—per observation, packing all context (input/output/model/usage/latency + high-cardinality custom attributes) into one event, with the trace as just a correlation handle. Such wide, rich, massively-produced events need a write path that's cheap and scalable, so immutability takes over: written stays put, only append. Why not update? Because at billions of rows, updates force read-time dedup, conjuring hidden cost. ClickHouse's AggregatingMergeTree is this theme landing—the same entity written multiple times isn't modified in place but appended as new rows, merged by rule (final) at query. So the two conspire: wide events define the data shape, immutability makes that shape's massive writes survivable.",
+                    "zh": "宽事件决定「数据长什么样」——以 observation 为单位、把全部上下文（输入输出模型用量耗时+高基数自定义属性）装进一条事件，trace 只是关联句柄。这种又宽又富、海量产生的事件，写入方式必须便宜且可扩展，于是不可变接力：写完就不动、只追加。为什么不更新？因为在几十亿行规模上，更新会逼着查询做读时去重，凭空增加隐藏成本。ClickHouse 的 ReplacingMergeTree(event_ts, is_deleted) 正是这个主题的落地——同一实体多次写入不原地改，而是追加新行、查询时用 FINAL 按 event_ts 保留最新版本(读时去重)。所以两者是共谋：宽事件定义了数据形状，不可变让这种形状的海量写入扛得住。",
+                    "en": "Wide events decide 'what the data looks like'—per observation, packing all context (input/output/model/usage/latency + high-cardinality custom attributes) into one event, with the trace as just a correlation handle. Such wide, rich, massively-produced events need a write path that's cheap and scalable, so immutability takes over: written stays put, only append. Why not update? Because at billions of rows, updates force read-time dedup, conjuring hidden cost. ClickHouse's ReplacingMergeTree(event_ts, is_deleted) is this theme landing—the same entity written multiple times isn't modified in place but appended as new rows, with FINAL keeping the latest version by event_ts at query (read-time deduplication). So the two conspire: wide events define the data shape, immutability makes that shape's massive writes survivable.",
                 },
             },
             {

@@ -32,7 +32,7 @@ _ZH54.append(r"""
 <h2>主题一·二：宽事件 + 不可变（数据怎么长、怎么写）</h2>
 <p><strong>宽事件（wide events）</strong>是整套架构的地基，也是「可观测性 2.0」的核心主张。传统做法把监控数据拆成三摊——指标(metrics)、日志(logs)、链路(traces)，事后再费劲拼回去。Langfuse 反其道：以 <strong>observation 为主要分析单位</strong>，把一次操作的<strong>全部上下文</strong>（输入、输出、模型、用量、耗时、自定义属性……）<strong>塞进一条又宽又富的事件</strong>里；trace 只是把相关 observation 串起来的「关联句柄」，不是唯一入口。这样保住了<strong>高基数上下文</strong>——你能任意切片、分组、过滤，去调查那些<strong>事前没预料到的问题（unknown unknowns）</strong>，而不必预先为每个未来的问题建好指标（第5/6课的领域模型、第41课的查询引擎都是这个主张的落地）。</p>
 
-<p><strong>不可变（immutability）</strong>是宽事件的天然搭档。高吞吐遥测下，Langfuse <strong>偏好追加而非更新</strong>：事件写进去就基本不动。为什么？因为「<strong>更新</strong>」在海量数据上代价惊人——它逼着查询时做<strong>读时去重</strong>，凭空多出隐藏的查询成本。第13课你已见识过 ClickHouse 怎么用 <strong>AggregatingMergeTree + 读时 final 聚合</strong>来吞下「同一实体多次写入」：不真的去改老行，而是追加新行、查询时按规则合并。<strong>把「改」变成「追加 + 合并」，是高规模写入能扛住的关键。</strong></p>
+<p><strong>不可变（immutability）</strong>是宽事件的天然搭档。高吞吐遥测下，Langfuse <strong>偏好追加而非更新</strong>：事件写进去就基本不动。为什么？因为「<strong>更新</strong>」在海量数据上代价惊人——它逼着查询时做<strong>读时去重</strong>，凭空多出隐藏的查询成本。第13课你已见识过 ClickHouse 怎么用 <strong>ReplacingMergeTree(event_ts, is_deleted) + 读时 FINAL 去重</strong>来吞下「同一实体多次写入」：不真的去改老行，而是追加新行、查询时<strong>按 event_ts 保留最新版本</strong>。<strong>把「改」变成「追加 + 查时去重」，是高规模写入能扛住的关键。</strong></p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="宽事件vs碎片化：传统把数据拆成metrics/logs/traces三摊事后拼回；Langfuse以observation为单位把全部上下文(输入输出模型用量耗时属性)塞进一条又宽又富的事件，保住高基数可任意切片调查unknown unknowns；不可变=追加而非更新，避免读时去重的隐藏成本">
@@ -47,15 +47,15 @@ _ZH54.append(r"""
   <rect x="520" y="110" width="176" height="52" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="608" y="128" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">为何不更新？</text><text x="608" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">更新逼着读时去重</text><text x="608" y="154" text-anchor="middle" font-size="6.0" fill="var(--muted)">= 海量数据的隐藏查询成本</text>
   <line x1="224" y1="102" x2="258" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="258,102 249,98 249,106" fill="var(--accent)"/>
   <line x1="490" y1="90" x2="518" y2="82" stroke="var(--teal)" stroke-width="1.3"/><polygon points="518,82 509,81 511,89" fill="var(--teal)"/>
-  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">第13课：ClickHouse 用 AggregatingMergeTree + 读时 final，把「同实体多次写入」变成「追加新行、查时合并」</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">第13课：ClickHouse 用 ReplacingMergeTree(event_ts,is_deleted) + 读时 FINAL，把「同实体多次写入」变成「追加新行、查时保留最新」</text>
   <text x="360" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">把「改」变成「追加 + 合并」——这是高规模写入扛得住的关键，也是不可变与宽事件的共谋</text>
 </svg>
-<div class="figcap"><b>宽事件 + 不可变</b>：<code>ARCHITECTURE_PRINCIPLES.md</code> 原则 1-4——「observation 为主要分析单位」「宽而富的事件优于碎片化的 metrics/logs/traces」「保住高基数上下文调查 unknown unknowns」「偏好不可变/追加，更新会造成读时去重的隐藏成本」。落地见第 5/6 课领域模型、第 13 课 AggregatingMergeTree、第 41 课查询引擎。</div>
+<div class="figcap"><b>宽事件 + 不可变</b>：<code>ARCHITECTURE_PRINCIPLES.md</code> 原则 1-4——「observation 为主要分析单位」「宽而富的事件优于碎片化的 metrics/logs/traces」「保住高基数上下文调查 unknown unknowns」「偏好不可变/追加，更新会造成读时去重的隐藏成本」。落地见第 5/6 课领域模型、第 13 课 ReplacingMergeTree、第 41 课查询引擎。</div>
 </div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">主题一</span><span class="name">宽事件（observability 2.0）</span></div><div class="ld">一次操作 = 一条带全部上下文的宽事件。observation 是分析单位、trace 是关联句柄。保住高基数 → 能回答<strong>事前没想到的问题</strong>，而不必为每个未来问题预建指标。这是「探索式可观测」的根。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">主题二</span><span class="name">不可变（追加而非更新）</span></div><div class="ld">高吞吐下偏好追加。更新会逼出读时去重的隐藏成本，所以用 AggregatingMergeTree「追加新行 + 查时合并」替代「原地改」。<strong>不可变让写入路径简单、可预测、能水平扩展。</strong></div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">主题二</span><span class="name">不可变（追加而非更新）</span></div><div class="ld">高吞吐下偏好追加。更新会逼出读时去重的隐藏成本，所以用 ReplacingMergeTree(event_ts, is_deleted)「追加新行 + 查时按 event_ts 保留最新」替代「原地改」。<strong>不可变让写入路径简单、可预测、能水平扩展。</strong></div></div>
 </div>
 """)
 
@@ -100,7 +100,7 @@ _ZH54.append(r"""
   <thead><tr><th>主题</th><th>一句话</th><th>在哪些课见过</th></tr></thead>
   <tbody>
     <tr><td><b>① 宽事件</b></td><td>一条又宽又富的事件，保住高基数调查 unknown unknowns</td><td>L05/L06 领域模型 · L41 查询引擎</td></tr>
-    <tr><td><b>② 不可变</b></td><td>追加而非更新；改 = 追加新行 + 查时合并</td><td>L13 AggregatingMergeTree · L18</td></tr>
+    <tr><td><b>② 不可变</b></td><td>追加而非更新；改 = 追加新行 + 查时去重(保留最新)</td><td>L13 ReplacingMergeTree · L18</td></tr>
     <tr><td><b>③ 异步</b></td><td>快接收、队列里慢处理；fan-out/幂等/水位/锁</td><td>L12–19 摄取 · L30/L43/L46/L52</td></tr>
     <tr><td><b>④ 双(三)存储</b></td><td>PG(OLTP)+CH(OLAP)+S3(负载)，各归各家</td><td>L02/L22/L24 · L52 删除</td></tr>
     <tr><td><b>⑤ 多租户</b></td><td>处处带 projectId；鉴权→RBAC→entitlement 层层隔离</td><td>L48/L49/L50 · L46/L52 按项目</td></tr>
@@ -145,7 +145,7 @@ _EN54.append(r"""
 <h2>Themes 1 & 2: wide events + immutability (how data looks and is written)</h2>
 <p><strong>Wide events</strong> are the foundation of the whole architecture and the core claim of "observability 2.0." The traditional approach splits monitoring data into three piles — metrics, logs, traces — then laboriously stitches them back later. Langfuse does the reverse: with the <strong>observation as the primary analytical unit</strong>, it packs an operation's <strong>full context</strong> (input, output, model, usage, latency, custom attributes…) <strong>into one wide, rich event</strong>; a trace is just the "correlation handle" linking related observations, not the only entry point. This preserves <strong>high-cardinality context</strong> — you can slice, group, filter at will to investigate problems <strong>you didn't anticipate (unknown unknowns)</strong>, without pre-building a metric for every future question (Lessons 5/6 domain models and Lesson 41's query engine are this claim landing).</p>
 
-<p><strong>Immutability</strong> is wide events' natural partner. Under high-throughput telemetry, Langfuse <strong>favors append over update</strong>: an event written basically doesn't move. Why? Because "<strong>updates</strong>" are shockingly costly at massive scale — they force <strong>read-time deduplication</strong>, conjuring hidden query costs. In Lesson 13 you saw how ClickHouse uses <strong>AggregatingMergeTree + read-time final aggregation</strong> to swallow "the same entity written multiple times": it doesn't really modify old rows but appends new ones and merges by rule at query time. <strong>Turning "modify" into "append + merge" is the key to write-side surviving at high scale.</strong></p>
+<p><strong>Immutability</strong> is wide events' natural partner. Under high-throughput telemetry, Langfuse <strong>favors append over update</strong>: an event written basically doesn't move. Why? Because "<strong>updates</strong>" are shockingly costly at massive scale — they force <strong>read-time deduplication</strong>, conjuring hidden query costs. In Lesson 13 you saw how ClickHouse uses <strong>ReplacingMergeTree(event_ts, is_deleted) + read-time FINAL deduplication</strong> to swallow "the same entity written multiple times": it doesn't really modify old rows but appends new ones and <strong>keeps the latest version by event_ts</strong> at query time. <strong>Turning "modify" into "append + dedup at query" is the key to write-side surviving at high scale.</strong></p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="Wide events vs fragmented: tradition splits data into metrics/logs/traces piles stitched later; Langfuse packs full context (input output model usage latency attributes) into one wide rich event per observation, preserving high cardinality to investigate unknown unknowns; immutability = append not update, avoiding read-time dedup hidden cost">
@@ -160,15 +160,15 @@ _EN54.append(r"""
   <rect x="520" y="110" width="176" height="52" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="608" y="128" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">why not update?</text><text x="608" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">updates force read-time dedup</text><text x="608" y="154" text-anchor="middle" font-size="6.0" fill="var(--muted)">= hidden query cost at scale</text>
   <line x1="224" y1="102" x2="258" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="258,102 249,98 249,106" fill="var(--accent)"/>
   <line x1="490" y1="90" x2="518" y2="82" stroke="var(--teal)" stroke-width="1.3"/><polygon points="518,82 509,81 511,89" fill="var(--teal)"/>
-  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">Lesson 13: ClickHouse uses AggregatingMergeTree + read-time final, turning "same entity written multiple times" into "append new rows, merge at query"</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">Lesson 13: ClickHouse uses ReplacingMergeTree(event_ts,is_deleted) + read-time FINAL, turning "same entity written multiple times" into "append new rows, keep the latest at query"</text>
   <text x="360" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">Turning "modify" into "append + merge" — the key to high-scale write survival, and the conspiracy between immutability and wide events</text>
 </svg>
-<div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, Lesson 13 AggregatingMergeTree, Lesson 41 query engine.</div>
+<div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, Lesson 13 ReplacingMergeTree, Lesson 41 query engine.</div>
 </div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">theme 1</span><span class="name">wide events (observability 2.0)</span></div><div class="ld">One operation = one wide event with full context. The observation is the analytical unit, the trace a correlation handle. Preserving high cardinality → answer <strong>questions you didn't anticipate</strong>, without pre-building a metric per future question. This is the root of "exploratory observability."</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">theme 2</span><span class="name">immutability (append not update)</span></div><div class="ld">High-throughput favors append. Updates force read-time-dedup hidden cost, so AggregatingMergeTree's "append new rows + merge at query" replaces "modify in place." <strong>Immutability keeps the write path simple, predictable, and horizontally scalable.</strong></div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">theme 2</span><span class="name">immutability (append not update)</span></div><div class="ld">High-throughput favors append. Updates force read-time-dedup hidden cost, so ReplacingMergeTree(event_ts, is_deleted)'s "append new rows + keep the latest by event_ts at query" replaces "modify in place." <strong>Immutability keeps the write path simple, predictable, and horizontally scalable.</strong></div></div>
 </div>
 """)
 
@@ -209,7 +209,7 @@ _EN54.append(r"""
   <thead><tr><th>Theme</th><th>In a sentence</th><th>Seen in lessons</th></tr></thead>
   <tbody>
     <tr><td><b>① wide events</b></td><td>one wide rich event, preserving high cardinality to investigate unknown unknowns</td><td>L05/L06 domain models · L41 query engine</td></tr>
-    <tr><td><b>② immutability</b></td><td>append not update; modify = append new rows + merge at query</td><td>L13 AggregatingMergeTree · L18</td></tr>
+    <tr><td><b>② immutability</b></td><td>append not update; modify = append new rows + dedup at query (keep latest)</td><td>L13 ReplacingMergeTree · L18</td></tr>
     <tr><td><b>③ async</b></td><td>receive fast, process slowly in queues; fan-out/idempotency/watermark/lock</td><td>L12–19 ingestion · L30/L43/L46/L52</td></tr>
     <tr><td><b>④ dual (tri) storage</b></td><td>PG(OLTP)+CH(OLAP)+S3(payloads), each goes home</td><td>L02/L22/L24 · L52 deletion</td></tr>
     <tr><td><b>⑤ multi-tenancy</b></td><td>projectId everywhere; auth→RBAC→entitlement layered isolation</td><td>L48/L49/L50 · L46/L52 per-project</td></tr>
@@ -265,7 +265,7 @@ _ZH55.append(r"""
 
 _ZH55.append(r"""
 <h2>第一程：出生 → 摄取 → 落库</h2>
-<p><strong>① 出生（第12课）。</strong>你的应用调一次 LLM，<strong>SDK</strong> 就地创建一条 trace 和它下面的若干 observation，把输入、输出、模型、用量都记下来，<strong>攒成一批</strong>，异步 POST 到摄取 API——你的主流程<strong>几乎无感</strong>。<strong>② 摄取（第13-19课）。</strong>API 先用 API key 认证（<strong>第49课</strong>的两层哈希校验），把原始事件<strong>落进 S3</strong>、把任务<strong>塞进 Redis 队列</strong>就立刻 200 返回——这就是「<strong>快接收</strong>」。然后 <strong>worker</strong> 从队列取出，做校验、解析、可能的合并，<strong>upsert 进 ClickHouse</strong>。<strong>③ 落库（第13课）。</strong>这条 trace 最终<strong>散成三份</strong>安家：可分析的事件明细进 <strong>ClickHouse</strong>（不可变、AggregatingMergeTree 查时合并）、大块输入输出进 <strong>S3</strong>、相关元数据进 <strong>Postgres</strong>。出生到落库，第10课「双(三)存储」与第54课「异步、不可变」两大主题，在这里第一次合奏。</p>
+<p><strong>① 出生（第12课）。</strong>你的应用调一次 LLM，<strong>SDK</strong> 就地创建一条 trace 和它下面的若干 observation，把输入、输出、模型、用量都记下来，<strong>攒成一批</strong>，异步 POST 到摄取 API——你的主流程<strong>几乎无感</strong>。<strong>② 摄取（第13-19课）。</strong>API 先用 API key 认证（<strong>第49课</strong>的两层哈希校验），把原始事件<strong>落进 S3</strong>、把任务<strong>塞进 Redis 队列</strong>就立刻 200 返回——这就是「<strong>快接收</strong>」。然后 <strong>worker</strong> 从队列取出，做校验、解析、可能的合并，<strong>upsert 进 ClickHouse</strong>。<strong>③ 落库（第13课）。</strong>这条 trace 最终<strong>散成三份</strong>安家：可分析的事件明细进 <strong>ClickHouse</strong>（不可变、ReplacingMergeTree 查时去重保留最新）、大块输入输出进 <strong>S3</strong>、相关元数据进 <strong>Postgres</strong>。出生到落库，第10课「双(三)存储」与第54课「异步、不可变」两大主题，在这里第一次合奏。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="一条trace的一生时间线：出生(SDK创建,L12)→摄取(API认证落S3塞Redis队列worker处理,L13-19/L49)→落库(散成三份:ClickHouse事件+S3负载+Postgres元数据)→被读(列表详情会话REST,L20-27)→被评估(eval打分监控告警数据集,L28-36)→被作用(自动化webhook/Slack分析导出批量,L44-47)→退场(保留期跨三存储删除,L52)，全程被OTel观测(L51)、按plan门控(L50)、按project隔离">
@@ -374,7 +374,7 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
 
 _EN55.append(r"""
 <h2>Leg one: born → ingested → stored</h2>
-<p><strong>① Born (Lesson 12).</strong> Your app calls an LLM, the <strong>SDK</strong> creates a trace and its child observations on the spot, recording input, output, model, usage, <strong>batches them up</strong>, and async-POSTs to the ingestion API — your main flow <strong>barely notices</strong>. <strong>② Ingested (Lessons 13-19).</strong> The API first authenticates by API key (<strong>Lesson 49</strong>'s two-tier hash check), <strong>lands the raw event in S3</strong>, <strong>pushes the task to a Redis queue</strong>, and returns 200 immediately — that's "<strong>receive fast</strong>." Then the <strong>worker</strong> pulls from the queue, validates, parses, possibly merges, and <strong>upserts into ClickHouse</strong>. <strong>③ Stored (Lesson 13).</strong> The trace finally <strong>splits into three copies</strong> to settle: analyzable event detail into <strong>ClickHouse</strong> (immutable, AggregatingMergeTree merging at query), bulky inputs/outputs into <strong>S3</strong>, related metadata into <strong>Postgres</strong>. From birth to storage, Lesson 10's "dual (tri) storage" and Lesson 54's "async, immutability" themes first play in concert here.</p>
+<p><strong>① Born (Lesson 12).</strong> Your app calls an LLM, the <strong>SDK</strong> creates a trace and its child observations on the spot, recording input, output, model, usage, <strong>batches them up</strong>, and async-POSTs to the ingestion API — your main flow <strong>barely notices</strong>. <strong>② Ingested (Lessons 13-19).</strong> The API first authenticates by API key (<strong>Lesson 49</strong>'s two-tier hash check), <strong>lands the raw event in S3</strong>, <strong>pushes the task to a Redis queue</strong>, and returns 200 immediately — that's "<strong>receive fast</strong>." Then the <strong>worker</strong> pulls from the queue, validates, parses, possibly merges, and <strong>upserts into ClickHouse</strong>. <strong>③ Stored (Lesson 13).</strong> The trace finally <strong>splits into three copies</strong> to settle: analyzable event detail into <strong>ClickHouse</strong> (immutable, ReplacingMergeTree dedup-at-query keeping the latest), bulky inputs/outputs into <strong>S3</strong>, related metadata into <strong>Postgres</strong>. From birth to storage, Lesson 10's "dual (tri) storage" and Lesson 54's "async, immutability" themes first play in concert here.</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="A trace's life timeline: born (SDK creates, L12) → ingested (API auth, land S3, push Redis queue, worker processes, L13-19/L49) → stored (split into three: ClickHouse events + S3 payloads + Postgres metadata) → read (list/detail/session/REST, L20-27) → evaluated (eval scoring, monitor alerts, datasets, L28-36) → acted on (automation webhook/Slack, analytics export, batch, L44-47) → retired (retention cross-store deletion, L52), observed by OTel throughout (L51), gated by plan (L50), isolated by project">
