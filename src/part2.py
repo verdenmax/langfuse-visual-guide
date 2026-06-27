@@ -1088,6 +1088,31 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
 <code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>，配合组织级与项目级的 membership 决定「谁能在哪个项目做什么」。这套鉴权与权限会在第 49、53 课展开，
 这里你只需建立印象：<strong>控制面不仅存「配置」，也存「谁能碰这些配置」。</strong></p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="API key 安全：明文密钥只在创建时显示一次给用户，Postgres 的 model ApiKey 只存 publicKey 明文与 hashedSecretKey、fastHashedSecretKey、displaySecretKey 这些哈希或脱敏片段，从不存密钥明文；校验时把请求里的 key 哈希后比对 fastHashedSecretKey，即使数据库泄露也拿不到可用 key">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">API key：明文只给你一次，库里只存哈希</text>
+  <rect x="16" y="56" width="176" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">你 / SDK 持有</text>
+  <text x="104" y="98" font-size="10" text-anchor="middle" fill="var(--ink)">sk-lf-xxxxx（明文）</text>
+  <text x="104" y="115" font-size="9" text-anchor="middle" fill="var(--muted)">仅创建时显示一次</text>
+  <line x1="192" y1="91" x2="232" y2="91" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="232" y="40" width="264" height="150" rx="10" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="244" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">Postgres · model ApiKey</text>
+  <text x="244" y="84" font-size="10" fill="var(--ink)">publicKey — 明文（公钥）</text>
+  <text x="244" y="104" font-size="10" fill="var(--ink)">hashedSecretKey — 哈希</text>
+  <text x="244" y="124" font-size="10" fill="var(--ink)">fastHashedSecretKey — 哈希（快校验）</text>
+  <text x="244" y="144" font-size="10" fill="var(--ink)">displaySecretKey — 脱敏片段</text>
+  <text x="244" y="172" font-size="10.5" font-weight="700" fill="var(--accent-ink)">✗ 密钥明文：从不入库</text>
+  <line x1="496" y1="110" x2="520" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="520" y="52" width="184" height="120" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="612" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">校验一次请求</text>
+  <text x="532" y="94" font-size="9.5" fill="var(--ink)">① 把请求里的 key 哈希</text>
+  <text x="532" y="114" font-size="9.5" fill="var(--ink)">② 比对 fastHashedSecretKey</text>
+  <text x="532" y="138" font-size="10" font-weight="700" fill="var(--accent-ink)">✓ 放行 / ✗ 401</text>
+  <text x="532" y="158" font-size="9" fill="var(--muted)">明文从不参与比较</text>
+  <text x="360" y="208" font-size="10.5" text-anchor="middle" fill="var(--muted)">即使数据库泄露，攻击者也拿不到可用的 key —— 只有哈希、无法逆推</text>
+</svg>
+
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>把「控制面」和「数据面」分到两个数据库，最大的好处是什么？</strong> 是让两者能<strong>各自按自己的规律演进与伸缩</strong>。控制面数据量小、改动要强一致，
@@ -1244,6 +1269,31 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 "who can do what in which project". Auth and permissions get their own lessons (L49, L53); for now just register the impression:
 <strong>the control plane stores not only "config" but "who may touch that config".</strong></p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="API key security: the plaintext key is shown to the user only once at creation; the Postgres model ApiKey stores only the plaintext publicKey plus hashes/masked fragments hashedSecretKey, fastHashedSecretKey, displaySecretKey, never the plaintext secret; on auth the incoming key is hashed and compared to fastHashedSecretKey, so even a DB leak yields no usable key">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">API key: plaintext shown once, only hashes stored</text>
+  <rect x="16" y="56" width="176" height="70" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">you / SDK hold</text>
+  <text x="104" y="98" font-size="10" text-anchor="middle" fill="var(--ink)">sk-lf-xxxxx (plaintext)</text>
+  <text x="104" y="115" font-size="9" text-anchor="middle" fill="var(--muted)">shown once at creation</text>
+  <line x1="192" y1="91" x2="232" y2="91" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="232" y="40" width="264" height="150" rx="10" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="244" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">Postgres · model ApiKey</text>
+  <text x="244" y="84" font-size="10" fill="var(--ink)">publicKey — plaintext (public)</text>
+  <text x="244" y="104" font-size="10" fill="var(--ink)">hashedSecretKey — hash</text>
+  <text x="244" y="124" font-size="10" fill="var(--ink)">fastHashedSecretKey — hash (fast check)</text>
+  <text x="244" y="144" font-size="10" fill="var(--ink)">displaySecretKey — masked fragment</text>
+  <text x="244" y="172" font-size="10.5" font-weight="700" fill="var(--accent-ink)">✗ plaintext secret: never stored</text>
+  <line x1="496" y1="110" x2="520" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="520" y="52" width="184" height="120" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="612" y="72" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">verify a request</text>
+  <text x="532" y="94" font-size="9.5" fill="var(--ink)">1 hash the key in the request</text>
+  <text x="532" y="114" font-size="9.5" fill="var(--ink)">2 compare to fastHashedSecretKey</text>
+  <text x="532" y="138" font-size="10" font-weight="700" fill="var(--accent-ink)">✓ allow / ✗ 401</text>
+  <text x="532" y="158" font-size="9" fill="var(--muted)">plaintext never compared</text>
+  <text x="360" y="208" font-size="10.5" text-anchor="middle" fill="var(--muted)">even a DB leak yields no usable key — only hashes, not reversible</text>
+</svg>
+
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
   <strong>What's the biggest payoff of splitting "control plane" and "data plane" into two databases?</strong> Letting each
@@ -1373,6 +1423,32 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 
 <p>这正好对照出 project 与 environment 隔离机制的不同：<strong>project_id 焊进了排序键</strong>（隔离即定位，结构性安全），而 <strong>environment 只是一个普通列</strong>（查询时过滤）。
 这也合理——硬隔离要靠结构保证，软切片只是个方便的视图维度，不必、也不该动用排序键这种重武器。</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="同一行宽事件里两种隔离对比：project_id 被焊进排序键 ORDER BY 前缀，是结构性硬隔离跨项目绝不可见；environment 是 LowCardinality 默认 default 的普通过滤列、不进排序键，是软切片，查询加 WHERE environment 等于 prod 才分、不加就合">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">同一行两种隔离：project_id 硬隔离（排序键）vs environment 软切片（过滤列）</text>
+  <rect x="24" y="42" width="150" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="99" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">project_id</text>
+  <rect x="180" y="42" width="150" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="255" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">environment</text>
+  <rect x="336" y="42" width="110" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="391" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">timestamp</text>
+  <rect x="452" y="42" width="130" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="517" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">…宽事件列</text>
+  <text x="600" y="64" font-size="11" fill="var(--muted)">…</text>
+  <line x1="99" y1="76" x2="130" y2="104" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="255" y1="76" x2="420" y2="104" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="24" y="104" width="320" height="92" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="40" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id = 硬隔离</text>
+  <text x="40" y="148" font-size="9.5" fill="var(--ink)">焊进 ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="40" y="170" font-size="9.5" fill="var(--ink)">→ 跨 project 绝不可见（结构性安全）</text>
+  <text x="40" y="186" font-size="9" fill="var(--muted)">隔离即定位，无法被某个查询绕过</text>
+  <rect x="376" y="104" width="320" height="92" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="392" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">environment = 软切片</text>
+  <text x="392" y="148" font-size="9.5" fill="var(--ink)">LowCardinality DEFAULT 'default'，不进排序键</text>
+  <text x="392" y="170" font-size="9.5" fill="var(--ink)">→ WHERE environment='prod' 才分</text>
+  <text x="392" y="186" font-size="9" fill="var(--muted)">普通过滤列：想分就加条件，不分就忽略</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
@@ -1519,6 +1595,32 @@ soft slice: add a condition to filter by env, or ignore it to see them together.
 structurally safe), while <strong>environment is just an ordinary column</strong> (filtered at query time). Reasonably so — hard isolation must
 be guaranteed by structure, while a soft slice is just a convenient view dimension that needn't (and shouldn't) wield the heavy weapon of the
 ordering key.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="two isolation mechanisms in one wide-event row: project_id is welded into the ORDER BY ordering-key prefix and is structural hard isolation never visible across projects; environment is a LowCardinality default-default ordinary filter column not in the ordering key, a soft slice you split only by adding WHERE environment equals prod, or merge by omitting it">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">two isolations in one row: project_id hard (ordering key) vs environment soft (filter column)</text>
+  <rect x="24" y="42" width="150" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="99" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">project_id</text>
+  <rect x="180" y="42" width="150" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="255" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">environment</text>
+  <rect x="336" y="42" width="110" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="391" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">timestamp</text>
+  <rect x="452" y="42" width="130" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="517" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">…wide columns</text>
+  <text x="600" y="64" font-size="11" fill="var(--muted)">…</text>
+  <line x1="99" y1="76" x2="130" y2="104" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="255" y1="76" x2="420" y2="104" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="24" y="104" width="320" height="92" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="40" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id = hard isolation</text>
+  <text x="40" y="148" font-size="9.5" fill="var(--ink)">welded into ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="40" y="170" font-size="9.5" fill="var(--ink)">→ never visible across projects (structural)</text>
+  <text x="40" y="186" font-size="9" fill="var(--muted)">isolate = locate; no query can bypass it</text>
+  <rect x="376" y="104" width="320" height="92" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="392" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">environment = soft slice</text>
+  <text x="392" y="148" font-size="9.5" fill="var(--ink)">LowCardinality DEFAULT 'default', not in sort key</text>
+  <text x="392" y="170" font-size="9.5" fill="var(--ink)">→ split only via WHERE environment='prod'</text>
+  <text x="392" y="186" font-size="9" fill="var(--muted)">ordinary filter column: split or merge at will</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>

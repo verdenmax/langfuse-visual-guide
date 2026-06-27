@@ -439,6 +439,32 @@ ALTER TABLE scores       ADD COLUMN environment LowCardinality(String) DEFAULT <
 <p>这正好对照出 project 与 environment 隔离机制的不同：<strong>project_id 焊进了排序键</strong>（隔离即定位，结构性安全），而 <strong>environment 只是一个普通列</strong>（查询时过滤）。
 这也合理——硬隔离要靠结构保证，软切片只是个方便的视图维度，不必、也不该动用排序键这种重武器。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="同一行宽事件里两种隔离对比：project_id 被焊进排序键 ORDER BY 前缀，是结构性硬隔离跨项目绝不可见；environment 是 LowCardinality 默认 default 的普通过滤列、不进排序键，是软切片，查询加 WHERE environment 等于 prod 才分、不加就合">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">同一行两种隔离：project_id 硬隔离（排序键）vs environment 软切片（过滤列）</text>
+  <rect x="24" y="42" width="150" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="99" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">project_id</text>
+  <rect x="180" y="42" width="150" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="255" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">environment</text>
+  <rect x="336" y="42" width="110" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="391" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">timestamp</text>
+  <rect x="452" y="42" width="130" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="517" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">…宽事件列</text>
+  <text x="600" y="64" font-size="11" fill="var(--muted)">…</text>
+  <line x1="99" y1="76" x2="130" y2="104" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="255" y1="76" x2="420" y2="104" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="24" y="104" width="320" height="92" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="40" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id = 硬隔离</text>
+  <text x="40" y="148" font-size="9.5" fill="var(--ink)">焊进 ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="40" y="170" font-size="9.5" fill="var(--ink)">→ 跨 project 绝不可见（结构性安全）</text>
+  <text x="40" y="186" font-size="9" fill="var(--muted)">隔离即定位，无法被某个查询绕过</text>
+  <rect x="376" y="104" width="320" height="92" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="392" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">environment = 软切片</text>
+  <text x="392" y="148" font-size="9.5" fill="var(--ink)">LowCardinality DEFAULT 'default'，不进排序键</text>
+  <text x="392" y="170" font-size="9.5" fill="var(--ink)">→ WHERE environment='prod' 才分</text>
+  <text x="392" y="186" font-size="9" fill="var(--muted)">普通过滤列：想分就加条件，不分就忽略</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>🔒 project = 硬隔离</h4><p>安全红线：不同 project 的数据<strong>绝不可见</strong>。焊进排序键前缀 + API key 归属，从存储到鉴权层层保证。</p></div>
   <div class="col"><h4>🏷️ environment = 软切片</h4><p>视图偏好：同一 project 内给数据贴 prod/staging/dev 标签，<strong>可分可合</strong>，只是查询时的一个过滤维度。</p></div>
@@ -628,6 +654,32 @@ soft slice: add a condition to filter by env, or ignore it to see them together.
 structurally safe), while <strong>environment is just an ordinary column</strong> (filtered at query time). Reasonably so — hard isolation must
 be guaranteed by structure, while a soft slice is just a convenient view dimension that needn't (and shouldn't) wield the heavy weapon of the
 ordering key.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="two isolation mechanisms in one wide-event row: project_id is welded into the ORDER BY ordering-key prefix and is structural hard isolation never visible across projects; environment is a LowCardinality default-default ordinary filter column not in the ordering key, a soft slice you split only by adding WHERE environment equals prod, or merge by omitting it">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">two isolations in one row: project_id hard (ordering key) vs environment soft (filter column)</text>
+  <rect x="24" y="42" width="150" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="99" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">project_id</text>
+  <rect x="180" y="42" width="150" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="255" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">environment</text>
+  <rect x="336" y="42" width="110" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="391" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">timestamp</text>
+  <rect x="452" y="42" width="130" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="517" y="64" font-size="10" text-anchor="middle" fill="var(--muted)">…wide columns</text>
+  <text x="600" y="64" font-size="11" fill="var(--muted)">…</text>
+  <line x1="99" y1="76" x2="130" y2="104" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="255" y1="76" x2="420" y2="104" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="24" y="104" width="320" height="92" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="40" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">project_id = hard isolation</text>
+  <text x="40" y="148" font-size="9.5" fill="var(--ink)">welded into ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="40" y="170" font-size="9.5" fill="var(--ink)">→ never visible across projects (structural)</text>
+  <text x="40" y="186" font-size="9" fill="var(--muted)">isolate = locate; no query can bypass it</text>
+  <rect x="376" y="104" width="320" height="92" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="392" y="126" font-size="11" font-weight="700" fill="var(--accent-ink)">environment = soft slice</text>
+  <text x="392" y="148" font-size="9.5" fill="var(--ink)">LowCardinality DEFAULT 'default', not in sort key</text>
+  <text x="392" y="170" font-size="9.5" fill="var(--ink)">→ split only via WHERE environment='prod'</text>
+  <text x="392" y="186" font-size="9" fill="var(--muted)">ordinary filter column: split or merge at will</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>🔒 project = hard isolation</h4><p>A security red line: different projects' data is <strong>never visible</strong> to each other. Welded into the ordering-key prefix + API-key ownership, guaranteed from storage to auth.</p></div>

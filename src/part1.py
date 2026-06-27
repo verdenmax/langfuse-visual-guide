@@ -1790,6 +1790,30 @@ Turbo 会给每个任务的<strong>输入算一个指纹</strong>（源码 + 依
 <code>web</code> 那些没被波及的构建/测试就<strong>命中缓存、秒过</strong>。配上远端缓存，团队成员之间还能共享构建结果。这就是大仓也能保持 CI 快的秘诀——
 也是「用 monorepo」这个选择能成立的<strong>工程前提</strong>：没有好的缓存，monorepo 的构建成本会劝退所有人。</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="Turbo 缓存按指纹工作：改了 worker 的一个文件，Turbo 给每个包的任务算指纹（源码加依赖加配置）逐包比对，worker 指纹变了要重建，web 指纹没变直接命中缓存秒过，shared 没变也命中；远端缓存还能在团队成员间共享构建结果">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Turbo 缓存：给每个任务的输入算指纹，没变就整段跳过</text>
+  <rect x="16" y="72" width="150" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="91" y="92" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">改 worker</text>
+  <text x="91" y="108" font-size="9.5" text-anchor="middle" fill="var(--muted)">一个文件</text>
+  <line x1="166" y1="95" x2="200" y2="95" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="200" y="52" width="160" height="120" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="280" y="78" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Turbo 算指纹</text>
+  <text x="280" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">= 源码 + 依赖</text>
+  <text x="280" y="118" font-size="9.5" text-anchor="middle" fill="var(--ink)">+ 配置</text>
+  <text x="280" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">逐包比对</text>
+  <line x1="360" y1="90" x2="400" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="360" y1="118" x2="400" y2="119" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="360" y1="150" x2="400" y2="171" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="400" y="46" width="304" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="414" y="72" font-size="10.5" fill="var(--ink)">worker · 指纹变 → 重建</text>
+  <rect x="400" y="98" width="304" height="42" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="414" y="124" font-size="10.5" fill="var(--ink)">web · 指纹没变 → 缓存命中（秒过）</text>
+  <rect x="400" y="150" width="304" height="42" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="414" y="176" font-size="10.5" fill="var(--ink)">shared · 没变 → 命中</text>
+  <text x="360" y="216" font-size="10.5" text-anchor="middle" fill="var(--muted)">远端缓存：团队成员间共享构建结果 —— 几十包的大仓 CI 也能快</text>
+</svg>
+
 <h2>每个工作区里有什么</h2>
 <p>最后给你一张「高频目录速查表」，后面的课会反复回到这些位置：</p>
 
@@ -1996,6 +2020,30 @@ if the fingerprint is unchanged, <strong>reuses last time's output</strong> and 
 <code>worker</code> lets the unaffected <code>web</code> builds/tests <strong>hit cache and pass instantly</strong>. With a remote
 cache, teammates even share build results. That's the secret to keeping CI fast in a big repo — and the <strong>engineering
 precondition</strong> that makes "use a monorepo" viable: without good caching, monorepo build cost scares everyone off.</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="Turbo caching works by fingerprint: change one file in worker and Turbo computes a fingerprint per package task (source plus dependencies plus config) and compares per package; worker's fingerprint changed so it rebuilds, web's is unchanged so it hits the cache and skips instantly, shared unchanged also hits; a remote cache even shares build results across teammates">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">Turbo cache: fingerprint each task's inputs, skip the whole thing if unchanged</text>
+  <rect x="16" y="72" width="150" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="91" y="92" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">change worker</text>
+  <text x="91" y="108" font-size="9.5" text-anchor="middle" fill="var(--muted)">one file</text>
+  <line x1="166" y1="95" x2="200" y2="95" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="200" y="52" width="160" height="120" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="280" y="78" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Turbo fingerprints</text>
+  <text x="280" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">= source + deps</text>
+  <text x="280" y="118" font-size="9.5" text-anchor="middle" fill="var(--ink)">+ config</text>
+  <text x="280" y="146" font-size="9.5" text-anchor="middle" fill="var(--muted)">compared per package</text>
+  <line x1="360" y1="90" x2="400" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="360" y1="118" x2="400" y2="119" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="360" y1="150" x2="400" y2="171" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="400" y="46" width="304" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="414" y="72" font-size="10.5" fill="var(--ink)">worker · fingerprint changed → rebuild</text>
+  <rect x="400" y="98" width="304" height="42" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="414" y="124" font-size="10.5" fill="var(--ink)">web · unchanged → cache hit (instant)</text>
+  <rect x="400" y="150" width="304" height="42" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="414" y="176" font-size="10.5" fill="var(--ink)">shared · unchanged → hit</text>
+  <text x="360" y="216" font-size="10.5" text-anchor="middle" fill="var(--muted)">remote cache: share build results across teammates — even a dozens-of-packages repo keeps CI fast</text>
+</svg>
 
 <h2>What's inside each workspace</h2>
 <p>Finally, a "hot directory cheat-sheet" — later lessons return to these spots again and again:</p>
