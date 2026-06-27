@@ -1468,6 +1468,11 @@ _ZH10.append(r"""
 仓储层的读取 API <strong>统一要求</strong>传入 project_id，tRPC 的 <code>protectedProjectProcedure</code> 在中间件里<strong>先</strong>校验你属不属于这个 project（第 21 课）。
 于是「越权看别人数据」不是「容易写错」，而是<strong>压根没有那条路</strong>。这就是「安全做进结构」与「安全靠自觉」的本质区别。</p>
 
+<div class="card warn">
+  <div class="tag">⚠️ 多租户最该警惕的坑</div>
+  靠「每个查询都记得加 <code>WHERE project_id = ?</code>」来隔离，<strong>只要一处漏写或写错，A 公司就可能看到 B 公司的数据</strong>——多租户系统里的灾难级 bug。Langfuse 的对策是把 project_id <strong>焊进排序键前缀与鉴权中间件</strong>：越权这条路<strong>压根不存在</strong>，靠结构而非靠自觉。
+</div>
+
 <h2>environment：项目内的软切片</h2>
 <p>environment 是后来加上的一层。看它在 ClickHouse 里的样子——三张宽事件表都加了一个 <code>environment</code> 列：</p>
 
@@ -1635,6 +1640,11 @@ Langfuse instead welds project_id into the storage and auth foundations: the rep
 project_id, and tRPC's <code>protectedProjectProcedure</code> middleware checks <strong>first</strong> whether you belong to this project
 (L21). So "see another tenant's data by accident" isn't "easy to get wrong" — <strong>there simply is no such path</strong>. That's the
 essential difference between "security in the structure" and "security by discipline".</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ The trap to watch in multi-tenancy</div>
+  Relying on "every query remembering to add <code>WHERE project_id = ?</code>" means <strong>one forgotten or wrong filter lets company A see company B's data</strong> — a catastrophic multi-tenant bug. Langfuse instead <strong>welds project_id into the sort-key prefix and the auth middleware</strong>: the cross-tenant path <strong>simply doesn't exist</strong> — structure, not discipline.
+</div>
 
 <h2>environment: a soft slice within a project</h2>
 <p>environment was added later. Here's how it looks in ClickHouse — all three wide-event tables gained an <code>environment</code> column:</p>

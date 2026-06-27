@@ -61,6 +61,11 @@ _ZH48.append(r"""
 <h2>密码登录的一圈安全护栏</h2>
 <p>别小看「邮箱密码」这条最朴素的路——它的 <code>authorize</code> 函数里藏着一圈值得细品的安全设计。<strong>先是三道 SSO 强制闸</strong>：实例级禁用密码登录（<code>AUTH_DISABLE_USERNAME_PASSWORD</code>）、域名级黑名单（某些公司域名必须走 SSO）、EE 多租户强制（某域名配了专属 SSO 就不许用密码）。<strong>再是一处教科书级的时序攻击防护</strong>：万一用户不存在，代码<strong>照样跑一遍密码哈希</strong>再报错——这样「用户不存在」和「密码错」两条失败路径耗时相近，攻击者就<strong>没法靠响应快慢来探测某个邮箱是否注册过</strong>。<strong>还有一处</strong>：若用户的 <code>password</code> 字段是 null，说明 ta 是用 SSO 注册的，明确提示「请用你绑定的 IdP 登录」。全过了才用 <strong>bcrypt</strong> 比对密码。</p>
 
+<div class="card warn">
+  <div class="tag">⚠️ 登录失败也要「长得一样、慢得一样」</div>
+  若「用户不存在」直接报错、「用户存在但密码错」才慢慢算一遍 bcrypt（故意 12 轮、很慢），两条失败路径的<strong>响应时间会有可观差异</strong>——攻击者拿一堆邮箱来试，<strong>响应慢的就是已注册</strong>，不费密码就枚举出「哪些邮箱在你这注册过」（隐私泄露 + 撞库弹药）。对策：用户不存在时也<strong>白跑一遍密码哈希</strong>，让两条失败路径耗时相近。安全工程里，<strong>错误也要长得一样、慢得一样</strong>。
+</div>
+
 <svg viewBox="0 0 720 212" role="img" aria-label="密码登录 authorize 的四道安全护栏：① SSO 强制三连查（实例禁密码、域名黑名单、EE 专属 SSO，命中即拒并提示走 SSO），② 查用户加时序防护（查不到也照跑一遍 hashPassword 防靠响应快慢枚举注册邮箱），③ SSO 用户拦截（password 为 null 则引导用 IdP 登录），④ bcrypt 比对（compare，存储时 hash 12 轮加盐），全过才由 NextAuth 发会话">
   <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
   <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">authorize() 的一圈安全护栏：四道全过才放行</text>
@@ -218,6 +223,11 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
 _EN48.append(r"""
 <h2>A ring of security guardrails around password login</h2>
 <p>Don't underestimate the plainest path, "email-password" — its <code>authorize</code> function hides a ring of security design worth savoring. <strong>First, three SSO-enforcement gates</strong>: instance-level disabling of password login (<code>AUTH_DISABLE_USERNAME_PASSWORD</code>), a domain-level blocklist (certain company domains must use SSO), and EE multi-tenant enforcement (a domain configured with a dedicated SSO can't use passwords). <strong>Then a textbook timing-attack defense</strong>: if the user doesn't exist, the code <strong>still runs the password hash</strong> before erroring — so "user doesn't exist" and "wrong password" take similar time, and an attacker <strong>can't probe whether an email is registered by response speed</strong>. <strong>And one more</strong>: if the user's <code>password</code> field is null, they signed up via SSO, so explicitly prompt "please sign in with your linked IdP." Only after all that does it <strong>bcrypt</strong>-compare the password.</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ Failed logins must "look the same and take the same time"</div>
+  If "user doesn't exist" errors out instantly while "user exists but wrong password" slowly runs bcrypt (deliberately slow, 12 rounds), the two failure paths have a <strong>measurable time difference</strong> — an attacker trying a pile of emails sees <strong>slow = registered</strong>, enumerating "which emails are registered here" without ever guessing a password (a privacy leak and credential-stuffing ammo). The fix: <strong>run a throwaway password hash even when the user is absent</strong>, keeping both failure paths constant-time. This is the key timing-side-channel defense.
+</div>
 
 <svg viewBox="0 0 720 212" role="img" aria-label="the four security guardrails of password authorize: 1 three SSO-enforcement gates (instance disable, domain blocklist, EE dedicated SSO — match means reject and prompt SSO), 2 user lookup plus timing defense (run hashPassword even when not found to stop email enumeration by response speed), 3 SSO-user interception (password null prompts using the IdP), 4 bcrypt compare (stored as hash with 12 salted rounds); only if all pass does NextAuth issue a session">
   <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
@@ -1797,7 +1807,7 @@ _ZH53.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点（兼 Part 10 收官）</div>
+  <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>pnpm monorepo</strong>：web/worker/packages/shared/ee 一个仓库；依赖只朝下（web/worker/ee → shared，shared 不反向依赖）；pnpm 强制(only-allow) + <code>minimumReleaseAge</code> 防供应链投毒。共享代码一个 commit 原子改。</li>
     <li><strong>Turbo 任务管道</strong>：<code>dependsOn</code> 的 <code>^build</code> 让 Turbo 顺依赖图<strong>自动排拓扑构建序</strong>（shared 先、web/worker 后），不用手写顺序。</li>
@@ -1962,7 +1972,7 @@ _EN53.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 10 finale)</div>
+  <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>pnpm monorepo</strong>: web/worker/packages/shared/ee in one repo; dependencies point only down (web/worker/ee → shared, shared doesn't reverse-depend); pnpm enforced (only-allow) + <code>minimumReleaseAge</code> against supply-chain poisoning. Shared code, atomic one-commit changes.</li>
     <li><strong>Turbo task pipeline</strong>: <code>dependsOn</code>'s <code>^build</code> lets Turbo <strong>auto-order builds topologically</strong> by the dependency graph (shared first, web/worker after), no hand-writing the order.</li>

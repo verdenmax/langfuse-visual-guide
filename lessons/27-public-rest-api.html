@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
     <h1><span class="lang-zh">公共 REST API</span><span class="lang-en">The public REST API</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="21-trpc-backbone.html">第21课</a> 的 tRPC 与 <a class="xref" href="12-ingestion-api.html">第12课</a> 的摄取，本课讲对外的公共 REST API。</div><div class="lang-en">Read <a class="xref" href="21-trpc-backbone.html">Lesson 21</a> (tRPC) and <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion); this lesson covers the outward-facing public REST API.</div></div>
   <div class="lang-zh">
 <p class="lead">
 <a class="xref" href="21-trpc-backbone.html">第 21 课</a>开的是给自家 UI 的「员工通道」（tRPC）。这一课开<strong>第三道门也是最后一道</strong>——给外部 SDK 的<strong>公共 REST API</strong>。它的优先级和 tRPC 截然不同：对内求<strong>类型安全、改得快</strong>，
@@ -492,7 +495,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点</div>
+  <div class="tag">🎯 本课要点 · 第四部分收官</div>
   <ul>
     <li><strong>一个路由工厂</strong> <code>createAuthedProjectAPIRoute</code> 统一所有公共端点的鉴权 → 访问级别 → 限流 → Zod 校验 query/body → OTel(surface=publicapi) → 响应校验 → 超大体拒绝。</li>
     <li><strong>鉴权用 Redis 缓存</strong>扛海量请求：命中即返回、未命中回 Postgres 按 <code>fastHashedSecretKey</code> 查再回填；<strong>负缓存</strong>（<code>API_KEY_NON_EXISTENT</code>）挡住假 key 暴力打库。</li>
@@ -702,7 +705,7 @@ silently drifting from the Fern contract), the whole external channel stays stab
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 4 wrap-up</div>
   <ul>
     <li><strong>One route factory</strong> <code>createAuthedProjectAPIRoute</code> unifies every public endpoint's auth → access level → rate limit → Zod-validate query/body → OTel(surface=publicapi) → response validation → oversized-body rejection.</li>
     <li><strong>Auth uses a Redis cache</strong> to scale: hit returns directly, miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches; <strong>negative caching</strong> (<code>API_KEY_NON_EXISTENT</code>) blocks fake-key brute force.</li>

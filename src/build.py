@@ -34,8 +34,8 @@ def build():
         base = CONTENT[fname]
         self_num = order.index(fname) + 1
         content = {
-            "zh": shell.autolink(base["zh"] + quizzes.render(fname, "zh"), self_num, order),
-            "en": shell.autolink(base["en"] + quizzes.render(fname, "en"), self_num, order),
+            "zh": shell.add_part_finale(shell.autolink(base["zh"] + quizzes.render(fname, "zh"), self_num, order), fname, "zh"),
+            "en": shell.add_part_finale(shell.autolink(base["en"] + quizzes.render(fname, "en"), self_num, order), fname, "en"),
         }
         html = shell.page(fname, content, home_href="../index.html")
         with open(os.path.join(LESSONS_DIR, fname), "w", encoding="utf-8") as f:

@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第十部分 · 平台与运维</span><span class="lang-en">Part 10 · Platform &amp; Operations</span></div>
     <h1><span class="lang-zh">构建·测试·开发流</span><span class="lang-en">Build, test &amp; dev workflow</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="04-project-map-monorepo.html">第4课</a> 的 monorepo 全景，本课讲构建、测试与开发流。</div><div class="lang-en">Read <a class="xref" href="04-project-map-monorepo.html">Lesson 4</a> on the monorepo map; this lesson covers the build, test, and dev workflow.</div></div>
   <div class="lang-zh">
 <p class="lead">
 你已经把 Langfuse 从摄取到运维看了个遍。最后一课换个角度：这个平台<strong>自己是怎么被构建、测试、迭代</strong>的？答案藏在三样东西里。① <strong>pnpm monorepo</strong>——web、worker、shared、ee 四个包住在<strong>同一个仓库</strong>里，共享代码、还由工具强制好依赖方向。② <strong>Turborepo</strong>——用一套<strong>任务管道 + 内容哈希缓存</strong>，让「改一个包、只重建这个包」成为可能，把几十个包的构建/CI 从「每次全量、慢到崩溃」变成「秒级增量」。③ <strong>一键开发流</strong>——一条 <code>dx</code> 命令就能从零拉起完整本地环境（装依赖→起 Docker 基础设施→重置库→灌种子数据→跑起来），外加一个 <strong>seed CLI</strong> 一键生成逼真的测试数据。
@@ -501,7 +504,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点（兼 Part 10 收官）</div>
+  <div class="tag">🎯 本课要点 · 第十部分收官</div>
   <ul>
     <li><strong>pnpm monorepo</strong>：web/worker/packages/shared/ee 一个仓库；依赖只朝下（web/worker/ee → shared，shared 不反向依赖）；pnpm 强制(only-allow) + <code>minimumReleaseAge</code> 防供应链投毒。共享代码一个 commit 原子改。</li>
     <li><strong>Turbo 任务管道</strong>：<code>dependsOn</code> 的 <code>^build</code> 让 Turbo 顺依赖图<strong>自动排拓扑构建序</strong>（shared 先、web/worker 后），不用手写顺序。</li>
@@ -708,7 +711,7 @@ As the close of Part 10 (Platform & Operations), this lesson is about the <stron
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 10 finale)</div>
+  <div class="tag">🎯 Key points · Part 10 wrap-up</div>
   <ul>
     <li><strong>pnpm monorepo</strong>: web/worker/packages/shared/ee in one repo; dependencies point only down (web/worker/ee → shared, shared doesn't reverse-depend); pnpm enforced (only-allow) + <code>minimumReleaseAge</code> against supply-chain poisoning. Shared code, atomic one-commit changes.</li>
     <li><strong>Turbo task pipeline</strong>: <code>dependsOn</code>'s <code>^build</code> lets Turbo <strong>auto-order builds topologically</strong> by the dependency graph (shared first, web/worker after), no hand-writing the order.</li>

@@ -121,6 +121,41 @@ def check_glossary():
         add("ERR", "glossary.html", "missing (run build.py)")
 
 
+def check_prereqs():
+    """Every PREREQS key must be a real lesson, and its hint may only reference
+    EARLIER lessons (no forward or self references)."""
+    for fname, hint in shell.PREREQS.items():
+        if fname not in ORDER:
+            add("ERR", "prereqs", f"PREREQS key not a lesson: {fname!r}")
+            continue
+        self_i = ORDER.index(fname)
+        for txt in hint:
+            for m in re.finditer(r"第\s*(\d+)\s*课|Lesson\s+(\d+)", txt):
+                n = int(m.group(1) or m.group(2))
+                if n - 1 >= self_i:
+                    add("ERR", fname, f"prereq hint references self/later lesson {n}")
+
+
+def check_part_finales(lesson_html):
+    """Every Part's last lesson must carry the wrap-up suffix on its key-points
+    card tag (both zh and en); every non-ender must keep the plain tag."""
+    for fname, html in lesson_html.items():
+        n = shell.PART_ENDERS.get(fname)
+        if n:
+            is_cap = fname == PAGES[-1][0]
+            zh_want = "🎯 本课要点 · 全书终" if is_cap else f"🎯 本课要点 · 第{shell._CN_NUM[n]}部分收官"
+            en_want = "🎯 Key points · The end" if is_cap else f"🎯 Key points · Part {n} wrap-up"
+            if zh_want not in html:
+                add("ERR", fname, f"part-ender missing zh finale {zh_want!r}")
+            if en_want not in html:
+                add("ERR", fname, f"part-ender missing en finale {en_want!r}")
+        else:
+            if "🎯 本课要点</div>" not in html:
+                add("ERR", fname, "non-ender zh key-points tag is not the plain form")
+            if "🎯 Key points</div>" not in html:
+                add("ERR", fname, "non-ender en key-points tag is not the plain form")
+
+
 def check_lesson(fname, html):
     for tag in ("div", "details", "table", "pre", "summary"):
         check_balance(fname, html, tag)
@@ -212,6 +247,8 @@ def main():
     check_subtitles()
     check_xrefs(lesson_html)
     check_glossary()
+    check_part_finales(lesson_html)
+    check_prereqs()
 
     index_path = os.path.join(ROOT, shell.INDEX_FILE)
     with open(index_path, encoding="utf-8") as fh:

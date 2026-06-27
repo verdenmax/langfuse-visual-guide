@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第八部分 · 仪表盘·指标·成本</span><span class="lang-en">Part 8 · Dashboards, Metrics &amp; Cost</span></div>
     <h1><span class="lang-zh">云用量计量与花费</span><span class="lang-en">Cloud usage metering &amp; spend</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="16-token-counting-cost.html">第16课</a> 的成本计算与 <a class="xref" href="42-models-and-pricing.html">第42课</a> 的定价，本课讲云用量计量与花费。</div><div class="lang-en">Read <a class="xref" href="16-token-counting-cost.html">Lesson 16</a> (cost) and <a class="xref" href="42-models-and-pricing.html">Lesson 42</a> (pricing); this lesson covers cloud usage metering and spend.</div></div>
   <div class="lang-zh">
 <p class="lead">
 前面讲的「成本」（第 16、42 课）是<strong>你的 LLM 花了多少</strong>。这一课讲<strong>另一笔账</strong>：你用 Langfuse 这个<strong>平台</strong>本身，平台怎么向你<strong>计量、收费</strong>。这是 <strong>Langfuse Cloud 特有</strong>的一环——自托管（self-host）版本<strong>不向你收费</strong>，所以这一课你可以当作「看看托管服务背后的计费是怎么搭的」。
@@ -490,7 +493,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点</div>
+  <div class="tag">🎯 本课要点 · 第八部分收官</div>
   <ul>
     <li><strong>这是 Cloud 专属的平台计费</strong>：和你的 LLM 成本（第 16/42 课）是两笔反向的账；自托管不收平台费，可只看作「托管计费如何搭建」。</li>
     <li><strong>按观测数计量</strong>：每小时定时任务从 ClickHouse 数各 org 的观测数，对有 Stripe customerId 的组织调 <code>meterEvents.create</code> 上报（<code>backOff</code> 重试），由 Stripe 出账。</li>
@@ -685,7 +688,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 8 wrap-up</div>
   <ul>
     <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
     <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>

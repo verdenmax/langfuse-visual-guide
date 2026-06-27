@@ -70,7 +70,7 @@ def build_lang(lang):
         if fname not in CONTENT:
             sys.exit(f"build_print error: no registry.CONTENT entry for {fname!r} (declared in shell.PAGES)")
         title = page[1] if lang == "zh" else page[2]
-        body = _expand_details(CONTENT[fname][lang])
+        body = _expand_details(shell.add_part_finale(CONTENT[fname][lang], fname, lang))
         quiz = _expand_details(quizzes.render(fname, lang))
         parts.append(f'<section class="lesson-print">\n<h1>{title}</h1>\n{body}\n{quiz}\n</section>')
     return head + "\n".join(parts) + "\n</body>\n</html>\n"

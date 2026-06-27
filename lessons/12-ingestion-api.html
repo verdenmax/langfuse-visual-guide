@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></div>
     <h1><span class="lang-zh">摄取 API</span><span class="lang-en">The ingestion API</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="06-instrumenting-an-llm-app.html">第6课</a> 的埋点入口，本课讲数据进平台的第一站——摄取 API。</div><div class="lang-en">Read <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a> on instrumentation entry points; this lesson covers the first stop into the platform — the ingestion API.</div></div>
   <div class="lang-zh">
 <p class="lead">
 第二部分把「数据长什么样、存在哪」讲完了。从这一课起，我们正式走<strong>摄取链路</strong>——也就是<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>那条「写入主干」的放大版。

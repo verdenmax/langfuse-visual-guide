@@ -78,6 +78,11 @@ _ZH44.append(r"""
 <div class="figcap"><b>纵深防御，层层设防</b>：<code>validateWebhookURL</code>（<code>validation.ts:35</code>）只放 http/https、只放端口 80/443；<code>ipBlocking.ts</code> 的 <code>isHostnameBlocked</code> 黑掉 localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>，<code>isIPBlocked</code> 黑掉 RFC1918 内网、loopback、link-local 等 CIDR，<b>且 IP 解析失败就默认拦截</b>（fail-closed）。校验在请求时对真实 IP 做，防 DNS-rebinding。</div>
 </div>
 
+<div class="card warn">
+  <div class="tag">⚠️ 「让服务器去请求用户填的 URL」是 Web 系统最危险的功能之一</div>
+  webhook 会让 Langfuse 去请求<strong>用户填的任意 URL</strong>——SSRF 的经典温床（<code>http://169.254.169.254</code> 偷云临时凭证、<code>http://localhost:6379</code> 打内部 Redis）。关键防线：IP 校验必须在<strong>「请求时」对真正解析出的 IP</strong> 做、解析失败即拦截（fail-closed）。否则 <strong>DNS-rebinding</strong> 会用「创建时解析到合法公网 IP、请求那一刻切到内网 IP」绕过你创建时的白名单。<strong>安全检查要贴着危险动作发生的那一刻做。</strong>
+</div>
+
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/webhooks/ipBlocking.ts · validation.ts</span><span class="ln">SSRF 防御</span></div>
   <pre class="code"><span class="cm">// 闸4：黑名单 CIDR——内网、本机、云元数据所在的链路本地段全拦</span>
@@ -232,6 +237,11 @@ _EN44.append(r"""
   <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">Key: the IP check runs "at request time" on the actually-resolved IP, defeating DNS-rebinding (resolve to a legit IP first, switch to an internal IP at the last second)</text>
 </svg>
 <div class="figcap"><b>Defense in depth, gate after gate</b>: <code>validateWebhookURL</code> (<code>validation.ts:35</code>) allows only http/https and only ports 80/443; <code>ipBlocking.ts</code>'s <code>isHostnameBlocked</code> blocks localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>, and <code>isIPBlocked</code> blocks RFC1918 private ranges, loopback, link-local and other CIDRs, <b>and defaults to blocking when IP resolution fails</b> (fail-closed). The check runs at request time on the real IP, defeating DNS-rebinding.</div>
+</div>
+
+<div class="card warn">
+  <div class="tag">⚠️ "Make the server fetch a user-supplied URL" is one of the web's most dangerous features</div>
+  A webhook makes Langfuse request <strong>any URL the user typed</strong> — a classic SSRF vector (<code>http://169.254.169.254</code> to steal temporary cloud creds, <code>http://localhost:6379</code> to hit internal Redis). The key defense: the IP check must run <strong>"at request time" on the actually-resolved IP</strong>, and fail closed when resolution fails. Otherwise <strong>DNS-rebinding</strong> ("resolve to a legit public IP at creation, switch to an internal IP the moment we fetch") slips past the creation-time allowlist. <strong>Run the security check right at the moment the dangerous action happens.</strong>
 </div>
 
 <div class="codefile">
@@ -1108,7 +1118,7 @@ _ZH47.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点（兼 Part 9 收官）</div>
+  <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>一个查询，两条路</strong>：批量导出（只读，产文件）与批量操作（改数据，删/加队列/加数据集/重评）都基于第 23 课的过滤条件，都因耗时长而走队列异步、有状态机追踪，都用流式 + 分块避免内存爆。</li>
     <li><strong>批量导出 = 流式 → 文件 → 限时链接 → 邮件</strong>：<code>BatchExportStatus</code> 状态机（QUEUED→PROCESSING→COMPLETED）；<code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> 转 CSV/JSON；<code>uploadFileBuffered</code> 传对象存储；<code>getSignedUrl</code> 给<strong>限时</strong>下载链接；记 <code>expiresAt</code> 后发邮件。</li>
@@ -1266,7 +1276,7 @@ _EN47.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 9 finale)</div>
+  <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on Lesson 23's filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
     <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>

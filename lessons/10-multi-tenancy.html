@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
     <h1><span class="lang-zh">多租户：org → project → environment</span><span class="lang-en">Multi-tenancy</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="09-postgres-metadata-schema.html">第9课</a> 的元数据 schema，本课讲 org → project → environment 如何隔离。</div><div class="lang-en">Read <a class="xref" href="09-postgres-metadata-schema.html">Lesson 9</a> on the metadata schema; this lesson covers org → project → environment isolation.</div></div>
   <div class="lang-zh">
 <p class="lead">
 上一课说 <code>project</code> 是枢纽、是「数据边界」。这一课把这件事讲透：Langfuse 是个<strong>多租户</strong>平台——同一套部署要同时服务成千上万个互不相干的团队，
@@ -428,6 +431,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 那只要有一处查询忘了写、或写错了，就可能让 A 公司看到 B 公司的数据——这种 bug 在多租户系统里是<strong>灾难级</strong>的。Langfuse 的做法是把 project_id 焊进存储与鉴权的底层：
 仓储层的读取 API <strong>统一要求</strong>传入 project_id，tRPC 的 <code>protectedProjectProcedure</code> 在中间件里<strong>先</strong>校验你属不属于这个 project（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）。
 于是「越权看别人数据」不是「容易写错」，而是<strong>压根没有那条路</strong>。这就是「安全做进结构」与「安全靠自觉」的本质区别。</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ 多租户最该警惕的坑</div>
+  靠「每个查询都记得加 <code>WHERE project_id = ?</code>」来隔离，<strong>只要一处漏写或写错，A 公司就可能看到 B 公司的数据</strong>——多租户系统里的灾难级 bug。Langfuse 的对策是把 project_id <strong>焊进排序键前缀与鉴权中间件</strong>：越权这条路<strong>压根不存在</strong>，靠结构而非靠自觉。
+</div>
 
 <h2>environment：项目内的软切片</h2>
 <p>environment 是后来加上的一层。看它在 ClickHouse 里的样子——三张宽事件表都加了一个 <code>environment</code> 列：</p>
@@ -640,6 +648,11 @@ Langfuse instead welds project_id into the storage and auth foundations: the rep
 project_id, and tRPC's <code>protectedProjectProcedure</code> middleware checks <strong>first</strong> whether you belong to this project
 (<a class="xref" href="21-trpc-backbone.html">L21</a>). So "see another tenant's data by accident" isn't "easy to get wrong" — <strong>there simply is no such path</strong>. That's the
 essential difference between "security in the structure" and "security by discipline".</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ The trap to watch in multi-tenancy</div>
+  Relying on "every query remembering to add <code>WHERE project_id = ?</code>" means <strong>one forgotten or wrong filter lets company A see company B's data</strong> — a catastrophic multi-tenant bug. Langfuse instead <strong>welds project_id into the sort-key prefix and the auth middleware</strong>: the cross-tenant path <strong>simply doesn't exist</strong> — structure, not discipline.
+</div>
 
 <h2>environment: a soft slice within a project</h2>
 <p>environment was added later. Here's how it looks in ClickHouse — all three wide-event tables gained an <code>environment</code> column:</p>

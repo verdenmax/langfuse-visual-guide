@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第五部分 · 评估与评分</span><span class="lang-en">Part 5 · Evaluation &amp; Scoring</span></div>
     <h1><span class="lang-zh">eval 执行流水线</span><span class="lang-en">The eval execution pipeline</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="29-llm-as-a-judge.html">第29课</a> 的 LLM 裁判与 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列，本课讲 eval 执行流水线。</div><div class="lang-en">Read <a class="xref" href="29-llm-as-a-judge.html">Lesson 29</a> (LLM judge) and <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue); this lesson covers the eval execution pipeline.</div></div>
   <div class="lang-zh">
 <p class="lead">
 上一课讲了「一次评判怎么跑」，但留了个大问题：<strong>谁来触发它？什么时候？评哪些 trace？</strong> 你不可能给每条 trace 手动点「评估」。这一课讲<strong>调度流水线</strong>——一个 trace 事件进来，系统怎么自动算出「该用哪些评估器评它」、给每个开一张<strong>待办工单</strong>（JobExecution），排进执行队列，最后跑出分。

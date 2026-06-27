@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第三部分 · 摄取链路</span><span class="lang-en">Part 3 · The Ingestion Path</span></div>
     <h1><span class="lang-zh">摄取队列</span><span class="lang-en">The ingestion queue</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="12-ingestion-api.html">第12课</a> 摄取 API 与 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 里 Redis 的角色，本课讲摄取队列如何削峰。</div><div class="lang-en">Read <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion API) and Redis's role in <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>; this lesson covers how the ingestion queue absorbs spikes.</div></div>
   <div class="lang-zh">
 <p class="lead">
 <a class="xref" href="12-ingestion-api.html">第 12 课</a> API「入队」后就闪人了，<a class="xref" href="13-event-types-merge.html">第 13 课</a>讲清了入的是什么「事件」。这一课的主角，就是那条<strong>队列</strong>本身——Langfuse 用 <strong>Redis + BullMQ</strong>

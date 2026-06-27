@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
     <h1><span class="lang-zh">web 应用架构</span><span class="lang-en">The web app architecture</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="04-project-map-monorepo.html">第4课</a> 的 monorepo 全景，本课聚焦 web 这个工作区的内部架构。</div><div class="lang-en">Read <a class="xref" href="04-project-map-monorepo.html">Lesson 4</a> on the monorepo map; this lesson zooms into the web workspace's architecture.</div></div>
   <div class="lang-zh">
 <p class="lead">
 前三部分顺着<strong>写入</strong>走完了：数据怎么进来、存哪、怎么合并落盘。从这一部分起，我们反向追<strong>读取</strong>——UI 和 SDK 怎么把数据<strong>查出来</strong>。

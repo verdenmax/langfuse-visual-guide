@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第九部分 · 自动化与集成</span><span class="lang-en">Part 9 · Automation &amp; Integrations</span></div>
     <h1><span class="lang-zh">批量导出与批量操作</span><span class="lang-en">Batch exports &amp; actions</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="46-analytics-integrations.html">第46课</a> 的集成与 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的状态机，本课讲批量导出与批量操作（幂等）。</div><div class="lang-en">Read <a class="xref" href="46-analytics-integrations.html">Lesson 46</a> (integrations) and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (the state machine); this lesson covers batch exports and actions (idempotency).</div></div>
   <div class="lang-zh">
 <p class="lead">
 你在 trace 列表里筛出「过去 7 天、出错的、来自某用户的」5 万条 trace，想<strong>一次性导成 CSV</strong>，或者<strong>一键全删</strong>。这种「对一票筛出来的数据，整体干一件事」的需求，就是这一课的主角：<strong>批量导出（Batch Export）</strong>和<strong>批量操作（Batch Action）</strong>。它俩看着不同——一个是只读地产出文件、一个是危险地批量改数据——骨子里却共享同一套工程姿态：都基于一个<strong>可能命中海量行的查询/过滤条件</strong>，都因为<strong>耗时太长不能卡在请求里</strong>而扔进队列异步跑，都用<strong>流式 + 分块</strong>避免一次性把几万行塞进内存。
@@ -495,7 +498,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点（兼 Part 9 收官）</div>
+  <div class="tag">🎯 本课要点 · 第九部分收官</div>
   <ul>
     <li><strong>一个查询，两条路</strong>：批量导出（只读，产文件）与批量操作（改数据，删/加队列/加数据集/重评）都基于<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>的过滤条件，都因耗时长而走队列异步、有状态机追踪，都用流式 + 分块避免内存爆。</li>
     <li><strong>批量导出 = 流式 → 文件 → 限时链接 → 邮件</strong>：<code>BatchExportStatus</code> 状态机（QUEUED→PROCESSING→COMPLETED）；<code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> 转 CSV/JSON；<code>uploadFileBuffered</code> 传对象存储；<code>getSignedUrl</code> 给<strong>限时</strong>下载链接；记 <code>expiresAt</code> 后发邮件。</li>
@@ -696,7 +699,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 9 finale)</div>
+  <div class="tag">🎯 Key points · Part 9 wrap-up</div>
   <ul>
     <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
     <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>

@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第四部分 · 查询链路</span><span class="lang-en">Part 4 · The Read Path</span></div>
     <h1><span class="lang-zh">过滤·搜索栏·查询构建</span><span class="lang-en">Filtering &amp; the search bar</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="22-repository-layer.html">第22课</a> 的仓储层，本课讲过滤、搜索栏与查询如何一步步构建。</div><div class="lang-en">Read <a class="xref" href="22-repository-layer.html">Lesson 22</a> on the repository layer; this lesson covers filtering, the search bar, and how queries are built.</div></div>
   <div class="lang-zh">
 <p class="lead">
 <a class="xref" href="22-repository-layer.html">第 22 课</a>的执行器负责「把查询发出去」，可<strong>那些查询的 WHERE 条件是谁拼的</strong>？这一课就讲过滤。关键洞察是：用户过滤的方式五花八门——点侧栏面板、敲搜索栏语法、甚至用 AI 自然语言描述——

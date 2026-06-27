@@ -90,6 +90,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -1834,7 +1836,7 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points · and the Part 1 recap</div>
+  <div class="tag">🎯 Key points · Part 1 wrap-up</div>
   <ul>
     <li>A trace's life: <strong>SDK → public API (enqueue) → Redis → worker (merge·cost) → ClickHouse</strong> (write), then <strong>UI → tRPC → repository → ClickHouse</strong> (read).</li>
     <li><strong>Writes are async</strong> (seconds of lag, eventual consistency), <strong>reads are real-time</strong>; the two paths converge on the ClickHouse wide table.</li>
@@ -2874,6 +2876,11 @@ project_id, and tRPC's <code>protectedProjectProcedure</code> middleware checks 
 (L21). So "see another tenant's data by accident" isn't "easy to get wrong" — <strong>there simply is no such path</strong>. That's the
 essential difference between "security in the structure" and "security by discipline".</p>
 
+<div class="card warn">
+  <div class="tag">⚠️ The trap to watch in multi-tenancy</div>
+  Relying on "every query remembering to add <code>WHERE project_id = ?</code>" means <strong>one forgotten or wrong filter lets company A see company B's data</strong> — a catastrophic multi-tenant bug. Langfuse instead <strong>welds project_id into the sort-key prefix and the auth middleware</strong>: the cross-tenant path <strong>simply doesn't exist</strong> — structure, not discipline.
+</div>
+
 <h2>environment: a soft slice within a project</h2>
 <p>environment was added later. Here's how it looks in ClickHouse — all three wide-event tables gained an <code>environment</code> column:</p>
 
@@ -3178,7 +3185,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 2 wrap-up</div>
   <ul>
     <li><strong>Minimal self-host stack = 2 apps + 4 infra</strong>: <code>langfuse-web</code> + <code>langfuse-worker</code>, plus <code>postgres</code> · <code>clickhouse</code> · <code>redis</code> · <code>minio(S3)</code>, all in <code>docker-compose.yml</code>.</li>
     <li><strong>web vs worker</strong>: same storage, opposite duties — web user-facing/low-latency, scales by QPS; worker heavy/retryable, scales by queue backlog; decoupled by the Redis queue.</li>
@@ -5008,7 +5015,7 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 3 wrap-up</div>
   <ul>
     <li>Multimodal media (image/audio/file) are <strong>large binaries</strong> that must never enter Lesson 8's ClickHouse wide tables — they'd bloat input/output columns and slow every query.</li>
     <li><strong>Blob/reference split</strong>: the body goes to the S3 media bucket, the event keeps only a small reference <code>@@@langfuseMedia:…@@@</code> (<code>MEDIA_REFERENCE_PATTERN</code>).</li>
@@ -6722,7 +6729,7 @@ silently drifting from the Fern contract), the whole external channel stays stab
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 4 wrap-up</div>
   <ul>
     <li><strong>One route factory</strong> <code>createAuthedProjectAPIRoute</code> unifies every public endpoint's auth → access level → rate limit → Zod-validate query/body → OTel(surface=publicapi) → response validation → oversized-body rejection.</li>
     <li><strong>Auth uses a Redis cache</strong> to scale: hit returns directly, miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches; <strong>negative caching</strong> (<code>API_KEY_NON_EXISTENT</code>) blocks fake-key brute force.</li>
@@ -8006,7 +8013,7 @@ We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget 
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 5 wrap-up</div>
   <ul>
     <li><strong>A monitor = active evaluation</strong>: turn quality monitoring from "you pull a dashboard" into "it pushes an alert". It computes a metric over the recent <code>windowMs</code> per <code>cadenceMs</code>, alerting when a line is crossed.</li>
     <li><strong>Reuses the dashboard query shape</strong>: <code>view/filters/metric</code> (the comment literally says "mirrors DashboardWidget")—any chartable metric can become an alert; <code>view</code> includes SCORES_NUMERIC/CATEGORICAL, so it can <strong>directly monitor the scores Part 5 produced</strong>.</li>
@@ -8587,7 +8594,7 @@ modelParams = { provider: config.provider, model: config.model,
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 6 wrap-up</div>
   <ul>
     <li><strong>An experiment = prompt × dataset × model, run server-side</strong>: <code>createExperimentJobClickhouse</code> per question uses <code>replaceVariablesInPrompt</code> to fill variables, calls the chosen provider/model, produces a trace + run item—all zero-code.</li>
     <li><strong>Experiment traces carry rich context</strong>: environment tagged <code>PromptExperiments</code>, linking the <code>prompt</code> under test (L37), metadata pinning <code>itemVersion=validFrom</code> (L34/35 version replay)—reproducible and traceable.</li>
@@ -9193,7 +9200,7 @@ This lesson covers them, focusing on an unavoidable security topic: a provider's
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 7 wrap-up</div>
   <ul>
     <li><strong>Playground = the same engine's interactive front desk</strong>: <code>chatCompletionHandler</code> reuses the exact <code>fetchLLMCompletion</code> core as evals (L29) and experiments (L36)—one engine, three consumers, credential decryption/provider adaptation written once.</li>
     <li><strong>API key encrypted storage</strong>: <code>LlmApiKeys.secretKey</code> stores ciphertext via <strong>AES-256-GCM</strong> (authenticated encryption), <code>displaySecretKey</code> a masked string for the UI, <code>adapter</code> abstracts the provider interface, <code>baseURL</code> hits self-hosted endpoints.</li>
@@ -9979,7 +9986,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points</div>
+  <div class="tag">🎯 Key points · Part 8 wrap-up</div>
   <ul>
     <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
     <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>
@@ -10098,6 +10105,11 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">Key: the IP check runs "at request time" on the actually-resolved IP, defeating DNS-rebinding (resolve to a legit IP first, switch to an internal IP at the last second)</text>
 </svg>
 <div class="figcap"><b>Defense in depth, gate after gate</b>: <code>validateWebhookURL</code> (<code>validation.ts:35</code>) allows only http/https and only ports 80/443; <code>ipBlocking.ts</code>'s <code>isHostnameBlocked</code> blocks localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>, and <code>isIPBlocked</code> blocks RFC1918 private ranges, loopback, link-local and other CIDRs, <b>and defaults to blocking when IP resolution fails</b> (fail-closed). The check runs at request time on the real IP, defeating DNS-rebinding.</div>
+</div>
+
+<div class="card warn">
+  <div class="tag">⚠️ "Make the server fetch a user-supplied URL" is one of the web's most dangerous features</div>
+  A webhook makes Langfuse request <strong>any URL the user typed</strong> — a classic SSRF vector (<code>http://169.254.169.254</code> to steal temporary cloud creds, <code>http://localhost:6379</code> to hit internal Redis). The key defense: the IP check must run <strong>"at request time" on the actually-resolved IP</strong>, and fail closed when resolution fails. Otherwise <strong>DNS-rebinding</strong> ("resolve to a legit public IP at creation, switch to an internal IP the moment we fetch") slips past the creation-time allowlist. <strong>Run the security check right at the moment the dangerous action happens.</strong>
 </div>
 
 <div class="codefile">
@@ -10767,7 +10779,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 9 finale)</div>
+  <div class="tag">🎯 Key points · Part 9 wrap-up</div>
   <ul>
     <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on Lesson 23's filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
     <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>
@@ -10869,6 +10881,11 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
 
 <h2>A ring of security guardrails around password login</h2>
 <p>Don't underestimate the plainest path, "email-password" — its <code>authorize</code> function hides a ring of security design worth savoring. <strong>First, three SSO-enforcement gates</strong>: instance-level disabling of password login (<code>AUTH_DISABLE_USERNAME_PASSWORD</code>), a domain-level blocklist (certain company domains must use SSO), and EE multi-tenant enforcement (a domain configured with a dedicated SSO can't use passwords). <strong>Then a textbook timing-attack defense</strong>: if the user doesn't exist, the code <strong>still runs the password hash</strong> before erroring — so "user doesn't exist" and "wrong password" take similar time, and an attacker <strong>can't probe whether an email is registered by response speed</strong>. <strong>And one more</strong>: if the user's <code>password</code> field is null, they signed up via SSO, so explicitly prompt "please sign in with your linked IdP." Only after all that does it <strong>bcrypt</strong>-compare the password.</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ Failed logins must "look the same and take the same time"</div>
+  If "user doesn't exist" errors out instantly while "user exists but wrong password" slowly runs bcrypt (deliberately slow, 12 rounds), the two failure paths have a <strong>measurable time difference</strong> — an attacker trying a pile of emails sees <strong>slow = registered</strong>, enumerating "which emails are registered here" without ever guessing a password (a privacy leak and credential-stuffing ammo). The fix: <strong>run a throwaway password hash even when the user is absent</strong>, keeping both failure paths constant-time. This is the key timing-side-channel defense.
+</div>
 
 <svg viewBox="0 0 720 212" role="img" aria-label="the four security guardrails of password authorize: 1 three SSO-enforcement gates (instance disable, domain blocklist, EE dedicated SSO — match means reject and prompt SSO), 2 user lookup plus timing defense (run hashPassword even when not found to stop email enumeration by response speed), 3 SSO-user interception (password null prompts using the IdP), 4 bcrypt compare (stored as hash with 12 salted rounds); only if all pass does NextAuth issue a session">
   <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
@@ -11979,7 +11996,7 @@ As the close of Part 10 (Platform & Operations), this lesson is about the <stron
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points (Part 10 finale)</div>
+  <div class="tag">🎯 Key points · Part 10 wrap-up</div>
   <ul>
     <li><strong>pnpm monorepo</strong>: web/worker/packages/shared/ee in one repo; dependencies point only down (web/worker/ee → shared, shared doesn't reverse-depend); pnpm enforced (only-allow) + <code>minimumReleaseAge</code> against supply-chain poisoning. Shared code, atomic one-commit changes.</li>
     <li><strong>Turbo task pipeline</strong>: <code>dependsOn</code>'s <code>^build</code> lets Turbo <strong>auto-order builds topologically</strong> by the dependency graph (shared first, web/worker after), no hand-writing the order.</li>

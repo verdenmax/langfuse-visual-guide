@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第十部分 · 平台与运维</span><span class="lang-en">Part 10 · Platform &amp; Operations</span></div>
     <h1><span class="lang-zh">鉴权与会话</span><span class="lang-en">Auth &amp; sessions</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="20-web-app-architecture.html">第20课</a> 的 web 架构，本课讲鉴权与会话（NextAuth / JWT）。</div><div class="lang-en">Read <a class="xref" href="20-web-app-architecture.html">Lesson 20</a> on the web architecture; this lesson covers auth and sessions (NextAuth / JWT).</div></div>
   <div class="lang-zh">
 <p class="lead">
 从这一部分起，我们换上<strong>运维者</strong>的视角，看这个平台自己是怎么被「管」起来的。第一个问题最根本：<strong>谁能进来？</strong> 这一课讲鉴权（authentication，「你是谁」）与会话（session，「进来后这张身份凭证怎么发、怎么带」）。Langfuse 用 <strong>NextAuth</strong> 托管登录，给你两条进门的路：<strong>邮箱密码</strong>，或十几种 <strong>SSO（单点登录）</strong>提供商（Google、GitHub、Okta、Azure AD、Keycloak、WorkOS…）。登进来后，它发的不是一个数据库 session id，而是一张 <strong>JWT</strong>——自带签名、自带身份信息的「凭证」。
@@ -392,6 +395,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <h2>密码登录的一圈安全护栏</h2>
 <p>别小看「邮箱密码」这条最朴素的路——它的 <code>authorize</code> 函数里藏着一圈值得细品的安全设计。<strong>先是三道 SSO 强制闸</strong>：实例级禁用密码登录（<code>AUTH_DISABLE_USERNAME_PASSWORD</code>）、域名级黑名单（某些公司域名必须走 SSO）、EE 多租户强制（某域名配了专属 SSO 就不许用密码）。<strong>再是一处教科书级的时序攻击防护</strong>：万一用户不存在，代码<strong>照样跑一遍密码哈希</strong>再报错——这样「用户不存在」和「密码错」两条失败路径耗时相近，攻击者就<strong>没法靠响应快慢来探测某个邮箱是否注册过</strong>。<strong>还有一处</strong>：若用户的 <code>password</code> 字段是 null，说明 ta 是用 SSO 注册的，明确提示「请用你绑定的 IdP 登录」。全过了才用 <strong>bcrypt</strong> 比对密码。</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ 登录失败也要「长得一样、慢得一样」</div>
+  若「用户不存在」直接报错、「用户存在但密码错」才慢慢算一遍 bcrypt（故意 12 轮、很慢），两条失败路径的<strong>响应时间会有可观差异</strong>——攻击者拿一堆邮箱来试，<strong>响应慢的就是已注册</strong>，不费密码就枚举出「哪些邮箱在你这注册过」（隐私泄露 + 撞库弹药）。对策：用户不存在时也<strong>白跑一遍密码哈希</strong>，让两条失败路径耗时相近。安全工程里，<strong>错误也要长得一样、慢得一样</strong>。
+</div>
 
 <svg viewBox="0 0 720 212" role="img" aria-label="密码登录 authorize 的四道安全护栏：① SSO 强制三连查（实例禁密码、域名黑名单、EE 专属 SSO，命中即拒并提示走 SSO），② 查用户加时序防护（查不到也照跑一遍 hashPassword 防靠响应快慢枚举注册邮箱），③ SSO 用户拦截（password 为 null 则引导用 IdP 登录），④ bcrypt 比对（compare，存储时 hash 12 轮加盐），全过才由 NextAuth 发会话">
   <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
@@ -591,6 +599,11 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
 
 <h2>A ring of security guardrails around password login</h2>
 <p>Don't underestimate the plainest path, "email-password" — its <code>authorize</code> function hides a ring of security design worth savoring. <strong>First, three SSO-enforcement gates</strong>: instance-level disabling of password login (<code>AUTH_DISABLE_USERNAME_PASSWORD</code>), a domain-level blocklist (certain company domains must use SSO), and EE multi-tenant enforcement (a domain configured with a dedicated SSO can't use passwords). <strong>Then a textbook timing-attack defense</strong>: if the user doesn't exist, the code <strong>still runs the password hash</strong> before erroring — so "user doesn't exist" and "wrong password" take similar time, and an attacker <strong>can't probe whether an email is registered by response speed</strong>. <strong>And one more</strong>: if the user's <code>password</code> field is null, they signed up via SSO, so explicitly prompt "please sign in with your linked IdP." Only after all that does it <strong>bcrypt</strong>-compare the password.</p>
+
+<div class="card warn">
+  <div class="tag">⚠️ Failed logins must "look the same and take the same time"</div>
+  If "user doesn't exist" errors out instantly while "user exists but wrong password" slowly runs bcrypt (deliberately slow, 12 rounds), the two failure paths have a <strong>measurable time difference</strong> — an attacker trying a pile of emails sees <strong>slow = registered</strong>, enumerating "which emails are registered here" without ever guessing a password (a privacy leak and credential-stuffing ammo). The fix: <strong>run a throwaway password hash even when the user is absent</strong>, keeping both failure paths constant-time. This is the key timing-side-channel defense.
+</div>
 
 <svg viewBox="0 0 720 212" role="img" aria-label="the four security guardrails of password authorize: 1 three SSO-enforcement gates (instance disable, domain blocklist, EE dedicated SSO — match means reject and prompt SSO), 2 user lookup plus timing defense (run hashPassword even when not found to stop email enumeration by response speed), 3 SSO-user interception (password null prompts using the IdP), 4 bcrypt compare (stored as hash with 12 salted rounds); only if all pass does NextAuth issue a session">
   <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>

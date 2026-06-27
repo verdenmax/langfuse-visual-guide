@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第二部分 · 前置基础</span><span class="lang-en">Part 2 · Foundations</span></div>
     <h1><span class="lang-zh">双存储架构</span><span class="lang-en">The dual-store architecture</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="02-observability-2-and-wide-events.html">第2课</a> 的宽事件理念，本课讲为什么要 Postgres + ClickHouse 双存储。</div><div class="lang-en">Read <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a> on wide events; this lesson explains why there are two stores — Postgres + ClickHouse.</div></div>
   <div class="lang-zh">
 <p class="lead">
 上一课，数据以「事件」的形式离开了你的应用。这一课讲它们最终<strong>落在哪</strong>。很多人以为一个数据库就够了，但 Langfuse 用了<strong>四种存储</strong>——

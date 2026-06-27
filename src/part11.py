@@ -469,7 +469,7 @@ _ZH55.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 本课要点 · 全书终</div>
+  <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>一条 trace 的七个驿站</strong>：出生(L12)→摄取(L13-19,L49)→落库(L13)→被读(L20-27)→被评估(L28-36)→被作用(L44-47)→退场(L52)。每课学的零件，在这条流水线上严丝合缝地咬合。</li>
     <li><strong>三条贯穿全程的隐线</strong>：自观测(L51 dogfooding)、plan/entitlement 门控(L50)、projectId 多租户隔离(全栈)——七驿站串骨架，三隐线织底色。</li>
@@ -615,7 +615,7 @@ _EN55.append(r"""
 </div>
 
 <div class="card key">
-  <div class="tag">🎯 Key points · The end</div>
+  <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>A trace's seven stations</strong>: born (L12)→ingested (L13-19,L49)→stored (L13)→read (L20-27)→evaluated (L28-36)→acted on (L44-47)→retired (L52). The parts learned per lesson mesh seamlessly on this assembly line.</li>
     <li><strong>Three hidden threads throughout</strong>: self-observability (L51 dogfooding), plan/entitlement gating (L50), projectId multi-tenant isolation (full-stack) — seven stations string the skeleton, three threads weave the background.</li>

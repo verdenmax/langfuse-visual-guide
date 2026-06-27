@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第一部分 · 宏观全景</span><span class="lang-en">Part 1 · The Big Picture</span></div>
     <h1><span class="lang-zh">可观测性 2.0 与宽事件</span><span class="lang-en">Observability 2.0 &amp; wide events</span></h1>
   </div>
+  
   <div class="lang-zh">
 <p class="lead">
 上一课说 Langfuse 的「设计灵魂」是<strong>宽事件 / 可观测性 2.0</strong>。这一课把这句口号讲透——它<strong>不是</strong>营销词，

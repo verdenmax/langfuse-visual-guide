@@ -256,6 +256,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -612,6 +614,65 @@ def autolink(html, self_num, order):
     return "".join(parts)
 
 
+# --- Part-finale tag suffix -------------------------------------------------
+# The last lesson of each Part gets its 「🎯 本课要点 / 🎯 Key points」 card tagged
+# as that Part's wrap-up, so every Part closes with a consistent marker (the very
+# last lesson of the book is marked as the whole-book finale instead). Derived
+# from PAGES so it stays correct if Part boundaries ever change.
+_CN_NUM = ("零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二")
+
+
+def _part_ender_map():
+    """fname -> 1-based Part number, for the last lesson of each Part (grouped by
+    the Part label carried in PAGES[i][3])."""
+    enders, groups, cur, last = {}, [], [], None
+    for p in PAGES:
+        label = p[3]
+        if label != last:
+            if cur:
+                groups.append(cur)
+            cur, last = [], label
+        cur.append(p[0])
+    if cur:
+        groups.append(cur)
+    for i, g in enumerate(groups, 1):
+        enders[g[-1]] = i
+    return enders
+
+
+PART_ENDERS = _part_ender_map()
+
+
+def add_part_finale(html, fname, lang):
+    """If ``fname`` is the last lesson of its Part, append a wrap-up suffix to its
+    single key-points card tag. Exactly one such tag exists per lesson."""
+    n = PART_ENDERS.get(fname)
+    if not n:
+        return html
+    is_capstone = fname == PAGES[-1][0]
+    if lang == "zh":
+        suffix = " · 全书终" if is_capstone else f" · 第{_CN_NUM[n]}部分收官"
+        return html.replace("🎯 本课要点", "🎯 本课要点" + suffix, 1)
+    suffix = " · The end" if is_capstone else f" · Part {n} wrap-up"
+    return html.replace("🎯 Key points", "🎯 Key points" + suffix, 1)
+
+
+def _prereq_card(fname, self_num, order):
+    """Render the optional 「🧭 读前 / Before you start」 card for lessons that have
+    a real prerequisite. Lesson references inside the hint are auto-linked."""
+    hint = PREREQS.get(fname)
+    if not hint:
+        return ""
+    zh, en = hint
+    card = (
+        '<div class="card prereq">'
+        f'<div class="tag">🧭 {bi("读前", "Before you start")}</div>'
+        f'<div class="lang-zh">{zh}</div><div class="lang-en">{en}</div>'
+        "</div>"
+    )
+    return autolink(card, self_num, order)
+
+
 def page(filename, content, home_href="../index.html"):
     """Wrap one lesson's bilingual content in the full HTML shell.
 
@@ -675,6 +736,7 @@ def page(filename, content, home_href="../index.html"):
     <div class="part">{bi(esc(part_zh), esc(part_en))}</div>
     <h1><span class="lang-zh">{esc(title_zh)}</span><span class="lang-en">{esc(title_en)}</span></h1>
   </div>
+  {_prereq_card(fname, idx + 1, [p[0] for p in PAGES])}
   <div class="lang-zh">{content["zh"]}</div>
   <div class="lang-en">{content["en"]}</div>
   <div class="footnav">{prev_link}{next_link}</div>
@@ -797,6 +859,165 @@ SUBTITLES = {
      "step back into six themes: wide events / immutability / async / dual storage / multi-tenancy / cost; not six tricks but six facets of one worldview"),
     "55-capstone-trace-life.html": ("跟一条 trace 走完一生，把 55 课串成流水线 · 七驿站 · 三隐线 · trace→score 闭环反哺应用",
      "follow one trace through its whole life, stringing all 55 lessons; seven stations; three hidden threads; the trace→score loop feeds the app"),
+}
+
+# Optional 「读前 / Before you start」 prerequisite hints: filename -> (zh, en).
+# One concise sentence pointing at the lesson(s) that genuinely set this one up;
+# lesson references auto-link. Foundational/self-contained lessons are omitted.
+PREREQS = {
+    "05-life-of-a-trace.html": (
+        "先读 第3课 摸清 trace / observation / score 三件套，本课才好把它们串成一条端到端流水线。",
+        "Read Lesson 3 to nail down trace / observation / score first; this lesson strings them into one end-to-end pipeline."),
+    "06-instrumenting-an-llm-app.html": (
+        "先读 第3课 理解三大支柱，本课讲如何用 SDK 把它们埋进真实应用。",
+        "Read Lesson 3 on the three pillars; this lesson shows how to instrument them into a real app via the SDK."),
+    "07-dual-store-architecture.html": (
+        "先读 第2课 的宽事件理念，本课讲为什么要 Postgres + ClickHouse 双存储。",
+        "Read Lesson 2 on wide events; this lesson explains why there are two stores — Postgres + ClickHouse."),
+    "08-clickhouse-wide-events.html": (
+        "先读 第7课 的双存储分工，本课深入 ClickHouse 的三张宽事件表。",
+        "Read Lesson 7 on the dual-store split; this lesson dives into ClickHouse's three wide-event tables."),
+    "09-postgres-metadata-schema.html": (
+        "先读 第7课 知道 Postgres 管配置元数据，本课细看它的 Prisma schema。",
+        "Read Lesson 7 — Postgres holds config metadata; this lesson details its Prisma schema."),
+    "10-multi-tenancy.html": (
+        "先读 第9课 的元数据 schema，本课讲 org → project → environment 如何隔离。",
+        "Read Lesson 9 on the metadata schema; this lesson covers org → project → environment isolation."),
+    "11-deployment-topology.html": (
+        "先读 第7课 的四存储分工，本课讲它们如何在容器拓扑里部署与互相依赖。",
+        "Read Lesson 7 on the four stores; this lesson covers how they deploy and depend on each other in the container topology."),
+    "12-ingestion-api.html": (
+        "先读 第6课 的埋点入口，本课讲数据进平台的第一站——摄取 API。",
+        "Read Lesson 6 on instrumentation entry points; this lesson covers the first stop into the platform — the ingestion API."),
+    "13-event-types-merge.html": (
+        "先读 第12课 摄取 API 与 第3课 的 observation 类型，本课讲事件如何合并。",
+        "Read Lesson 12 (ingestion API) and Lesson 3 (observation types); this lesson covers how events merge."),
+    "14-ingestion-queue.html": (
+        "先读 第12课 摄取 API 与 第7课 里 Redis 的角色，本课讲摄取队列如何削峰。",
+        "Read Lesson 12 (ingestion API) and Redis's role in Lesson 7; this lesson covers how the ingestion queue absorbs spikes."),
+    "15-ingestion-service.html": (
+        "先读 第13课 的合并语义与 第14课 的队列，本课进入合并的心脏 IngestionService。",
+        "Read Lesson 13 (merge semantics) and Lesson 14 (the queue); this lesson enters the merge heart, IngestionService."),
+    "16-token-counting-cost.html": (
+        "先读 第13课 的事件字段，本课讲 token 计数与成本是怎么算出来的。",
+        "Read Lesson 13 on event fields; this lesson covers how token counts and cost are computed."),
+    "17-clickhouse-writer.html": (
+        "先读 第14课 的队列与 第8课 的 CH 表，本课讲 ClickhouseWriter 如何批量落盘。",
+        "Read Lesson 14 (the queue) and Lesson 8 (the CH tables); this lesson covers how ClickhouseWriter batches to disk."),
+    "18-opentelemetry-ingestion.html": (
+        "先读 第12课 的原生摄取 API，本课讲 OpenTelemetry 这条并行入口。",
+        "Read Lesson 12 on the native ingestion API; this lesson covers OpenTelemetry as a parallel entry point."),
+    "19-media-blob-storage.html": (
+        "先读 第12课 摄取与 第7课 里 S3 的角色，本课讲媒体与大块 blob 怎么存。",
+        "Read Lesson 12 (ingestion) and S3's role in Lesson 7; this lesson covers how media and large blobs are stored."),
+    "20-web-app-architecture.html": (
+        "先读 第4课 的 monorepo 全景，本课聚焦 web 这个工作区的内部架构。",
+        "Read Lesson 4 on the monorepo map; this lesson zooms into the web workspace's architecture."),
+    "21-trpc-backbone.html": (
+        "先读 第20课 的 web 架构，本课讲贯穿前后端的 tRPC 骨架。",
+        "Read Lesson 20 on the web architecture; this lesson covers the tRPC backbone spanning front and back."),
+    "22-repository-layer.html": (
+        "先读 第8课 的 CH 表与 第21课 的 tRPC，本课讲仓储层如何从 ClickHouse 读。",
+        "Read Lesson 8 (the CH tables) and Lesson 21 (tRPC); this lesson covers how the repository layer reads from ClickHouse."),
+    "23-filtering-search-bar.html": (
+        "先读 第22课 的仓储层，本课讲过滤、搜索栏与查询如何一步步构建。",
+        "Read Lesson 22 on the repository layer; this lesson covers filtering, the search bar, and how queries are built."),
+    "24-lists-and-tables.html": (
+        "先读 第22课 仓储层与 第23课 的过滤，本课讲列表与表格如何高效渲染。",
+        "Read Lesson 22 (repository) and Lesson 23 (filtering); this lesson covers how lists and tables render efficiently."),
+    "25-trace-detail-tree.html": (
+        "先读 第3课 的 observation 树与 第19课 的媒体存储，本课讲 trace 详情页怎么拼出来。",
+        "Read Lesson 3 (the observation tree) and Lesson 19 (media storage); this lesson covers how the trace detail page is assembled."),
+    "26-sessions.html": (
+        "先读 第25课 的 trace 详情，本课讲多条 trace 聚成的 session 视图。",
+        "Read Lesson 25 on trace detail; this lesson covers the session view that groups multiple traces."),
+    "27-public-rest-api.html": (
+        "先读 第21课 的 tRPC 与 第12课 的摄取，本课讲对外的公共 REST API。",
+        "Read Lesson 21 (tRPC) and Lesson 12 (ingestion); this lesson covers the outward-facing public REST API."),
+    "28-scoring-model.html": (
+        "先读 第3课 的 score 维度，本课深入评分模型的数据结构。",
+        "Read Lesson 3 on the score dimensions; this lesson dives into the scoring model's data structures."),
+    "29-llm-as-a-judge.html": (
+        "先读 第28课 的评分模型，本课讲用 LLM 当裁判自动打分。",
+        "Read Lesson 28 on the scoring model; this lesson covers using an LLM as a judge to score automatically."),
+    "30-eval-execution-pipeline.html": (
+        "先读 第29课 的 LLM 裁判与 第14课 的队列，本课讲 eval 执行流水线。",
+        "Read Lesson 29 (LLM judge) and Lesson 14 (the queue); this lesson covers the eval execution pipeline."),
+    "31-code-based-evaluation.html": (
+        "先读 第30课 的 eval 流水线，本课讲用代码而非 LLM 来评估。",
+        "Read Lesson 30 on the eval pipeline; this lesson covers evaluating with code instead of an LLM."),
+    "32-human-annotation.html": (
+        "先读 第28课 的评分模型，本课讲人工标注如何产出 score。",
+        "Read Lesson 28 on the scoring model; this lesson covers how human annotation produces scores."),
+    "33-monitors-and-alerting.html": (
+        "先读 第28课 的 score 与 第30课 的 eval，本课讲监控器与告警怎么联动。",
+        "Read Lesson 28 (scores) and Lesson 30 (eval); this lesson covers how monitors and alerting tie together."),
+    "34-datasets-and-items.html": (
+        "先读 第3课 的三大支柱，本课讲数据集与数据项的结构。",
+        "Read Lesson 3 on the three pillars; this lesson covers the structure of datasets and items."),
+    "35-dataset-runs.html": (
+        "先读 第34课 的数据集与 第30课 的 eval，本课讲数据集运行与运行项。",
+        "Read Lesson 34 (datasets) and Lesson 30 (eval); this lesson covers dataset runs and run items."),
+    "36-experiments-and-comparison.html": (
+        "先读 第35课 的数据集运行，本课讲多次运行如何对比成实验。",
+        "Read Lesson 35 on dataset runs; this lesson covers how multiple runs compare into experiments."),
+    "37-prompt-management.html": (
+        "先读 第9课 的元数据 schema，本课讲 prompt 如何版本化管理。",
+        "Read Lesson 9 on the metadata schema; this lesson covers how prompts are versioned and managed."),
+    "38-prompt-serving-caching.html": (
+        "先读 第37课 的 prompt 管理，本课讲服务端如何缓存与下发 prompt。",
+        "Read Lesson 37 on prompt management; this lesson covers how the server caches and serves prompts."),
+    "39-playground-llm-connections.html": (
+        "先读 第37课 的 prompt 管理，本课讲 Playground 与 LLM 连接如何配置。",
+        "Read Lesson 37 on prompt management; this lesson covers the Playground and LLM connection config."),
+    "40-dashboards-and-widgets.html": (
+        "先读 第8课 的宽事件表，本课讲仪表盘与 widget 如何聚合展示。",
+        "Read Lesson 8 on the wide-event tables; this lesson covers how dashboards and widgets aggregate and display."),
+    "41-query-engine.html": (
+        "先读 第8课 的 CH 表与 第22课 的仓储层，本课讲通用查询引擎。",
+        "Read Lesson 8 (the CH tables) and Lesson 22 (the repository layer); this lesson covers the general query engine."),
+    "42-models-and-pricing.html": (
+        "先读 第16课 的 token 与成本，本课讲模型与定价表如何配置。",
+        "Read Lesson 16 on tokens and cost; this lesson covers how models and the pricing table are configured."),
+    "43-cloud-usage-metering.html": (
+        "先读 第16课 的成本计算与 第42课 的定价，本课讲云用量计量与花费。",
+        "Read Lesson 16 (cost) and Lesson 42 (pricing); this lesson covers cloud usage metering and spend."),
+    "44-automations-webhooks.html": (
+        "先读 第30课 的执行流水线与 第14课 的队列，本课讲自动化与 webhook（含 SSRF 防护）。",
+        "Read Lesson 30 (the execution pipeline) and Lesson 14 (the queue); this lesson covers automations and webhooks (incl. SSRF defense)."),
+    "45-slack-and-notifications.html": (
+        "先读 第44课 的自动化，本课讲 Slack 与通知这一具体落地。",
+        "Read Lesson 44 on automations; this lesson covers Slack and notifications as a concrete landing."),
+    "46-analytics-integrations.html": (
+        "先读 第7课 的存储与 第19课 的媒体导出，本课讲分析集成（PostHog / S3 等）。",
+        "Read Lesson 7 (storage) and Lesson 19 (media export); this lesson covers analytics integrations (PostHog / S3, etc.)."),
+    "47-batch-exports-and-actions.html": (
+        "先读 第46课 的集成与 第30课 的状态机，本课讲批量导出与批量操作（幂等）。",
+        "Read Lesson 46 (integrations) and Lesson 30 (the state machine); this lesson covers batch exports and actions (idempotency)."),
+    "48-auth-and-sessions.html": (
+        "先读 第20课 的 web 架构，本课讲鉴权与会话（NextAuth / JWT）。",
+        "Read Lesson 20 on the web architecture; this lesson covers auth and sessions (NextAuth / JWT)."),
+    "49-rbac-apikeys-scim.html": (
+        "先读 第48课 的鉴权与 第10课 的多租户，本课讲 RBAC、API key 与 SCIM。",
+        "Read Lesson 48 (auth) and Lesson 10 (multi-tenancy); this lesson covers RBAC, API keys, and SCIM."),
+    "50-open-core-and-entitlements.html": (
+        "先读 第10课 的多租户，本课讲开源核与商业权益的边界。",
+        "Read Lesson 10 on multi-tenancy; this lesson covers the open-core / commercial entitlement boundary."),
+    "51-self-observability-and-config.html": (
+        "先读 第18课 的 OTel 摄取，本课讲 Langfuse 如何自我观测与配置。",
+        "Read Lesson 18 on OTel ingestion; this lesson covers how Langfuse observes and configures itself."),
+    "52-data-lifecycle-and-deletion.html": (
+        "先读 第7课 的四存储与 第19课 的媒体，本课讲数据保留期与跨存储删除。",
+        "Read Lesson 7 (the four stores) and Lesson 19 (media); this lesson covers retention and cross-store deletion."),
+    "53-build-test-dev-workflow.html": (
+        "先读 第4课 的 monorepo 全景，本课讲构建、测试与开发流。",
+        "Read Lesson 4 on the monorepo map; this lesson covers the build, test, and dev workflow."),
+    "54-design-themes-synthesis.html": (
+        "先回顾 第2课 的宽事件与 第7课 的双存储两大基石，本课把六大设计专题综合起来。",
+        "Revisit Lesson 2 (wide events) and Lesson 7 (dual storage); this lesson synthesizes the six design themes."),
+    "55-capstone-trace-life.html": (
+        "先读 第5课 的一生鸟瞰，本课跟一条 trace 走完贯穿 55 课的完整旅程。",
+        "Read Lesson 5 for the bird's-eye life; this capstone follows one trace through the full journey across all 55 lessons."),
 }
 
 # Extra search keywords (not shown) so trimming the TOC subtitles above doesn't

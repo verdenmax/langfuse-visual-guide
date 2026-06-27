@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第十部分 · 平台与运维</span><span class="lang-en">Part 10 · Platform &amp; Operations</span></div>
     <h1><span class="lang-zh">数据生命周期与删除</span><span class="lang-en">Data lifecycle &amp; deletion</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的四存储与 <a class="xref" href="19-media-blob-storage.html">第19课</a> 的媒体，本课讲数据保留期与跨存储删除。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> (the four stores) and <a class="xref" href="19-media-blob-storage.html">Lesson 19</a> (media); this lesson covers retention and cross-store deletion.</div></div>
   <div class="lang-zh">
 <p class="lead">
 数据有<strong>一生</strong>：被摄取写入（出生）、被查询分析（活着）、最终被删除（落幕）。前面的课讲足了「写」和「读」，这一课讲<strong>「删」</strong>——以及一个容易被忽略却很关键的事实：在 Langfuse 里，<strong>一条 trace 不是一行数据，而是散在三个存储里的三份</strong>：元数据在 <strong>Postgres</strong>、海量事件在 <strong>ClickHouse</strong>、大块输入输出/媒体在 <strong>对象存储（S3）</strong>。所以「删一条 trace / 删一个项目 / 按保留期清旧数据」都不是删一行那么简单，而是要<strong>跨三个存储协调一致地删干净</strong>——漏删任何一处，都是数据残留（合规与隐私的隐患）。

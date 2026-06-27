@@ -100,6 +100,8 @@ strong { color: var(--ink); font-weight: 680; }
 .card.key .tag { color: var(--accent-ink); }
 .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
 .card.warn .tag { color: var(--red); }
+.card.prereq { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+.card.prereq .tag { color: var(--teal); }
 .card.spark { border-left: 4px solid #e0a000;
   background: linear-gradient(100deg, rgba(224,160,0,.12), transparent 70%); }
 .card.spark .tag { color: #c98a00; }
@@ -351,6 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <div class="part"><span class="lang-zh">第九部分 · 自动化与集成</span><span class="lang-en">Part 9 · Automation &amp; Integrations</span></div>
     <h1><span class="lang-zh">自动化与 webhook</span><span class="lang-en">Automations &amp; webhooks</span></h1>
   </div>
+  <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的执行流水线与 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列，本课讲自动化与 webhook（含 SSRF 防护）。</div><div class="lang-en">Read <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (the execution pipeline) and <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue); this lesson covers automations and webhooks (incl. SSRF defense).</div></div>
   <div class="lang-zh">
 <p class="lead">
 <a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>的监控告警要送到人手里、prompt 改了要通知外部系统、新 trace 来了要触发下游流程——这些「<strong>当 X 发生，就做 Y</strong>」的联动，由 Langfuse 的<strong>自动化（Automation）</strong>驱动：一个 <strong>Trigger（触发器，何时）</strong>绑一个 <strong>Action（动作，做什么）</strong>。这一课讲它的数据模型，但真正的重头戏，是一个绕不开的<strong>安全</strong>话题：当 Action 是 <strong>webhook</strong>（让 Langfuse 的服务器去访问<strong>用户填的任意 URL</strong>）时，怎么防住 <strong>SSRF</strong>——别让用户把你的服务器当跳板，去打内网、偷云凭证。
@@ -410,6 +413,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">关键：IP 校验在「请求时」对解析出的真实 IP 做，防 DNS-rebinding（域名先解析成合法 IP、临门一脚切到内网 IP）</text>
 </svg>
 <div class="figcap"><b>纵深防御，层层设防</b>：<code>validateWebhookURL</code>（<code>validation.ts:35</code>）只放 http/https、只放端口 80/443；<code>ipBlocking.ts</code> 的 <code>isHostnameBlocked</code> 黑掉 localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>，<code>isIPBlocked</code> 黑掉 RFC1918 内网、loopback、link-local 等 CIDR，<b>且 IP 解析失败就默认拦截</b>（fail-closed）。校验在请求时对真实 IP 做，防 DNS-rebinding。</div>
+</div>
+
+<div class="card warn">
+  <div class="tag">⚠️ 「让服务器去请求用户填的 URL」是 Web 系统最危险的功能之一</div>
+  webhook 会让 Langfuse 去请求<strong>用户填的任意 URL</strong>——SSRF 的经典温床（<code>http://169.254.169.254</code> 偷云临时凭证、<code>http://localhost:6379</code> 打内部 Redis）。关键防线：IP 校验必须在<strong>「请求时」对真正解析出的 IP</strong> 做、解析失败即拦截（fail-closed）。否则 <strong>DNS-rebinding</strong> 会用「创建时解析到合法公网 IP、请求那一刻切到内网 IP」绕过你创建时的白名单。<strong>安全检查要贴着危险动作发生的那一刻做。</strong>
 </div>
 
 <div class="codefile">
@@ -607,6 +615,11 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <text x="360" y="216" text-anchor="middle" font-size="8" fill="var(--faint)">Key: the IP check runs "at request time" on the actually-resolved IP, defeating DNS-rebinding (resolve to a legit IP first, switch to an internal IP at the last second)</text>
 </svg>
 <div class="figcap"><b>Defense in depth, gate after gate</b>: <code>validateWebhookURL</code> (<code>validation.ts:35</code>) allows only http/https and only ports 80/443; <code>ipBlocking.ts</code>'s <code>isHostnameBlocked</code> blocks localhost / <code>metadata.google.internal</code> / <code>169.254.169.254</code>, and <code>isIPBlocked</code> blocks RFC1918 private ranges, loopback, link-local and other CIDRs, <b>and defaults to blocking when IP resolution fails</b> (fail-closed). The check runs at request time on the real IP, defeating DNS-rebinding.</div>
+</div>
+
+<div class="card warn">
+  <div class="tag">⚠️ "Make the server fetch a user-supplied URL" is one of the web's most dangerous features</div>
+  A webhook makes Langfuse request <strong>any URL the user typed</strong> — a classic SSRF vector (<code>http://169.254.169.254</code> to steal temporary cloud creds, <code>http://localhost:6379</code> to hit internal Redis). The key defense: the IP check must run <strong>"at request time" on the actually-resolved IP</strong>, and fail closed when resolution fails. Otherwise <strong>DNS-rebinding</strong> ("resolve to a legit public IP at creation, switch to an internal IP the moment we fetch") slips past the creation-time allowlist. <strong>Run the security check right at the moment the dangerous action happens.</strong>
 </div>
 
 <div class="codefile">
