@@ -5,13 +5,16 @@ A visual, bilingual (English + 中文) guide to the **internals of
 platform** — that takes you from *"what is LLM observability"* all the way to *"how the ingestion /
 query paths work in the code"* and *"how to build, test and contribute a PR"*.
 
+**📖 Read it online: <https://verdenmax.github.io/langfuse-visual-guide/>**
+
 > **Disclaimer:** This is **third-party, unofficial** educational material *about* Langfuse. It contains
 > **no Langfuse source code** beyond small, cited snippets; it explains Langfuse by quoting short,
 > attributed excerpts. Langfuse itself is **MIT**-licensed by its own authors (except some enterprise
 > features).
 
-> **Status:** **in progress** — built milestone-driven. Planned: **11 parts / 55 lessons**. See
-> `docs/superpowers/specs/` for the design spec and `docs/superpowers/plans/` for the roadmap.
+> **Status:** **complete** — all **11 parts / 55 lessons** authored, source-verified per milestone,
+> and gate-checked (0 errors). See `docs/superpowers/specs/` for the design spec and
+> `docs/superpowers/plans/` for the roadmap and per-milestone audit logs.
 
 Every lesson is self-contained, embeds both languages (toggle in the page), and uses hand-drawn
 diagrams, worked-example traces, real (cited) code, and a short self-test quiz.
@@ -101,11 +104,13 @@ Dual-licensed:
 这是一份 [Langfuse](https://github.com/langfuse/langfuse) 内部原理的**图解、双语**学习指南，从
 "什么是 LLM 可观测性"一路讲到"摄取/查询链路在代码里怎么走"以及"怎么本地构建、测试、提一个 PR"。
 
+**📖 在线阅读：<https://verdenmax.github.io/langfuse-visual-guide/>**
+
 > **声明：** 本项目是**第三方、非官方**的学习材料，**不包含 Langfuse 源码**（仅引用少量、标注来源的
 > 代码片段来讲解）。Langfuse 本身由其作者以 **MIT** 许可发布（部分企业版功能除外）。
 
-> **进度：** **进行中** —— 按里程碑构建，规划 **11 个部分 / 55 课**。设计规格见
-> `docs/superpowers/specs/`，路线图见 `docs/superpowers/plans/`。
+> **进度：** **已完成** —— **11 个部分 / 55 课**全部完成，逐里程碑核验源码忠实、全部 gate 通过（0 错误）。
+> 设计规格见 `docs/superpowers/specs/`，路线图与逐里程碑审计日志见 `docs/superpowers/plans/`。
 
 每一课都自成一体、内嵌中英双语（页内可切换），用手绘图、worked-example 追踪图、真实（标注来源的）
 代码和一段自测题来讲清一个概念。
