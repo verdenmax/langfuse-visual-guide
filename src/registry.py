@@ -65,4 +65,5 @@ CONTENT = {
     "46-analytics-integrations.html": part9.LESSON_46,
     "47-batch-exports-and-actions.html": part9.LESSON_47,
     "48-auth-and-sessions.html": part10.LESSON_48,
+    "49-rbac-apikeys-scim.html": part10.LESSON_49,
 }

@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 48 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 49 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -385,6 +385,7 @@ details[open] > summary { list-style: none; }
   <li>Analytics integrations</li>
   <li>Batch exports & actions</li>
   <li>Auth & sessions</li>
+  <li>RBAC, API keys & SCIM</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -9866,6 +9867,190 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>This lesson shows Langfuse piling a ring of guardrails on the plainest 'email-password login' path: SSO enforcement, timing-attack defense, SSO-user interception, bcrypt salted slow hashing. Drawing on your experience: why is 'rolling your own password login' often considered dangerous and error-prone? Which details here had you not realized were needed? If choosing for a new product between 'building your own password system' and 'delegating entirely to SSO/IdP', how would you weigh it (security, compliance, UX, implementation cost)?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>RBAC, API keys & SCIM</h1>
+
+<p class="lead">
+The previous lesson settled "who you are"; this one settles "<strong>what you can do</strong>" — authorization. Langfuse has <strong>two kinds of "guests"</strong> to authorize: <strong>humans</strong> (users clicking around the UI) and <strong>machines</strong> (programs reporting data via SDK, calling the API). The two take two authorization mechanisms: humans rely on <strong>RBAC (role-based access control)</strong> — packaging fine-grained <strong>permission points (scopes)</strong> into <strong>roles (OWNER/ADMIN/MEMBER/VIEWER)</strong>, then checking your role in a given project; machines rely on <strong>API keys</strong> — a <code>pk-lf-…</code>/<code>sk-lf-…</code> key pair backed by a rather thoughtful <strong>two-tier hash</strong> design (one tier for "fast lookup," one for "secure storage"). Finally a glance at <strong>SCIM</strong>: letting an enterprise's identity system <strong>auto-provision/deprovision</strong> Langfuse users.
+You'll repeatedly see two security creeds here: <strong>least privilege</strong> (grant only what's needed by default) and <strong>defense in depth</strong> (hide on the front end, block on the back end — do both).
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Same office building. Last lesson you got in and received a visitor badge; this lesson is about <strong>which doors that badge opens</strong>.
+  For <strong>humans</strong>, the building manages access by "<strong>job role</strong>": front-desk, employee, supervisor, boss are each a <strong>role</strong>, and each role is pre-fitted with a string of keys (<strong>scopes</strong>) for "which rooms you may enter." You don't hand out keys person by person — just assign a person a job, and the key ring follows automatically — that's RBAC. And door access is done <strong>twice</strong>: the signpost on the door simply <strong>doesn't display</strong> rooms you can't enter (the front end hides buttons by role, nice UX), but what actually stops you is <strong>the lock itself</strong> (the back end enforces, security) — tearing off the signpost gets you nowhere.
+  For <strong>machines</strong> (say a delivery robot that comes at night), the building issues an <strong>access card</strong> (API key). The card itself (the secret in cleartext) is given to you only once at issuance; afterward the building keeps only <strong>two "fingerprints"</strong>: one is a <strong>card-number hash for fast matching</strong> (instantly find who it is on swipe), the other a <strong>slow, salted fingerprint</strong> (even if the card-number store leaks, the original card can't be reverse-derived).
+</div>
+
+<h2>Authorizing humans: a role → a string of scopes</h2>
+<p>RBAC's core is one mapping table <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>: mapping each <strong>role</strong> to a string of <strong>permission points (scopes)</strong>. A scope is a fine-grained "resource:action" string, like <code>traces:delete</code>, <code>prompts:CUD</code>, <code>apiKeys:read</code>, <code>project:delete</code>. Roles run most-to-least powerful: <strong>OWNER → ADMIN → MEMBER → VIEWER → NONE</strong>: OWNER gets almost all scopes, VIEWER gets only a pile of <code>*:read</code> (read-only), NONE is an empty array (nothing). When checking permission you don't ask "are you OWNER" but "does your role <strong>contain this scope</strong>" — so adding a feature only means <strong>adding a scope</strong> to the relevant roles, not editing "if role==X" everywhere.</p>
+
+<p>More crucially, <strong>the same permission point is checked in two places</strong> — this is defense in depth: the front end uses the React hook <code>useHasProjectAccess</code> to decide "should this delete button show" (UX: don't show what you can't do), the back end uses <code>throwIfNoProjectAccess</code> in every tRPC resolver to <strong>enforce</strong> (security: throw <code>FORBIDDEN</code> if no access). Front-end hiding is just courtesy; <strong>what actually blocks privilege escalation is the back end</strong> — because front-end code runs on the user's machine and can be bypassed.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="RBAC: a user's role in a project OWNER/ADMIN/MEMBER/VIEWER/NONE maps to a string of scope permission points (traces:delete etc), checking permission asks whether the role contains the scope; same scope checked in two places: front end useHasProjectAccess hides buttons (UX), back end throwIfNoProjectAccess throws FORBIDDEN (security)">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Roles package scopes; same permission checked front + back</text>
+  <rect x="24" y="44" width="120" height="150" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="84" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">roles (most→least)</text>
+  <rect x="36" y="72" width="96" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="84" y="86" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">OWNER (almost all)</text>
+  <rect x="36" y="96" width="96" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="110" text-anchor="middle" font-size="6.6" fill="var(--ink)">ADMIN</text>
+  <rect x="36" y="120" width="96" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="134" text-anchor="middle" font-size="6.6" fill="var(--ink)">MEMBER</text>
+  <rect x="36" y="144" width="96" height="20" rx="4" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="84" y="158" text-anchor="middle" font-size="6.6" fill="var(--teal)">VIEWER (only *:read)</text>
+  <rect x="36" y="168" width="96" height="20" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="84" y="182" text-anchor="middle" font-size="6.6" fill="var(--muted)">NONE (empty [])</text>
+  <rect x="190" y="80" width="170" height="110" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="275" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">scope points (fine-grained)</text><text x="275" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">traces:delete · prompts:CUD</text><text x="275" y="131" text-anchor="middle" font-size="6.4" fill="var(--muted)">apiKeys:read · project:delete</text><text x="275" y="144" text-anchor="middle" font-size="6.4" fill="var(--muted)">datasets:CUD · scores:CUD …</text><text x="275" y="164" text-anchor="middle" font-size="6.2" fill="var(--faint)">projectRoleAccessRights</text><text x="275" y="176" text-anchor="middle" font-size="6.2" fill="var(--faint)">Record&lt;Role, Scope[]&gt;</text>
+  <rect x="410" y="56" width="285" height="58" rx="9" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="552" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">① front: useHasProjectAccess</text><text x="552" y="92" text-anchor="middle" font-size="6.4" fill="var(--muted)">hide the button if no access (UX)</text><text x="552" y="104" text-anchor="middle" font-size="6.0" fill="var(--faint)">React hook · bypassable, courtesy only</text>
+  <rect x="410" y="124" width="285" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="552" y="144" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② back: throwIfNoProjectAccess</text><text x="552" y="160" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">throw TRPCError FORBIDDEN if no access (security)</text><text x="552" y="174" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">enforced in every tRPC resolver · the real gate</text>
+  <line x1="144" y1="120" x2="188" y2="120" stroke="var(--accent)" stroke-width="1.3"/><polygon points="188,120 179,116 179,124" fill="var(--accent)"/>
+  <line x1="360" y1="110" x2="408" y2="85" stroke="var(--teal)" stroke-width="1.2"/><polygon points="408,85 399,85 403,93" fill="var(--teal)"/>
+  <line x1="360" y1="150" x2="408" y2="155" stroke="var(--accent)" stroke-width="1.3"/><polygon points="408,155 399,151 399,159" fill="var(--accent)"/>
+  <text x="360" y="218" text-anchor="middle" font-size="8" fill="var(--faint)">Ask "does the role contain this scope," not "is it some role" — adding a feature just adds a scope to a role</text>
+  <text x="360" y="234" text-anchor="middle" font-size="8" fill="var(--faint)">Front-end hiding is bypassable (code runs on the user's machine); the real escalation block is the back end — defense in depth</text>
+</svg>
+<div class="figcap"><b>Role→scope + dual check</b>: <code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code> (OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 read-only / NONE:271 empty); <code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code> (server, throws <code>TRPCError FORBIDDEN</code>) + <code>:42</code> <code>useHasProjectAccess</code> (front-end hook, hides UI).</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/rbac/constants/projectAccessRights.ts · utils/checkProjectAccess.ts</span><span class="ln">role→scope + enforced check</span></div>
+  <pre class="code"><span class="cm">// a scope is a fine-grained "resource:action" string; a role = a package of scopes</span>
+<span class="kw">export const</span> projectScopes = [<span class="st">"traces:delete"</span>, <span class="st">"prompts:CUD"</span>, <span class="st">"apiKeys:read"</span>,
+                              <span class="st">"project:delete"</span>, <span class="st">"datasets:CUD"</span>, …] <span class="kw">as const</span>;
+
+<span class="kw">export const</span> projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt; = {
+  OWNER:  [ <span class="cm">/* almost all scopes */</span> ],
+  ADMIN:  [ … ],   MEMBER: [ … ],
+  VIEWER: [ <span class="st">"project:read"</span>, <span class="st">"prompts:read"</span>, … <span class="cm">/* only *:read */</span> ],
+  NONE:   [],      <span class="cm">// nothing allowed</span>
+};
+
+<span class="cm">// back end: called in every tRPC resolver, throws FORBIDDEN on no access (the real gate)</span>
+<span class="kw">export const</span> <span class="fn">throwIfNoProjectAccess</span> = (p) =&gt; {
+  <span class="kw">if</span> (!<span class="fn">hasProjectAccess</span>(p))
+    <span class="kw">throw new</span> <span class="fn">TRPCError</span>({ code: <span class="st">"FORBIDDEN"</span>, message: <span class="st">"… no access …"</span> });
+};
+<span class="cm">// front end: same check as a React hook, to hide buttons without access (UX only)</span>
+<span class="kw">export const</span> <span class="fn">useHasProjectAccess</span> = ({ projectId, scope }) =&gt; { … };</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>👑 OWNER / ADMIN</h4><p>Almost all scopes: create/delete projects, manage members and API keys, CRUD every resource. OWNER is the project owner; ADMIN is slightly less (e.g. can't delete the project).</p></div>
+  <div class="col"><h4>✍️ MEMBER</h4><p>The everyday working role: can read and CUD most business resources (trace/prompt/dataset/score…), but <strong>can't manage members or project settings</strong> — those governance operations.</p></div>
+  <div class="col"><h4>👁️ VIEWER / NONE</h4><p>VIEWER gets only a pile of <code>*:read</code> — <strong>can see, can't change</strong>, fit for audit/observers. NONE is an empty array — can't even see — the floor of least privilege.</p></div>
+</div>
+
+
+<h2>Authorizing machines: the API key's two-tier hash</h2>
+<p>Programs authenticate with an API key: <code>generateKeySet</code> generates a pair <code>pk-lf-{uuid}</code> (public) / <code>sk-lf-{uuid}</code> (secret). The secret in cleartext is <strong>returned only once, at creation</strong>; afterward the DB stores only three derivatives: <strong>① <code>fastHashedSecretKey</code></strong> = <code>createShaHash(sk, SALT)</code> (sha256, <strong>deterministic</strong>, for "fast lookup"); <strong>② <code>hashedSecretKey</code></strong> = bcrypt hash (<strong>salted, slow</strong>, for "secure storage"); <strong>③ <code>displaySecretKey</code></strong> = a masked string (e.g. <code>sk-lf-...abc</code>, for UI display).</p>
+
+<p>Why two hashes? Because "fast lookup" and "security" are <strong>a contradiction</strong>. bcrypt adds a random salt each time and is deliberately slow — secure, but <strong>you can't use it as a database lookup</strong> (the same key bcrypts to a different value each time, so you can only compare row by row, O(n)). sha256 is deterministic — the same key always computes the same value, so it can be <strong>used directly as an index/cache key for O(1) lookup</strong>, and since it hashes "the key itself + salt," a store leak can't reverse-derive the key. So when a request arrives: first <code>createShaHash</code> computes the fast hash, then <strong>look up Redis first, falling back to Postgres</strong>; a hit yields that key's scopes. Legacy-format keys (with only the bcrypt hash) are verified once with <code>verifySecretKey</code>, then <strong>conveniently "upgraded" by storing the fast hash</strong>. One more trick: a not-found key stores an <code>API_KEY_NON_EXISTENT</code> sentinel in Redis to <strong>stop someone hammering the database with piles of nonexistent keys</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="API key two-tier hash: at creation generateKeySet makes pk-lf/sk-lf, the secret cleartext is returned only once, the DB stores fastHashedSecretKey (sha256 deterministic fast lookup) + hashedSecretKey (bcrypt salted secure) + displaySecretKey (masked); at verification compute the sha fast hash, look up Redis then PG, on hit get scopes, legacy keys verified by bcrypt then upgraded with the fast hash, nonexistent keys cache a sentinel to stop DB hammering">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One tier for "fast lookup," one for "secure storage"</text>
+  <rect x="24" y="44" width="180" height="150" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">at creation (generateKeySet)</text><text x="114" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">pk-lf-{uuid} / sk-lf-{uuid}</text><text x="114" y="92" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">sk cleartext returned only once!</text>
+  <rect x="34" y="100" width="160" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="114" y="111" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--accent-ink)">① fastHashedSecretKey</text><text x="114" y="121" text-anchor="middle" font-size="5.6" fill="var(--muted)">sha256(sk,SALT) deterministic·fast</text>
+  <rect x="34" y="130" width="160" height="26" rx="4" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="114" y="141" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--teal)">② hashedSecretKey</text><text x="114" y="151" text-anchor="middle" font-size="5.6" fill="var(--muted)">bcrypt salted slow·secure</text>
+  <rect x="34" y="160" width="160" height="26" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="114" y="171" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--accent-ink)">③ displaySecretKey</text><text x="114" y="181" text-anchor="middle" font-size="5.6" fill="var(--muted)">sk-lf-...abc masked display</text>
+  <rect x="250" y="60" width="150" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="325" y="80" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">request brings sk</text><text x="325" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">createShaHash(sk,SALT)</text>
+  <rect x="250" y="124" width="150" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="325" y="141" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">look up Redis first</text><text x="325" y="155" text-anchor="middle" font-size="6.0" fill="var(--muted)">hit → get scopes (O(1))</text>
+  <rect x="250" y="172" width="150" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="325" y="188" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">miss → query Postgres</text><text x="325" y="201" text-anchor="middle" font-size="5.8" fill="var(--muted)">indexed by fastHashedSecretKey</text>
+  <rect x="440" y="70" width="255" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="567" y="88" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">legacy key (bcrypt only)</text><text x="567" y="103" text-anchor="middle" font-size="6.2" fill="var(--muted)">verifySecretKey once → add fastHash "upgrade"</text>
+  <rect x="440" y="126" width="255" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="567" y="144" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">not found → cache a sentinel</text><text x="567" y="159" text-anchor="middle" font-size="6.0" fill="var(--muted)">API_KEY_NON_EXISTENT, stop DB hammering</text>
+  <rect x="440" y="180" width="255" height="40" rx="9" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="567" y="197" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">get scopes → allow/deny</text><text x="567" y="211" text-anchor="middle" font-size="6.0" fill="var(--muted)">machines also have their own scope range</text>
+  <line x1="204" y1="118" x2="248" y2="95" stroke="var(--accent)" stroke-width="1.2"/><polygon points="248,95 239,95 243,103" fill="var(--accent)"/>
+  <line x1="325" y1="110" x2="325" y2="122" stroke="var(--accent)" stroke-width="1.2"/><polygon points="325,122 321,113 329,113" fill="var(--accent)"/>
+  <line x1="400" y1="144" x2="438" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="400" y1="150" x2="438" y2="148" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>Two-tier hash</b>: <code>apiKeys.ts:19</code> <code>generateKeySet</code> (pk-lf/sk-lf); <code>:41 createAndAddApiKeysToDb</code> stores <code>hashedSecretKey</code>(bcrypt :13) / <code>displaySecretKey</code> / <code>fastHashedSecretKey</code>(<code>createShaHash</code> sha256 :31), salt <code>env.SALT</code>. Verify <code>apiAuth.ts:75 verifyAuthHeaderAndReturnScope</code>: <code>:97</code> compute fast hash, Redis→PG lookup (<code>:107</code> legacy key <code>verifySecretKey</code> + <code>:141</code> upgrade with fastHash), nonexistent cached as <code>API_KEY_NON_EXISTENT</code>.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Request brings sk</h4><p>Compute <code>createShaHash(sk, env.SALT)</code> for the deterministic fast hash — this key's "card number."</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Look up Redis first, then PG</h4><p>Using the fast hash as the key, ask the Redis cache first; on a miss, query Postgres indexed by <code>fastHashedSecretKey</code>. A hit yields this key's scopes.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Legacy key: bcrypt verify + upgrade</h4><p>A legacy key with only a bcrypt hash is slow-verified once via <code>verifySecretKey</code>, then conveniently "upgraded" by adding the fast hash, taking the fast path next time.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Not found: cache a sentinel</h4><p>A nonexistent key stores <code>API_KEY_NON_EXISTENT</code> in Redis, blocking "hammer the DB with piles of fake keys." Finally allow or deny by scope.</p></div></div>
+</div>
+
+
+<h2>SCIM: letting the enterprise identity system auto-provision users</h2>
+<p>A large enterprise has thousands of employees, joining and leaving constantly. Relying on an admin to manually add people one by one in Langfuse and delete them on departure is slow and error-prone (a missed deletion = a departed employee still has access, a security hazard). <strong>SCIM (System for Cross-domain Identity Management)</strong> is a standard protocol letting an enterprise's identity hub (Okta, Azure AD) <strong>automatically</strong> sync "who should have an account": auto-provision on joining, auto-deprovision on leaving. Langfuse implements the standard SCIM endpoints in <code>web/src/pages/api/public/scim/*</code> — <code>Users</code> (create/delete/list users), <code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code> (self-describe to the IdP "which SCIM capabilities I support"). This is an enterprise (EE) capability, neatly leading into the next lesson's "open-core & entitlements."</p>
+
+<table class="t">
+  <thead><tr><th>Subject</th><th>Mechanism</th><th>How it's judged</th><th>Key design</th></tr></thead>
+  <tbody>
+    <tr><td><b>Humans</b> (UI users)</td><td>RBAC role→scope</td><td>does the role contain the scope</td><td>front-end hide + back-end enforce (defense in depth)</td></tr>
+    <tr><td><b>Machines</b> (SDK/API)</td><td>API key (pk/sk)</td><td>sk's fast hash finds the key, read its scopes</td><td>two-tier hash: sha256 fast lookup + bcrypt secure</td></tr>
+    <tr><td><b>Enterprise bulk</b></td><td>SCIM protocol</td><td>IdP pushes user create/delete</td><td>auto-provision on join, auto-deprovision on leave (EE)</td></tr>
+  </tbody>
+</table>
+
+<p>Read the three rows and you'll find authorization cleanly decomposed: <strong>different kinds of "guests" use different mechanisms, but all reduce to one question — "is this operation within your permission range?"</strong> RBAC gives humans a "role," API keys give machines a "scoped secret," SCIM lets that roster be auto-maintained by the enterprise. Each does its job, and all serve the least-privilege principle of "<strong>every subject gets only the privileges it needs</strong>."</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why store both a "sha256 fast hash" and a "bcrypt slow hash" for an API key — why not just one?</strong> Because the two solve a pair of <strong>conflicting</strong> needs. bcrypt's security comes from <strong>adding a random salt each time and being deliberately slow</strong> — making brute force uneconomical, but with a side effect: the same key bcrypts to a different value each time, so <strong>you can't use it as a database lookup condition</strong>; you'd bcrypt-compare every row (O(n), scanning the whole table per auth, a disaster). And API auth is <strong>extremely high-frequency</strong> (every reported trace verifies a key once), so it must find the key in O(1). sha256(key, SALT) fills the gap exactly: it's <strong>deterministic</strong> — the same key always computes the same value, so it can be an index or a Redis cache key for a one-step lookup; and since it hashes "<strong>the secret itself</strong>" rather than something enumerable, plus salt, a store leak can't reverse the key. So the final design is a <strong>division of labor</strong>: sha256 handles "O(1) find which key it is among millions," bcrypt handles "salted slow verification for legacy keys." <strong>When "fast" and "secure" conflict, it's not either/or but two tools each owning a segment.</strong><br><br>
+  <strong>Why does RBAC check both front end and back end — isn't checking only the back end enough, isn't it duplicate?</strong> The two checks have <strong>fundamentally different purposes</strong>, both indispensable. <strong>The back-end check is the security gate</strong>: <code>throwIfNoProjectAccess</code> in tRPC resolvers is the truly un-bypassable enforcement — because it runs on the server. <strong>The front-end check is UX</strong>: <code>useHasProjectAccess</code> simply <strong>doesn't show</strong> the buttons you can't use, sparing you a red error after clicking. The key realization: <strong>a front-end permission check is only "politeness," never security</strong> — because front-end code runs entirely in the user's browser; the user can modify it or craft requests directly to bypass the UI. So "front-end hiding" must always have "back-end enforcement" behind it. Many privilege-escalation bugs come precisely from a developer hiding a button on the front end but forgetting to add the back-end check — thinking "no button means no entry," while the endpoint sits exposed.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Authorization = what you can do</strong>: two subjects — humans (UI users) take RBAC, machines (SDK/API) take API keys; plus SCIM for the enterprise identity system to auto-maintain users. Shared goal: least privilege.</li>
+    <li><strong>RBAC role→scope</strong>: <code>projectRoleAccessRights: Record&lt;Role, Scope[]&gt;</code> maps OWNER/ADMIN/MEMBER/VIEWER/NONE each to a string of fine-grained scopes (<code>traces:delete</code> etc, VIEWER read-only, NONE empty). Check "does the role contain the scope"; adding a feature just adds a scope.</li>
+    <li><strong>Defense in depth: dual check</strong>: front-end <code>useHasProjectAccess</code> hides buttons (UX), back-end <code>throwIfNoProjectAccess</code> throws FORBIDDEN (security). The front end is bypassable; <strong>the real gate is the back end</strong> — front-end hiding must always have back-end enforcement behind it.</li>
+    <li><strong>API key two-tier hash</strong>: <code>fastHashedSecretKey</code>=sha256 (deterministic, for O(1) fast lookup, cacheable) + <code>hashedSecretKey</code>=bcrypt (salted slow, secure) + <code>displaySecretKey</code> (masked display). The sk cleartext is returned only at creation; verification computes the fast hash, looks up Redis→PG, legacy keys verified by bcrypt then upgraded, nonexistent keys cached as a sentinel to stop DB hammering.</li>
+    <li><strong>SCIM enterprise automation</strong>: a standard protocol letting Okta/Azure AD auto-provision/deprovision Langfuse users (have on joining, gone on leaving), avoiding manual add/delete misses. An EE capability, leading into the next lesson's open-core & entitlements.</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse's RBAC writes the permission check as 'does your role contain this scope' (e.g. traces:delete), rather than 'are you OWNER/ADMIN'. The main benefit of this 'role→scope' indirection is?</div>
+  <ol class="opts">
+    <li>this eliminates the need for roles</li>
+    <li>decoupling and maintainability: feature code only asks 'has this scope', adding a feature just adds a scope to relevant roles in the role definition, no editing scattered 'if role==X' checks everywhere; the permission model is centralized in one Record<Role,Scope[]> table, clear and auditable</li>
+    <li>scope checks run faster than role checks</li>
+    <li>scope strings compress storage</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. If you write 'if (role === OWNER || role === ADMIN)' everywhere, every new feature and every permission tweak means combing the code for these scattered checks—easy to miss or misconfigure. With the scope indirection: each feature cares about one fine-grained point (traces:delete), while 'which role has which scopes' is maintained centrally in the projectRoleAccessRights table. Add a feature = add a scope to a role; tweak permissions = edit the table; the check logic (hasProjectAccess) stays fully generic. A classic 'a layer of indirection for maintainability and auditability'—and it makes 'what exactly can this role do' obvious at a glance.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse stores two hashes per API key: fastHashedSecretKey (sha256) and hashedSecretKey (bcrypt). Why not just use bcrypt alone?</div>
+  <ol class="opts">
+    <li>bcrypt is obsolete and must be paired with sha256</li>
+    <li>because bcrypt adds a random salt each time with a nondeterministic result, unusable as a DB lookup key (only row-by-row compare, O(n)), while API auth is extremely high-frequency and must find it in O(1); sha256 is deterministic, same key→constant value, usable directly as an index/cache key for one-step lookup, and it hashes the secret itself + salt so a leak can't reverse it — the two divide labor: sha for fast lookup, bcrypt for secure storage</li>
+    <li>two hashes double-encrypt for more security</li>
+    <li>sha256 for the public key, bcrypt for the secret key</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. 'Fast lookup' and 'brute-force resistance' conflict. bcrypt is deliberately slow for brute-force resistance and salted differently each time, so a key's bcrypt value isn't fixed—you can't use it in a WHERE lookup, only a full-table row-by-row compare, and since API auth verifies a key per trace, an O(n) scan is a disaster. sha256(key,SALT) is deterministic: same key→same value, usable as an index or Redis cache key for an O(1) hit; and since it hashes 'the secret itself' (high-entropy, non-enumerable) plus salt, a store leak can't reverse the key. So they divide labor: sha256 quickly locates which key among millions, bcrypt does salted slow verification for legacy keys. Exactly 'when fast and secure conflict, use two tools each owning a segment'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse checks the same permission point (e.g. 'delete trace') in both front end (useHasProjectAccess) and back end (throwIfNoProjectAccess). Which statement about these two checks is correct?</div>
+  <ol class="opts">
+    <li>the back-end check is the truly un-bypassable security gate (runs on the server), the front-end check is only UX (hide buttons without access); a front-end check is never security because front-end code runs in the user's browser, can be modified, and requests can be crafted to bypass the UI — front-end hiding must always have back-end enforcement behind it</li>
+    <li>the front-end check is the security gate, the back end is auxiliary</li>
+    <li>once the front end hides the button, the endpoint is automatically secure</li>
+    <li>the two checks are fully redundant; drop the back-end one to save performance</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. This is one of the most common and fatal misconceptions in web security. Front-end code (including permission checks) runs entirely in the user's browser; the user can open dev tools to modify it or bypass the UI to craft requests straight to the back end. So the front-end useHasProjectAccess 'hide button' is only UX (you don't see unusable features or eat pointless errors), never a security boundary. What truly blocks escalation is throwIfNoProjectAccess in every back-end tRPC resolver—it runs on your controlled server and is un-bypassable. Many escalation bugs come precisely from 'hiding a button on the front end but forgetting the back-end check', thinking no button means no entry while the endpoint runs naked. Principle: front-end hiding is politeness, back-end enforcement is security, both must be present.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson splits authorization into two subjects (humans via RBAC, machines via API keys) plus SCIM, underpinned by 'least privilege + defense in depth'. Reflect on systems you've built: is your permission model fine-grained 'role→scope', or coarse 'admin/regular user' two-tier? Does the two-tier-hash idea of 'storing multiple derivatives of the same secret for different purposes' echo elsewhere in your work (caching, dedup, indexing)? If designing an API key system for a new product, how would you balance security, query performance, and revocability?</li>
   </ul>
 </div>
 </div>

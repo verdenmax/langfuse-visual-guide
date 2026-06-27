@@ -3405,6 +3405,76 @@ QUIZZES = {
             },
         ],
     },
+    "49-rbac-apikeys-scim.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 的 RBAC 把权限判断写成「你的角色里有没有这个 scope」（如 traces:delete），而不是「你是不是 OWNER/ADMIN」。这种「角色→scope」间接层的主要好处是？",
+                    "en": "Langfuse's RBAC writes the permission check as 'does your role contain this scope' (e.g. traces:delete), rather than 'are you OWNER/ADMIN'. The main benefit of this 'role→scope' indirection is?",
+                },
+                "opts": [
+                    {
+                        "zh": "解耦与可维护：功能代码只问「有没有某 scope」，加新功能只需在角色定义里给相关角色添一个 scope，不必到处去改散落的「if 角色==X」判断；权限模型集中在一张 Record<Role,Scope[]> 表里，清晰可审计",
+                        "en": "decoupling and maintainability: feature code only asks 'has this scope', adding a feature just adds a scope to relevant roles in the role definition, no editing scattered 'if role==X' checks everywhere; the permission model is centralized in one Record<Role,Scope[]> table, clear and auditable",
+                    },
+                    {"zh": "scope 比角色判断运行更快", "en": "scope checks run faster than role checks"},
+                    {"zh": "这样可以不需要角色了", "en": "this eliminates the need for roles"},
+                    {"zh": "scope 字符串能压缩存储", "en": "scope strings compress storage"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "如果到处写「if (role === 'OWNER' || role === 'ADMIN')」，每加一个功能、每调一次权限，都要翻遍代码找这些散落的判断，极易漏改、错配。引入 scope 间接层后：每个功能只关心一个细粒度权限点（traces:delete），而「哪个角色拥有哪些 scope」集中在 projectRoleAccessRights 一张表里维护。加功能=给角色添 scope，调权限=改这张表，判断逻辑（hasProjectAccess）则完全通用。这是「用一层间接换取可维护性与可审计性」的经典做法——也让「这个角色到底能干什么」一目了然。",
+                    "en": "If you write 'if (role === OWNER || role === ADMIN)' everywhere, every new feature and every permission tweak means combing the code for these scattered checks—easy to miss or misconfigure. With the scope indirection: each feature cares about one fine-grained point (traces:delete), while 'which role has which scopes' is maintained centrally in the projectRoleAccessRights table. Add a feature = add a scope to a role; tweak permissions = edit the table; the check logic (hasProjectAccess) stays fully generic. A classic 'a layer of indirection for maintainability and auditability'—and it makes 'what exactly can this role do' obvious at a glance.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 为每个 API key 存了两种哈希：fastHashedSecretKey（sha256）和 hashedSecretKey（bcrypt）。为什么不能只用 bcrypt 一种？",
+                    "en": "Langfuse stores two hashes per API key: fastHashedSecretKey (sha256) and hashedSecretKey (bcrypt). Why not just use bcrypt alone?",
+                },
+                "opts": [
+                    {
+                        "zh": "因为bcrypt每次加随机盐、结果不确定，没法当数据库查找键(只能逐行compare，O(n))，而API认证极高频必须O(1)查到；sha256确定性、同key恒定值，能直接当索引/缓存键一步查到，且哈希的是密钥本身+盐故泄露也反推不出——两者分工：sha查得快、bcrypt存得安全",
+                        "en": "because bcrypt adds a random salt each time with a nondeterministic result, unusable as a DB lookup key (only row-by-row compare, O(n)), while API auth is extremely high-frequency and must find it in O(1); sha256 is deterministic, same key→constant value, usable directly as an index/cache key for one-step lookup, and it hashes the secret itself + salt so a leak can't reverse it — the two divide labor: sha for fast lookup, bcrypt for secure storage",
+                    },
+                    {"zh": "bcrypt 已经过时，必须配 sha256", "en": "bcrypt is obsolete and must be paired with sha256"},
+                    {"zh": "两种哈希是为了双重加密更安全", "en": "two hashes double-encrypt for more security"},
+                    {"zh": "sha256 用于公钥、bcrypt 用于私钥", "en": "sha256 for the public key, bcrypt for the secret key"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "「快查」和「抗暴破」是一对矛盾。bcrypt 为抗暴破刻意慢、且每次盐不同，导致同一 key 的 bcrypt 值不固定——你无法拿它做 WHERE 查找，只能扫全表逐行 compare，而 API 认证每条 trace 都要验一次 key，O(n) 扫表是灾难。sha256(key,SALT) 是确定性的：同一 key 永远同一值，能直接建索引、当 Redis 缓存键，O(1) 命中；又因为算的是「密钥本身」（高熵、不可枚举）加盐，库泄露也无法反推原 key。于是分工：sha256 负责「在海量 key 里快速定位是哪把」，bcrypt 负责老格式 key 的加盐慢验证。这正是「当快与安全冲突时，用两种工具各管一段」。",
+                    "en": "'Fast lookup' and 'brute-force resistance' conflict. bcrypt is deliberately slow for brute-force resistance and salted differently each time, so a key's bcrypt value isn't fixed—you can't use it in a WHERE lookup, only a full-table row-by-row compare, and since API auth verifies a key per trace, an O(n) scan is a disaster. sha256(key,SALT) is deterministic: same key→same value, usable as an index or Redis cache key for an O(1) hit; and since it hashes 'the secret itself' (high-entropy, non-enumerable) plus salt, a store leak can't reverse the key. So they divide labor: sha256 quickly locates which key among millions, bcrypt does salted slow verification for legacy keys. Exactly 'when fast and secure conflict, use two tools each owning a segment'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的同一个权限点（如「删除 trace」）在前端用 useHasProjectAccess、后端用 throwIfNoProjectAccess 各查一遍。关于这两道校验，哪种说法正确？",
+                    "en": "Langfuse checks the same permission point (e.g. 'delete trace') in both front end (useHasProjectAccess) and back end (throwIfNoProjectAccess). Which statement about these two checks is correct?",
+                },
+                "opts": [
+                    {
+                        "zh": "后端那道是真正不可绕过的安全闸(跑在服务器上)，前端那道只是体验优化(隐藏没权限的按钮)；前端校验绝不能当安全，因为前端代码在用户浏览器里可被改、可直接构造请求绕过UI——前端隐藏必须始终有后端强制兜底",
+                        "en": "the back-end check is the truly un-bypassable security gate (runs on the server), the front-end check is only UX (hide buttons without access); a front-end check is never security because front-end code runs in the user's browser, can be modified, and requests can be crafted to bypass the UI — front-end hiding must always have back-end enforcement behind it",
+                    },
+                    {"zh": "两道校验完全重复，可以删掉后端那道省性能", "en": "the two checks are fully redundant; drop the back-end one to save performance"},
+                    {"zh": "前端那道是安全闸，后端只是辅助", "en": "the front-end check is the security gate, the back end is auxiliary"},
+                    {"zh": "只要前端隐藏了按钮，接口就自动安全了", "en": "once the front end hides the button, the endpoint is automatically secure"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是 Web 安全里最常见也最致命的误区之一。前端代码（包括权限判断）整个运行在用户的浏览器里，用户可以打开开发者工具改它、可以绕过 UI 直接对后端接口构造请求。所以前端的 useHasProjectAccess「隐藏按钮」只是体验优化（让你看不到点不了的功能、不吃无谓的报错），绝不构成安全边界。真正挡住越权的，是后端每个 tRPC resolver 里的 throwIfNoProjectAccess——它跑在你控制的服务器上、不可绕过。许多越权漏洞正源于「只在前端藏了按钮，后端却忘了校验」，以为按钮没了就进不去，实则接口裸奔。原则：前端隐藏是礼貌，后端强制才是安全，两者必须同时在。",
+                    "en": "This is one of the most common and fatal misconceptions in web security. Front-end code (including permission checks) runs entirely in the user's browser; the user can open dev tools to modify it or bypass the UI to craft requests straight to the back end. So the front-end useHasProjectAccess 'hide button' is only UX (you don't see unusable features or eat pointless errors), never a security boundary. What truly blocks escalation is throwIfNoProjectAccess in every back-end tRPC resolver—it runs on your controlled server and is un-bypassable. Many escalation bugs come precisely from 'hiding a button on the front end but forgetting the back-end check', thinking no button means no entry while the endpoint runs naked. Principle: front-end hiding is politeness, back-end enforcement is security, both must be present.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课把授权拆成两类对象（人走 RBAC、机器走 API key）外加 SCIM，背后是「最小权限 + 纵深防御」两条信条。请结合你做过的系统想一想：你的权限模型是「角色→scope」这种细粒度的，还是粗放的「管理员/普通用户」两档？两层哈希这种「为不同目的存同一秘密的多种派生物」的思路，在你别的场景里（如缓存、去重、索引）有没有类似的影子？如果要给一个新系统设计 API key 体系，你会怎么平衡安全、查询性能和可吊销性？",
+                "en": "This lesson splits authorization into two subjects (humans via RBAC, machines via API keys) plus SCIM, underpinned by 'least privilege + defense in depth'. Reflect on systems you've built: is your permission model fine-grained 'role→scope', or coarse 'admin/regular user' two-tier? Does the two-tier-hash idea of 'storing multiple derivatives of the same secret for different purposes' echo elsewhere in your work (caching, dedup, indexing)? If designing an API key system for a new product, how would you balance security, query performance, and revocability?",
+            },
+        ],
+    },
 }
 
 

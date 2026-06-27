@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse 图解学习指南 - 打印版</h1>
-<p style="color:var(--muted)">全 48 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
+<p style="color:var(--muted)">全 49 课 - 逐课分页。用浏览器 Ctrl/Cmd+P 即可导出 PDF。</p>
 <div class="print-toc"><h2>目录</h2>
 <ol>
   <li>Langfuse 是什么</li>
@@ -385,6 +385,7 @@ details[open] > summary { list-style: none; }
   <li>分析集成</li>
   <li>批量导出与批量操作</li>
   <li>鉴权与会话</li>
+  <li>RBAC · API key · SCIM</li>
 </ol></div>
 <section class="lesson-print">
 <h1>Langfuse 是什么</h1>
@@ -9444,6 +9445,190 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
     <li>这一课展示了 Langfuse 对「邮箱密码登录」这条最朴素的路堆了一圈安全护栏：SSO 强制、时序攻击防护、SSO 用户拦截、bcrypt 加盐慢哈希。请结合你的经验谈谈：为什么「自己实现密码登录」常被认为是危险且容易出错的？这一课的哪些细节是你以前没意识到要做的？如果让你在「自建密码体系」与「全部交给 SSO/IdP」之间为一个新产品做选择，你会怎么权衡（安全、合规、用户体验、实现成本）？</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>RBAC · API key · SCIM</h1>
+
+<p class="lead">
+上一课解决了「你是谁」，这一课解决「<strong>你能干什么</strong>」——授权（authorization）。Langfuse 有<strong>两类「客人」</strong>要授权：<strong>人</strong>（在 UI 里点点点的用户）和<strong>机器</strong>（用 SDK 上报数据、调 API 的程序）。两类客人走两套授权机制：人靠 <strong>RBAC（基于角色的访问控制）</strong>——把细粒度的<strong>权限点（scope）</strong>打包成<strong>角色（OWNER/ADMIN/MEMBER/VIEWER）</strong>，再看你在某项目里是什么角色；机器靠 <strong>API key</strong>——一对 <code>pk-lf-…</code>/<code>sk-lf-…</code> 密钥，背后藏着一个相当讲究的<strong>两层哈希</strong>设计（一层为了「查得快」，一层为了「存得安全」）。最后再看一眼 <strong>SCIM</strong>：让企业的身份系统能<strong>自动开通/注销</strong> Langfuse 用户。
+这一课你会反复看到两条安全信条：<strong>最小权限</strong>（默认只给够用的）与<strong>纵深防御</strong>（前端藏、后端拦，两道都做）。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  还是那栋写字楼。上一课你已进了门、拿到访客牌，这一课讲<strong>这张牌能开哪些门</strong>。
+  对<strong>人</strong>，楼里用「<strong>岗位</strong>」管权限：前台、员工、主管、老板各是一个<strong>角色</strong>，每个角色预先配好「能进哪些房间」的一串钥匙（<strong>scope</strong>）。你不必逐人发钥匙，只要给人定个岗位，钥匙串就自动跟过来——这就是 RBAC。而且门禁做了<strong>两道</strong>：门上贴的指示牌会把你进不去的房间<strong>直接不显示</strong>（前端按角色隐藏按钮，体验好），但真正拦你的是<strong>门锁本身</strong>（后端强制校验，安全）——光把指示牌撕了可没用。
+  对<strong>机器</strong>（比如夜里自动来送货的机器人），楼里发的是一张<strong>门禁卡</strong>（API key）。卡片本体（密钥明文）只在发卡那一刻给你一次，之后楼里只留<strong>两份「指纹」</strong>：一份是<strong>快速比对用的卡号哈希</strong>（刷卡时一秒查到是谁），一份是<strong>慢而安全的加盐指纹</strong>（万一卡号库泄露也反推不出原卡）。
+</div>
+
+
+<h2>人的授权：角色 → 一串 scope</h2>
+<p>RBAC 的核心是一张映射表 <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>：把每个<strong>角色</strong>映射到一串<strong>权限点（scope）</strong>。scope 是细粒度的「资源:动作」字符串，如 <code>traces:delete</code>、<code>prompts:CUD</code>、<code>apiKeys:read</code>、<code>project:delete</code>。角色从权大到权小是 <strong>OWNER → ADMIN → MEMBER → VIEWER → NONE</strong>：OWNER 拿到几乎全部 scope，VIEWER 只拿到一堆 <code>*:read</code>（只读），NONE 是空数组（什么都不能）。判权限时不直接问「你是不是 OWNER」，而是问「你的角色里<strong>有没有这个 scope</strong>」——这样加新功能只需给相关角色<strong>添一个 scope</strong>，不必到处改「if 角色==X」。</p>
+
+<p>更关键的是<strong>同一个权限点要在两处校验</strong>，这是纵深防御：前端用 React hook <code>useHasProjectAccess</code> 决定「这个删除按钮要不要显示」（体验：没权限就别给看），后端在每个 tRPC resolver 里用 <code>throwIfNoProjectAccess</code> <strong>强制拦截</strong>（安全：没权限就抛 <code>FORBIDDEN</code>）。前端的隐藏只是体面，<strong>真正挡住越权的是后端那道</strong>——因为前端代码在用户机器上，可被绕过。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="RBAC：用户在某项目的角色OWNER/ADMIN/MEMBER/VIEWER/NONE映射到一串scope权限点(traces:delete等)，判权限问角色是否含该scope；同一scope两处校验：前端useHasProjectAccess隐藏按钮(体验)、后端throwIfNoProjectAccess抛FORBIDDEN(安全)">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">角色打包 scope；同一权限前后端两道校验</text>
+  <rect x="24" y="44" width="120" height="150" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="84" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">角色（由大到小）</text>
+  <rect x="36" y="72" width="96" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="84" y="86" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">OWNER（几乎全部）</text>
+  <rect x="36" y="96" width="96" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="110" text-anchor="middle" font-size="6.6" fill="var(--ink)">ADMIN</text>
+  <rect x="36" y="120" width="96" height="20" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="84" y="134" text-anchor="middle" font-size="6.6" fill="var(--ink)">MEMBER</text>
+  <rect x="36" y="144" width="96" height="20" rx="4" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="84" y="158" text-anchor="middle" font-size="6.6" fill="var(--teal)">VIEWER（仅 *:read）</text>
+  <rect x="36" y="168" width="96" height="20" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="84" y="182" text-anchor="middle" font-size="6.6" fill="var(--muted)">NONE（空 []）</text>
+  <rect x="190" y="80" width="170" height="110" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="275" y="100" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">scope 权限点（细粒度）</text><text x="275" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">traces:delete · prompts:CUD</text><text x="275" y="131" text-anchor="middle" font-size="6.4" fill="var(--muted)">apiKeys:read · project:delete</text><text x="275" y="144" text-anchor="middle" font-size="6.4" fill="var(--muted)">datasets:CUD · scores:CUD …</text><text x="275" y="164" text-anchor="middle" font-size="6.2" fill="var(--faint)">projectRoleAccessRights</text><text x="275" y="176" text-anchor="middle" font-size="6.2" fill="var(--faint)">Record&lt;Role, Scope[]&gt;</text>
+  <rect x="410" y="56" width="285" height="58" rx="9" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="552" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">① 前端 useHasProjectAccess</text><text x="552" y="92" text-anchor="middle" font-size="6.4" fill="var(--muted)">没权限就隐藏按钮（体验）</text><text x="552" y="104" text-anchor="middle" font-size="6.0" fill="var(--faint)">React hook · 可被绕过，仅体面</text>
+  <rect x="410" y="124" width="285" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="552" y="144" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">② 后端 throwIfNoProjectAccess</text><text x="552" y="160" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">没权限抛 TRPCError FORBIDDEN（安全）</text><text x="552" y="174" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">每个 tRPC resolver 强制·真正的闸</text>
+  <line x1="144" y1="120" x2="188" y2="120" stroke="var(--accent)" stroke-width="1.3"/><polygon points="188,120 179,116 179,124" fill="var(--accent)"/>
+  <line x1="360" y1="110" x2="408" y2="85" stroke="var(--teal)" stroke-width="1.2"/><polygon points="408,85 399,85 403,93" fill="var(--teal)"/>
+  <line x1="360" y1="150" x2="408" y2="155" stroke="var(--accent)" stroke-width="1.3"/><polygon points="408,155 399,151 399,159" fill="var(--accent)"/>
+  <text x="360" y="218" text-anchor="middle" font-size="8" fill="var(--faint)">判权限问「角色里有没有这个 scope」，而非「是不是某角色」——加功能只需给角色添 scope</text>
+  <text x="360" y="234" text-anchor="middle" font-size="8" fill="var(--faint)">前端隐藏可被绕过（代码在用户机器上），真正挡越权的是后端那道——纵深防御</text>
+</svg>
+<div class="figcap"><b>角色→scope + 双查</b>：<code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>（OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 仅 read / NONE:271 空）；<code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code>（服务端，抛 <code>TRPCError FORBIDDEN</code>）+ <code>:42</code> <code>useHasProjectAccess</code>（前端 hook，隐藏 UI）。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/rbac/constants/projectAccessRights.ts · utils/checkProjectAccess.ts</span><span class="ln">角色→scope + 强制校验</span></div>
+  <pre class="code"><span class="cm">// scope 是细粒度「资源:动作」串；角色 = 一串 scope 的打包</span>
+<span class="kw">export const</span> projectScopes = [<span class="st">"traces:delete"</span>, <span class="st">"prompts:CUD"</span>, <span class="st">"apiKeys:read"</span>,
+                              <span class="st">"project:delete"</span>, <span class="st">"datasets:CUD"</span>, …] <span class="kw">as const</span>;
+
+<span class="kw">export const</span> projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt; = {
+  OWNER:  [ <span class="cm">/* 几乎全部 scope */</span> ],
+  ADMIN:  [ … ],   MEMBER: [ … ],
+  VIEWER: [ <span class="st">"project:read"</span>, <span class="st">"prompts:read"</span>, … <span class="cm">/* 只有 *:read */</span> ],
+  NONE:   [],      <span class="cm">// 什么都不能</span>
+};
+
+<span class="cm">// 后端：每个 tRPC resolver 调用，无权限即抛 FORBIDDEN（真正的闸）</span>
+<span class="kw">export const</span> <span class="fn">throwIfNoProjectAccess</span> = (p) =&gt; {
+  <span class="kw">if</span> (!<span class="fn">hasProjectAccess</span>(p))
+    <span class="kw">throw new</span> <span class="fn">TRPCError</span>({ code: <span class="st">"FORBIDDEN"</span>, message: <span class="st">"… no access …"</span> });
+};
+<span class="cm">// 前端：同款判断的 React hook，用来隐藏没权限的按钮（仅体验）</span>
+<span class="kw">export const</span> <span class="fn">useHasProjectAccess</span> = ({ projectId, scope }) =&gt; { … };</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>👑 OWNER / ADMIN</h4><p>几乎全部 scope：建删项目、管成员与 API key、增删改一切资源。OWNER 是项目主人，ADMIN 略少（如不能删项目）。</p></div>
+  <div class="col"><h4>✍️ MEMBER</h4><p>日常干活的角色：能读、能增删改大多数业务资源（trace/prompt/dataset/score…），但<strong>管不了成员与项目设置</strong>这类治理类操作。</p></div>
+  <div class="col"><h4>👁️ VIEWER / NONE</h4><p>VIEWER 只拿一堆 <code>*:read</code>——<strong>看得见、改不了</strong>，适合审计/旁观者。NONE 是空数组，连看都不行——最小权限的下限。</p></div>
+</div>
+
+
+<h2>机器的授权：API key 的两层哈希</h2>
+<p>程序用 API key 认证：<code>generateKeySet</code> 生成一对 <code>pk-lf-{uuid}</code>（public）/<code>sk-lf-{uuid}</code>（secret）。secret 明文<strong>只在创建那一刻返回一次</strong>，之后库里只存它的三种衍生物：<strong>① <code>fastHashedSecretKey</code></strong>= <code>createShaHash(sk, SALT)</code>（sha256，<strong>确定性</strong>，给「查得快」用）；<strong>② <code>hashedSecretKey</code></strong>= bcrypt 哈希（<strong>加盐慢</strong>，给「存得安全」用）；<strong>③ <code>displaySecretKey</code></strong>= 打码串（如 <code>sk-lf-...abc</code>，给 UI 显示）。</p>
+
+<p>为什么要两种哈希？因为「快查」和「安全」是<strong>一对矛盾</strong>。bcrypt 每次加随机盐、故意很慢——安全，但<strong>没法拿它做数据库查找</strong>（同一个 key 每次 bcrypt 结果都不同，你只能一行行比对，O(n)）。sha256 是确定性的——同一个 key 永远算出同一个值，<strong>能直接当索引/缓存键 O(1) 查到</strong>，且因为算的是「key 本身 + 盐」，库泄露也反推不出原 key。于是请求来时：先 <code>createShaHash</code> 算出快哈希，<strong>先查 Redis、没有再查 Postgres</strong>；命中即拿到这把 key 的 scope。老格式的 key（只有 bcrypt 哈希）会用 <code>verifySecretKey</code> 验一次、然后<strong>顺手补上快哈希「升级」</strong>。还有个小心机：查不到的 key 在 Redis 里存一个 <code>API_KEY_NON_EXISTENT</code> 哨兵，<strong>防止有人拿一堆不存在的 key 反复砸数据库</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="API key两层哈希：创建时generateKeySet生成pk-lf/sk-lf，secret明文只返回一次，库里存fastHashedSecretKey(sha256确定性快查)+hashedSecretKey(bcrypt加盐安全)+displaySecretKey(打码显示)；验证时算sha快哈希先查Redis再查PG命中拿scope，老key用bcrypt验后升级补快哈希，不存在的key缓存哨兵防刷库">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一层为「查得快」，一层为「存得安全」</text>
+  <rect x="24" y="44" width="180" height="150" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">创建时（generateKeySet）</text><text x="114" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">pk-lf-{uuid} / sk-lf-{uuid}</text><text x="114" y="92" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">sk 明文只返回这一次！</text>
+  <rect x="34" y="100" width="160" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="114" y="111" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--accent-ink)">① fastHashedSecretKey</text><text x="114" y="121" text-anchor="middle" font-size="5.6" fill="var(--muted)">sha256(sk,SALT) 确定性·快查</text>
+  <rect x="34" y="130" width="160" height="26" rx="4" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="114" y="141" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--teal)">② hashedSecretKey</text><text x="114" y="151" text-anchor="middle" font-size="5.6" fill="var(--muted)">bcrypt 加盐慢·安全</text>
+  <rect x="34" y="160" width="160" height="26" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="114" y="171" text-anchor="middle" font-size="6.2" font-weight="700" fill="var(--accent-ink)">③ displaySecretKey</text><text x="114" y="181" text-anchor="middle" font-size="5.6" fill="var(--muted)">sk-lf-...abc 打码显示</text>
+  <rect x="250" y="60" width="150" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="325" y="80" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">请求带 sk 来</text><text x="325" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">createShaHash(sk,SALT)</text>
+  <rect x="250" y="124" width="150" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="325" y="141" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">先查 Redis</text><text x="325" y="155" text-anchor="middle" font-size="6.0" fill="var(--muted)">命中即拿 scope（O(1)）</text>
+  <rect x="250" y="172" width="150" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"/><text x="325" y="188" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">没有→查 Postgres</text><text x="325" y="201" text-anchor="middle" font-size="5.8" fill="var(--muted)">按 fastHashedSecretKey 索引</text>
+  <rect x="440" y="70" width="255" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="567" y="88" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">老格式 key（仅 bcrypt）</text><text x="567" y="103" text-anchor="middle" font-size="6.2" fill="var(--muted)">verifySecretKey 验一次 → 补 fastHash「升级」</text>
+  <rect x="440" y="126" width="255" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="567" y="144" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">查不到 → 缓存哨兵</text><text x="567" y="159" text-anchor="middle" font-size="6.0" fill="var(--muted)">API_KEY_NON_EXISTENT 防刷库</text>
+  <rect x="440" y="180" width="255" height="40" rx="9" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="567" y="197" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">拿到 scope → 放行/拒绝</text><text x="567" y="211" text-anchor="middle" font-size="6.0" fill="var(--muted)">机器也有自己的权限范围</text>
+  <line x1="204" y1="118" x2="248" y2="95" stroke="var(--accent)" stroke-width="1.2"/><polygon points="248,95 239,95 243,103" fill="var(--accent)"/>
+  <line x1="325" y1="110" x2="325" y2="122" stroke="var(--accent)" stroke-width="1.2"/><polygon points="325,122 321,113 329,113" fill="var(--accent)"/>
+  <line x1="400" y1="144" x2="438" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="400" y1="150" x2="438" y2="148" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>两层哈希</b>：<code>apiKeys.ts:19</code> <code>generateKeySet</code>（pk-lf/sk-lf）；<code>:41 createAndAddApiKeysToDb</code> 存 <code>hashedSecretKey</code>(bcrypt :13) / <code>displaySecretKey</code> / <code>fastHashedSecretKey</code>(<code>createShaHash</code> sha256 :31)，盐 <code>env.SALT</code>。验证 <code>apiAuth.ts:75 verifyAuthHeaderAndReturnScope</code>：<code>:97</code> 算快哈希、Redis→PG 查（<code>:107</code> 老 key <code>verifySecretKey</code> + <code>:141</code> 升级补 fastHash），不存在缓存 <code>API_KEY_NON_EXISTENT</code>。</div>
+</div>
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>请求带 sk 来</h4><p>算 <code>createShaHash(sk, env.SALT)</code> 得到确定性的快哈希——这把 key 的「卡号」。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>先查 Redis，没有再查 PG</h4><p>用快哈希当键，先问 Redis 缓存；未命中再按 <code>fastHashedSecretKey</code> 索引查 Postgres。命中即拿到这把 key 的 scope。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>老格式 key：bcrypt 验 + 升级</h4><p>只有 bcrypt 哈希的旧 key，用 <code>verifySecretKey</code> 慢验一次，然后顺手补上快哈希「升级」，下次就走快路。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>查不到：缓存哨兵</h4><p>不存在的 key 在 Redis 存 <code>API_KEY_NON_EXISTENT</code>，挡住「拿一堆假 key 反复砸数据库」的攻击。最后据 scope 放行或拒绝。</p></div></div>
+</div>
+
+
+<h2>SCIM：让企业身份系统自动开通用户</h2>
+<p>大企业有几千名员工，进出职频繁。靠管理员手动在 Langfuse 里一个个加人、离职再删人，既慢又容易漏（漏删 = 离职员工还能访问，是安全隐患）。<strong>SCIM（System for Cross-domain Identity Management，跨域身份管理系统）</strong>是一套标准协议，让企业的身份中枢（如 Okta、Azure AD）能<strong>自动</strong>把「谁该有账号」同步过来：入职自动开通、离职自动注销。Langfuse 在 <code>web/src/pages/api/public/scim/*</code> 实现了 SCIM 的标准端点——<code>Users</code>（增删查用户）、<code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code>（向 IdP 自描述「我支持哪些 SCIM 能力」）。这属于企业级（EE）能力，正好引出下一课的「开源核与权益」。</p>
+
+<table class="t">
+  <thead><tr><th>授权对象</th><th>机制</th><th>怎么判</th><th>关键设计</th></tr></thead>
+  <tbody>
+    <tr><td><b>人</b>（UI 用户）</td><td>RBAC 角色→scope</td><td>角色里有没有该 scope</td><td>前端隐藏 + 后端强制（纵深防御）</td></tr>
+    <tr><td><b>机器</b>（SDK/API）</td><td>API key（pk/sk）</td><td>sk 的快哈希查到 key、读其 scope</td><td>两层哈希：sha256 快查 + bcrypt 安全</td></tr>
+    <tr><td><b>企业批量</b></td><td>SCIM 协议</td><td>由 IdP 推送增删用户</td><td>入职自动开通、离职自动注销（EE）</td></tr>
+  </tbody>
+</table>
+
+<p>把三行读完，你会发现授权这件事被拆得很清爽：<strong>不同类型的「客人」用不同的机制，但都落到同一个问题——「这次操作，在不在你的权限范围内」</strong>。RBAC 给人发「角色」、API key 给机器发「带 scope 的密钥」、SCIM 让这套人员名册能被企业自动维护。三者各司其职，又都服务于「<strong>每个主体只拿够用的权限</strong>」这条最小权限原则。</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>为什么 API key 要同时存「sha256 快哈希」和「bcrypt 慢哈希」两份，不能只留一份？</strong> 因为这两份分别解决一对<strong>互相打架</strong>的需求。bcrypt 的安全来自它<strong>每次都加随机盐、且故意算得很慢</strong>——这让暴力破解变得不划算，但也带来一个副作用：同一个 key 每次 bcrypt 出来的值都不同，所以<strong>你没法拿它当数据库查找条件</strong>，只能把库里每一行都 bcrypt-compare 一遍（O(n)，每次认证扫全表，灾难）。而 API 认证是<strong>极高频</strong>的（每条上报的 trace 都要验一次 key），必须 O(1) 查到。sha256(key, SALT) 正好补上：它<strong>确定性</strong>——同一个 key 永远算出同一个值，于是能直接当索引、当 Redis 缓存键，一步查到；同时因为算的是「<strong>密钥本身</strong>」而非可枚举的东西，加上盐，库泄露也反推不出原 key。所以最终方案是<strong>分工</strong>：sha256 负责「在海量 key 里 O(1) 找到是哪一把」，bcrypt 负责「对老格式 key 做加盐慢验证」。<strong>当「快」和「安全」打架时，不是二选一，而是用两种工具各管一段。</strong><br><br>
+  <strong>RBAC 为什么前端、后端都要查一遍？只在后端查不够吗、岂不是重复？</strong> 两道查的<strong>目的根本不同</strong>，缺一不可。<strong>后端那道是安全闸</strong>：tRPC resolver 里的 <code>throwIfNoProjectAccess</code> 是真正不可绕过的强制——因为它跑在服务器上。<strong>前端那道是体验</strong>：<code>useHasProjectAccess</code> 把你没权限的按钮直接<strong>不显示</strong>，让你不会点了之后才吃一个红色报错。关键认知是：<strong>前端的权限判断只是「礼貌」，绝不能当作安全</strong>——因为前端代码整个跑在用户的浏览器里，用户可以改它、可以直接构造请求绕过 UI。所以「前端隐藏」必须始终有「后端强制」兜底。很多越权漏洞，恰恰来自开发者只在前端藏了按钮、却忘了在后端加校验——以为「按钮没了就进不去」，殊不知接口是裸的。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>授权 = 你能干什么</strong>：两类对象——人（UI 用户）走 RBAC，机器（SDK/API）走 API key；外加 SCIM 让企业身份系统自动维护用户。共同目标：最小权限。</li>
+    <li><strong>RBAC 角色→scope</strong>：<code>projectRoleAccessRights: Record&lt;Role, Scope[]&gt;</code> 把 OWNER/ADMIN/MEMBER/VIEWER/NONE 各映射到一串细粒度 scope（<code>traces:delete</code> 等，VIEWER 仅 read、NONE 空）。判权限问「角色含不含该 scope」，加功能只需添 scope。</li>
+    <li><strong>纵深防御：前后端双查</strong>：前端 <code>useHasProjectAccess</code> 隐藏按钮（体验），后端 <code>throwIfNoProjectAccess</code> 抛 FORBIDDEN（安全）。前端可被绕过，<strong>真正的闸是后端</strong>——前端隐藏永远要有后端强制兜底。</li>
+    <li><strong>API key 两层哈希</strong>：<code>fastHashedSecretKey</code>=sha256(确定性，给 O(1) 快查、可缓存) + <code>hashedSecretKey</code>=bcrypt(加盐慢，安全) + <code>displaySecretKey</code>(打码显示)。sk 明文只在创建时返回一次；验证先算快哈希查 Redis→PG，老 key 用 bcrypt 验后升级，不存在的 key 缓存哨兵防刷库。</li>
+    <li><strong>SCIM 企业自动化</strong>：标准协议让 Okta/Azure AD 等自动开通/注销 Langfuse 用户（入职即有、离职即无），避免手动加删的遗漏。属 EE 能力，引出下一课开源核与权益。</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 自测 · 想一想为什么这么设计</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse 的 RBAC 把权限判断写成「你的角色里有没有这个 scope」（如 traces:delete），而不是「你是不是 OWNER/ADMIN」。这种「角色→scope」间接层的主要好处是？</div>
+  <ol class="opts">
+    <li>这样可以不需要角色了</li>
+    <li>解耦与可维护：功能代码只问「有没有某 scope」，加新功能只需在角色定义里给相关角色添一个 scope，不必到处去改散落的「if 角色==X」判断；权限模型集中在一张 Record<Role,Scope[]> 表里，清晰可审计</li>
+    <li>scope 比角色判断运行更快</li>
+    <li>scope 字符串能压缩存储</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。如果到处写「if (role === 'OWNER' || role === 'ADMIN')」，每加一个功能、每调一次权限，都要翻遍代码找这些散落的判断，极易漏改、错配。引入 scope 间接层后：每个功能只关心一个细粒度权限点（traces:delete），而「哪个角色拥有哪些 scope」集中在 projectRoleAccessRights 一张表里维护。加功能=给角色添 scope，调权限=改这张表，判断逻辑（hasProjectAccess）则完全通用。这是「用一层间接换取可维护性与可审计性」的经典做法——也让「这个角色到底能干什么」一目了然。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse 为每个 API key 存了两种哈希：fastHashedSecretKey（sha256）和 hashedSecretKey（bcrypt）。为什么不能只用 bcrypt 一种？</div>
+  <ol class="opts">
+    <li>bcrypt 已经过时，必须配 sha256</li>
+    <li>因为bcrypt每次加随机盐、结果不确定，没法当数据库查找键(只能逐行compare，O(n))，而API认证极高频必须O(1)查到；sha256确定性、同key恒定值，能直接当索引/缓存键一步查到，且哈希的是密钥本身+盐故泄露也反推不出——两者分工：sha查得快、bcrypt存得安全</li>
+    <li>两种哈希是为了双重加密更安全</li>
+    <li>sha256 用于公钥、bcrypt 用于私钥</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。「快查」和「抗暴破」是一对矛盾。bcrypt 为抗暴破刻意慢、且每次盐不同，导致同一 key 的 bcrypt 值不固定——你无法拿它做 WHERE 查找，只能扫全表逐行 compare，而 API 认证每条 trace 都要验一次 key，O(n) 扫表是灾难。sha256(key,SALT) 是确定性的：同一 key 永远同一值，能直接建索引、当 Redis 缓存键，O(1) 命中；又因为算的是「密钥本身」（高熵、不可枚举）加盐，库泄露也无法反推原 key。于是分工：sha256 负责「在海量 key 里快速定位是哪把」，bcrypt 负责老格式 key 的加盐慢验证。这正是「当快与安全冲突时，用两种工具各管一段」。</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Langfuse 的同一个权限点（如「删除 trace」）在前端用 useHasProjectAccess、后端用 throwIfNoProjectAccess 各查一遍。关于这两道校验，哪种说法正确？</div>
+  <ol class="opts">
+    <li>后端那道是真正不可绕过的安全闸(跑在服务器上)，前端那道只是体验优化(隐藏没权限的按钮)；前端校验绝不能当安全，因为前端代码在用户浏览器里可被改、可直接构造请求绕过UI——前端隐藏必须始终有后端强制兜底</li>
+    <li>前端那道是安全闸，后端只是辅助</li>
+    <li>只要前端隐藏了按钮，接口就自动安全了</li>
+    <li>两道校验完全重复，可以删掉后端那道省性能</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>看答案与解析 <span class="hint">点击展开</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。这是 Web 安全里最常见也最致命的误区之一。前端代码（包括权限判断）整个运行在用户的浏览器里，用户可以打开开发者工具改它、可以绕过 UI 直接对后端接口构造请求。所以前端的 useHasProjectAccess「隐藏按钮」只是体验优化（让你看不到点不了的功能、不吃无谓的报错），绝不构成安全边界。真正挡住越权的，是后端每个 tRPC resolver 里的 throwIfNoProjectAccess——它跑在你控制的服务器上、不可绕过。许多越权漏洞正源于「只在前端藏了按钮，后端却忘了校验」，以为按钮没了就进不去，实则接口裸奔。原则：前端隐藏是礼貌，后端强制才是安全，两者必须同时在。</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
+  <ul>
+    <li>这一课把授权拆成两类对象（人走 RBAC、机器走 API key）外加 SCIM，背后是「最小权限 + 纵深防御」两条信条。请结合你做过的系统想一想：你的权限模型是「角色→scope」这种细粒度的，还是粗放的「管理员/普通用户」两档？两层哈希这种「为不同目的存同一秘密的多种派生物」的思路，在你别的场景里（如缓存、去重、索引）有没有类似的影子？如果要给一个新系统设计 API key 体系，你会怎么平衡安全、查询性能和可吊销性？</li>
   </ul>
 </div>
 </div>
