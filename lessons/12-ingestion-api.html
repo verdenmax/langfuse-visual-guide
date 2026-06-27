@@ -415,6 +415,39 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="step"><div class="num">5</div><div class="sc"><h4>立即返回结果</h4><p>告诉调用方哪些收下、哪些被拒——全程毫秒级，不等 worker。</p></div></div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="批量 partial-success：一批N个事件逐个校验，合法的进队列处理、非法的被逐条拒绝(rejectedErrors)，最终返回 207 Multi-Status 带 {successes, errors}，于是一个混合批次里的好事件照样被处理、坏事件不连累好事件">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一批里好坏混杂？逐条处理，207 告诉你哪条成哪条败</text>
+  <rect x="24" y="44" width="150" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="99" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">一批 N 个事件</text>
+  <rect x="38" y="74" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="86" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="38" y="96" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="99" y="108" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">event ✗ 结构错</text>
+  <rect x="38" y="118" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="130" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="38" y="140" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="152" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="232" y="68" width="170" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="317" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">逐条校验</text><text x="317" y="104" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">合法 → 进队列处理</text><text x="317" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">非法 → 逐条记 rejectedErrors</text><text x="317" y="132" text-anchor="middle" font-size="6.0" fill="var(--faint)">坏事件不连累好事件</text>
+  <rect x="450" y="50" width="246" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="573" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">successes：已收下</text><text x="573" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">进 Redis 队列、原件落 S3</text>
+  <rect x="450" y="104" width="246" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="573" y="122" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">errors：被拒（带原因）</text><text x="573" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">调用方可只重发这几条</text>
+  <line x1="174" y1="104" x2="230" y2="104" stroke="var(--accent)" stroke-width="1.3"/><polygon points="230,104 221,100 221,108" fill="var(--accent)"/>
+  <line x1="402" y1="92" x2="448" y2="72" stroke="var(--teal)" stroke-width="1.2"/><polygon points="448,72 439,72 442,80" fill="var(--teal)"/>
+  <line x1="402" y1="116" x2="448" y2="126" stroke="var(--accent)" stroke-width="1.2"/><polygon points="448,126 439,122 440,130" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">最终 HTTP 207 Multi-Status，返回 {successes, errors}——这就是「批量但可部分成功」的具体含义</text>
+</svg>
+<div class="figcap"><b>批量 = 可部分成功</b>：<code>ingestion.ts:153</code> <code>filterBatchForEventsOnly</code> 逐条筛、非法事件记 <code>rejectedErrors</code>；<code>:158 processEventBatch</code> 处理合法的；<code>:162</code> 最终 <code>res.status(207).json(result)</code> 返回 <code>{successes, errors}</code>。一个混合批次里，坏事件不连累好事件，调用方可只重发被拒的几条。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts:132-162</span><span class="ln">批量解析 + 逐条筛 + 207</span></div>
+  <pre class="code"><span class="cm">// 请求体就是「一个 batch 数组」，先整体 Zod 校验外壳</span>
+<span class="kw">const</span> batchType = z.<span class="fn">object</span>({ batch: z.<span class="fn">array</span>(z.<span class="fn">unknown</span>()) });
+<span class="kw">const</span> parsedSchema = batchType.<span class="fn">safeParse</span>(req.body);
+
+<span class="cm">// 逐条筛：非法事件被单独拒，好事件继续——混合批次仍能处理</span>
+<span class="kw">const</span> { batchForProcessing, rejectedErrors } = <span class="fn">filterBatchForEventsOnly</span>(parsedSchema.data.batch);
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);  <span class="cm">// 入队 + 落 S3</span>
+<span class="kw">if</span> (rejectedErrors.length &gt; 0) result.errors = [...result.errors, ...rejectedErrors];
+
+<span class="kw">return</span> res.<span class="fn">status</span>(<span class="st">207</span>).<span class="fn">json</span>(result);  <span class="cm">// 207 Multi-Status：{ successes, errors } 各是哪些</span></pre>
+</div>
+
 
 <h2>守门的两道关：鉴权 + 校验</h2>
 <p>API 在「入队」之前，必须先过两道关。它们看似例行公事，却是整个系统<strong>安全与健壮</strong>的第一道防线：</p>
@@ -599,6 +632,39 @@ rejects it ("payload too large"), another guard: don't let one request blow up t
   <div class="step"><div class="num">3</div><div class="sc"><h4>Zod-validate each event</h4><p>ill-formed events are rejected; the rest continue (partial success possible).</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch enqueues + lands S3</h4><p>valid events enter the Redis queue; originals are stored in S3 (L14).</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>return the result immediately</h4><p>tell the caller which were accepted, which rejected — all in milliseconds, not waiting for the worker.</p></div></div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Batch partial success: a batch of N events is validated one by one, valid ones enter the queue, invalid ones are rejected per-event (rejectedErrors), finally returning 207 Multi-Status with {successes, errors}, so good events in a mixed batch still get processed and bad events don't drag down good ones">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Good and bad mixed in a batch? Per-event, 207 tells you which won/failed</text>
+  <rect x="24" y="44" width="150" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="99" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">a batch of N events</text>
+  <rect x="38" y="74" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="86" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ valid</text>
+  <rect x="38" y="96" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="99" y="108" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">event ✗ malformed</text>
+  <rect x="38" y="118" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="130" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ valid</text>
+  <rect x="38" y="140" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="152" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ valid</text>
+  <rect x="232" y="68" width="170" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="317" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">validate per event</text><text x="317" y="104" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">valid → enter the queue</text><text x="317" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">invalid → record rejectedErrors</text><text x="317" y="132" text-anchor="middle" font-size="6.0" fill="var(--faint)">bad don't drag down good</text>
+  <rect x="450" y="50" width="246" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="573" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">successes: accepted</text><text x="573" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">into Redis queue, originals to S3</text>
+  <rect x="450" y="104" width="246" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="573" y="122" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">errors: rejected (with reasons)</text><text x="573" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">caller can resend just these</text>
+  <line x1="174" y1="104" x2="230" y2="104" stroke="var(--accent)" stroke-width="1.3"/><polygon points="230,104 221,100 221,108" fill="var(--accent)"/>
+  <line x1="402" y1="92" x2="448" y2="72" stroke="var(--teal)" stroke-width="1.2"/><polygon points="448,72 439,72 442,80" fill="var(--teal)"/>
+  <line x1="402" y1="116" x2="448" y2="126" stroke="var(--accent)" stroke-width="1.2"/><polygon points="448,126 439,122 440,130" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">Finally HTTP 207 Multi-Status, returning {successes, errors} — the concrete meaning of "batched but partially successful"</text>
+</svg>
+<div class="figcap"><b>Batch = partial success</b>: <code>ingestion.ts:153</code> <code>filterBatchForEventsOnly</code> filters per-event, recording invalid ones as <code>rejectedErrors</code>; <code>:158 processEventBatch</code> handles the valid ones; <code>:162</code> finally <code>res.status(207).json(result)</code> returns <code>{successes, errors}</code>. In a mixed batch, bad events don't drag down good ones, and the caller can resend just the rejected few.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/ingestion.ts:132-162</span><span class="ln">batch parse + per-event filter + 207</span></div>
+  <pre class="code"><span class="cm">// the request body is "a batch array"; first Zod-validate the outer shell</span>
+<span class="kw">const</span> batchType = z.<span class="fn">object</span>({ batch: z.<span class="fn">array</span>(z.<span class="fn">unknown</span>()) });
+<span class="kw">const</span> parsedSchema = batchType.<span class="fn">safeParse</span>(req.body);
+
+<span class="cm">// filter per-event: invalid ones rejected individually, good ones continue — mixed batch still processes</span>
+<span class="kw">const</span> { batchForProcessing, rejectedErrors } = <span class="fn">filterBatchForEventsOnly</span>(parsedSchema.data.batch);
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">processEventBatch</span>(batchForProcessing, authCheck);  <span class="cm">// enqueue + land S3</span>
+<span class="kw">if</span> (rejectedErrors.length &gt; 0) result.errors = [...result.errors, ...rejectedErrors];
+
+<span class="kw">return</span> res.<span class="fn">status</span>(<span class="st">207</span>).<span class="fn">json</span>(result);  <span class="cm">// 207 Multi-Status: which are { successes, errors }</span></pre>
 </div>
 
 
