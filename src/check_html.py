@@ -45,6 +45,13 @@ MIN_DIAGRAMS = 6  # per lesson, counting BOTH languages (>= 3 per language)
 MIN_SVGS = 4  # per lesson, counting BOTH languages (>= 2 hand-drawn .fig SVGs per language)
 MIN_CJK = 1800  # per-lesson zh CJK floor; diagram/code-heavy lessons run leaner, prose lessons exceed it
 
+# Index TOC subtitle (SUBTITLES) limits — keep the TOC scannable, not a wall of
+# text. The good early lessons (L01-14) sit at ~46-70 zh chars; later ones had
+# ballooned to 400-530. The detail lives in the lesson body, not the TOC blurb.
+SUB_MAX_ZH = 80       # max Chinese chars per subtitle
+SUB_MAX_EN = 150      # max English chars per subtitle
+SUB_FORBID = re.compile(r"\.(?:ts|tsx|js|py|sql|prisma|json|yml|md):\d")  # no file:line in TOC
+
 # Every class used in generated HTML must be defined in shell.CSS. Catches
 # consolidation artifacts (e.g. a diagram-variant whose CSS was never merged in,
 # rendering silently broken). Whitelist intentional no-style hooks.
@@ -74,6 +81,18 @@ def check_classes(name, html):
                 continue
             seen.add(c)
             add("ERR", name, f"undefined CSS class {c!r} (no .{c} rule in shell.CSS)")
+
+
+def check_subtitles():
+    """Index TOC blurbs must stay short and free of file:line citations."""
+    for fname, (sz, se) in shell.SUBTITLES.items():
+        if len(sz) > SUB_MAX_ZH:
+            add("ERR", fname, f"subtitle zh too long: {len(sz)} > {SUB_MAX_ZH} chars")
+        if len(se) > SUB_MAX_EN:
+            add("ERR", fname, f"subtitle en too long: {len(se)} > {SUB_MAX_EN} chars")
+        for lang, s in (("zh", sz), ("en", se)):
+            if SUB_FORBID.search(s):
+                add("ERR", fname, f"subtitle {lang} leaks a file:line citation (belongs in the lesson body)")
 
 
 def check_lesson(fname, html):
@@ -160,6 +179,8 @@ def main():
     for fname in CONTENT:
         if fname not in ORDER:
             add("ERR", "registry", f"CONTENT key not in PAGES: {fname}")
+
+    check_subtitles()
 
     index_path = os.path.join(ROOT, shell.INDEX_FILE)
     with open(index_path, encoding="utf-8") as fh:

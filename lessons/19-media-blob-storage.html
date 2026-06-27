@@ -202,6 +202,11 @@ table.t td.mono, table.t td .mono { font-family: ui-monospace, monospace; font-s
      forcing page-level horizontal overflow (which clipped right columns). */
   table.t { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table.t th, table.t td { padding: .5rem .6rem; }
+  /* TOC rows: stack title over subtitle so the blurb reads left-aligned
+     under the title instead of being crammed to the right on a phone. */
+  .toc a { flex-direction: column; align-items: flex-start; gap: .3rem; }
+  .toc .ts { margin-left: 0; text-align: left; }
+  .toc .n { margin-bottom: -.2rem; }
 }
 .selftest { margin: 2.2rem 0 0; border-top: 2px dashed var(--line); padding-top: 1.2rem; }
 .selftest > h2 { margin-top: .2rem; }
