@@ -1336,7 +1336,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 <svg viewBox="0 0 720 180" role="img" aria-label="AI filter: natural language through the LLM produces candidate filters, then round-trips filterStateToQueryText, keeping only filters that restore to search-bar grammar; hallucinated columns are dropped">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">AI filter: round-trip validation, hallucinated columns can't enter</text>
   <rect x="16" y="44" width="124" height="48" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="78" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">natural language</text><text x="78" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">"errors over 2s last week"</text>
-  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">LLM generates</text><text x="222" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">candidates (maybe hallucinated cols)</text>
+  <rect x="160" y="44" width="124" height="48" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="222" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">LLM generates</text><text x="222" y="80" text-anchor="middle" font-size="6.6" fill="var(--muted)">candidates (maybe hallucinated)</text>
   <rect x="304" y="44" width="150" height="48" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="379" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">round-trip: back to grammar</text><text x="379" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">filterStateToQueryText</text>
   <rect x="474" y="32" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--teal)"/><text x="530" y="50" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--teal)">restores → keep</text><text x="530" y="61" text-anchor="middle" font-size="6.6" fill="var(--muted)">apply to FilterState</text>
   <rect x="474" y="74" width="112" height="34" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="3 2"/><text x="530" y="92" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--faint)">can't → drop</text><text x="530" y="103" text-anchor="middle" font-size="6.6" fill="var(--faint)">droppedCount++</text>
@@ -2307,14 +2307,14 @@ shaped the next, where the conversation started to go off the rails.</p>
   <line x1="420" y1="104" x2="536" y2="104" stroke="var(--blue)" stroke-width="2"></line>
   <line x1="360" y1="124" x2="360" y2="150" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
   <rect x="300" y="150" width="120" height="26" rx="6" fill="var(--bg)" stroke="var(--teal)"></rect>
-  <text x="360" y="167" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">trace root (Lesson 25)</text>
+  <text x="360" y="167" font-size="10" text-anchor="middle" fill="var(--accent-ink)">trace root (L25)</text>
   <rect x="270" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="318" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">span</text>
   <rect x="378" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="426" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">generation</text>
   <line x1="330" y1="176" x2="318" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
   <line x1="390" y1="176" x2="426" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
-  <text x="540" y="200" font-size="10.5" fill="var(--muted)">click any round → observation tree (lazy IO)</text>
+  <text x="700" y="200" font-size="10.5" text-anchor="end" fill="var(--muted)">click any round → observation tree (lazy IO)</text>
 </svg>
 
 <div class="vflow">

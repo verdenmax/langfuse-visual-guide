@@ -219,7 +219,7 @@ _EN6.append(r"""
 <svg viewBox="0 0 720 250" role="img" aria-label="An app sends data to the public API via either Langfuse SDK native events or OpenTelemetry OTLP">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Two entries, same destination</text>
   <rect x="40" y="98" width="150" height="56" rx="11" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="122" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">your LLM app</text><text x="115" y="140" text-anchor="middle" font-size="9" fill="var(--muted)">instrumentation here</text>
-  <rect x="270" y="50" width="180" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Langfuse SDK</text><text x="360" y="90" text-anchor="middle" font-size="9" fill="var(--accent-ink)">native events trace/observation/score</text>
+  <rect x="270" y="50" width="180" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="72" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)">Langfuse SDK</text><text x="360" y="90" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">native events trace/observation/score</text>
   <rect x="270" y="150" width="180" height="52" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="360" y="172" text-anchor="middle" font-size="11" font-weight="700" fill="var(--purple)">OpenTelemetry</text><text x="360" y="190" text-anchor="middle" font-size="9" fill="var(--muted)">OTLP span → mapped to observation</text>
   <rect x="540" y="98" width="150" height="56" rx="11" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="122" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--accent-ink)">public ingest API</text><text x="615" y="140" text-anchor="middle" font-size="9" fill="var(--accent-ink)">web · accept+enqueue</text>
   <line x1="190" y1="112" x2="268" y2="80" stroke="var(--faint)" stroke-width="1.8"/><polygon points="268,80 257,80 261,88" fill="var(--faint)"/>
@@ -531,7 +531,7 @@ _ZH7.append(r"""
   <text x="408" y="147" font-size="12" fill="var(--ink)">observations　（每一步 LLM/工具）</text>
   <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="408" y="183" font-size="12" fill="var(--ink)">scores　（评估/打分）</text>
-  <text x="396" y="216" font-size="11" fill="var(--muted)">ReplacingMergeTree · ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="396" y="216" font-size="10" fill="var(--muted)">ReplacingMergeTree · ORDER BY(project_id, date, id)</text>
   <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
   <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">同一把 project_id 贯穿两侧：左边定义它，右边用它分区 + 排序</text>
 </svg>
@@ -692,7 +692,7 @@ of every later path lesson.</p>
   <rect x="0" y="0" width="720" height="272" fill="var(--bg)"></rect>
   <rect x="24" y="40" width="316" height="190" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
   <text x="40" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">Postgres · control plane (OLTP)</text>
-  <text x="40" y="82" font-size="11" fill="var(--muted)">row store · strong consistency · editable · one row by key</text>
+  <text x="40" y="82" font-size="10" fill="var(--muted)">row store · strong consistency · editable</text>
   <rect x="42" y="92" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="52" y="108" font-size="12" fill="var(--ink)">projects　·　organizations (config/hub)</text>
   <rect x="42" y="122" width="280" height="24" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
@@ -703,14 +703,14 @@ of every later path lesson.</p>
   <text x="52" y="198" font-size="12" fill="var(--ink)">dashboards　·　automations (control)</text>
   <rect x="380" y="40" width="316" height="190" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="396" y="64" font-size="14" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane (OLAP)</text>
-  <text x="396" y="82" font-size="11" fill="var(--muted)">columnar · append · later-write-wins · scan + aggregate</text>
+  <text x="396" y="82" font-size="10" fill="var(--muted)">columnar · append · later-wins · scan+aggregate</text>
   <rect x="398" y="92" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="408" y="111" font-size="12" fill="var(--ink)">traces　(root of one call)</text>
   <rect x="398" y="128" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="408" y="147" font-size="12" fill="var(--ink)">observations　(each LLM/tool step)</text>
   <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="408" y="183" font-size="12" fill="var(--ink)">scores　(evals/grades)</text>
-  <text x="396" y="216" font-size="11" fill="var(--muted)">ReplacingMergeTree · ORDER BY (project_id, toDate(ts), id)</text>
+  <text x="396" y="216" font-size="10" fill="var(--muted)">ReplacingMergeTree · ORDER BY(project_id, date, id)</text>
   <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
   <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">the same project_id runs through both: the left defines it, the right partitions + sorts by it</text>
 </svg>
@@ -1618,7 +1618,7 @@ _EN10.append(r"""
   <rect x="20" y="80" width="150" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="95" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">API key</text><text x="95" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">resolves project_id</text>
   <rect x="200" y="80" width="150" height="54" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="275" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--accent-ink)">write</text><text x="275" y="120" text-anchor="middle" font-size="8.5" fill="var(--accent-ink)">every row carries project_id</text>
   <rect x="380" y="80" width="160" height="54" rx="10" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="460" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--purple)">ClickHouse</text><text x="460" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">ORDER BY project_id first</text>
-  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">query</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">scan only that project's range</text>
+  <rect x="570" y="80" width="130" height="54" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="635" y="103" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">query</text><text x="635" y="120" text-anchor="middle" font-size="8.5" fill="var(--muted)">scan this project's range</text>
   <line x1="170" y1="107" x2="198" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="198,107 189,102 189,112" fill="var(--faint)"/>
   <line x1="350" y1="107" x2="378" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="378,107 369,102 369,112" fill="var(--faint)"/>
   <line x1="540" y1="107" x2="568" y2="107" stroke="var(--faint)" stroke-width="2"/><polygon points="568,107 559,102 559,112" fill="var(--faint)"/>

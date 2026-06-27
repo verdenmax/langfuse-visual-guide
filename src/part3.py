@@ -89,13 +89,13 @@ _ZH12.append(r"""
 <svg viewBox="0 0 720 200" role="img" aria-label="批量 partial-success：一批N个事件逐个校验，合法的进队列处理、非法的被逐条拒绝(rejectedErrors)，最终返回 207 Multi-Status 带 {successes, errors}，于是一个混合批次里的好事件照样被处理、坏事件不连累好事件">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一批里好坏混杂？逐条处理，207 告诉你哪条成哪条败</text>
   <rect x="24" y="44" width="150" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="99" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">一批 N 个事件</text>
-  <rect x="38" y="74" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="86" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
-  <rect x="38" y="96" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="99" y="108" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">event ✗ 结构错</text>
-  <rect x="38" y="118" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="130" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
-  <rect x="38" y="140" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="152" text-anchor="middle" font-size="6.2" fill="var(--teal)">event ✓ 合法</text>
-  <rect x="232" y="68" width="170" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="317" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">逐条校验</text><text x="317" y="104" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">合法 → 进队列处理</text><text x="317" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">非法 → 逐条记 rejectedErrors</text><text x="317" y="132" text-anchor="middle" font-size="6.0" fill="var(--faint)">坏事件不连累好事件</text>
-  <rect x="450" y="50" width="246" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="573" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">successes：已收下</text><text x="573" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">进 Redis 队列、原件落 S3</text>
-  <rect x="450" y="104" width="246" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="573" y="122" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">errors：被拒（带原因）</text><text x="573" y="138" text-anchor="middle" font-size="6.2" fill="var(--muted)">调用方可只重发这几条</text>
+  <rect x="38" y="74" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="86" text-anchor="middle" font-size="6.5" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="38" y="96" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--accent)"/><text x="99" y="108" text-anchor="middle" font-size="6.5" fill="var(--accent-ink)">event ✗ 结构错</text>
+  <rect x="38" y="118" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="130" text-anchor="middle" font-size="6.5" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="38" y="140" width="122" height="18" rx="4" fill="var(--bg)" stroke="var(--teal)"/><text x="99" y="152" text-anchor="middle" font-size="6.5" fill="var(--teal)">event ✓ 合法</text>
+  <rect x="232" y="68" width="170" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="317" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">逐条校验</text><text x="317" y="104" text-anchor="middle" font-size="6.5" fill="var(--accent-ink)">合法 → 进队列处理</text><text x="317" y="118" text-anchor="middle" font-size="6.5" fill="var(--muted)">非法 → 逐条记 rejectedErrors</text><text x="317" y="132" text-anchor="middle" font-size="6.5" fill="var(--faint)">坏事件不连累好事件</text>
+  <rect x="450" y="50" width="246" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="573" y="68" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">successes：已收下</text><text x="573" y="84" text-anchor="middle" font-size="6.5" fill="var(--muted)">进 Redis 队列、原件落 S3</text>
+  <rect x="450" y="104" width="246" height="44" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="573" y="122" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">errors：被拒（带原因）</text><text x="573" y="138" text-anchor="middle" font-size="6.5" fill="var(--muted)">调用方可只重发这几条</text>
   <line x1="174" y1="104" x2="230" y2="104" stroke="var(--accent)" stroke-width="1.3"/><polygon points="230,104 221,100 221,108" fill="var(--accent)"/>
   <line x1="402" y1="92" x2="448" y2="72" stroke="var(--teal)" stroke-width="1.2"/><polygon points="448,72 439,72 442,80" fill="var(--teal)"/>
   <line x1="402" y1="116" x2="448" y2="126" stroke="var(--accent)" stroke-width="1.2"/><polygon points="448,126 439,122 440,130" fill="var(--accent)"/>
@@ -1084,11 +1084,11 @@ should this project be <strong>redirected</strong> to the secondary queue? Two c
   <text x="58" y="124" font-size="12" text-anchor="middle" fill="var(--ink)">project B</text>
   <rect x="18" y="158" width="80" height="34" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="58" y="174" font-size="12" text-anchor="middle" fill="var(--ink)">project C</text>
-  <text x="58" y="188" font-size="10" text-anchor="middle" fill="var(--muted)">high-throughput</text>
+  <text x="58" y="188" font-size="8" text-anchor="middle" fill="var(--muted)">high-throughput</text>
   <rect x="138" y="66" width="128" height="120" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
   <text x="202" y="92" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">redirect check</text>
-  <text x="202" y="116" font-size="10.5" text-anchor="middle" fill="var(--muted)">(1) env allowlist (static)</text>
-  <text x="202" y="134" font-size="10.5" text-anchor="middle" fill="var(--muted)">(2) S3 SlowDown (dynamic)</text>
+  <text x="202" y="116" font-size="9" text-anchor="middle" fill="var(--muted)">(1) env allowlist (static)</text>
+  <text x="202" y="134" font-size="9" text-anchor="middle" fill="var(--muted)">(2) S3 SlowDown (dynamic)</text>
   <text x="202" y="160" font-size="10" text-anchor="middle" fill="var(--muted)">match → secondary</text>
   <text x="202" y="174" font-size="10" text-anchor="middle" fill="var(--muted)">else → primary</text>
   <line x1="98" y1="73" x2="138" y2="100" stroke="var(--faint)" stroke-width="1.5"></line>

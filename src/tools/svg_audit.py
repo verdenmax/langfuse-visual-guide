@@ -7,9 +7,14 @@ past its containing <rect> or past the right edge of the viewBox. This tool
 estimates rendered text width (CJK glyph approx = font-size px, latin approx =
 0.55 x font-size) and flags:
 
-  * box-overflow : text horizontal extent exceeds its smallest containing rect
+  * box-overflow : text horizontal extent crosses its smallest containing
+                   <rect> border (real overflow, TOL px heuristic slack)
   * canvas-overflow: text horizontal extent exceeds the viewBox width
   * tiny-cjk     : font-size < MIN_FONT and the text contains CJK glyphs
+
+Width is estimated conservatively (CJK glyph = font-size px, latin = 0.55 x,
+space = 0.3 x); inheritance of font-size / text-anchor from wrapping <g>
+groups is resolved so labels are measured at their true rendered size.
 
 Run from src/:  python3 tools/svg_audit.py [--verbose]
 Exit code is always 0 (advisory); parse the printed summary counts.
@@ -21,13 +26,10 @@ import re
 import sys
 
 MIN_FONT = 6.5          # CJK below this is unreadable on a 720-wide viewBox
-PAD = 6.0               # assumed inner padding of a box before text "touches" the edge
-TOL = 2.0               # ignore sub-pixel overshoot
+TOL = 2.0               # heuristic slack: ignore sub-glyph width-estimate error
 
 _SVG = re.compile(r'<svg viewBox="0 0 ([\d.]+) ([\d.]+)"(.*?)</svg>', re.S)
 _RECT = re.compile(r'<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"')
-_TEXT = re.compile(
-    r'<text x="(-?[\d.]+)" y="(-?[\d.]+)"([^>]*)>(.*?)</text>', re.S)
 
 
 def _is_cjk(ch):
@@ -58,15 +60,29 @@ def audit_file(path):
         W = float(sm.group(1))
         body = sm.group(3)
         rects = [tuple(map(float, r.groups())) for r in _RECT.finditer(body)]
-        for tm in _TEXT.finditer(body):
-            tx, ty = float(tm.group(1)), float(tm.group(2))
-            attrs = tm.group(3)
-            raw = re.sub(r'<[^>]+>', '', tm.group(4))
+        # Walk the body in order, tracking <g> font-size / text-anchor so <text>
+        # inherits them (many older diagrams set these once on a wrapping group).
+        gstack = []  # list of (font_size_or_None, anchor_or_None)
+        for tok in re.finditer(r'<g\b([^>]*)>|</g>|<text x="(-?[\d.]+)" y="(-?[\d.]+)"([^>]*)>(.*?)</text>', body, re.S):
+            if tok.group(0) == '</g>':
+                if gstack:
+                    gstack.pop()
+                continue
+            if tok.group(0).startswith('<g'):
+                gattr = tok.group(1)
+                gstack.append((_attr(gattr, 'font-size'), _attr(gattr, 'text-anchor')))
+                continue
+            # a <text>
+            tx, ty = float(tok.group(2)), float(tok.group(3))
+            attrs = tok.group(4)
+            raw = re.sub(r'<[^>]+>', '', tok.group(5))
             label = html.unescape(raw).strip()
             if not label:
                 continue
-            fs = float(_attr(attrs, 'font-size', '12') or 12)
-            anchor = _attr(attrs, 'text-anchor', 'start')
+            inh_fs = next((fs for fs, _ in reversed(gstack) if fs), None)
+            inh_an = next((an for _, an in reversed(gstack) if an), None)
+            fs = float(_attr(attrs, 'font-size', inh_fs or '12') or '12')
+            anchor = _attr(attrs, 'text-anchor', inh_an or 'start')
             tw = _text_width(label, fs)
             if anchor == 'middle':
                 left, right = tx - tw / 2, tx + tw / 2
@@ -75,17 +91,20 @@ def audit_file(path):
             else:
                 left, right = tx, tx + tw
 
-            # tiny CJK
             if fs < MIN_FONT and any(_is_cjk(c) for c in label):
                 findings.append(('tiny-cjk', label, f'{fs}px'))
 
-            # canvas overflow
             if right > W + TOL or left < -TOL:
                 findings.append(('canvas-overflow', label,
                                  f'extent[{left:.0f},{right:.0f}] vb_w={W:.0f}'))
-                continue  # canvas overflow dominates; skip box check
+                continue
 
-            # smallest containing rect (anchor point inside)
+            # Canvas-top titles (y<=24) are centered captions over the whole
+            # diagram, not labels meant to fit one box; canvas-overflow above
+            # already guards them against spilling off the page.
+            if ty <= 24:
+                continue
+            # Smallest <rect> whose body contains the text anchor.
             best = None
             for (rx, ry, rw, rh) in rects:
                 if rx - TOL <= tx <= rx + rw + TOL and ry - TOL <= ty <= ry + rh + TOL:
@@ -94,8 +113,8 @@ def audit_file(path):
                         best = (rx, ry, rw, rh, area)
             if best:
                 rx, ry, rw, rh, _ = best
-                inner_l, inner_r = rx + PAD, rx + rw - PAD
-                over = max(0.0, right - inner_r) + max(0.0, inner_l - left)
+                # Real overflow = text extent crossing the actual rect border.
+                over = max(0.0, right - (rx + rw)) + max(0.0, rx - left)
                 if over > TOL:
                     findings.append(('box-overflow', label,
                                      f'+{over:.0f}px past {rw:.0f}px box'))
