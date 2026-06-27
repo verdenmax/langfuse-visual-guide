@@ -67,4 +67,5 @@ CONTENT = {
     "48-auth-and-sessions.html": part10.LESSON_48,
     "49-rbac-apikeys-scim.html": part10.LESSON_49,
     "50-open-core-and-entitlements.html": part10.LESSON_50,
+    "51-self-observability-and-config.html": part10.LESSON_51,
 }

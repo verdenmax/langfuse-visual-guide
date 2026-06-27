@@ -841,3 +841,280 @@ _EN50.append(r"""
 """)
 
 LESSON_50 = {"zh": "\n".join(_ZH50), "en": "\n".join(_EN50)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L51 · 自我可观测与配置 / Self-observability & config
+# ══════════════════════════════════════════════════════════════════════
+_ZH51 = []
+_EN51 = []
+
+# (L51 sections below)
+
+_ZH51.append(r"""
+<p class="lead">
+Langfuse 是一个<strong>帮你观测 LLM 应用</strong>的工具。那它自己出问题时，靠什么观测<strong>自己</strong>？答案很「自洽」：它用<strong>同一套可观测性手段</strong>观测自身——<strong>OpenTelemetry（OTel）的链路追踪 + 结构化日志 + 指标</strong>。这一课讲两件让平台「对运维者透明」的事：① <strong>自我可观测</strong>——你早就见过的 <code>instrumentAsync</code>（第30课eval、第33课告警、第46课集成、第48课登录都用它）其实是个 OTel span 包装器，把每个关键操作都变成一条可追踪的 span；而它的日志更妙，<strong>每一行都自动带上当前的 trace_id/span_id</strong>，让「日志」和「链路」一键互跳。② <strong>配置即校验</strong>——所有环境变量都过一遍 <strong>Zod</strong> 校验，配错了<strong>启动时就当场报错</strong>，而不是跑着跑着神秘崩溃。
+一句话：成熟的平台不仅能被观测，还<strong>吃自己的狗粮</strong>（dogfooding）；不仅能跑，还在跑之前<strong>检查好自己的每一项配置</strong>。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  想象一位<strong>专给别人体检的医生</strong>。最有说服力的，是他<strong>自己也定期体检、且用的是同一套仪器</strong>——这就是 dogfooding：观测工具观测自己。Langfuse 给每个内部操作都贴上一个<strong>「计时手环」</strong>（OTel span：何时开始、耗时多久、有没有出错），出问题时能精确还原「慢在哪一步」。
+  更贴心的是它的<strong>「病历」（日志）</strong>：每条日志都自动盖上<strong>当次就诊的编号</strong>（trace_id/span_id）。于是你在一堆日志里看到一条报错，<strong>顺着这个编号就能跳到对应的完整链路</strong>看清前因后果；反过来从链路也能找到相关日志——两本账自动对得上号。
+  而配置校验，像医院<strong>开诊前的设备自检</strong>：开机时先把所有仪器参数（环境变量）逐一核对，<strong>缺一个、错一个就当场亮红灯不开诊</strong>，绝不带病上岗、看到一半才发现某台机器没插电。
+</div>
+""")
+
+# (L51 sec1 below)
+
+_ZH51.append(r"""
+<h2>自我可观测：instrumentAsync 这把「计时手环」</h2>
+<p>翻回前面几课，你会发现一个反复出现的名字：<code>instrumentAsync</code>。第30课 eval 处理、第33课告警状态机、第46课集成的逐项目任务、第48课登录的 session 回调——全都用它包了一层。现在揭晓它是什么：一个 <strong>OpenTelemetry span 包装器</strong>。你把一段异步逻辑交给它，它就：<strong>开一条 span</strong>（记下名字、开始时刻、span 类型）、运行你的逻辑、<strong>自动捕获异常</strong>（出错就 <code>traceException</code> 记到 span 上再抛出）、最后 <strong>span.end()</strong> 收尾。于是每个被包裹的操作，都在 OTel 里留下一条「<strong>何时开始、耗时多久、成功还是抛错</strong>」的可追踪记录。这正是 Langfuse 观测<strong>自己</strong>的方式——和它帮你观测 LLM 应用，是同一套 trace/span 思路。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="instrumentAsync是OTel span包装器：把一段异步逻辑包起来，开span记名字/开始/类型，运行逻辑，出错自动traceException记到span，结束span.end；处处复用——eval(L30)、告警(L33)、集成(L46)、登录(L48)，加上recordGauge/Increment/Histogram指标和getTracer">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">把每个关键操作变成一条可追踪的 span</text>
+  <rect x="250" y="40" width="220" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">instrumentAsync(ctx, fn)</text>
+  <rect x="266" y="72" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="87" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① 开 span（名字·开始时刻·kind）</text>
+  <rect x="266" y="98" width="188" height="22" rx="5" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="113" text-anchor="middle" font-size="6.6" fill="var(--teal)">② 运行你的逻辑 await fn(span)</text>
+  <rect x="266" y="124" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="139" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">③ 出错 traceException → ④ span.end()</text>
+  <rect x="30" y="58" width="170" height="92" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">处处复用</text><text x="115" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">eval 处理（第30课）</text><text x="115" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">告警状态机（第33课）</text><text x="115" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">集成逐项目（第46课）</text><text x="115" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">登录 session 回调（第48课）</text><text x="115" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">同一个包装器，全局一致</text>
+  <rect x="520" y="58" width="175" height="92" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="607" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">同模块还提供</text><text x="607" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">getCurrentSpan / getTracer</text><text x="607" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">traceException</text><text x="607" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordGauge / Increment</text><text x="607" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordHistogram（指标）</text><text x="607" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">trace + metrics 一站齐</text>
+  <line x1="200" y1="104" x2="248" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="248,104 239,100 239,108" fill="var(--blue)"/>
+  <line x1="470" y1="104" x2="518" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="518,104 509,100 509,108" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">startNewTrace 开新根 trace，或从 traceContext 续上游链路（分布式追踪跨服务串起来）</text>
+  <text x="360" y="202" text-anchor="middle" font-size="8" fill="var(--faint)">Langfuse 观测自己，用的就是它帮你观测 LLM 应用的同一套 OTel trace/span——dogfooding</text>
+  <text x="360" y="220" text-anchor="middle" font-size="8" fill="var(--faint)">它甚至能反向「摄取」OTel：OtelIngestionProcessor 让你的 OTel 数据直接进 Langfuse（两头都说 OTel）</text>
+</svg>
+<div class="figcap"><b>instrumentAsync 包装器</b>：<code>instrumentation/index.ts:54</code> <code>instrumentAsync</code>（<code>startActiveSpan</code> 开 span、<code>startNewTrace</code> 开根 trace 或从 <code>traceContext</code> 续、<code>catch</code> 内 <code>traceException</code> 再抛、<code>span.end()</code>）。同模块：<code>:140</code> getCurrentSpan、<code>:142</code> traceException、<code>:263</code> getTracer、<code>:328/343/354</code> recordGauge/Increment/Histogram。OTel 摄取见 <code>otel/OtelIngestionProcessor.ts</code>。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">追踪</span><span class="name">instrumentAsync（span 包装器）</span></div><div class="ld">把异步逻辑包成一条 OTel span：自动计时、自动 catch 异常记到 span、自动结束。<code>startNewTrace</code> 开新根、或从上游 <code>traceContext</code> 续——<strong>跨服务的分布式追踪</strong>就这么串起来。前面四课用的都是它。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">指标</span><span class="name">recordGauge / Increment / Histogram</span></div><div class="ld">trace 之外还有 metrics：用 <code>recordIncrement</code> 计数（如「处理了多少条」）、<code>recordGauge</code> 记瞬时值（如队列深度）、<code>recordHistogram</code> 记分布（如耗时 P95）。同一个 instrumentation 模块一站提供。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">双向</span><span class="name">既发也收 OTel</span></div><div class="ld">Langfuse 不只用 OTel 观测自己（<strong>发</strong>出 span），还能<strong>接收</strong> OTel：<code>OtelIngestionProcessor</code> 让你把应用的 OTel 数据直接喂进 Langfuse。两头都说 OTel 这门通用语言——既是工具的自洽，也是生态的开放。</div></div>
+</div>
+""")
+
+# (L51 sec2 below)
+
+_ZH51.append(r"""
+<h2>日志的点睛：每行自动盖上 trace_id</h2>
+<p>Langfuse 的日志用 <strong>winston</strong>，按环境变量出 <strong>text</strong>（开发，人读友好）或 <strong>json</strong>（生产，机器可解析）两种格式，级别由 <code>LANGFUSE_LOG_LEVEL</code> 控制。但真正的点睛之笔是一个叫 <code>tracingFormat</code> 的自定义格式器：<strong>每写一行日志，它都去问一句「当前有没有活跃的 OTel span？」——有就把这条 span 的 <code>trace_id</code> 和 <code>span_id</code> 自动塞进这行日志</strong>（还顺带塞一份 Datadog 风格的 <code>dd.trace_id</code>）。</p>
+
+<p>这一下，<strong>「日志」和「链路追踪」这两本账就自动对上了号</strong>。排查线上问题时，这是天大的便利：你在海量日志里发现一条报错 → 顺着它带的 <code>trace_id</code> → 一键跳到那次请求的<strong>完整链路</strong>，看清它走了哪些服务、每步耗时、错在第几跳；反过来，盯着一条慢链路，也能精准捞出它沿途打的所有日志。没有这层关联，日志和链路就是两座孤岛，排查全靠手工对时间戳——又慢又易错。一行不起眼的「自动注入」，省下的是无数个深夜的对账之苦。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="日志自动关联trace：winston的tracingFormat每写一行日志就查当前活跃OTel span，把trace_id/span_id(及dd.trace_id)注入该行；于是从一条报错日志顺trace_id一键跳到完整链路，反向也能从链路捞出沿途日志；格式text(开发)或json(生产)由env控制">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">日志 ⇄ 链路：自动对上号，一键互跳</text>
+  <rect x="24" y="44" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">winston logger</text><text x="124" y="82" text-anchor="middle" font-size="6.4" fill="var(--muted)">text（开发·人读）/ json（生产·机读）</text><text x="124" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">级别 LANGFUSE_LOG_LEVEL</text><text x="124" y="112" text-anchor="middle" font-size="6.4" font-weight="700" fill="var(--accent-ink)">tracingFormat 格式器</text><text x="124" y="126" text-anchor="middle" font-size="6.0" fill="var(--faint)">每行：问「有活跃 span 吗？」</text>
+  <rect x="270" y="56" width="180" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">注入 trace 标识</text><text x="360" y="93" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace_id · span_id</text><text x="360" y="106" text-anchor="middle" font-size="6.2" fill="var(--muted)">+ dd.trace_id（Datadog 风格）</text><text x="360" y="120" text-anchor="middle" font-size="6.0" fill="var(--faint)">getCurrentSpan() 拿当前 span</text>
+  <rect x="496" y="44" width="200" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="62" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">日志 → 链路</text><text x="596" y="77" text-anchor="middle" font-size="6.0" fill="var(--muted)">见报错日志，顺 trace_id 跳完整链路</text>
+  <rect x="496" y="96" width="200" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="596" y="114" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">链路 → 日志</text><text x="596" y="129" text-anchor="middle" font-size="6.0" fill="var(--muted)">盯一条慢链路，捞出沿途所有日志</text>
+  <line x1="224" y1="92" x2="268" y2="92" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,92 259,88 259,96" fill="var(--accent)"/>
+  <line x1="450" y1="80" x2="494" y2="68" stroke="var(--teal)" stroke-width="1.3"/><polygon points="494,68 485,67 487,75" fill="var(--teal)"/>
+  <line x1="450" y1="104" x2="494" y2="115" stroke="var(--accent)" stroke-width="1.3"/><polygon points="494,115 485,112 486,120" fill="var(--accent)"/>
+  <text x="360" y="166" text-anchor="middle" font-size="8" fill="var(--faint)">没有这层关联，日志和链路是两座孤岛，排查靠手工对时间戳——又慢又易错</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">一行「自动注入」，换来无数次「从这条错日志，直达那次请求全貌」的顺滑排查</text>
+  <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">这正是可观测性的「三支柱」协同：traces + logs（+ metrics）互相打通才好用</text>
+</svg>
+<div class="figcap"><b>日志关联 trace</b>：<code>logger.ts</code> winston，<code>tracingFormat</code>（<code>:6</code> 起）每行调 <code>getCurrentSpan()</code>，有 span 就注入 <code>trace_id/span_id</code> 与 <code>dd.trace_id/dd.span_id</code>；格式 <code>textLoggerFormat</code>（<code>:31</code>）或 jsonLoggerFormat 由 <code>LANGFUSE_LOG_FORMAT</code> 选、级别由 <code>LANGFUSE_LOG_LEVEL</code> 定。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/logger.ts</span><span class="ln">日志自动注入 trace 标识</span></div>
+  <pre class="code"><span class="cm">// 自定义格式器：每写一行日志，自动盖上当前 span 的 trace/span id</span>
+<span class="kw">const</span> <span class="fn">tracingFormat</span> = () =&gt; winston.format((info) =&gt; {
+  <span class="kw">const</span> span = <span class="fn">getCurrentSpan</span>();                       <span class="cm">// 当前活跃的 OTel span</span>
+  <span class="kw">if</span> (span) {
+    <span class="kw">const</span> { spanId, traceId } = span.<span class="fn">spanContext</span>();
+    info[<span class="st">"trace_id"</span>] = traceId;  info[<span class="st">"span_id"</span>] = spanId;  <span class="cm">// 注入！</span>
+    info[<span class="st">"dd.trace_id"</span>] = …;                          <span class="cm">// 顺带 Datadog 风格</span>
+  }
+  <span class="kw">return</span> info;
+})();
+
+<span class="cm">// 格式按 env 选 text(开发) / json(生产)；级别按 env</span>
+<span class="kw">const</span> format = env.LANGFUSE_LOG_FORMAT === <span class="st">"text"</span> ? textLoggerFormat : jsonLoggerFormat;
+<span class="kw">export const</span> logger = winston.<span class="fn">createLogger</span>({ level: env.LANGFUSE_LOG_LEVEL, format,
+                                          transports: [<span class="kw">new</span> winston.transports.<span class="fn">Console</span>()] });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🔗 traces（链路）</h4><p>一次请求/任务走过的完整路径与各步耗时。由 <code>instrumentAsync</code> 的 span 拼成——回答「慢在哪一步、错在第几跳」。</p></div>
+  <div class="col"><h4>📝 logs（日志）</h4><p>离散的事件记录（含报错）。winston 输出，且每行自动带 <code>trace_id</code>——回答「具体发生了什么」，并能跳回对应链路。</p></div>
+  <div class="col"><h4>📊 metrics（指标）</h4><p>聚合的数值趋势：计数、瞬时值、分布。<code>recordIncrement/Gauge/Histogram</code> 上报——回答「整体健康吗、量级多大、P95 几何」。</p></div>
+</div>
+""")
+
+# (L51 sec3 below)
+
+_ZH51.append(r"""
+<h2>配置即校验：让错配在启动时就暴露</h2>
+<p>一个平台有几十上百个环境变量（数据库地址、Redis、密钥、各种开关）。如果哪个填错了、漏填了，最糟的情况是<strong>程序照样启动，跑到半路才神秘崩溃</strong>——而且报的错往往离真正的根因十万八千里。Langfuse 的对策是<strong>把所有 env 都过一遍 Zod 校验</strong>：共享层用 <code>EnvSchema = z.object({...})</code> 声明每个变量的类型与约束（如 <code>REDIS_PORT</code> 用 <code>z.coerce.number()</code> 把字符串转数字、<code>REDIS_TLS_ENABLED</code> 只能是 <code>"true"|"false"</code>）；web 层用 <code>@t3-oss/env-nextjs</code> 的 <code>createEnv</code> 把 env 分成 <strong>server</strong>（仅服务端，如 <code>DATABASE_URL</code>）和 <strong>client</strong>（可进浏览器，须 <code>NEXT_PUBLIC_</code> 前缀）两类。</p>
+
+<p>这带来两个硬好处：① <strong>fail-fast（快速失败）</strong>——配置不合法，<strong>启动那一刻就当场报清晰的错</strong>（「DATABASE_URL 不是合法 URL」），而不是带病运行、半夜崩给你看。② <strong>server/client 边界</strong>——<code>createEnv</code> 强制区分「只能在服务端用的密钥」和「能打进前端包的公开配置」，<strong>从机制上防止你手滑把数据库密码泄露进浏览器</strong>。配置不再是「一堆 <code>process.env.XXX</code> 散落各处、类型全靠猜」，而是一份<strong>声明式、类型安全、边界清晰</strong>的契约。</p>
+
+<table class="t">
+  <thead><tr><th>没有校验（裸 process.env）</th><th>Langfuse 的 Zod 校验</th></tr></thead>
+  <tbody>
+    <tr><td>错配可能跑到半路才崩</td><td><b>fail-fast</b>：启动时当场报清晰的错</td></tr>
+    <tr><td><code>process.env.X</code> 类型永远是 string|undefined</td><td><b>类型安全</b>：z.coerce 转数字、z.enum 限取值</td></tr>
+    <tr><td>密钥可能手滑打进前端包</td><td><b>server/client 边界</b>：createEnv 强制隔离</td></tr>
+    <tr><td>有哪些配置、什么含义，全靠翻代码</td><td><b>声明式契约</b>：一份 schema 即文档</td></tr>
+  </tbody>
+</table>
+
+<p>把「可观测」和「配置校验」放在同一课，是因为它们朝着<strong>同一个方向</strong>使劲：<strong>让系统对运维者「透明、可预期、早暴露问题」</strong>。可观测让你在<strong>运行时</strong>看清系统在干什么、慢在哪、错在哪；配置校验让你在<strong>启动时</strong>就堵住一整类「配错了」的低级故障。一个管运行期、一个管启动期，合起来就是「这个平台好不好运维」的底色。</p>
+""")
+
+_ZH51.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>Langfuse 自己就是个可观测性工具，为什么还要费力用 OTel 观测自己？这种 dogfooding 值得吗？</strong> 太值了，而且不只是「显得自洽」。<strong>第一，它是最严苛的自测</strong>：当你每天用自己的产品扛自己的生产负载，产品的毛病你会第一个、最痛地感受到——这种「自己人先吃苦」的反馈，比任何用户调研都快、都真。<strong>第二，技术上极其顺滑</strong>：Langfuse 本就讲 OTel 这门语言（它能<strong>摄取</strong>你的 OTel 数据），于是观测自己时复用同一套 trace/span 概念，几乎零额外认知成本——发出去的 span 和收进来的 span 是同构的。<strong>第三，它逼着把可观测做成「随手可用」</strong>：正因为内部到处要用，<code>instrumentAsync</code> 才被打磨成一个包一下就行的薄包装，而不是每处手写一堆 OTel 样板。<strong>一个工具最好的广告，是它自己离不开它。</strong><br><br>
+  <strong>为什么要花力气把 env 做成 Zod 校验 + server/client 分离，直接读 <code>process.env.XXX</code> 不是更省事？</strong> 因为「省事」省的是<strong>写的时候</strong>，赔的是<strong>出事的时候</strong>。裸读 <code>process.env</code> 有三宗罪：① 类型永远是 <code>string | undefined</code>，你以为是数字的端口其实是字符串，比较、运算处处埋雷；② 错配<strong>不会立刻报错</strong>——少配一个 <code>DATABASE_URL</code>，应用照启动，直到第一次查库才崩，而那时的错误信息离根因很远，排查能耗掉半天；③ 最危险的是<strong>边界失守</strong>：一个本该只在服务端用的密钥，手滑加了 <code>NEXT_PUBLIC_</code> 或被打进客户端 bundle，就<strong>泄露给了所有访问者</strong>。Zod + <code>createEnv</code> 一次性解决：启动时校验（fail-fast）、自动类型推导（类型安全）、强制 server/client 隔离（防泄露）。<strong>把「配置」当成需要校验的「输入」来对待，而不是一堆可以随便读的全局字符串——这是把低级故障挡在生产之外的关键一步。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>自我可观测（dogfooding）</strong>：Langfuse 用它帮你观测 LLM 应用的<strong>同一套 OTel</strong> 观测自己。<code>instrumentAsync</code>（instrumentation/index.ts:54）是个 span 包装器——开 span、跑逻辑、自动 traceException、span.end，第30/33/46/48 课都在用。</li>
+    <li><strong>trace + metrics 一站齐</strong>：同模块还有 <code>getCurrentSpan</code>/<code>traceException</code>/<code>getTracer</code> 和 <code>recordGauge/Increment/Histogram</code>（指标）。还能反向<strong>摄取</strong> OTel（OtelIngestionProcessor）——两头都说 OTel。</li>
+    <li><strong>日志自动关联 trace</strong>：winston 的 <code>tracingFormat</code> 每行日志都注入当前 span 的 <code>trace_id/span_id</code>（含 dd.* Datadog 风格）。于是日志↔链路一键互跳——排查线上问题的天大便利。格式 text/json、级别由 env 定。</li>
+    <li><strong>配置即校验</strong>：所有 env 过 Zod（共享 <code>EnvSchema = z.object</code>、web <code>createEnv</code> 分 server/client）。好处：<strong>fail-fast</strong>（启动即报错而非半路崩）、<strong>类型安全</strong>（z.coerce/z.enum）、<strong>server/client 边界</strong>（防密钥泄露进前端）。</li>
+    <li><strong>同一个方向</strong>：可观测管「运行时透明」、配置校验管「启动时堵错」，合起来决定「这平台好不好运维」。把配置当「需要校验的输入」而非「随便读的全局字符串」。</li>
+  </ul>
+</div>
+""")
+
+_EN51.append(r"""
+<p class="lead">
+Langfuse is a tool that <strong>helps you observe LLM applications</strong>. So when it itself has a problem, how does it observe <strong>itself</strong>? The answer is fittingly self-consistent: it uses the <strong>same observability means</strong> to observe itself — <strong>OpenTelemetry (OTel) distributed tracing + structured logging + metrics</strong>. This lesson covers two things that make the platform "transparent to operators": ① <strong>self-observability</strong> — the <code>instrumentAsync</code> you've long seen (Lesson 30 eval, Lesson 33 alerts, Lesson 46 integrations, Lesson 48 login all use it) is actually an OTel span wrapper turning every key operation into a traceable span; and its logging is cleverer still, <strong>auto-stamping each line with the current trace_id/span_id</strong>, so "logs" and "traces" jump to each other in one click. ② <strong>config as validation</strong> — all environment variables pass through <strong>Zod</strong> validation, so a misconfiguration <strong>errors out at boot, on the spot</strong>, rather than crashing mysteriously mid-run.
+In a sentence: a mature platform is not only observable but <strong>eats its own dog food</strong> (dogfooding); not only runs, but <strong>checks every one of its configs before running</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a <strong>doctor who gives others checkups</strong>. The most convincing one <strong>also gets regular checkups himself, using the same instruments</strong> — that's dogfooding: the observability tool observing itself. Langfuse puts a <strong>"timing wristband"</strong> on every internal operation (an OTel span: when it started, how long it took, whether it errored), so on a problem it can precisely reconstruct "which step was slow."
+  Even more thoughtful is its <strong>"medical record" (logs)</strong>: each log line is auto-stamped with the <strong>visit number</strong> (trace_id/span_id). So when you spot one error among a pile of logs, <strong>follow that number to jump to the full corresponding trace</strong> and see the whole cause-and-effect; conversely, from a trace you can find related logs — the two ledgers auto-reconcile.
+  And config validation is like the hospital's <strong>pre-opening equipment self-check</strong>: at startup it cross-checks every instrument's parameters (env vars) one by one, and <strong>if one is missing or wrong, it flashes red and doesn't open</strong> — never operating impaired, never discovering halfway that a machine wasn't plugged in.
+</div>
+""")
+
+_EN51.append(r"""
+<h2>Self-observability: the "timing wristband" instrumentAsync</h2>
+<p>Flip back through earlier lessons and you'll see a recurring name: <code>instrumentAsync</code>. Lesson 30's eval processing, Lesson 33's alert state machine, Lesson 46's per-project integration jobs, Lesson 48's login session callback — all wrap a layer with it. Now the reveal: it's an <strong>OpenTelemetry span wrapper</strong>. Hand it a piece of async logic and it: <strong>opens a span</strong> (records name, start time, span kind), runs your logic, <strong>auto-captures exceptions</strong> (on error, <code>traceException</code> records it on the span then rethrows), and finally <strong>span.end()</strong> wraps up. So every wrapped operation leaves a traceable record in OTel of "<strong>when it started, how long it took, success or threw</strong>." This is exactly how Langfuse observes <strong>itself</strong> — the same trace/span thinking it uses to observe your LLM apps for you.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="instrumentAsync is an OTel span wrapper: wrap a piece of async logic, open a span recording name/start/kind, run the logic, on error auto-traceException onto the span, end with span.end; reused everywhere — eval(L30), alerts(L33), integrations(L46), login(L48), plus recordGauge/Increment/Histogram metrics and getTracer">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Turn every key operation into a traceable span</text>
+  <rect x="250" y="40" width="220" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">instrumentAsync(ctx, fn)</text>
+  <rect x="266" y="72" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="87" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① open span (name·start·kind)</text>
+  <rect x="266" y="98" width="188" height="22" rx="5" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="113" text-anchor="middle" font-size="6.6" fill="var(--teal)">② run your logic await fn(span)</text>
+  <rect x="266" y="124" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="139" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">③ on error traceException → ④ span.end()</text>
+  <rect x="30" y="58" width="170" height="92" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">reused everywhere</text><text x="115" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">eval processing (L30)</text><text x="115" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">alert state machine (L33)</text><text x="115" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">per-project integration (L46)</text><text x="115" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">login session callback (L48)</text><text x="115" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">same wrapper, globally consistent</text>
+  <rect x="520" y="58" width="175" height="92" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="607" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">same module also offers</text><text x="607" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">getCurrentSpan / getTracer</text><text x="607" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">traceException</text><text x="607" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordGauge / Increment</text><text x="607" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordHistogram (metrics)</text><text x="607" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">trace + metrics in one place</text>
+  <line x1="200" y1="104" x2="248" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="248,104 239,100 239,108" fill="var(--blue)"/>
+  <line x1="470" y1="104" x2="518" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="518,104 509,100 509,108" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">startNewTrace opens a new root trace, or continues the upstream chain from traceContext (distributed tracing stitched across services)</text>
+  <text x="360" y="202" text-anchor="middle" font-size="8" fill="var(--faint)">Langfuse observes itself with the very same OTel trace/span it uses to observe your LLM apps — dogfooding</text>
+  <text x="360" y="220" text-anchor="middle" font-size="8" fill="var(--faint)">It can even "ingest" OTel in reverse: OtelIngestionProcessor lets your OTel data flow straight into Langfuse (both ends speak OTel)</text>
+</svg>
+<div class="figcap"><b>The instrumentAsync wrapper</b>: <code>instrumentation/index.ts:54</code> <code>instrumentAsync</code> (<code>startActiveSpan</code> opens a span, <code>startNewTrace</code> opens a root trace or continues from <code>traceContext</code>, <code>catch</code> calls <code>traceException</code> then rethrows, <code>span.end()</code>). Same module: <code>:140</code> getCurrentSpan, <code>:142</code> traceException, <code>:263</code> getTracer, <code>:328/343/354</code> recordGauge/Increment/Histogram. OTel ingestion at <code>otel/OtelIngestionProcessor.ts</code>.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">trace</span><span class="name">instrumentAsync (span wrapper)</span></div><div class="ld">Wraps async logic into an OTel span: auto-timing, auto-catch exceptions onto the span, auto-end. <code>startNewTrace</code> opens a new root, or continues from the upstream <code>traceContext</code> — that's how <strong>cross-service distributed tracing</strong> is stitched. The previous four lessons all use it.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">metrics</span><span class="name">recordGauge / Increment / Histogram</span></div><div class="ld">Beyond traces there are metrics: <code>recordIncrement</code> for counts (e.g. "how many processed"), <code>recordGauge</code> for instantaneous values (e.g. queue depth), <code>recordHistogram</code> for distributions (e.g. P95 latency). The same instrumentation module offers them all.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">two-way</span><span class="name">emits and receives OTel</span></div><div class="ld">Langfuse not only uses OTel to observe itself (<strong>emitting</strong> spans), it also <strong>receives</strong> OTel: <code>OtelIngestionProcessor</code> lets you feed your app's OTel data straight into Langfuse. Both ends speak the universal OTel language — the tool's self-consistency and the ecosystem's openness.</div></div>
+</div>
+""")
+
+_EN51.append(r"""
+<h2>The logging masterstroke: each line auto-stamped with trace_id</h2>
+<p>Langfuse's logging uses <strong>winston</strong>, emitting <strong>text</strong> (dev, human-friendly) or <strong>json</strong> (prod, machine-parseable) by env var, with level controlled by <code>LANGFUSE_LOG_LEVEL</code>. But the real masterstroke is a custom formatter called <code>tracingFormat</code>: <strong>every time it writes a log line, it asks "is there an active OTel span right now?" — if so it auto-stuffs that span's <code>trace_id</code> and <code>span_id</code> into the line</strong> (plus a Datadog-style <code>dd.trace_id</code> for good measure).</p>
+
+<p>With that, <strong>"logs" and "distributed tracing" auto-reconcile</strong>. When debugging production issues, this is a huge convenience: you find one error among a sea of logs → follow its <code>trace_id</code> → jump in one click to that request's <strong>full trace</strong>, seeing which services it traversed, each step's latency, which hop errored; conversely, eyeing a slow trace, you can precisely scoop up all the logs it emitted along the way. Without this correlation, logs and traces are two isolated islands and debugging means manually matching timestamps — slow and error-prone. One inconspicuous line of "auto-injection" saves countless late-night reconciliation headaches.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="logs auto-correlate with traces: winston's tracingFormat on each log line checks the current active OTel span and injects trace_id/span_id (and dd.trace_id) into the line; so from an error log follow trace_id to jump to the full trace in one click, and in reverse scoop logs from a trace; format text(dev) or json(prod) by env">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Logs ⇄ traces: auto-reconciled, one-click jump</text>
+  <rect x="24" y="44" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">winston logger</text><text x="124" y="82" text-anchor="middle" font-size="6.4" fill="var(--muted)">text(dev·human) / json(prod·machine)</text><text x="124" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">level LANGFUSE_LOG_LEVEL</text><text x="124" y="112" text-anchor="middle" font-size="6.4" font-weight="700" fill="var(--accent-ink)">tracingFormat formatter</text><text x="124" y="126" text-anchor="middle" font-size="6.0" fill="var(--faint)">each line: "any active span?"</text>
+  <rect x="270" y="56" width="180" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">inject trace ids</text><text x="360" y="93" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace_id · span_id</text><text x="360" y="106" text-anchor="middle" font-size="6.2" fill="var(--muted)">+ dd.trace_id (Datadog style)</text><text x="360" y="120" text-anchor="middle" font-size="6.0" fill="var(--faint)">getCurrentSpan() gets the current span</text>
+  <rect x="496" y="44" width="200" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="62" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">log → trace</text><text x="596" y="77" text-anchor="middle" font-size="6.0" fill="var(--muted)">see an error log, follow trace_id to the full trace</text>
+  <rect x="496" y="96" width="200" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="596" y="114" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">trace → log</text><text x="596" y="129" text-anchor="middle" font-size="6.0" fill="var(--muted)">eye a slow trace, scoop all its logs</text>
+  <line x1="224" y1="92" x2="268" y2="92" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,92 259,88 259,96" fill="var(--accent)"/>
+  <line x1="450" y1="80" x2="494" y2="68" stroke="var(--teal)" stroke-width="1.3"/><polygon points="494,68 485,67 487,75" fill="var(--teal)"/>
+  <line x1="450" y1="104" x2="494" y2="115" stroke="var(--accent)" stroke-width="1.3"/><polygon points="494,115 485,112 486,120" fill="var(--accent)"/>
+  <text x="360" y="166" text-anchor="middle" font-size="8" fill="var(--faint)">Without this correlation, logs and traces are isolated islands; debugging means manually matching timestamps — slow and error-prone</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">One line of "auto-injection" buys countless smooth "from this error log, straight to that request's full picture" debug sessions</text>
+  <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">This is the "three pillars" of observability working together: traces + logs (+ metrics) are useful only when wired to each other</text>
+</svg>
+<div class="figcap"><b>Logs correlate with traces</b>: <code>logger.ts</code> winston, <code>tracingFormat</code> (from <code>:6</code>) on each line calls <code>getCurrentSpan()</code>, and if there's a span injects <code>trace_id/span_id</code> and <code>dd.trace_id/dd.span_id</code>; the format <code>textLoggerFormat</code> (<code>:31</code>) or jsonLoggerFormat is chosen by <code>LANGFUSE_LOG_FORMAT</code>, level by <code>LANGFUSE_LOG_LEVEL</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/logger.ts</span><span class="ln">logs auto-inject trace ids</span></div>
+  <pre class="code"><span class="cm">// custom formatter: each log line auto-stamped with the current span's trace/span id</span>
+<span class="kw">const</span> <span class="fn">tracingFormat</span> = () =&gt; winston.format((info) =&gt; {
+  <span class="kw">const</span> span = <span class="fn">getCurrentSpan</span>();                       <span class="cm">// the current active OTel span</span>
+  <span class="kw">if</span> (span) {
+    <span class="kw">const</span> { spanId, traceId } = span.<span class="fn">spanContext</span>();
+    info[<span class="st">"trace_id"</span>] = traceId;  info[<span class="st">"span_id"</span>] = spanId;  <span class="cm">// inject!</span>
+    info[<span class="st">"dd.trace_id"</span>] = …;                          <span class="cm">// plus Datadog style</span>
+  }
+  <span class="kw">return</span> info;
+})();
+
+<span class="cm">// format chosen by env: text(dev) / json(prod); level by env</span>
+<span class="kw">const</span> format = env.LANGFUSE_LOG_FORMAT === <span class="st">"text"</span> ? textLoggerFormat : jsonLoggerFormat;
+<span class="kw">export const</span> logger = winston.<span class="fn">createLogger</span>({ level: env.LANGFUSE_LOG_LEVEL, format,
+                                          transports: [<span class="kw">new</span> winston.transports.<span class="fn">Console</span>()] });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🔗 traces</h4><p>The full path a request/job traverses with each step's latency. Stitched from <code>instrumentAsync</code>'s spans — answers "which step was slow, which hop errored."</p></div>
+  <div class="col"><h4>📝 logs</h4><p>Discrete event records (incl. errors). Emitted by winston, each line auto-carrying <code>trace_id</code> — answers "what specifically happened," and can jump back to the corresponding trace.</p></div>
+  <div class="col"><h4>📊 metrics</h4><p>Aggregated numeric trends: counts, instantaneous values, distributions. Reported via <code>recordIncrement/Gauge/Histogram</code> — answers "is it healthy overall, what's the volume, what's the P95."</p></div>
+</div>
+""")
+
+_EN51.append(r"""
+<h2>Config as validation: surface misconfig at boot</h2>
+<p>A platform has dozens to hundreds of environment variables (DB address, Redis, secrets, various toggles). If one is wrong or missing, the worst case is the <strong>program starts anyway and crashes mysteriously mid-run</strong> — and the reported error is often light-years from the true root cause. Langfuse's countermeasure is to <strong>run all env through Zod validation</strong>: the shared layer uses <code>EnvSchema = z.object({...})</code> to declare each variable's type and constraints (e.g. <code>REDIS_PORT</code> uses <code>z.coerce.number()</code> to turn a string into a number, <code>REDIS_TLS_ENABLED</code> can only be <code>"true"|"false"</code>); the web layer uses <code>@t3-oss/env-nextjs</code>'s <code>createEnv</code> to split env into <strong>server</strong> (server-only, like <code>DATABASE_URL</code>) and <strong>client</strong> (may reach the browser, must have a <code>NEXT_PUBLIC_</code> prefix).</p>
+
+<p>This brings two hard wins: ① <strong>fail-fast</strong> — invalid config <strong>errors clearly the moment of startup</strong> ("DATABASE_URL is not a valid URL"), rather than running impaired and crashing on you at midnight. ② <strong>server/client boundary</strong> — <code>createEnv</code> forces a distinction between "secrets usable only server-side" and "public config that can ship in the front-end bundle," <strong>mechanically preventing you from fat-fingering a DB password into the browser</strong>. Config is no longer "a pile of <code>process.env.XXX</code> scattered everywhere, types all guesswork" but a <strong>declarative, type-safe, boundary-clear</strong> contract.</p>
+
+<table class="t">
+  <thead><tr><th>No validation (raw process.env)</th><th>Langfuse's Zod validation</th></tr></thead>
+  <tbody>
+    <tr><td>misconfig may crash mid-run</td><td><b>fail-fast</b>: errors clearly at startup</td></tr>
+    <tr><td><code>process.env.X</code> is always string|undefined</td><td><b>type-safe</b>: z.coerce to number, z.enum to limit values</td></tr>
+    <tr><td>a secret may be fat-fingered into the front-end bundle</td><td><b>server/client boundary</b>: createEnv enforces isolation</td></tr>
+    <tr><td>what configs exist and mean is buried in code</td><td><b>declarative contract</b>: one schema is the doc</td></tr>
+  </tbody>
+</table>
+
+<p>Putting "observability" and "config validation" in one lesson is because they push in <strong>the same direction</strong>: <strong>making the system "transparent, predictable, early-surfacing problems" to operators</strong>. Observability lets you see at <strong>runtime</strong> what the system is doing, where it's slow, where it errored; config validation plugs at <strong>startup</strong> a whole class of "misconfigured" low-level failures. One owns the run phase, one the boot phase, and together they're the baseline of "how operable is this platform."</p>
+""")
+
+_EN51.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Langfuse is itself an observability tool — why bother using OTel to observe itself? Is this dogfooding worth it?</strong> Very much so, and not just for "looking self-consistent." <strong>First, it's the most rigorous self-test</strong>: when you run your own product carrying your own production load every day, you feel the product's flaws first and most painfully — this "eat your own bitterness first" feedback is faster and truer than any user research. <strong>Second, it's technically seamless</strong>: Langfuse already speaks the OTel language (it can <strong>ingest</strong> your OTel data), so observing itself reuses the same trace/span concepts with near-zero extra cognitive cost — the spans it emits and the spans it ingests are isomorphic. <strong>Third, it forces observability to be "ready at hand"</strong>: precisely because it's used internally everywhere, <code>instrumentAsync</code> got polished into a thin wrap-once wrapper rather than hand-written OTel boilerplate at every site. <strong>A tool's best advertisement is that it can't live without itself.</strong><br><br>
+  <strong>Why bother making env into Zod validation + server/client separation — isn't reading <code>process.env.XXX</code> directly easier?</strong> Because "easier" saves you <strong>when writing</strong> and costs you <strong>when things break</strong>. Raw <code>process.env</code> has three sins: ① the type is always <code>string | undefined</code>, so a port you think is a number is actually a string, planting landmines in comparisons and arithmetic; ② misconfig <strong>doesn't error immediately</strong> — miss a <code>DATABASE_URL</code> and the app starts anyway, crashing only on the first DB query, by which point the error message is far from the root cause and debugging eats half a day; ③ most dangerous is <strong>boundary breach</strong>: a secret meant only for the server, fat-fingered with <code>NEXT_PUBLIC_</code> or bundled into the client, <strong>leaks to every visitor</strong>. Zod + <code>createEnv</code> solves all at once: validate at startup (fail-fast), auto type inference (type-safe), enforce server/client isolation (anti-leak). <strong>Treating "config" as "input" that needs validation, rather than a pile of freely-readable global strings, is the key step to keeping low-level failures out of production.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Self-observability (dogfooding)</strong>: Langfuse observes itself with the <strong>same OTel</strong> it uses to observe your LLM apps. <code>instrumentAsync</code> (instrumentation/index.ts:54) is a span wrapper — open span, run logic, auto-traceException, span.end; used by Lessons 30/33/46/48.</li>
+    <li><strong>Trace + metrics in one place</strong>: the same module also has <code>getCurrentSpan</code>/<code>traceException</code>/<code>getTracer</code> and <code>recordGauge/Increment/Histogram</code> (metrics). It can also <strong>ingest</strong> OTel in reverse (OtelIngestionProcessor) — both ends speak OTel.</li>
+    <li><strong>Logs auto-correlate with traces</strong>: winston's <code>tracingFormat</code> injects the current span's <code>trace_id/span_id</code> (incl. dd.* Datadog style) into every log line. So logs↔traces jump in one click — a huge convenience for production debugging. Format text/json, level by env.</li>
+    <li><strong>Config as validation</strong>: all env passes through Zod (shared <code>EnvSchema = z.object</code>, web <code>createEnv</code> splitting server/client). Wins: <strong>fail-fast</strong> (error at startup not crash mid-run), <strong>type-safe</strong> (z.coerce/z.enum), <strong>server/client boundary</strong> (prevent secrets leaking to the front end).</li>
+    <li><strong>One direction</strong>: observability owns "runtime transparency," config validation owns "boot-time error-plugging," together deciding "how operable is this platform." Treat config as "input needing validation," not "freely-readable global strings."</li>
+  </ul>
+</div>
+""")
+
+LESSON_51 = {"zh": "\n".join(_ZH51), "en": "\n".join(_EN51)}

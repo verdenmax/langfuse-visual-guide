@@ -3545,6 +3545,76 @@ QUIZZES = {
             },
         ],
     },
+    "51-self-observability-and-config.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 本身就是一个 LLM 可观测性平台，但它内部还到处用 OpenTelemetry（instrumentAsync 等）观测自己。关于这种「dogfooding（吃自己的狗粮）」，下面哪种说法最准确？",
+                    "en": "Langfuse is itself an LLM observability platform, yet internally it uses OpenTelemetry (instrumentAsync etc.) to observe itself everywhere. Which statement about this 'dogfooding' is most accurate?",
+                },
+                "opts": [
+                    {
+                        "zh": "它既是最严苛的自测(每天用自己产品扛自己负载，毛病第一个最痛地暴露)，技术上又极顺滑(本就讲OTel这门语言、能摄取OTel，观测自己复用同一套trace/span概念近零额外成本)，还逼着把instrumentAsync打磨成包一下就行的薄包装",
+                        "en": "it's both the most rigorous self-test (running its own product under its own load daily, flaws surface first and most painfully) and technically seamless (it already speaks OTel and can ingest OTel, so observing itself reuses the same trace/span concepts at near-zero extra cost), and it forces instrumentAsync to be polished into a thin wrap-once wrapper",
+                    },
+                    {"zh": "只是为了营销，技术上没有实际意义", "en": "purely for marketing, with no real technical meaning"},
+                    {"zh": "因为 OTel 是唯一能用的可观测方案", "en": "because OTel is the only available observability option"},
+                    {"zh": "为了让代码看起来更复杂、更专业", "en": "to make the code look more complex and professional"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "dogfooding 在 Langfuse 这里有三重价值。其一，最真实的自测：当团队每天用自己的产品扛自己的生产流量，产品的卡顿、缺陷、难用之处，开发者会第一个、最切肤地感受到，反馈比任何外部调研都快都真。其二，技术自洽：Langfuse 本就讲 OTel 这门通用语言（它能摄取你应用的 OTel 数据），所以观测自己时复用同一套 trace/span 概念，发出去的 span 和收进来的 span 是同构的，几乎没有额外认知负担。其三，它逼着把可观测能力做得「随手可用」——正因为内部处处要用，instrumentAsync 才被打磨成「包一下就行」的薄包装，而非每处手写 OTel 样板。一个工具最好的背书，是它自己离不开它。",
+                    "en": "Dogfooding has triple value at Langfuse. First, the truest self-test: when the team runs its own product under its own production traffic daily, the product's jank, defects, and rough edges are felt first and most acutely by developers—feedback faster and truer than any external research. Second, technical self-consistency: Langfuse already speaks the universal OTel language (it can ingest your app's OTel data), so observing itself reuses the same trace/span concepts, with emitted and ingested spans isomorphic, at near-zero extra cognitive load. Third, it forces observability to be 'ready at hand'—precisely because it's needed internally everywhere, instrumentAsync got polished into a 'wrap once' thin wrapper rather than hand-written OTel boilerplate everywhere. A tool's best endorsement is that it can't live without itself.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 winston 日志里有个 tracingFormat 格式器：每写一行日志，就把当前活跃 OTel span 的 trace_id/span_id 自动注入这行。这个设计解决了什么排查痛点？",
+                    "en": "Langfuse's winston logging has a tracingFormat formatter: every log line auto-injects the current active OTel span's trace_id/span_id. What debugging pain point does this solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "让「日志」和「链路追踪」自动对上号：从一条报错日志顺trace_id一键跳到该请求的完整链路(看清走了哪些服务、每步耗时、错在第几跳)，反向也能从慢链路捞出沿途所有日志——否则两者是孤岛，排查只能手工对时间戳",
+                        "en": "auto-reconciles 'logs' and 'distributed traces': from one error log follow trace_id to jump to that request's full trace (which services, each step's latency, which hop errored) in one click, and in reverse scoop all logs from a slow trace—otherwise the two are isolated islands and debugging means manually matching timestamps",
+                    },
+                    {"zh": "让日志文件更小", "en": "makes log files smaller"},
+                    {"zh": "给日志加密", "en": "encrypts the logs"},
+                    {"zh": "让日志写入更快", "en": "makes log writes faster"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "可观测性常说「三支柱」：traces（链路）、logs（日志）、metrics（指标）。但三者若彼此孤立，价值大打折扣——最典型的痛点就是：你在海量日志里看到一条报错，却不知道它属于哪次请求、那次请求前后发生了什么；或者你盯着一条慢链路，却捞不出它沿途打了哪些日志。tracingFormat 用一行「自动注入 trace_id/span_id」把这两座岛连了起来：日志带着链路 id，于是日志↔链路可以一键互跳，前因后果一目了然。没有它，排查就退化成「手工对齐时间戳」，又慢又易错。这就是「让可观测三支柱协同」的关键一招。",
+                    "en": "Observability often speaks of 'three pillars': traces, logs, metrics. But if the three are isolated, their value drops sharply—the classic pain: you see an error among a sea of logs but don't know which request it belongs to or what happened around it; or you eye a slow trace but can't scoop the logs it emitted along the way. tracingFormat connects these two islands with one line of 'auto-inject trace_id/span_id': logs carry the trace id, so logs↔traces jump in one click, cause and effect clear at a glance. Without it, debugging degrades to 'manually aligning timestamps', slow and error-prone. This is the key move of 'making the observability pillars work together'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 不直接到处读 process.env.XXX，而是把所有环境变量过一遍 Zod 校验（共享 EnvSchema、web 用 createEnv 分 server/client）。这样做的好处不包括下面哪一项？",
+                    "en": "Rather than reading process.env.XXX everywhere, Langfuse runs all env vars through Zod validation (shared EnvSchema, web createEnv splitting server/client). Which of the following is NOT a benefit of this?",
+                },
+                "opts": [
+                    {
+                        "zh": "让程序运行时占用更少的内存",
+                        "en": "makes the program use less memory at runtime",
+                    },
+                    {"zh": "fail-fast：配置不合法时启动当场就报清晰的错，而非带病运行到半路神秘崩溃", "en": "fail-fast: invalid config errors clearly at startup, rather than running impaired and crashing mysteriously mid-run"},
+                    {"zh": "类型安全：z.coerce 把端口字符串转数字、z.enum 限定取值，不再人人都是 string|undefined", "en": "type-safe: z.coerce turns a port string into a number, z.enum limits values, no longer all string|undefined"},
+                    {"zh": "server/client 边界：createEnv 强制隔离仅服务端密钥与可进前端的公开配置，防止密钥泄露进浏览器包", "en": "server/client boundary: createEnv enforces isolating server-only secrets from public config, preventing secrets leaking into the browser bundle"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "Zod 校验 env 的三大好处是 fail-fast、类型安全、server/client 边界，但「省内存」不在其列——校验本身在启动时跑一次，对运行时内存占用没有实质影响，选它为「好处」是不对的。逐一看真正的好处：① fail-fast——错配在启动那一刻就当场报清晰的错（如 DATABASE_URL 非法），而不是跑到第一次用才崩、错误信息还离根因很远；② 类型安全——z.coerce/z.enum 把「永远是 string|undefined」的裸 env 变成有确定类型和取值约束的值；③ server/client 边界——createEnv 从机制上区分「只能服务端用的密钥」与「能打进前端的公开配置」，防止手滑把数据库密码泄露给所有访问者。核心理念：把配置当成「需要校验的输入」，而非「随便读的全局字符串」。",
+                    "en": "Zod-validating env has three main benefits—fail-fast, type-safety, server/client boundary—but 'saving memory' isn't one: validation runs once at startup with no real impact on runtime memory, so choosing it as a 'benefit' is wrong. The real benefits: ① fail-fast—misconfig errors clearly the moment of startup (e.g. invalid DATABASE_URL), not crashing on first use with an error far from the root cause; ② type-safety—z.coerce/z.enum turn 'always string|undefined' raw env into values with definite types and value constraints; ③ server/client boundary—createEnv mechanically separates 'server-only secrets' from 'public config that can ship to the front end', preventing a fat-fingered DB password from leaking to every visitor. Core idea: treat config as 'input needing validation', not 'freely-readable global strings'.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课把「可观测性」（运行时透明：trace/log/metric 三支柱协同）和「配置校验」（启动时堵错：Zod fail-fast）放在一起，因为它们都服务于「让系统对运维者透明、可预期、早暴露问题」。请回想你运维或开发过的系统：你是怎么把 trace、log、metric 关联起来的（还是它们各自为政）？你吃过「配置错了却跑到半路才崩」的亏吗？如果让你给一个新服务定「最低限度的可运维性」清单，你会列哪几条？",
+                "en": "This lesson pairs 'observability' (runtime transparency: the trace/log/metric three pillars working together) with 'config validation' (boot-time error-plugging: Zod fail-fast), because both serve 'making the system transparent, predictable, and early-surfacing to operators'. Recall systems you've operated or built: how did you correlate traces, logs, and metrics (or did they each go their own way)? Have you been burned by 'misconfig that only crashed mid-run'? If defining a 'minimum operability' checklist for a new service, which items would you list?",
+            },
+        ],
+    },
 }
 
 

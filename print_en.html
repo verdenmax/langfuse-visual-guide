@@ -334,7 +334,7 @@ details[open] > summary { list-style: none; }
 </head>
 <body>
 <h1>Langfuse Visual Guide - Print Edition</h1>
-<p style="color:var(--muted)">All 50 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
+<p style="color:var(--muted)">All 51 lessons - one page each. Use Ctrl/Cmd+P in a browser to export a PDF.</p>
 <div class="print-toc"><h2>Contents</h2>
 <ol>
   <li>What is Langfuse</li>
@@ -387,6 +387,7 @@ details[open] > summary { list-style: none; }
   <li>Auth & sessions</li>
   <li>RBAC, API keys & SCIM</li>
   <li>Open-core & entitlements</li>
+  <li>Self-observability & config</li>
 </ol></div>
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
@@ -10228,6 +10229,182 @@ This lesson shows how that "ticket system" is implemented with very little code:
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
     <li>Open-core lets Langfuse have both 'fully public code + commercial sustainability': 100% open source, with a thin runtime gate (plan + entitlement + license) drawing the commercial boundary. Share your view: versus 'pure open source (all free)' and 'pure closed (all paid)', what trade-off does open-core strike between business and community? For users (can read all the code, can self-host, but enterprise features need a license), is it friendlier or more restrictive? If commercializing a project of your own, which model would you choose, and why?</li>
+  </ul>
+</div>
+</div>
+</section>
+<section class="lesson-print">
+<h1>Self-observability & config</h1>
+
+<p class="lead">
+Langfuse is a tool that <strong>helps you observe LLM applications</strong>. So when it itself has a problem, how does it observe <strong>itself</strong>? The answer is fittingly self-consistent: it uses the <strong>same observability means</strong> to observe itself — <strong>OpenTelemetry (OTel) distributed tracing + structured logging + metrics</strong>. This lesson covers two things that make the platform "transparent to operators": ① <strong>self-observability</strong> — the <code>instrumentAsync</code> you've long seen (Lesson 30 eval, Lesson 33 alerts, Lesson 46 integrations, Lesson 48 login all use it) is actually an OTel span wrapper turning every key operation into a traceable span; and its logging is cleverer still, <strong>auto-stamping each line with the current trace_id/span_id</strong>, so "logs" and "traces" jump to each other in one click. ② <strong>config as validation</strong> — all environment variables pass through <strong>Zod</strong> validation, so a misconfiguration <strong>errors out at boot, on the spot</strong>, rather than crashing mysteriously mid-run.
+In a sentence: a mature platform is not only observable but <strong>eats its own dog food</strong> (dogfooding); not only runs, but <strong>checks every one of its configs before running</strong>.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a <strong>doctor who gives others checkups</strong>. The most convincing one <strong>also gets regular checkups himself, using the same instruments</strong> — that's dogfooding: the observability tool observing itself. Langfuse puts a <strong>"timing wristband"</strong> on every internal operation (an OTel span: when it started, how long it took, whether it errored), so on a problem it can precisely reconstruct "which step was slow."
+  Even more thoughtful is its <strong>"medical record" (logs)</strong>: each log line is auto-stamped with the <strong>visit number</strong> (trace_id/span_id). So when you spot one error among a pile of logs, <strong>follow that number to jump to the full corresponding trace</strong> and see the whole cause-and-effect; conversely, from a trace you can find related logs — the two ledgers auto-reconcile.
+  And config validation is like the hospital's <strong>pre-opening equipment self-check</strong>: at startup it cross-checks every instrument's parameters (env vars) one by one, and <strong>if one is missing or wrong, it flashes red and doesn't open</strong> — never operating impaired, never discovering halfway that a machine wasn't plugged in.
+</div>
+
+
+<h2>Self-observability: the "timing wristband" instrumentAsync</h2>
+<p>Flip back through earlier lessons and you'll see a recurring name: <code>instrumentAsync</code>. Lesson 30's eval processing, Lesson 33's alert state machine, Lesson 46's per-project integration jobs, Lesson 48's login session callback — all wrap a layer with it. Now the reveal: it's an <strong>OpenTelemetry span wrapper</strong>. Hand it a piece of async logic and it: <strong>opens a span</strong> (records name, start time, span kind), runs your logic, <strong>auto-captures exceptions</strong> (on error, <code>traceException</code> records it on the span then rethrows), and finally <strong>span.end()</strong> wraps up. So every wrapped operation leaves a traceable record in OTel of "<strong>when it started, how long it took, success or threw</strong>." This is exactly how Langfuse observes <strong>itself</strong> — the same trace/span thinking it uses to observe your LLM apps for you.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="instrumentAsync is an OTel span wrapper: wrap a piece of async logic, open a span recording name/start/kind, run the logic, on error auto-traceException onto the span, end with span.end; reused everywhere — eval(L30), alerts(L33), integrations(L46), login(L48), plus recordGauge/Increment/Histogram metrics and getTracer">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Turn every key operation into a traceable span</text>
+  <rect x="250" y="40" width="220" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">instrumentAsync(ctx, fn)</text>
+  <rect x="266" y="72" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="87" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① open span (name·start·kind)</text>
+  <rect x="266" y="98" width="188" height="22" rx="5" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="113" text-anchor="middle" font-size="6.6" fill="var(--teal)">② run your logic await fn(span)</text>
+  <rect x="266" y="124" width="188" height="22" rx="5" fill="var(--bg)" stroke="var(--accent)"/><text x="360" y="139" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">③ on error traceException → ④ span.end()</text>
+  <rect x="30" y="58" width="170" height="92" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="115" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">reused everywhere</text><text x="115" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">eval processing (L30)</text><text x="115" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">alert state machine (L33)</text><text x="115" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">per-project integration (L46)</text><text x="115" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">login session callback (L48)</text><text x="115" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">same wrapper, globally consistent</text>
+  <rect x="520" y="58" width="175" height="92" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="607" y="76" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent-ink)">same module also offers</text><text x="607" y="92" text-anchor="middle" font-size="6.2" fill="var(--muted)">getCurrentSpan / getTracer</text><text x="607" y="104" text-anchor="middle" font-size="6.2" fill="var(--muted)">traceException</text><text x="607" y="116" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordGauge / Increment</text><text x="607" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">recordHistogram (metrics)</text><text x="607" y="142" text-anchor="middle" font-size="5.8" fill="var(--faint)">trace + metrics in one place</text>
+  <line x1="200" y1="104" x2="248" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="248,104 239,100 239,108" fill="var(--blue)"/>
+  <line x1="470" y1="104" x2="518" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="518,104 509,100 509,108" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">startNewTrace opens a new root trace, or continues the upstream chain from traceContext (distributed tracing stitched across services)</text>
+  <text x="360" y="202" text-anchor="middle" font-size="8" fill="var(--faint)">Langfuse observes itself with the very same OTel trace/span it uses to observe your LLM apps — dogfooding</text>
+  <text x="360" y="220" text-anchor="middle" font-size="8" fill="var(--faint)">It can even "ingest" OTel in reverse: OtelIngestionProcessor lets your OTel data flow straight into Langfuse (both ends speak OTel)</text>
+</svg>
+<div class="figcap"><b>The instrumentAsync wrapper</b>: <code>instrumentation/index.ts:54</code> <code>instrumentAsync</code> (<code>startActiveSpan</code> opens a span, <code>startNewTrace</code> opens a root trace or continues from <code>traceContext</code>, <code>catch</code> calls <code>traceException</code> then rethrows, <code>span.end()</code>). Same module: <code>:140</code> getCurrentSpan, <code>:142</code> traceException, <code>:263</code> getTracer, <code>:328/343/354</code> recordGauge/Increment/Histogram. OTel ingestion at <code>otel/OtelIngestionProcessor.ts</code>.</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-core"><div class="lh"><span class="badge">trace</span><span class="name">instrumentAsync (span wrapper)</span></div><div class="ld">Wraps async logic into an OTel span: auto-timing, auto-catch exceptions onto the span, auto-end. <code>startNewTrace</code> opens a new root, or continues from the upstream <code>traceContext</code> — that's how <strong>cross-service distributed tracing</strong> is stitched. The previous four lessons all use it.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">metrics</span><span class="name">recordGauge / Increment / Histogram</span></div><div class="ld">Beyond traces there are metrics: <code>recordIncrement</code> for counts (e.g. "how many processed"), <code>recordGauge</code> for instantaneous values (e.g. queue depth), <code>recordHistogram</code> for distributions (e.g. P95 latency). The same instrumentation module offers them all.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">two-way</span><span class="name">emits and receives OTel</span></div><div class="ld">Langfuse not only uses OTel to observe itself (<strong>emitting</strong> spans), it also <strong>receives</strong> OTel: <code>OtelIngestionProcessor</code> lets you feed your app's OTel data straight into Langfuse. Both ends speak the universal OTel language — the tool's self-consistency and the ecosystem's openness.</div></div>
+</div>
+
+
+<h2>The logging masterstroke: each line auto-stamped with trace_id</h2>
+<p>Langfuse's logging uses <strong>winston</strong>, emitting <strong>text</strong> (dev, human-friendly) or <strong>json</strong> (prod, machine-parseable) by env var, with level controlled by <code>LANGFUSE_LOG_LEVEL</code>. But the real masterstroke is a custom formatter called <code>tracingFormat</code>: <strong>every time it writes a log line, it asks "is there an active OTel span right now?" — if so it auto-stuffs that span's <code>trace_id</code> and <code>span_id</code> into the line</strong> (plus a Datadog-style <code>dd.trace_id</code> for good measure).</p>
+
+<p>With that, <strong>"logs" and "distributed tracing" auto-reconcile</strong>. When debugging production issues, this is a huge convenience: you find one error among a sea of logs → follow its <code>trace_id</code> → jump in one click to that request's <strong>full trace</strong>, seeing which services it traversed, each step's latency, which hop errored; conversely, eyeing a slow trace, you can precisely scoop up all the logs it emitted along the way. Without this correlation, logs and traces are two isolated islands and debugging means manually matching timestamps — slow and error-prone. One inconspicuous line of "auto-injection" saves countless late-night reconciliation headaches.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 215" role="img" aria-label="logs auto-correlate with traces: winston's tracingFormat on each log line checks the current active OTel span and injects trace_id/span_id (and dd.trace_id) into the line; so from an error log follow trace_id to jump to the full trace in one click, and in reverse scoop logs from a trace; format text(dev) or json(prod) by env">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Logs ⇄ traces: auto-reconciled, one-click jump</text>
+  <rect x="24" y="44" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">winston logger</text><text x="124" y="82" text-anchor="middle" font-size="6.4" fill="var(--muted)">text(dev·human) / json(prod·machine)</text><text x="124" y="96" text-anchor="middle" font-size="6.2" fill="var(--muted)">level LANGFUSE_LOG_LEVEL</text><text x="124" y="112" text-anchor="middle" font-size="6.4" font-weight="700" fill="var(--accent-ink)">tracingFormat formatter</text><text x="124" y="126" text-anchor="middle" font-size="6.0" fill="var(--faint)">each line: "any active span?"</text>
+  <rect x="270" y="56" width="180" height="72" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="76" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">inject trace ids</text><text x="360" y="93" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">trace_id · span_id</text><text x="360" y="106" text-anchor="middle" font-size="6.2" fill="var(--muted)">+ dd.trace_id (Datadog style)</text><text x="360" y="120" text-anchor="middle" font-size="6.0" fill="var(--faint)">getCurrentSpan() gets the current span</text>
+  <rect x="496" y="44" width="200" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="62" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">log → trace</text><text x="596" y="77" text-anchor="middle" font-size="6.0" fill="var(--muted)">see an error log, follow trace_id to the full trace</text>
+  <rect x="496" y="96" width="200" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="596" y="114" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">trace → log</text><text x="596" y="129" text-anchor="middle" font-size="6.0" fill="var(--muted)">eye a slow trace, scoop all its logs</text>
+  <line x1="224" y1="92" x2="268" y2="92" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,92 259,88 259,96" fill="var(--accent)"/>
+  <line x1="450" y1="80" x2="494" y2="68" stroke="var(--teal)" stroke-width="1.3"/><polygon points="494,68 485,67 487,75" fill="var(--teal)"/>
+  <line x1="450" y1="104" x2="494" y2="115" stroke="var(--accent)" stroke-width="1.3"/><polygon points="494,115 485,112 486,120" fill="var(--accent)"/>
+  <text x="360" y="166" text-anchor="middle" font-size="8" fill="var(--faint)">Without this correlation, logs and traces are isolated islands; debugging means manually matching timestamps — slow and error-prone</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">One line of "auto-injection" buys countless smooth "from this error log, straight to that request's full picture" debug sessions</text>
+  <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">This is the "three pillars" of observability working together: traces + logs (+ metrics) are useful only when wired to each other</text>
+</svg>
+<div class="figcap"><b>Logs correlate with traces</b>: <code>logger.ts</code> winston, <code>tracingFormat</code> (from <code>:6</code>) on each line calls <code>getCurrentSpan()</code>, and if there's a span injects <code>trace_id/span_id</code> and <code>dd.trace_id/dd.span_id</code>; the format <code>textLoggerFormat</code> (<code>:31</code>) or jsonLoggerFormat is chosen by <code>LANGFUSE_LOG_FORMAT</code>, level by <code>LANGFUSE_LOG_LEVEL</code>.</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/logger.ts</span><span class="ln">logs auto-inject trace ids</span></div>
+  <pre class="code"><span class="cm">// custom formatter: each log line auto-stamped with the current span's trace/span id</span>
+<span class="kw">const</span> <span class="fn">tracingFormat</span> = () =&gt; winston.format((info) =&gt; {
+  <span class="kw">const</span> span = <span class="fn">getCurrentSpan</span>();                       <span class="cm">// the current active OTel span</span>
+  <span class="kw">if</span> (span) {
+    <span class="kw">const</span> { spanId, traceId } = span.<span class="fn">spanContext</span>();
+    info[<span class="st">"trace_id"</span>] = traceId;  info[<span class="st">"span_id"</span>] = spanId;  <span class="cm">// inject!</span>
+    info[<span class="st">"dd.trace_id"</span>] = …;                          <span class="cm">// plus Datadog style</span>
+  }
+  <span class="kw">return</span> info;
+})();
+
+<span class="cm">// format chosen by env: text(dev) / json(prod); level by env</span>
+<span class="kw">const</span> format = env.LANGFUSE_LOG_FORMAT === <span class="st">"text"</span> ? textLoggerFormat : jsonLoggerFormat;
+<span class="kw">export const</span> logger = winston.<span class="fn">createLogger</span>({ level: env.LANGFUSE_LOG_LEVEL, format,
+                                          transports: [<span class="kw">new</span> winston.transports.<span class="fn">Console</span>()] });</pre>
+</div>
+
+<div class="cols">
+  <div class="col"><h4>🔗 traces</h4><p>The full path a request/job traverses with each step's latency. Stitched from <code>instrumentAsync</code>'s spans — answers "which step was slow, which hop errored."</p></div>
+  <div class="col"><h4>📝 logs</h4><p>Discrete event records (incl. errors). Emitted by winston, each line auto-carrying <code>trace_id</code> — answers "what specifically happened," and can jump back to the corresponding trace.</p></div>
+  <div class="col"><h4>📊 metrics</h4><p>Aggregated numeric trends: counts, instantaneous values, distributions. Reported via <code>recordIncrement/Gauge/Histogram</code> — answers "is it healthy overall, what's the volume, what's the P95."</p></div>
+</div>
+
+
+<h2>Config as validation: surface misconfig at boot</h2>
+<p>A platform has dozens to hundreds of environment variables (DB address, Redis, secrets, various toggles). If one is wrong or missing, the worst case is the <strong>program starts anyway and crashes mysteriously mid-run</strong> — and the reported error is often light-years from the true root cause. Langfuse's countermeasure is to <strong>run all env through Zod validation</strong>: the shared layer uses <code>EnvSchema = z.object({...})</code> to declare each variable's type and constraints (e.g. <code>REDIS_PORT</code> uses <code>z.coerce.number()</code> to turn a string into a number, <code>REDIS_TLS_ENABLED</code> can only be <code>"true"|"false"</code>); the web layer uses <code>@t3-oss/env-nextjs</code>'s <code>createEnv</code> to split env into <strong>server</strong> (server-only, like <code>DATABASE_URL</code>) and <strong>client</strong> (may reach the browser, must have a <code>NEXT_PUBLIC_</code> prefix).</p>
+
+<p>This brings two hard wins: ① <strong>fail-fast</strong> — invalid config <strong>errors clearly the moment of startup</strong> ("DATABASE_URL is not a valid URL"), rather than running impaired and crashing on you at midnight. ② <strong>server/client boundary</strong> — <code>createEnv</code> forces a distinction between "secrets usable only server-side" and "public config that can ship in the front-end bundle," <strong>mechanically preventing you from fat-fingering a DB password into the browser</strong>. Config is no longer "a pile of <code>process.env.XXX</code> scattered everywhere, types all guesswork" but a <strong>declarative, type-safe, boundary-clear</strong> contract.</p>
+
+<table class="t">
+  <thead><tr><th>No validation (raw process.env)</th><th>Langfuse's Zod validation</th></tr></thead>
+  <tbody>
+    <tr><td>misconfig may crash mid-run</td><td><b>fail-fast</b>: errors clearly at startup</td></tr>
+    <tr><td><code>process.env.X</code> is always string|undefined</td><td><b>type-safe</b>: z.coerce to number, z.enum to limit values</td></tr>
+    <tr><td>a secret may be fat-fingered into the front-end bundle</td><td><b>server/client boundary</b>: createEnv enforces isolation</td></tr>
+    <tr><td>what configs exist and mean is buried in code</td><td><b>declarative contract</b>: one schema is the doc</td></tr>
+  </tbody>
+</table>
+
+<p>Putting "observability" and "config validation" in one lesson is because they push in <strong>the same direction</strong>: <strong>making the system "transparent, predictable, early-surfacing problems" to operators</strong>. Observability lets you see at <strong>runtime</strong> what the system is doing, where it's slow, where it errored; config validation plugs at <strong>startup</strong> a whole class of "misconfigured" low-level failures. One owns the run phase, one the boot phase, and together they're the baseline of "how operable is this platform."</p>
+
+
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Langfuse is itself an observability tool — why bother using OTel to observe itself? Is this dogfooding worth it?</strong> Very much so, and not just for "looking self-consistent." <strong>First, it's the most rigorous self-test</strong>: when you run your own product carrying your own production load every day, you feel the product's flaws first and most painfully — this "eat your own bitterness first" feedback is faster and truer than any user research. <strong>Second, it's technically seamless</strong>: Langfuse already speaks the OTel language (it can <strong>ingest</strong> your OTel data), so observing itself reuses the same trace/span concepts with near-zero extra cognitive cost — the spans it emits and the spans it ingests are isomorphic. <strong>Third, it forces observability to be "ready at hand"</strong>: precisely because it's used internally everywhere, <code>instrumentAsync</code> got polished into a thin wrap-once wrapper rather than hand-written OTel boilerplate at every site. <strong>A tool's best advertisement is that it can't live without itself.</strong><br><br>
+  <strong>Why bother making env into Zod validation + server/client separation — isn't reading <code>process.env.XXX</code> directly easier?</strong> Because "easier" saves you <strong>when writing</strong> and costs you <strong>when things break</strong>. Raw <code>process.env</code> has three sins: ① the type is always <code>string | undefined</code>, so a port you think is a number is actually a string, planting landmines in comparisons and arithmetic; ② misconfig <strong>doesn't error immediately</strong> — miss a <code>DATABASE_URL</code> and the app starts anyway, crashing only on the first DB query, by which point the error message is far from the root cause and debugging eats half a day; ③ most dangerous is <strong>boundary breach</strong>: a secret meant only for the server, fat-fingered with <code>NEXT_PUBLIC_</code> or bundled into the client, <strong>leaks to every visitor</strong>. Zod + <code>createEnv</code> solves all at once: validate at startup (fail-fast), auto type inference (type-safe), enforce server/client isolation (anti-leak). <strong>Treating "config" as "input" that needs validation, rather than a pile of freely-readable global strings, is the key step to keeping low-level failures out of production.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>Self-observability (dogfooding)</strong>: Langfuse observes itself with the <strong>same OTel</strong> it uses to observe your LLM apps. <code>instrumentAsync</code> (instrumentation/index.ts:54) is a span wrapper — open span, run logic, auto-traceException, span.end; used by Lessons 30/33/46/48.</li>
+    <li><strong>Trace + metrics in one place</strong>: the same module also has <code>getCurrentSpan</code>/<code>traceException</code>/<code>getTracer</code> and <code>recordGauge/Increment/Histogram</code> (metrics). It can also <strong>ingest</strong> OTel in reverse (OtelIngestionProcessor) — both ends speak OTel.</li>
+    <li><strong>Logs auto-correlate with traces</strong>: winston's <code>tracingFormat</code> injects the current span's <code>trace_id/span_id</code> (incl. dd.* Datadog style) into every log line. So logs↔traces jump in one click — a huge convenience for production debugging. Format text/json, level by env.</li>
+    <li><strong>Config as validation</strong>: all env passes through Zod (shared <code>EnvSchema = z.object</code>, web <code>createEnv</code> splitting server/client). Wins: <strong>fail-fast</strong> (error at startup not crash mid-run), <strong>type-safe</strong> (z.coerce/z.enum), <strong>server/client boundary</strong> (prevent secrets leaking to the front end).</li>
+    <li><strong>One direction</strong>: observability owns "runtime transparency," config validation owns "boot-time error-plugging," together deciding "how operable is this platform." Treat config as "input needing validation," not "freely-readable global strings."</li>
+  </ul>
+</div>
+
+<div class="selftest">
+<h2>🧪 Self-test - think about the design</h2>
+<div class="quiz">
+  <div class="qn">1. Langfuse is itself an LLM observability platform, yet internally it uses OpenTelemetry (instrumentAsync etc.) to observe itself everywhere. Which statement about this 'dogfooding' is most accurate?</div>
+  <ol class="opts">
+    <li>to make the code look more complex and professional</li>
+    <li>purely for marketing, with no real technical meaning</li>
+    <li>because OTel is the only available observability option</li>
+    <li>it's both the most rigorous self-test (running its own product under its own load daily, flaws surface first and most painfully) and technically seamless (it already speaks OTel and can ingest OTel, so observing itself reuses the same trace/span concepts at near-zero extra cost), and it forces instrumentAsync to be polished into a thin wrap-once wrapper</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Dogfooding has triple value at Langfuse. First, the truest self-test: when the team runs its own product under its own production traffic daily, the product's jank, defects, and rough edges are felt first and most acutely by developers—feedback faster and truer than any external research. Second, technical self-consistency: Langfuse already speaks the universal OTel language (it can ingest your app's OTel data), so observing itself reuses the same trace/span concepts, with emitted and ingested spans isomorphic, at near-zero extra cognitive load. Third, it forces observability to be 'ready at hand'—precisely because it's needed internally everywhere, instrumentAsync got polished into a 'wrap once' thin wrapper rather than hand-written OTel boilerplate everywhere. A tool's best endorsement is that it can't live without itself.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">2. Langfuse's winston logging has a tracingFormat formatter: every log line auto-injects the current active OTel span's trace_id/span_id. What debugging pain point does this solve?</div>
+  <ol class="opts">
+    <li>makes log files smaller</li>
+    <li>auto-reconciles 'logs' and 'distributed traces': from one error log follow trace_id to jump to that request's full trace (which services, each step's latency, which hop errored) in one click, and in reverse scoop all logs from a slow trace—otherwise the two are isolated islands and debugging means manually matching timestamps</li>
+    <li>encrypts the logs</li>
+    <li>makes log writes faster</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Observability often speaks of 'three pillars': traces, logs, metrics. But if the three are isolated, their value drops sharply—the classic pain: you see an error among a sea of logs but don't know which request it belongs to or what happened around it; or you eye a slow trace but can't scoop the logs it emitted along the way. tracingFormat connects these two islands with one line of 'auto-inject trace_id/span_id': logs carry the trace id, so logs↔traces jump in one click, cause and effect clear at a glance. Without it, debugging degrades to 'manually aligning timestamps', slow and error-prone. This is the key move of 'making the observability pillars work together'.</div></div></div>
+  </details>
+</div>
+<div class="quiz">
+  <div class="qn">3. Rather than reading process.env.XXX everywhere, Langfuse runs all env vars through Zod validation (shared EnvSchema, web createEnv splitting server/client). Which of the following is NOT a benefit of this?</div>
+  <ol class="opts">
+    <li>fail-fast: invalid config errors clearly at startup, rather than running impaired and crashing mysteriously mid-run</li>
+    <li>server/client boundary: createEnv enforces isolating server-only secrets from public config, preventing secrets leaking into the browser bundle</li>
+    <li>type-safe: z.coerce turns a port string into a number, z.enum limits values, no longer all string|undefined</li>
+    <li>makes the program use less memory at runtime</li>
+  </ol>
+  <details class="accordion" open>
+    <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Zod-validating env has three main benefits—fail-fast, type-safety, server/client boundary—but 'saving memory' isn't one: validation runs once at startup with no real impact on runtime memory, so choosing it as a 'benefit' is wrong. The real benefits: ① fail-fast—misconfig errors clearly the moment of startup (e.g. invalid DATABASE_URL), not crashing on first use with an error far from the root cause; ② type-safety—z.coerce/z.enum turn 'always string|undefined' raw env into values with definite types and value constraints; ③ server/client boundary—createEnv mechanically separates 'server-only secrets' from 'public config that can ship to the front end', preventing a fat-fingered DB password from leaking to every visitor. Core idea: treat config as 'input needing validation', not 'freely-readable global strings'.</div></div></div>
+  </details>
+</div>
+<div class="card spark">
+  <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
+  <ul>
+    <li>This lesson pairs 'observability' (runtime transparency: the trace/log/metric three pillars working together) with 'config validation' (boot-time error-plugging: Zod fail-fast), because both serve 'making the system transparent, predictable, and early-surfacing to operators'. Recall systems you've operated or built: how did you correlate traces, logs, and metrics (or did they each go their own way)? Have you been burned by 'misconfig that only crashed mid-run'? If defining a 'minimum operability' checklist for a new service, which items would you list?</li>
   </ul>
 </div>
 </div>
