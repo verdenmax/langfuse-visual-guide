@@ -3755,6 +3755,76 @@ QUIZZES = {
             },
         ],
     },
+    "54-design-themes-synthesis.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "这一课把 Langfuse 反复出现的设计归纳为六个主题（宽事件、不可变、异步、双存储、多租户、成本）。这一课的核心论点是？",
+                    "en": "This lesson distills Langfuse's recurring design into six themes (wide events, immutability, async, dual storage, multi-tenancy, cost). What's the lesson's central argument?",
+                },
+                "opts": [
+                    {
+                        "zh": "这六个不是互不相干的技巧，而是同一套世界观的六个切面——全都从「为宽的、结构化的事件数据做高吞吐、探索式可观测」这个目标推导而来；它们彼此印证、共同服务一个目标，这正是「架构」区别于「一堆技术选型」之处",
+                        "en": "the six aren't unrelated tricks but six facets of one worldview — all derived from the goal 'high-throughput, exploratory observability on wide, structured event data'; they mutually corroborate and jointly serve one goal, which is exactly what distinguishes 'architecture' from 'a pile of tech choices'",
+                    },
+                    {"zh": "这六个主题应该照搬到任何系统里", "en": "these six themes should be copied verbatim into any system"},
+                    {"zh": "Langfuse 的设计是六个独立团队各自决定的", "en": "Langfuse's design was decided independently by six separate teams"},
+                    {"zh": "这六个主题互相冲突，需要权衡取舍", "en": "the six themes conflict and require trade-offs against each other"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这一课的关键不在于列出六个名词，而在于揭示它们的「同源性」。把目标「为宽的结构化事件数据做高吞吐、探索式可观测」拆开：探索式→要保住高基数（宽事件）、不能预揉成固定指标；高吞吐→写要便宜（不可变避读时去重）、活要削峰（异步）、存要按访问形状分（双存储）；平台→要服务多租户（隔离）、要长期可维护（成本约束）。每个主题都是从「目标+规模」逼出来的必然，而非孤立偏好。这就是架构与「技术选型清单」的根本区别：架构是一组彼此印证、共同指向同一目标的取舍，拆掉任何一个，其余都会显得别扭。",
+                    "en": "This lesson's key isn't listing six nouns but revealing their common origin. Unpack the goal 'high-throughput, exploratory observability on wide structured event data': exploratory→preserve high cardinality (wide events), don't pre-mash into fixed metrics; high-throughput→cheap writes (immutability avoids read-time dedup), peak-shaving work (async), storage split by access shape (dual storage); platform→serve many tenants (isolation), maintainable long-term (cost constraint). Each theme is a necessity forced from 'goal+scale', not an isolated preference. That's the fundamental difference between architecture and a 'tech-choice checklist': architecture is a set of mutually-corroborating trade-offs pointing at one goal; remove any and the rest look awkward.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "「宽事件」与「不可变」这两个主题是怎么互相配合的？",
+                    "en": "How do the 'wide events' and 'immutability' themes reinforce each other?",
+                },
+                "opts": [
+                    {
+                        "zh": "宽事件主张把一次操作的全部上下文塞进一条又宽又富、写完基本不动的事件里；不可变则用「追加而非更新」承接这种高吞吐写入——改用「追加新行+查时合并」(ClickHouse AggregatingMergeTree)替代原地更新，避免更新逼出的读时去重隐藏成本",
+                        "en": "wide events advocate packing an operation's full context into one wide, rich event that basically doesn't move after writing; immutability handles this high-throughput write via 'append not update' — using 'append new rows + merge at query' (ClickHouse AggregatingMergeTree) instead of in-place update, avoiding the read-time-dedup hidden cost updates would force",
+                    },
+                    {"zh": "宽事件和不可变其实是同一件事的两个名字", "en": "wide events and immutability are really two names for the same thing"},
+                    {"zh": "不可变要求事件越窄越好，与宽事件矛盾", "en": "immutability requires the narrowest events, conflicting with wide events"},
+                    {"zh": "它们没有关系，只是凑在一节里讲", "en": "they're unrelated, just discussed in one section"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "宽事件决定「数据长什么样」——以 observation 为单位、把全部上下文（输入输出模型用量耗时+高基数自定义属性）装进一条事件，trace 只是关联句柄。这种又宽又富、海量产生的事件，写入方式必须便宜且可扩展，于是不可变接力：写完就不动、只追加。为什么不更新？因为在几十亿行规模上，更新会逼着查询做读时去重，凭空增加隐藏成本。ClickHouse 的 AggregatingMergeTree 正是这个主题的落地——同一实体多次写入不原地改，而是追加新行、查询时按规则 final 合并。所以两者是共谋：宽事件定义了数据形状，不可变让这种形状的海量写入扛得住。",
+                    "en": "Wide events decide 'what the data looks like'—per observation, packing all context (input/output/model/usage/latency + high-cardinality custom attributes) into one event, with the trace as just a correlation handle. Such wide, rich, massively-produced events need a write path that's cheap and scalable, so immutability takes over: written stays put, only append. Why not update? Because at billions of rows, updates force read-time dedup, conjuring hidden cost. ClickHouse's AggregatingMergeTree is this theme landing—the same entity written multiple times isn't modified in place but appended as new rows, merged by rule (final) at query. So the two conspire: wide events define the data shape, immutability makes that shape's massive writes survivable.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "架构原则文档里有一句反复被引用的话：「额外的数据库、队列、物化视图、迁移，都必须挣回它们的长期运维负担」。这句话体现的「成本」主题，对设计决策意味着什么？",
+                    "en": "The architecture principles doc has an oft-cited line: 'extra databases, queues, materialized views, and migrations must earn their long-term operational burden.' What does this 'cost' theme mean for design decisions?",
+                },
+                "opts": [
+                    {
+                        "zh": "把成本与运维简单性当作硬约束，而非「能加就加」：每个新增的活动部件都要先证明自己值这份长期维护成本。它解释了很多克制的选择(API契约要时间窗/字段选择/token分页、不给能扫全历史的危险默认)——能用更少部件达成目标几乎永远是更好的架构",
+                        "en": "treating cost and operational simplicity as hard constraints, not 'add it because you can': every new moving part must first prove it's worth its long-term maintenance cost. It explains many restrained choices (API contracts require time windows/field selection/token pagination, no dangerous scan-all-history defaults) — achieving the goal with fewer parts is almost always the better architecture",
+                    },
+                    {"zh": "意思是要尽量用最便宜的云服务", "en": "it means using the cheapest cloud services possible"},
+                    {"zh": "意思是不应该有任何数据库或队列", "en": "it means there should be no databases or queues at all"},
+                    {"zh": "意思是性能比一切都重要", "en": "it means performance matters more than anything"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这句话把「成本」从「钱」上升为「架构约束」。它针对的不是云账单，而是每个活动部件带来的长期运维负担——多一个数据库要备份/监控/升级、多一个队列要保活/排障、多一个物化视图要维护一致性、多一个迁移要小心演进。所以默认姿态是减法：加任何东西之前先问「它配不配」。这解释了 Langfuse 一系列克制选择：公共 API 强制时间窗口、暴露字段选择、用 token 分页、拒绝「默认扫全部历史」这种危险便利。其底层智慧是：能用更少的活动部件达成同样目标，几乎永远是更可维护、更不容易出事的架构。复杂度是要还的债，成本主题就是那把催你少借债的尺子。",
+                    "en": "This line elevates 'cost' from 'money' to an 'architectural constraint'. It targets not the cloud bill but the long-term operational burden of each moving part—an extra database to back up/monitor/upgrade, an extra queue to keep alive/debug, an extra materialized view to keep consistent, an extra migration to evolve carefully. So the default stance is subtraction: before adding anything, ask 'does it deserve to be here'. This explains Langfuse's restrained choices: the public API forces time windows, exposes field selection, uses token pagination, refuses the dangerous convenience of 'scan all history by default'. The underlying wisdom: achieving the same goal with fewer moving parts is almost always a more maintainable, less failure-prone architecture. Complexity is debt to be repaid; the cost theme is the ruler nudging you to borrow less.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课点出：迁移 Langfuse 的设计智慧，关键不是照搬具体选型（ClickHouse、fan-out 队列），而是学它的推导方式——先钉死「目标+规模」前提（探索式还是已知问题？写多还是读多？一个还是多个租户？容忍多大延迟？），再用「每个活动部件都要挣回运维负担」做减法。请挑一个你熟悉或正在做的系统，试着走一遍这个推导：它的目标+规模前提是什么？据此，六个主题里哪些适用、哪些不必要？你现有架构里有没有「没挣回运维负担」的部件？",
+                "en": "This lesson notes: transferring Langfuse's design wisdom isn't about copying specific choices (ClickHouse, fan-out queues) but learning its way of deriving — first nail the 'goal+scale' premises (exploratory or known questions? write-heavy or read-heavy? one tenant or many? how much latency tolerable?), then subtract via 'every moving part must earn its burden'. Pick a system you know or are building, and walk this derivation: what are its goal+scale premises? Given those, which of the six themes apply and which are unnecessary? Does your current architecture have any parts that 'haven't earned their operational burden'?",
+            },
+        ],
+    },
 }
 
 
