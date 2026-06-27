@@ -402,6 +402,29 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <p>同一个领料窗口还备了<strong>几种取货方式</strong>，应对不同读取场景——但它们共享同一套追踪/标签/重试机制：</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="一个 queryClickhouse 窗口三种取货方式：queryClickhouse 一次取回全部用于列表详情聚合、queryClickhouseStream 边读边吐用于批量导出内存有界、queryClickhouseWithProgress 带进度的流用于 SSE 流式仪表盘，三者共享 OTel span、log_comment 标签与退避重试">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="11.5" font-weight="700" fill="var(--accent-ink)">一个窗口，三种取货方式 —— 共享 OTel span · log_comment 标签 · 退避重试</text>
+  <rect x="20" y="42" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouse</text>
+  <text x="34" y="79" font-size="9.5" fill="var(--muted)">一次取回全部（结果读成数组）</text>
+  <rect x="20" y="98" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="118" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseStream</text>
+  <text x="34" y="135" font-size="9.5" fill="var(--muted)">边读边吐（流式 · 内存有界）</text>
+  <rect x="20" y="154" width="300" height="44" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="34" y="174" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseWithProgress</text>
+  <text x="34" y="191" font-size="9.5" fill="var(--muted)">带进度的流</text>
+  <rect x="392" y="42" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="69" font-size="10.5" fill="var(--ink)">列表 / 详情 / 聚合（装得下内存）</text>
+  <rect x="392" y="98" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="125" font-size="10.5" fill="var(--ink)">批量导出（结果可能巨大）</text>
+  <rect x="392" y="154" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="406" y="181" font-size="10.5" fill="var(--ink)">SSE 流式仪表盘（边查边推进度）</text>
+  <line x1="320" y1="64" x2="392" y2="64" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="120" x2="392" y2="120" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="176" x2="392" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
+
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">一次取回全部</span></div><div class="ld">最常用：跑查询、把结果一次性读成数组返回。绝大多数列表、详情、聚合都走它。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">边读边吐</span></div><div class="ld">大读不必把整个结果攒在内存里，而是<strong>流式</strong>一行行吐出——批量导出（第 12 课提过的导出）这类「结果可能巨大」的场景靠它，内存有界。</div></div>
@@ -578,6 +601,29 @@ API/worker), which route initiated it"</strong>. When one slow query drags down 
 query log — a way to <strong>weld observability into the data-access layer</strong> that scattered raw queries can never achieve.</p>
 
 <p>The same dispatch window also offers <strong>several pickup modes</strong> for different read scenarios — but they share the same tracing/tags/retry machinery:</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="one queryClickhouse window with three pickup modes: queryClickhouse fetches all at once for lists, detail and aggregations; queryClickhouseStream streams row by row for batch exports with bounded memory; queryClickhouseWithProgress is a progress-pushing stream for SSE dashboards; all three share OTel span, log_comment tags and backoff retry">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="11.5" font-weight="700" fill="var(--accent-ink)">one window, three pickup modes — sharing OTel span · log_comment tags · backoff retry</text>
+  <rect x="20" y="42" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouse</text>
+  <text x="34" y="79" font-size="9.5" fill="var(--muted)">fetch all at once (into an array)</text>
+  <rect x="20" y="98" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="118" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseStream</text>
+  <text x="34" y="135" font-size="9.5" fill="var(--muted)">stream as it reads (bounded memory)</text>
+  <rect x="20" y="154" width="300" height="44" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="34" y="174" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseWithProgress</text>
+  <text x="34" y="191" font-size="9.5" fill="var(--muted)">a progress-pushing stream</text>
+  <rect x="392" y="42" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="69" font-size="10.5" fill="var(--ink)">lists / detail / aggregations (fits memory)</text>
+  <rect x="392" y="98" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="125" font-size="10.5" fill="var(--ink)">batch exports (result may be huge)</text>
+  <rect x="392" y="154" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="406" y="181" font-size="10.5" fill="var(--ink)">SSE dashboards (push progress live)</text>
+  <line x1="320" y1="64" x2="392" y2="64" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="120" x2="392" y2="120" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="176" x2="392" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">fetch all at once</span></div><div class="ld">The common case: run the query, read the whole result into an array, return. Most lists, details, aggregations go through it.</div></div>

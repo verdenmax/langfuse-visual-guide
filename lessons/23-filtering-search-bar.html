@@ -399,6 +399,29 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 由数据库驱动安全地代入。哪怕你在过滤值里写 <code>'; DROP TABLE…</code>，它也只会被当成一个普通字符串去匹配，<strong>注入无从下手</strong>。加上工厂对「列是否存在、类型是否兼容」的前置校验，
 脏输入在编译期就被挡下——这正是第 22 课资源保护之外的另一道防线。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="一条 FilterState 条件经 apply 编译后一分为二：SQL 片段只留随机命名的占位符 level IN 大括号 pXY9z，用户的值则单独绑进 params，绝不拼进 SQL 字符串，哪怕值是分号 DROP TABLE 也只当普通字符串匹配，注入无从下手">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="52" width="214" height="100" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="74" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">FilterState 一条条件</text>
+  <text x="30" y="98" font-size="10" fill="var(--ink)">column: level</text>
+  <text x="30" y="118" font-size="10" fill="var(--ink)">operator: any of</text>
+  <text x="30" y="138" font-size="10" fill="var(--ink)">value: [ERROR, WARNING]</text>
+  <line x1="230" y1="102" x2="262" y2="102" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="262" y="74" width="120" height="56" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="322" y="98" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">apply()</text>
+  <text x="322" y="116" font-size="9.5" text-anchor="middle" fill="var(--muted)">编译 + 把关</text>
+  <line x1="382" y1="92" x2="430" y2="68" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="382" y1="114" x2="430" y2="128" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="430" y="44" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="444" y="64" font-size="9.5" fill="var(--muted)">SQL 片段（只留占位符）</text>
+  <text x="444" y="84" font-size="10.5" fill="var(--ink)">level IN {pXY9z: Array(String)}</text>
+  <rect x="430" y="104" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="444" y="124" font-size="9.5" fill="var(--muted)">params（用户值绑这里）</text>
+  <text x="444" y="144" font-size="10.5" fill="var(--ink)">{ pXY9z: [ERROR, WARNING] }</text>
+  <text x="360" y="182" font-size="10.5" text-anchor="middle" fill="var(--muted)">用户值只进 params（随机命名占位符），绝不拼进 SQL 字符串</text>
+  <text x="360" y="202" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">哪怕值写成 '; DROP TABLE…，也只当普通字符串匹配 → 注入无从下手</text>
+</svg>
+
 <div class="cols">
   <div class="col"><h4>😖 各输入直连各后端：N×M</h4><p>3 种输入 × 2 套后端 = 6 套翻译逻辑、6 处要各自防注入。新加一种输入（比如 AI），就得为<strong>每个后端</strong>重写对接、重写安全校验——组合爆炸，且总有一处会写漏。</p></div>
   <div class="col"><h4>😀 收敛到 FilterState：N+M</h4><p>每个输入只管「译成 FilterState」，每个后端只管「从 FilterState 译出 SQL」。校验与参数化<strong>只在中间做一次</strong>。新加输入只需 +1 个译入器，<strong>白嫖</strong>所有后端与全部安全。</p></div>
@@ -578,6 +601,29 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
 to a <strong>randomly-named placeholder</strong> (<code>stringFilter_xY9z</code>), safely substituted by the DB driver. Even if you write <code>'; DROP TABLE…</code> in a
 filter value, it's matched as a plain string — <strong>injection has no foothold</strong>. Plus the factory's up-front checks for "does the column exist, is the type
 compatible" stop dirty input at compile time — another line of defense beyond Lesson 22's resource protection.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="one FilterState condition compiled by apply splits into two: the SQL fragment keeps only a randomly-named placeholder level IN brace pXY9z, while the user's value is bound separately into params, never concatenated into the SQL string, so even a value like semicolon DROP TABLE is matched as a plain string and injection has no foothold">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="52" width="214" height="100" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="74" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one FilterState condition</text>
+  <text x="30" y="98" font-size="10" fill="var(--ink)">column: level</text>
+  <text x="30" y="118" font-size="10" fill="var(--ink)">operator: any of</text>
+  <text x="30" y="138" font-size="10" fill="var(--ink)">value: [ERROR, WARNING]</text>
+  <line x1="230" y1="102" x2="262" y2="102" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="262" y="74" width="120" height="56" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="322" y="98" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">apply()</text>
+  <text x="322" y="116" font-size="9.5" text-anchor="middle" fill="var(--muted)">compile + guard</text>
+  <line x1="382" y1="92" x2="430" y2="68" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="382" y1="114" x2="430" y2="128" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="430" y="44" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="444" y="64" font-size="9.5" fill="var(--muted)">SQL fragment (placeholder only)</text>
+  <text x="444" y="84" font-size="10.5" fill="var(--ink)">level IN {pXY9z: Array(String)}</text>
+  <rect x="430" y="104" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="444" y="124" font-size="9.5" fill="var(--muted)">params (user value bound here)</text>
+  <text x="444" y="144" font-size="10.5" fill="var(--ink)">{ pXY9z: [ERROR, WARNING] }</text>
+  <text x="360" y="182" font-size="10.5" text-anchor="middle" fill="var(--muted)">the user value goes only into params (a random placeholder), never into the SQL string</text>
+  <text x="360" y="202" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">even a value like '; DROP TABLE… is matched as plain text → injection has no foothold</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>😖 each input to each backend: N×M</h4><p>3 inputs × 2 backends = 6 translation logics, 6 places to each guard injection. Add a new input (say AI) and you must rewrite the wiring and security checks for <strong>every backend</strong> — a combinatorial explosion, and one spot always gets missed.</p></div>

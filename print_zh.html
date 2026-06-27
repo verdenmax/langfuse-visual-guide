@@ -4686,6 +4686,41 @@ web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流
 
 <p>预告一下整条读取链路：无论从哪道门进来，一次「查数据」的请求大致都要走这么几步。后面七课会逐站深入：</p>
 
+<svg viewBox="0 0 720 200" role="img" aria-label="一次查数据请求要走的五站读取链路：① 入口 tRPC 或 REST 先鉴权(L21/27)、② 把 FilterState 编译成参数化 SQL(L23)、③ 仓储层 queryClickhouse 统一执行(L22)、④ 读模型塑形 列表双查询或详情观测树(L24/25)、⑤ 返回并用 URL 状态渲染(L24)">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="28" font-size="12" font-weight="700" fill="var(--accent-ink)">一次「查数据」请求要走的 5 站（Part 4 路线图）</text>
+  <rect x="16" y="46" width="124" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="78" y="70" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 入口</text>
+  <text x="78" y="90" font-size="10" text-anchor="middle" fill="var(--ink)">tRPC / REST</text>
+  <text x="78" y="108" font-size="10" text-anchor="middle" fill="var(--muted)">先鉴权</text>
+  <text x="78" y="128" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">L21 / L27</text>
+  <rect x="156" y="46" width="124" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="218" y="70" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 过滤</text>
+  <text x="218" y="90" font-size="10" text-anchor="middle" fill="var(--ink)">FilterState</text>
+  <text x="218" y="108" font-size="10" text-anchor="middle" fill="var(--muted)">→ 参数化 SQL</text>
+  <text x="218" y="128" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">L23</text>
+  <rect x="296" y="46" width="124" height="92" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="358" y="70" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 仓储层</text>
+  <text x="358" y="90" font-size="9" text-anchor="middle" fill="var(--ink)">queryClickhouse</text>
+  <text x="358" y="108" font-size="10" text-anchor="middle" fill="var(--muted)">重试 / 打 tag</text>
+  <text x="358" y="128" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">L22</text>
+  <rect x="436" y="46" width="124" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="498" y="70" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 读模型</text>
+  <text x="498" y="90" font-size="10" text-anchor="middle" fill="var(--ink)">列表双查询</text>
+  <text x="498" y="108" font-size="10" text-anchor="middle" fill="var(--muted)">/ 详情观测树</text>
+  <text x="498" y="128" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">L24 / L25</text>
+  <rect x="576" y="46" width="124" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="638" y="70" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 返回渲染</text>
+  <text x="638" y="90" font-size="10" text-anchor="middle" fill="var(--ink)">URL 状态</text>
+  <text x="638" y="108" font-size="10" text-anchor="middle" fill="var(--muted)">列预设 / 分享</text>
+  <text x="638" y="128" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">L24</text>
+  <line x1="140" y1="92" x2="156" y2="92" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="280" y1="92" x2="296" y2="92" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="420" y1="92" x2="436" y2="92" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="560" y1="92" x2="576" y2="92" stroke="var(--blue)" stroke-width="2"></line>
+  <text x="360" y="168" font-size="11" text-anchor="middle" fill="var(--muted)">无论从哪道门进来，读取链路殊途同归；sessions（L26）是在 trace 之上再加一层「对话」视角</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>入口（tRPC 或 REST）</h4><p>UI 发 tRPC 调用、SDK 发 REST 请求；各自的入口先做<strong>鉴权</strong>，确认你能读这个 project（第 21、27 课）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>过滤与查询构建</h4><p>把 UI 的 <code>FilterState</code>（或 SDK 的查询参数）<strong>编译成参数化 SQL</strong>，并带上强制的 project_id 与时间窗（第 23 课）。</p></div></div>
@@ -4861,6 +4896,30 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
 <p>RBAC 最关键的一招，藏在 <code>enforceUserIsAuthedAndProjectMember</code> 里：它不等 resolver 跑，而是<strong>在中间件阶段就从请求输入里把 <code>projectId</code> 抠出来</strong>，
 再去 session 里查「你是不是这个 project 的成员」。这样一来，<strong>每个受保护路由都自动获得统一的租户校验</strong>，无需各写一遍，也不会因为某个路由作者一时疏忽而留下后门（呼应第 10 课「project_id 是隔离键」）：</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="RBAC 中间件在 resolver 之前把守：从请求原始输入抠出 projectId，再到 session 的组织到项目成员树里查你是不是该 project 成员，是成员或 admin 则放行去 resolver 读库，否则抛 403 FORBIDDEN，每个受保护路由因此自动获得统一租户校验">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="86" width="140" height="48" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="86" y="106" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">请求输入</text>
+  <text x="86" y="123" font-size="10" text-anchor="middle" fill="var(--muted)">{ projectId, … }</text>
+  <line x1="156" y1="110" x2="196" y2="110" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="196" y="36" width="250" height="150" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="321" y="58" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">RBAC 中间件（resolver 之前）</text>
+  <text x="210" y="84" font-size="10" fill="var(--ink)">① 抠出 projectId（parse 原始输入）</text>
+  <text x="210" y="108" font-size="10" fill="var(--ink)">② 查 session 的 组织→项目 成员树</text>
+  <text x="210" y="140" font-size="10.5" font-weight="700" fill="var(--accent-ink)">③ 是成员 或 admin？</text>
+  <text x="210" y="164" font-size="9" fill="var(--muted)">每个受保护路由自动统一校验</text>
+  <rect x="476" y="36" width="228" height="52" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="590" y="58" font-size="10" text-anchor="middle" fill="var(--accent-ink)">session.user.organizations</text>
+  <text x="590" y="76" font-size="9.5" text-anchor="middle" fill="var(--muted)">.flatMap(projects).find(id)</text>
+  <line x1="446" y1="108" x2="476" y2="68" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <rect x="476" y="104" width="228" height="40" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="590" y="129" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">✓ 放行 → resolver 读库</text>
+  <line x1="446" y1="138" x2="476" y2="124" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="476" y="156" width="228" height="40" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
+  <text x="590" y="181" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">✗ throw 403 FORBIDDEN</text>
+  <line x1="446" y1="152" x2="476" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
+
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/server/api/trpc.ts</span><span class="ln">enforceUserIsAuthedAndProjectMember :288</span></div>
   <pre class="code"><span class="kw">const</span> enforceUserIsAuthedAndProjectMember = t.<span class="fn">middleware</span>(<span class="kw">async</span> (opts) =&gt; {
@@ -5022,6 +5081,29 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
 按标签定位元凶——这是把<strong>可观测性焊进数据访问层</strong>的一招，散落各处的裸查询永远做不到。</p>
 
 <p>同一个领料窗口还备了<strong>几种取货方式</strong>，应对不同读取场景——但它们共享同一套追踪/标签/重试机制：</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="一个 queryClickhouse 窗口三种取货方式：queryClickhouse 一次取回全部用于列表详情聚合、queryClickhouseStream 边读边吐用于批量导出内存有界、queryClickhouseWithProgress 带进度的流用于 SSE 流式仪表盘，三者共享 OTel span、log_comment 标签与退避重试">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="11.5" font-weight="700" fill="var(--accent-ink)">一个窗口，三种取货方式 —— 共享 OTel span · log_comment 标签 · 退避重试</text>
+  <rect x="20" y="42" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouse</text>
+  <text x="34" y="79" font-size="9.5" fill="var(--muted)">一次取回全部（结果读成数组）</text>
+  <rect x="20" y="98" width="300" height="44" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="34" y="118" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseStream</text>
+  <text x="34" y="135" font-size="9.5" fill="var(--muted)">边读边吐（流式 · 内存有界）</text>
+  <rect x="20" y="154" width="300" height="44" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="34" y="174" font-size="11" font-weight="700" fill="var(--accent-ink)">queryClickhouseWithProgress</text>
+  <text x="34" y="191" font-size="9.5" fill="var(--muted)">带进度的流</text>
+  <rect x="392" y="42" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="69" font-size="10.5" fill="var(--ink)">列表 / 详情 / 聚合（装得下内存）</text>
+  <rect x="392" y="98" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="406" y="125" font-size="10.5" fill="var(--ink)">批量导出（结果可能巨大）</text>
+  <rect x="392" y="154" width="308" height="44" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="406" y="181" font-size="10.5" fill="var(--ink)">SSE 流式仪表盘（边查边推进度）</text>
+  <line x1="320" y1="64" x2="392" y2="64" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="120" x2="392" y2="120" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="320" y1="176" x2="392" y2="176" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">一次取回全部</span></div><div class="ld">最常用：跑查询、把结果一次性读成数组返回。绝大多数列表、详情、聚合都走它。</div></div>
@@ -5194,6 +5276,29 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
 <p>看清这段就抓住了过滤系统的<strong>安全底座</strong>：用户输入的值，<strong>永远不会被拼进 SQL 字符串</strong>，而是绑定到一个<strong>随机命名的占位符</strong>（<code>stringFilter_xY9z</code>），
 由数据库驱动安全地代入。哪怕你在过滤值里写 <code>'; DROP TABLE…</code>，它也只会被当成一个普通字符串去匹配，<strong>注入无从下手</strong>。加上工厂对「列是否存在、类型是否兼容」的前置校验，
 脏输入在编译期就被挡下——这正是第 22 课资源保护之外的另一道防线。</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="一条 FilterState 条件经 apply 编译后一分为二：SQL 片段只留随机命名的占位符 level IN 大括号 pXY9z，用户的值则单独绑进 params，绝不拼进 SQL 字符串，哪怕值是分号 DROP TABLE 也只当普通字符串匹配，注入无从下手">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <rect x="16" y="52" width="214" height="100" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="123" y="74" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">FilterState 一条条件</text>
+  <text x="30" y="98" font-size="10" fill="var(--ink)">column: level</text>
+  <text x="30" y="118" font-size="10" fill="var(--ink)">operator: any of</text>
+  <text x="30" y="138" font-size="10" fill="var(--ink)">value: [ERROR, WARNING]</text>
+  <line x1="230" y1="102" x2="262" y2="102" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="262" y="74" width="120" height="56" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="322" y="98" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">apply()</text>
+  <text x="322" y="116" font-size="9.5" text-anchor="middle" fill="var(--muted)">编译 + 把关</text>
+  <line x1="382" y1="92" x2="430" y2="68" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="382" y1="114" x2="430" y2="128" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="430" y="44" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="444" y="64" font-size="9.5" fill="var(--muted)">SQL 片段（只留占位符）</text>
+  <text x="444" y="84" font-size="10.5" fill="var(--ink)">level IN {pXY9z: Array(String)}</text>
+  <rect x="430" y="104" width="274" height="50" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="444" y="124" font-size="9.5" fill="var(--muted)">params（用户值绑这里）</text>
+  <text x="444" y="144" font-size="10.5" fill="var(--ink)">{ pXY9z: [ERROR, WARNING] }</text>
+  <text x="360" y="182" font-size="10.5" text-anchor="middle" fill="var(--muted)">用户值只进 params（随机命名占位符），绝不拼进 SQL 字符串</text>
+  <text x="360" y="202" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">哪怕值写成 '; DROP TABLE…，也只当普通字符串匹配 → 注入无从下手</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>😖 各输入直连各后端：N×M</h4><p>3 种输入 × 2 套后端 = 6 套翻译逻辑、6 处要各自防注入。新加一种输入（比如 AI），就得为<strong>每个后端</strong>重写对接、重写安全校验——组合爆炸，且总有一处会写漏。</p></div>
@@ -5563,6 +5668,27 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 
 <p>注意 <code>includeIO: false</code> 这个不起眼的参数——它是详情页性能的关键。设想一条 agent trace 有<strong>三百个观测</strong>，每个观测的 input/output 又是一段不短的 JSON：
 如果开树时就把全部 IO 一并拉回，光这一个请求就可能是几十 MB、几秒钟。Langfuse 的选择是<strong>树先到、IO 后取</strong>：</p>
+
+<svg viewBox="0 0 720 200" role="img" aria-label="整条 trace 的延迟不是单独存的，而是从观测的最早起 minStart 与最晚止 maxEnd 派生：多条观测在时间轴上错落分布，latencyMs 等于 maxEnd 减 minStart">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">整条 trace 的延迟：从观测的最早起、最晚止派生（不单独存）</text>
+  <line x1="60" y1="150" x2="688" y2="150" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="684" y="144" font-size="9.5" text-anchor="end" fill="var(--muted)">时间 →</text>
+  <rect x="80" y="44" width="200" height="16" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="86" y="56" font-size="9" fill="var(--ink)">span: 检索</text>
+  <rect x="150" y="68" width="330" height="16" rx="4" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="156" y="80" font-size="9" fill="var(--ink)">generation: LLM 调用</text>
+  <rect x="300" y="92" width="180" height="16" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="306" y="104" font-size="9" fill="var(--ink)">tool: 调外部 API</text>
+  <rect x="420" y="116" width="200" height="16" rx="4" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="426" y="128" font-size="9" fill="var(--ink)">span: 汇总</text>
+  <line x1="80" y1="40" x2="80" y2="162" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="80" y="38" font-size="9" text-anchor="middle" fill="var(--accent-ink)">minStart</text>
+  <line x1="620" y1="40" x2="620" y2="162" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <text x="620" y="38" font-size="9" text-anchor="middle" fill="var(--accent-ink)">maxEnd</text>
+  <line x1="80" y1="174" x2="620" y2="174" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="350" y="192" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">latencyMs = maxEnd − minStart（派生口径，永远和观测一致）</text>
+</svg>
 
 <div class="cols">
   <div class="col"><h4>😖 树带全 IO</h4><p>一次拉回三百个观测 + 它们的全部 IO，请求几十 MB、慢且占内存。可你打开详情时，<strong>大多数节点你压根不会展开</strong>——绝大部分 IO 是白拉的。</p></div>
