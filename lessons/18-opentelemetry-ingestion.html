@@ -392,6 +392,30 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>边缘适配、核心归一</b>：端点解析 OTLP（protobuf/JSON）→ span 本体落 S3、指针入 <code>OtelIngestionQueue</code>（+次队列）→ worker 用 <code>OtelIngestionProcessor</code> 把 span 翻译成<strong>原生 ingestion 事件</strong>，再走第 15–17 课同一条合并/算钱/落盘管道。源码：<code>web/.../otel/v1/traces/index.ts</code>、<code>OtelIngestionProcessor.ts</code>、<code>worker/.../otelIngestionQueue.ts</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="OpenTelemetry 摄取真实例子：一个 OTLP span 的语义属性 gen_ai.request.model、gen_ai.usage.*、name、operation.name 逐行映射到 observation 的 model、usageDetails、name、type。属性名对齐 server/otel/ObservationTypeMapper.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 OTLP span 映射成 observation</text>
+  <rect x="20" y="34" width="300" height="186" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="52" font-size="9" font-weight="700" fill="var(--blue)">OTLP span（标准遥测）</text>
+  <text x="32" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">name: &quot;chat completion&quot;</text>
+  <text x="32" y="88" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.operation.name: &quot;chat&quot;</text>
+  <text x="32" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.request.model: &quot;gpt-4o&quot;</text>
+  <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.input_tokens: 512</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.output_tokens: 88</text>
+  <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">startTimeUnixNano: …</text>
+  <text x="32" y="168" font-size="7.5" font-family="monospace" fill="var(--ink)">endTimeUnixNano: …</text>
+  <text x="32" y="200" font-size="7" fill="var(--muted)">任意 OTel SDK 都能发</text>
+  <g font-size="7" fill="var(--accent)"><line x1="324" y1="94" x2="392" y2="74" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,74 383,73 385,81" fill="var(--accent)"/><line x1="324" y1="104" x2="392" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,106 383,102 384,110" fill="var(--accent)"/><line x1="324" y1="128" x2="392" y2="138" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,138 383,134 384,142" fill="var(--accent)"/></g>
+  <rect x="396" y="34" width="304" height="186" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="408" y="52" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse observation</text>
+  <text x="408" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">type: GENERATION  ← operation.name</text>
+  <text x="408" y="92" font-size="7.5" font-family="monospace" fill="var(--ink)">name: &quot;chat completion&quot;</text>
+  <text x="408" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">model: &quot;gpt-4o&quot;  ← request.model</text>
+  <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails:</text>
+  <text x="408" y="142" font-size="7.5" font-family="monospace" fill="var(--ink)">  {input:512, output:88}</text>
+  <text x="408" y="160" font-size="7.5" font-family="monospace" fill="var(--ink)">startTime/endTime ← UnixNano</text>
+  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">无需改 SDK，OTel 直接进来</text>
+</svg>
+<div class="figcap"><b>OTel 是第二条入口</b>（属性名对齐 <code>packages/shared/src/server/otel/ObservationTypeMapper.ts</code>；<b>值为示例</b>）：你用任意 OpenTelemetry SDK 发出的 span，其 <code>gen_ai.*</code> 语义属性被<b>逐字段映射</b>成 observation——<code>gen_ai.request.model</code>→<code>model</code>、<code>gen_ai.usage.*</code>→<code>usageDetails</code>、<code>operation.name</code>→<code>type</code>。于是不改埋点也能接入 Langfuse。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/public/otel/v1/traces/index.ts &amp; OtelIngestionProcessor.ts</span><span class="ln">端点+发布</span></div>
@@ -604,6 +628,30 @@ parse + enqueue, return immediately" — only it parses the OpenTelemetry span f
   <rect x="150" y="156" width="420" height="54" rx="9" fill="none" stroke="var(--teal)" stroke-dasharray="5 4"/><text x="360" y="176" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">processToIngestionEvents → IngestionEventType[] (Lesson 13's event format)</text><text x="360" y="195" text-anchor="middle" font-size="8" fill="var(--muted)">observation → IngestionService.mergeAndWrite; trace → processEventBatch</text>
 </svg>
 <div class="figcap"><b>Adapt at the edge, unify at the core</b>: the endpoint parses OTLP (protobuf/JSON) → span body to S3, pointer to <code>OtelIngestionQueue</code> (+ secondary) → the worker uses <code>OtelIngestionProcessor</code> to translate spans into <strong>native ingestion events</strong>, then runs the same <a class="xref" href="15-ingestion-service.html">Lesson 15</a>–17 merge/cost/persist pipeline. Source: <code>web/.../otel/v1/traces/index.ts</code>, <code>OtelIngestionProcessor.ts</code>, <code>worker/.../otelIngestionQueue.ts</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="OpenTelemetry ingestion real example: an OTLP span's semantic attributes gen_ai.request.model, gen_ai.usage.*, name, operation.name map row-by-row to an observation's model, usageDetails, name, type. Attribute names per server/otel/ObservationTypeMapper.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an OTLP span mapped to an observation</text>
+  <rect x="20" y="34" width="300" height="186" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="52" font-size="9" font-weight="700" fill="var(--blue)">OTLP span (standard telemetry)</text>
+  <text x="32" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">name: &quot;chat completion&quot;</text>
+  <text x="32" y="88" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.operation.name: &quot;chat&quot;</text>
+  <text x="32" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.request.model: &quot;gpt-4o&quot;</text>
+  <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.input_tokens: 512</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.output_tokens: 88</text>
+  <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">startTimeUnixNano: …</text>
+  <text x="32" y="168" font-size="7.5" font-family="monospace" fill="var(--ink)">endTimeUnixNano: …</text>
+  <text x="32" y="200" font-size="7" fill="var(--muted)">任意 OTel SDK 都能发</text>
+  <g font-size="7" fill="var(--accent)"><line x1="324" y1="94" x2="392" y2="74" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,74 383,73 385,81" fill="var(--accent)"/><line x1="324" y1="104" x2="392" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,106 383,102 384,110" fill="var(--accent)"/><line x1="324" y1="128" x2="392" y2="138" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,138 383,134 384,142" fill="var(--accent)"/></g>
+  <rect x="396" y="34" width="304" height="186" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="408" y="52" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse observation</text>
+  <text x="408" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">type: GENERATION  ← operation.name</text>
+  <text x="408" y="92" font-size="7.5" font-family="monospace" fill="var(--ink)">name: &quot;chat completion&quot;</text>
+  <text x="408" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">model: &quot;gpt-4o&quot;  ← request.model</text>
+  <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails:</text>
+  <text x="408" y="142" font-size="7.5" font-family="monospace" fill="var(--ink)">  {input:512, output:88}</text>
+  <text x="408" y="160" font-size="7.5" font-family="monospace" fill="var(--ink)">startTime/endTime ← UnixNano</text>
+  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">无需改 SDK，OTel 直接进来</text>
+</svg>
+<div class="figcap"><b>OTel is a second entry point</b> (attribute names per <code>packages/shared/src/server/otel/ObservationTypeMapper.ts</code>; <b>values illustrative</b>): a span from any OpenTelemetry SDK has its <code>gen_ai.*</code> semantic attributes <b>mapped field-by-field</b> into an observation — <code>gen_ai.request.model</code>→<code>model</code>, <code>gen_ai.usage.*</code>→<code>usageDetails</code>, <code>operation.name</code>→<code>type</code>. So you can feed Langfuse without changing your instrumentation.</div>
 </div>
 
 <div class="codefile">

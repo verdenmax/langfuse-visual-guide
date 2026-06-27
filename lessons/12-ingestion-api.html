@@ -387,6 +387,34 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>极简的收件流程</b>：鉴权（API key 解析出 project，第 9·10 课）→ Zod 校验事件格式 → <code>processEventBatch</code> 把事件入队（同时把原件落 S3）→ 立即 200。整条链路上「重活」一件都不在这里做，所以 API 永远毫秒级返回。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="摄取 API 真实例子：POST /api/public/ingestion 带 Basic 认证，body 是 batch 数组含 trace-create 与 observation-create；返回 207 Multi-Status，body 为 successes 与 errors。状态码与 batch 形状对齐 api/public/ingestion.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次摄取请求与 207 响应</text>
+  <rect x="20" y="32" width="340" height="190" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="32" y="50" font-size="8" font-family="monospace" fill="var(--blue)">POST /api/public/ingestion</text>
+  <text x="32" y="64" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.7">Authorization: Basic &lt;pk:sk&gt;</text>
+  <text x="32" y="82" font-size="8" font-family="monospace" fill="var(--code-ink)">{ &quot;batch&quot;: [</text>
+  <text x="32" y="96" font-size="7.5" font-family="monospace" fill="var(--code-ink)">  { &quot;type&quot;:&quot;trace-create&quot;,</text>
+  <text x="32" y="108" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;chat_a1b2&quot;,&quot;name&quot;:&quot;qa&quot;} },</text>
+  <text x="32" y="124" font-size="7.5" font-family="monospace" fill="var(--code-ink)">  { &quot;type&quot;:&quot;observation-create&quot;,</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;obs_7f&quot;,&quot;type&quot;:&quot;GENERATION&quot;,</text>
+  <text x="32" y="148" font-size="7.5" font-family="monospace" fill="var(--code-ink)">      &quot;traceId&quot;:&quot;chat_a1b2&quot;} }</text>
+  <text x="32" y="162" font-size="8" font-family="monospace" fill="var(--code-ink)">] }</text>
+  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ 请求（攒批一次发）</text>
+  <line x1="362" y1="120" x2="396" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,120 387,115 387,125" fill="var(--accent)"/>
+  <rect x="398" y="32" width="302" height="190" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="412" y="50" font-size="9" font-weight="700" fill="var(--accent-ink)">207 Multi-Status</text>
+  <text x="412" y="68" font-size="8" font-family="monospace" fill="var(--code-ink)">{ &quot;successes&quot;: [</text>
+  <text x="412" y="82" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">    {&quot;id&quot;:&quot;chat_a1b2&quot;,&quot;status&quot;:201},</text>
+  <text x="412" y="94" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">    {&quot;id&quot;:&quot;obs_7f&quot;,&quot;status&quot;:201}</text>
+  <text x="412" y="108" font-size="8" font-family="monospace" fill="var(--code-ink)">  ],</text>
+  <text x="412" y="122" font-size="8" font-family="monospace" fill="var(--code-ink)">  &quot;errors&quot;: []</text>
+  <text x="412" y="136" font-size="8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="412" y="166" font-size="7.5" fill="var(--muted)">每事件各自成败，整批一次 207</text>
+  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ 响应（早返回，不等落库）</text>
+</svg>
+<div class="figcap"><b>一来一回</b>（状态码与 batch 形状对齐 <code>web/src/pages/api/public/ingestion.ts</code>；<b>值为示例</b>）：客户端把多个事件<b>攒成一个 batch</b> POST 上来，服务端校验入队后回 <code>207 Multi-Status</code>——<code>successes</code>/<code>errors</code> 逐事件给结果。207 而非 200，是因为「一批里可能有的成有的败」。</div>
+</div>
 
 <h2>一个摄取请求的一生</h2>
 <p>入口在 <code>web/src/pages/api/public/ingestion.ts</code> 的 <code>handler</code>。它收下请求体后，真正干活的是一个叫 <code>processEventBatch</code> 的共享函数：</p>
@@ -601,6 +629,34 @@ job). This is <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "fas
   <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
 </svg>
 <div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, <a class="xref" href="09-postgres-metadata-schema.html">L09</a>·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Ingestion API real example: POST /api/public/ingestion with Basic auth, body is a batch array with trace-create and observation-create; returns 207 Multi-Status with successes and errors. Status and batch shape per api/public/ingestion.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one ingestion request and the 207 response</text>
+  <rect x="20" y="32" width="340" height="190" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="32" y="50" font-size="8" font-family="monospace" fill="var(--blue)">POST /api/public/ingestion</text>
+  <text x="32" y="64" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.7">Authorization: Basic &lt;pk:sk&gt;</text>
+  <text x="32" y="82" font-size="8" font-family="monospace" fill="var(--code-ink)">{ &quot;batch&quot;: [</text>
+  <text x="32" y="96" font-size="7.5" font-family="monospace" fill="var(--code-ink)">  { &quot;type&quot;:&quot;trace-create&quot;,</text>
+  <text x="32" y="108" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;chat_a1b2&quot;,&quot;name&quot;:&quot;qa&quot;} },</text>
+  <text x="32" y="124" font-size="7.5" font-family="monospace" fill="var(--code-ink)">  { &quot;type&quot;:&quot;observation-create&quot;,</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;obs_7f&quot;,&quot;type&quot;:&quot;GENERATION&quot;,</text>
+  <text x="32" y="148" font-size="7.5" font-family="monospace" fill="var(--code-ink)">      &quot;traceId&quot;:&quot;chat_a1b2&quot;} }</text>
+  <text x="32" y="162" font-size="8" font-family="monospace" fill="var(--code-ink)">] }</text>
+  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ request（攒批一次发）</text>
+  <line x1="362" y1="120" x2="396" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,120 387,115 387,125" fill="var(--accent)"/>
+  <rect x="398" y="32" width="302" height="190" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="412" y="50" font-size="9" font-weight="700" fill="var(--accent-ink)">207 Multi-Status</text>
+  <text x="412" y="68" font-size="8" font-family="monospace" fill="var(--code-ink)">{ &quot;successes&quot;: [</text>
+  <text x="412" y="82" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">    {&quot;id&quot;:&quot;chat_a1b2&quot;,&quot;status&quot;:201},</text>
+  <text x="412" y="94" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">    {&quot;id&quot;:&quot;obs_7f&quot;,&quot;status&quot;:201}</text>
+  <text x="412" y="108" font-size="8" font-family="monospace" fill="var(--code-ink)">  ],</text>
+  <text x="412" y="122" font-size="8" font-family="monospace" fill="var(--code-ink)">  &quot;errors&quot;: []</text>
+  <text x="412" y="136" font-size="8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="412" y="166" font-size="7.5" fill="var(--muted)">per-event success/failure, one 207 for the batch</text>
+  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ response（早返回，不等落库）</text>
+</svg>
+<div class="figcap"><b>One round trip</b> (status and batch shape per <code>web/src/pages/api/public/ingestion.ts</code>; <b>values illustrative</b>): the client <b>batches several events</b> into one POST; the server validates, enqueues and returns <code>207 Multi-Status</code> — <code>successes</code>/<code>errors</code> give a per-event result. It's 207, not 200, because a batch can be partly OK and partly failed.</div>
 </div>
 
 <h2>The life of one ingestion request</h2>

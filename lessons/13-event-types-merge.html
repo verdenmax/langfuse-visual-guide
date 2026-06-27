@@ -394,6 +394,36 @@ Langfuse 用 Zod 把它定义得一清二楚：先有一个 <code>base</code>（
 </svg>
 <div class="figcap"><b>信封 = 固定外壳 + 可变 body</b>：<code>base</code> 持有 <code>id</code>（事件 id）、<code>timestamp</code>、<code>metadata</code> 和判别字段 <code>type</code>；<code>type</code> 决定 <code>body</code> 套用哪一套 Zod 规则。这正是 <code>z.discriminatedUnion("type", […])</code> 的工作方式。源码：<code>packages/shared/src/server/ingestion/types.ts:597</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 204" role="img" aria-label="事件合并真实例子：同一 id 的 observation-create 带 name/input，observation-update 带 output/usage/endTime，按 id 合并成最终一行 observation，后到的非空字段补齐。语义对齐 IngestionService 合并，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：create + update 合并成一行</text>
+  <rect x="20" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="52" font-size="8.5" font-weight="700" fill="var(--blue)">① create（开始时）</text>
+  <text x="32" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f</text>
+  <text x="32" y="88" font-size="7.5" font-family="monospace" fill="var(--code-ink)">type: GENERATION</text>
+  <text x="32" y="104" font-size="7.5" font-family="monospace" fill="var(--code-ink)">name: answer</text>
+  <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--code-ink)">input: {messages}</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--faint)">output: —</text>
+  <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--faint)">usage: —</text>
+  <text x="32" y="180" font-size="7" fill="var(--muted)">先发：知道什么算什么</text>
+  <text x="250" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">+</text>
+  <rect x="266" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--purple)"/><text x="278" y="52" font-size="8.5" font-weight="700" fill="var(--purple)">② update（结束时）</text>
+  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← 同一个</text>
+  <text x="278" y="88" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
+  <text x="278" y="104" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">usageDetails: {512,88}</text>
+  <text x="278" y="120" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">endTime: …+1.8s</text>
+  <text x="278" y="180" font-size="7" fill="var(--muted)">后发：补上结束才知的</text>
+  <text x="496" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">=</text>
+  <rect x="512" y="34" width="188" height="160" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="524" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ 合并后的一行</text>
+  <text x="524" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
+  <text x="524" y="88" font-size="7.5" font-family="monospace" fill="var(--ink)">name: answer</text>
+  <text x="524" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">input: {messages}</text>
+  <text x="524" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">output: &quot;Here is…&quot;</text>
+  <text x="524" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails: {512,88}</text>
+  <text x="524" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">endTime: …+1.8s</text>
+  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">非空字段补齐</text>
+</svg>
+<div class="figcap"><b>同 id 即合并</b>（语义对齐 <code>IngestionService</code> 合并；<b>值为示例</b>）：一次 LLM 调用<b>开始</b>时发一个 <code>observation-create</code>（知道 name/input），<b>结束</b>时发一个 <code>observation-update</code>（补上 output/usage/endTime）。两者 <code>id</code> 相同，<b>按 id 合并</b>成最终一行，后到的非空字段补齐——所以 SDK 不必在内存里攥着整条记录直到结束。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts</span><span class="ln">L597</span></div>
@@ -636,6 +666,36 @@ gathers the dozen-plus events into one schema. To validate, Zod reads the <code>
   <rect x="310" y="194" width="380" height="28" rx="8" fill="var(--bg)" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="500" y="212" text-anchor="middle" font-size="8.5" fill="var(--faint)">…18 types total (trace / 14 observation events / score / sdk-log / dataset-run-item)</text>
 </svg>
 <div class="figcap"><b>Envelope = fixed shell + variable body</b>: <code>base</code> holds <code>id</code> (event id), <code>timestamp</code>, <code>metadata</code> and the discriminator <code>type</code>; <code>type</code> decides which Zod ruleset the <code>body</code> follows. That's exactly how <code>z.discriminatedUnion("type", […])</code> works. Source: <code>packages/shared/src/server/ingestion/types.ts:597</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 204" role="img" aria-label="Event merge real example: an observation-create with name/input and an observation-update with output/usage/endTime share an id and merge into one final observation row; later non-null fields fill in. Semantics per IngestionService merge, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: create + update merge into one row</text>
+  <rect x="20" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="52" font-size="8.5" font-weight="700" fill="var(--blue)">① create (at start)</text>
+  <text x="32" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f</text>
+  <text x="32" y="88" font-size="7.5" font-family="monospace" fill="var(--code-ink)">type: GENERATION</text>
+  <text x="32" y="104" font-size="7.5" font-family="monospace" fill="var(--code-ink)">name: answer</text>
+  <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--code-ink)">input: {messages}</text>
+  <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--faint)">output: —</text>
+  <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--faint)">usage: —</text>
+  <text x="32" y="180" font-size="7" fill="var(--muted)">先发：知道什么算什么</text>
+  <text x="250" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">+</text>
+  <rect x="266" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--purple)"/><text x="278" y="52" font-size="8.5" font-weight="700" fill="var(--purple)">② update (at end)</text>
+  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← 同一个</text>
+  <text x="278" y="88" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
+  <text x="278" y="104" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">usageDetails: {512,88}</text>
+  <text x="278" y="120" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">endTime: …+1.8s</text>
+  <text x="278" y="180" font-size="7" fill="var(--muted)">后发：补上结束才知的</text>
+  <text x="496" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">=</text>
+  <rect x="512" y="34" width="188" height="160" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="524" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ merged row</text>
+  <text x="524" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
+  <text x="524" y="88" font-size="7.5" font-family="monospace" fill="var(--ink)">name: answer</text>
+  <text x="524" y="104" font-size="7.5" font-family="monospace" fill="var(--ink)">input: {messages}</text>
+  <text x="524" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">output: &quot;Here is…&quot;</text>
+  <text x="524" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails: {512,88}</text>
+  <text x="524" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">endTime: …+1.8s</text>
+  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">非空字段补齐</text>
+</svg>
+<div class="figcap"><b>Same id merges</b> (semantics per <code>IngestionService</code> merge; <b>values illustrative</b>): an LLM call sends an <code>observation-create</code> at the <b>start</b> (name/input known) and an <code>observation-update</code> at the <b>end</b> (output/usage/endTime). They share an <code>id</code>, so they <b>merge by id</b> into one final row with later non-null fields filled in — the SDK needn't hold the whole record in memory until the end.</div>
 </div>
 
 <div class="codefile">

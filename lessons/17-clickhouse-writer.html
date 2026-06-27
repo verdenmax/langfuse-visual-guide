@@ -389,6 +389,22 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>攒批缓冲带</b>：每张表一个内存队列；<code>addToQueue</code> 喂入，达 <code>batchSize</code> 立刻 flush 该表，或定时器每 <code>writeInterval</code> 触发 <code>flushAll</code> 刷所有表。flush 把整批一次 <code>INSERT</code>（<code>JSONEachRow</code>）。源码：<code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 226" role="img" aria-label="ClickhouseWriter 时间轴：事件按表攒进内存缓冲，达到 batchSize 触发按量 flush，或每 writeInterval 触发按时 flush，关机时 flushAll(true) 排空。常量名对齐 ClickhouseWriter，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：批写器的攒批与 flush 时刻</text>
+  <line x1="40" y1="180" x2="690" y2="180" stroke="var(--line)" stroke-width="1.2"/><text x="690" y="196" text-anchor="end" font-size="8" fill="var(--muted)">时间 →</text>
+  <text x="20" y="70" font-size="8" fill="var(--muted)">缓冲量</text>
+  <path d="M40 175 L150 100 L152 175 L260 70 L262 175 L400 130 L500 175" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
+  <line x1="40" y1="100" x2="690" y2="100" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4 3"/><text x="44" y="96" font-size="7.5" fill="var(--blue)">batchSize 阈值</text>
+  <line x1="150" y1="60" x2="150" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="108" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="151" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
+  <line x1="260" y1="60" x2="260" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="218" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="261" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
+  <line x1="400" y1="120" x2="400" y2="180" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/><rect x="356" y="104" width="92" height="16" rx="4" fill="var(--blue-soft)"/><text x="402" y="116" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">② 按时 flush</text>
+  <text x="400" y="150" text-anchor="middle" font-size="6.6" fill="var(--blue)">writeInterval 到点</text>
+  <line x1="600" y1="40" x2="600" y2="180" stroke="var(--red)" stroke-width="1.2"/><rect x="556" y="44" width="92" height="16" rx="4" fill="var(--red-soft)"/><text x="602" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--red)">③ flushAll(true)</text><text x="600" y="76" text-anchor="middle" font-size="6.6" fill="var(--red)">关机排空·不丢</text>
+  <text x="40" y="212" font-size="7.5" fill="var(--muted)">谁先到算谁：攒满 batchSize 或到 writeInterval 就批量 INSERT 一次；优雅停机一次写尽</text>
+</svg>
+<div class="figcap"><b>攒批落盘：按量 + 按时 双触发</b>（常量名对齐 <code>ClickhouseWriter</code>；<b>值为示例</b>）：事件先进<b>每表内存缓冲</b>，<code>batchSize</code> 攒满就<b>按量 flush</b>，否则每 <code>writeInterval</code> <b>按时 flush</b>，谁先到算谁；关机时 <code>flushAll(true)</code> 一次写尽不丢数据。用「批量 INSERT」换 ClickHouse 的高写入吞吐。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/services/ClickhouseWriter/index.ts</span><span class="ln">两个触发</span></div>
@@ -597,6 +613,22 @@ handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in on
   <line x1="548" y1="128" x2="582" y2="128" stroke="var(--teal)" stroke-width="1.8"/><polygon points="582,128 573,124 573,132" fill="var(--teal)"/>
 </svg>
 <div class="figcap"><b>A batching buffer</b>: one in-memory queue per table; <code>addToQueue</code> feeds it, hitting <code>batchSize</code> flushes that table immediately, or the timer fires <code>flushAll</code> every <code>writeInterval</code>. flush sends the whole batch in one <code>INSERT</code> (<code>JSONEachRow</code>). Source: <code>worker/src/services/ClickhouseWriter/index.ts:34-135, 550-600</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 226" role="img" aria-label="ClickhouseWriter timeline: events accumulate into per-table memory buffers, a flush fires at batchSize (by size) or every writeInterval (by time), and flushAll(true) drains at shutdown. Constant names per ClickhouseWriter, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: the batch writer accumulating then flushing</text>
+  <line x1="40" y1="180" x2="690" y2="180" stroke="var(--line)" stroke-width="1.2"/><text x="690" y="196" text-anchor="end" font-size="8" fill="var(--muted)">time →</text>
+  <text x="20" y="70" font-size="8" fill="var(--muted)">缓冲量</text>
+  <path d="M40 175 L150 100 L152 175 L260 70 L262 175 L400 130 L500 175" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
+  <line x1="40" y1="100" x2="690" y2="100" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4 3"/><text x="44" y="96" font-size="7.5" fill="var(--blue)">batchSize 阈值</text>
+  <line x1="150" y1="60" x2="150" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="108" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="151" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
+  <line x1="260" y1="60" x2="260" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="218" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="261" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
+  <line x1="400" y1="120" x2="400" y2="180" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/><rect x="356" y="104" width="92" height="16" rx="4" fill="var(--blue-soft)"/><text x="402" y="116" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">② 按时 flush</text>
+  <text x="400" y="150" text-anchor="middle" font-size="6.6" fill="var(--blue)">writeInterval 到点</text>
+  <line x1="600" y1="40" x2="600" y2="180" stroke="var(--red)" stroke-width="1.2"/><rect x="556" y="44" width="92" height="16" rx="4" fill="var(--red-soft)"/><text x="602" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--red)">③ flushAll(true)</text><text x="600" y="76" text-anchor="middle" font-size="6.6" fill="var(--red)">关机排空·不丢</text>
+  <text x="40" y="212" font-size="7.5" fill="var(--muted)">谁先到算谁：攒满 batchSize 或到 writeInterval 就批量 INSERT 一次；优雅停机一次写尽</text>
+</svg>
+<div class="figcap"><b>Batched persistence: flush by size and by time</b> (constant names per <code>ClickhouseWriter</code>; <b>values illustrative</b>): events enter a <b>per-table memory buffer</b>; a full <code>batchSize</code> triggers a <b>flush by size</b>, otherwise every <code>writeInterval</code> triggers a <b>flush by time</b>, whichever comes first; at shutdown <code>flushAll(true)</code> drains everything losslessly. Batched INSERTs buy ClickHouse's high write throughput.</div>
 </div>
 
 <div class="codefile">
