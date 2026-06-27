@@ -238,3 +238,230 @@ _EN54.append(r"""
 """)
 
 LESSON_54 = {"zh": "\n".join(_ZH54), "en": "\n".join(_EN54)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L55 · 终章·一条 trace 的完整一生 / Capstone: the full life of a trace
+# ══════════════════════════════════════════════════════════════════════
+_ZH55 = []
+_EN55 = []
+
+# (L55 sections below)
+
+_ZH55.append(r"""
+<p class="lead">
+最后一课，我们做一件浪漫的事：<strong>跟着一条 trace，走完它的一生</strong>。前面 54 课，每一课都像在解剖一个器官——这一课，让这条 trace <strong>活过来</strong>，从它在你应用里<strong>出生</strong>的那一毫秒，到被摄取、落库、被查看、被评分、触发自动化、最终在保留期到点时<strong>谢幕</strong>。沿途，我们会在每个驿站标出「这是第几课讲的」，让你亲眼看见：那些你逐课学过的零件，是怎么<strong>严丝合缝地咬合成一台完整机器</strong>的。
+读完这一程，你对 Langfuse 的理解会从「知道每个部件」升级为「看见整个系统如何协作」。而你会发现，这整台机器，归根到底只是在<strong>从容地回答一个问题</strong>：你的 AI 应用，到底做了什么——而你怎么<strong>记录它、找到它、评判它、并据此行动</strong>？
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  把一条 trace 想象成一个<strong>「快递包裹」</strong>的一生。它在<strong>寄件人手里诞生</strong>（你的应用调用 LLM，SDK 把这次调用打包）；在<strong>分拣中心被高速处理</strong>（摄取链路：扫码登记、分拣、入库）；在<strong>仓库里被妥善存放</strong>（三个库各放一部分：单号信息、明细、大件）；被人<strong>在系统里查询追踪</strong>（列表、详情、按时间线看它的来龙去脉）；被<strong>质检员抽检打分</strong>（评估与监控）；触发<strong>下游联动</strong>（到货通知、转寄、归档）；最后在<strong>保管期满时被销毁</strong>，且三个库一处不漏地清干净。
+  你前面 54 课，是分别参观了寄件台、分拣机、货架、查询台、质检站、通知中心、销毁间——这一课，是<strong>跟着同一个包裹，把这些站点一次性串成一条流水线</strong>，看它们如何首尾相接、共同完成「让每一次 AI 调用都<strong>有据可查、可评可控</strong>」这件事。
+</div>
+""")
+
+# (L55 sec1 below)
+
+_ZH55.append(r"""
+<h2>第一程：出生 → 摄取 → 落库</h2>
+<p><strong>① 出生（第12课）。</strong>你的应用调一次 LLM，<strong>SDK</strong> 就地创建一条 trace 和它下面的若干 observation，把输入、输出、模型、用量都记下来，<strong>攒成一批</strong>，异步 POST 到摄取 API——你的主流程<strong>几乎无感</strong>。<strong>② 摄取（第13-19课）。</strong>API 先用 API key 认证（<strong>第49课</strong>的两层哈希校验），把原始事件<strong>落进 S3</strong>、把任务<strong>塞进 Redis 队列</strong>就立刻 200 返回——这就是「<strong>快接收</strong>」。然后 <strong>worker</strong> 从队列取出，做校验、解析、可能的合并，<strong>upsert 进 ClickHouse</strong>。<strong>③ 落库（第13课）。</strong>这条 trace 最终<strong>散成三份</strong>安家：可分析的事件明细进 <strong>ClickHouse</strong>（不可变、AggregatingMergeTree 查时合并）、大块输入输出进 <strong>S3</strong>、相关元数据进 <strong>Postgres</strong>。出生到落库，第10课「双(三)存储」与第54课「异步、不可变」两大主题，在这里第一次合奏。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="一条trace的一生时间线：出生(SDK创建,L12)→摄取(API认证落S3塞Redis队列worker处理,L13-19/L49)→落库(散成三份:ClickHouse事件+S3负载+Postgres元数据)→被读(列表详情会话REST,L20-27)→被评估(eval打分监控告警数据集,L28-36)→被作用(自动化webhook/Slack分析导出批量,L44-47)→退场(保留期跨三存储删除,L52)，全程被OTel观测(L51)、按plan门控(L50)、按project隔离">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一条 trace 的一生：七个驿站，串成一条流水线</text>
+  <line x1="40" y1="70" x2="690" y2="70" stroke="var(--faint)" stroke-width="2"/><polygon points="690,70 680,65 680,75" fill="var(--faint)"/>
+  <circle cx="70" cy="70" r="6" fill="var(--teal)"/><text x="70" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">①出生</text><text x="70" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">SDK创建</text><text x="70" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L12</text>
+  <circle cx="170" cy="70" r="6" fill="var(--blue)"/><text x="170" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">②摄取</text><text x="170" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">S3+队列+worker</text><text x="170" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L13-19/L49</text>
+  <circle cx="280" cy="70" r="6" fill="var(--accent)"/><text x="280" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">③落库</text><text x="280" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">CH+S3+PG</text><text x="280" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L13</text>
+  <circle cx="390" cy="70" r="6" fill="var(--blue)"/><text x="390" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">④被读</text><text x="390" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">列表/详情/REST</text><text x="390" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L20-27</text>
+  <circle cx="500" cy="70" r="6" fill="var(--accent)"/><text x="500" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">⑤被评估</text><text x="500" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">eval/监控/数据集</text><text x="500" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L28-36</text>
+  <circle cx="600" cy="70" r="6" fill="var(--blue)"/><text x="600" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">⑥被作用</text><text x="600" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">自动化/导出</text><text x="600" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L44-47</text>
+  <circle cx="675" cy="70" r="6" fill="var(--muted)"/><text x="672" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--muted)">⑦退场</text><text x="672" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">跨存储删除</text><text x="672" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L52</text>
+  <rect x="40" y="138" width="650" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="365" y="156" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">贯穿全程的三条隐线</text><text x="365" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">全程被平台自己的 OTel/日志观测(L51) · 按组织 plan 门控功能(L50) · 每一步都按 projectId 隔离(多租户)</text>
+  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">六大主题在这条流水线上各就各位</text><text x="365" y="226" text-anchor="middle" font-size="6.4" fill="var(--muted)">宽事件(数据形状)·不可变(怎么写)·异步(在哪干)·双存储(存哪)·多租户(归谁)·成本(什么值得做)</text>
+</svg>
+<div class="figcap"><b>一条 trace 的完整生命周期</b>：出生(L12 SDK) → 摄取(L13-19 摄取链路 + L49 API key 认证) → 落库(L13 ClickHouse/S3/Postgres) → 被读(L20-27) → 被评估(L28-36) → 被作用(L44-47) → 退场(L52)。三条隐线贯穿：自观测(L51)、plan 门控(L50)、projectId 多租户隔离。</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>出生：SDK 就地打包（L12）</h4><p>应用调 LLM，SDK 创建 trace + observation，记下输入/输出/模型/用量，攒批异步 POST——主流程几乎无感。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>摄取：快接收 + 异步处理（L13-19, L49）</h4><p>API 用 API key 两层哈希认证、原始事件落 S3、塞 Redis 队列即返回；worker 取出做校验解析、upsert 进 ClickHouse。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>落库：散成三份安家（L13）</h4><p>事件明细→ClickHouse(不可变,查时合并)、大块负载→S3、元数据→Postgres。「双(三)存储 + 异步 + 不可变」三主题首次合奏。</p></div></div>
+</div>
+""")
+
+# (L55 sec2 below)
+
+_ZH55.append(r"""
+<h2>第二程：被读 → 被评估</h2>
+<p><strong>④ 被读（第20-27课）。</strong>数据进来了，人要看。trace 出现在<strong>列表页</strong>——这里只查 ClickHouse 的<strong>紧凑表示</strong>（窄选列、时间窗、token 分页，第24课），快而省；你点进<strong>详情页</strong>，才把完整的 observation 树和大块输入输出从 S3 取出来（第25课）；<strong>会话视图</strong>把同一用户的多条 trace 串起来看（第26课）；而程序想读，走<strong>公共 REST API</strong>（第27课，scale-aware 契约）。<strong>⑤ 被评估（第28-36课）。</strong>光看不够，还要<strong>判好坏</strong>：一条 <strong>LLM-as-judge</strong> 评估器读这条 trace 的输入输出、调一个裁判模型给它打分写回 score（第28-31课）；<strong>监控</strong>盯着分数的聚合，越过阈值就发告警（第33课）；这条 trace 还可能被<strong>加进数据集</strong>当测试用例、在<strong>实验</strong>里和别的 prompt/模型对比（第34-36课）。注意这里出现了一个优雅的<strong>闭环</strong>：trace 产生 score、score 又能驱动监控与实验，<strong>观测的产物反过来改进应用</strong>。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="被读与被评估：落库的trace一面被读(列表查CH紧凑表示L24/详情取S3大字段L25/会话L26/REST L27)，一面被评估(LLM裁判打分L28-31→score写回，监控盯聚合越阈值告警L33，加数据集做实验L34-36)；score又驱动监控与实验形成闭环——观测产物反哺应用">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">既被人看，也被评判——还形成改进闭环</text>
+  <rect x="280" y="44" width="160" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">落库的 trace</text><text x="360" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">CH 明细 + S3 负载 + PG 元数据</text>
+  <rect x="24" y="110" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">④ 被读（L20-27）</text><text x="124" y="145" text-anchor="middle" font-size="6.2" fill="var(--muted)">列表：CH 紧凑表示(L24)</text><text x="124" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">详情：取 S3 大字段(L25)</text><text x="124" y="171" text-anchor="middle" font-size="6.2" fill="var(--muted)">会话：串同用户(L26)</text><text x="124" y="184" text-anchor="middle" font-size="6.2" fill="var(--muted)">REST：scale-aware 契约(L27)</text><text x="124" y="198" text-anchor="middle" font-size="5.8" fill="var(--faint)">人/程序读它</text>
+  <rect x="496" y="110" width="200" height="96" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">⑤ 被评估（L28-36）</text><text x="596" y="145" text-anchor="middle" font-size="6.2" fill="var(--muted)">LLM 裁判打分→score(L28-31)</text><text x="596" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">监控盯聚合越阈值告警(L33)</text><text x="596" y="171" text-anchor="middle" font-size="6.2" fill="var(--muted)">加数据集/做实验(L34-36)</text><text x="596" y="186" text-anchor="middle" font-size="6.2" fill="var(--muted)">人工标注补 score(L32)</text>
+  <line x1="280" y1="74" x2="224" y2="120" stroke="var(--blue)" stroke-width="1.3"/><polygon points="224,120 233,116 230,124" fill="var(--blue)"/>
+  <line x1="440" y1="74" x2="496" y2="120" stroke="var(--teal)" stroke-width="1.3"/><polygon points="496,120 487,116 490,124" fill="var(--teal)"/>
+  <path d="M 596 206 q 0 28 -236 6" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="360,213 369,210 367,218" fill="var(--accent)"/>
+  <text x="360" y="224" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">闭环：score 驱动监控与实验 → 反过来改进 prompt/模型/应用</text>
+</svg>
+<div class="figcap"><b>被读 + 被评估 + 闭环</b>：读路径 L20-27（列表 CH 紧凑表示、详情取 S3、会话、公共 REST）；评估 L28-36（LLM-as-judge 写回 score、监控聚合告警、人工标注、数据集/实验）。score 既是观测产物，又反向驱动监控与实验——形成「观测→评估→改进」的闭环。</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">4</div><div class="sc"><h4>被读：列表快、详情全（L20-27）</h4><p>列表只查 CH 紧凑表示(窄列/时间窗/token 分页)，详情才从 S3 取完整树与大字段；会话串同用户；REST 给程序读。「双存储 + scale-aware 契约 + 成本」主题在此。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>被评估：判好坏、成闭环（L28-36）</h4><p>LLM 裁判/人工标注给 trace 打分写回 score；监控盯分数聚合越阈值告警；加数据集做实验。score 反向驱动改进——观测的产物反哺应用。</p></div></div>
+</div>
+""")
+
+# (L55 sec3 below)
+
+_ZH55.append(r"""
+<h2>第三程：被作用 → 退场（与三条隐线）</h2>
+<p><strong>⑥ 被作用（第44-47课）。</strong>这条 trace 不只是躺着被看——它能<strong>触发行动</strong>。它的某个变化（或它引发的告警）匹配上一个<strong>自动化</strong>的触发器，就投递一个 <strong>webhook</strong>（第44课，一路 SSRF 纵深防御）或发到 <strong>Slack</strong>（第45课）；它会被<strong>分析集成</strong>源源不断地导进你自己的 PostHog/S3（第46课，两级 fan-out + 增量水位）；你也可以把它连同一票筛出来的 trace 一起<strong>批量导出</strong>成 CSV（第47课）。<strong>⑦ 退场（第52课）。</strong>数据不是永生的：保留期一到，它会被<strong>跨三个存储一处不漏地删干净</strong>（先 ClickHouse + S3、最后 Postgres，留住重试锚点）。一条 trace 的一生，至此圆满落幕。</p>
+
+<p>而这整段旅程，始终被<strong>三条隐线</strong>笼罩：① 它从生到死的每一步，都被平台<strong>自己的 OTel/日志观测着</strong>（第51课，dogfooding——观测工具观测自己）；② 它能用到的每个功能，都被这个组织的 <strong>plan/entitlement 默默门控</strong>（第50课）；③ 它的每一次读、写、删，都被严格<strong>按 projectId 隔离</strong>（多租户），别的租户碰不到。<strong>七个驿站串起骨架，三条隐线织成底色</strong>——这，就是 Langfuse 这台机器的全貌。</p>
+
+<table class="t">
+  <thead><tr><th>一生的驿站</th><th>发生了什么</th><th>课</th><th>主导主题</th></tr></thead>
+  <tbody>
+    <tr><td>① 出生</td><td>SDK 创建 trace+observation，攒批异步上报</td><td>L12</td><td>异步</td></tr>
+    <tr><td>② 摄取</td><td>认证→落 S3→Redis 队列→worker 处理</td><td>L13-19, L49</td><td>异步·多租户</td></tr>
+    <tr><td>③ 落库</td><td>散成三份：CH 明细 + S3 负载 + PG 元数据</td><td>L13</td><td>双存储·不可变</td></tr>
+    <tr><td>④ 被读</td><td>列表紧凑/详情取大字段/会话/REST</td><td>L20-27</td><td>双存储·成本</td></tr>
+    <tr><td>⑤ 被评估</td><td>LLM 裁判打分→score、监控告警、数据集/实验</td><td>L28-36</td><td>宽事件(高基数)</td></tr>
+    <tr><td>⑥ 被作用</td><td>webhook/Slack、分析导出、批量导出</td><td>L44-47</td><td>异步·成本</td></tr>
+    <tr><td>⑦ 退场</td><td>保留期到，跨三存储删除(留重试锚点)</td><td>L52</td><td>双存储</td></tr>
+    <tr><td><b>贯穿</b></td><td>自观测 · plan 门控 · projectId 隔离</td><td>L51·L50·全栈</td><td>多租户·成本</td></tr>
+  </tbody>
+</table>
+""")
+
+_ZH55.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍 · 全书收尾</div>
+  <strong>跟完这条 trace 的一生，你该带走的「那个大问题」是什么？</strong> 是这个：<strong>当你的应用把一部分判断交给了一个你无法直接读懂、还时常飘忽的 LLM，你怎么重新拿回「看得见、说得清、控得住」？</strong> Langfuse 这台看似庞大的机器，从头到尾只是在从容地回答它。把这条 trace 的七个驿站连起来读，答案的形状就浮现了——<strong>记录（出生+摄取+落库，把每次调用变成可查的宽事件）→ 找到（被读，在海量里快速定位）→ 评判（被评估，给「好不好」一个可量化的 score）→ 行动（被作用，让结论自动驱动下游）</strong>，最后还得<strong>负责任地退场（删除）</strong>、并且这一切要在<strong>高规模、多租户、可控成本</strong>下成立。你会发现，第54课那六个主题不是抽象口号：宽事件让「记录」保住细节、双存储让「找到」又快又省、异步让「记录与行动」在高吞吐下不塌、多租户让它能服务所有人、成本让它长期养得起。<strong>每一个工程取舍，最终都服务于「把 AI 应用的不可观测，变回可观测」这一件事。</strong><br><br>
+  <strong>而你,读完这 55 课,真正应该带走的不是某段源码,是一种「看系统」的眼光。</strong>下次你面对任何一个陌生的复杂系统,别再只问「这个函数干嘛」,而要追问:它的<strong>目标和规模前提</strong>是什么?数据<strong>从哪来、长什么样、到哪去</strong>?哪些活儿<strong>必须同步、哪些可以异步</strong>?哪些状态<strong>必须强一致、哪些可以最终一致</strong>?它怎么<strong>隔离租户、怎么控制成本、怎么观测自己</strong>?——这些问题,正是这 55 课反复演练的。Langfuse 只是一个足够真实、足够完整的<strong>范本</strong>;真正的收获,是你从此能用<strong>架构师的眼睛</strong>,去看见任何系统表象之下那套<strong>彼此印证的取舍</strong>。这趟旅程到这里就结束了,但用这双眼睛去读代码的旅程,才刚刚开始。
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点 · 全书终</div>
+  <ul>
+    <li><strong>一条 trace 的七个驿站</strong>：出生(L12)→摄取(L13-19,L49)→落库(L13)→被读(L20-27)→被评估(L28-36)→被作用(L44-47)→退场(L52)。每课学的零件，在这条流水线上严丝合缝地咬合。</li>
+    <li><strong>三条贯穿全程的隐线</strong>：自观测(L51 dogfooding)、plan/entitlement 门控(L50)、projectId 多租户隔离(全栈)——七驿站串骨架，三隐线织底色。</li>
+    <li><strong>一个优雅的闭环</strong>：trace 产生 score，score 驱动监控与实验，反过来改进 prompt/模型/应用——观测的产物反哺应用，这是「LLM 工程平台」的灵魂。</li>
+    <li><strong>六大主题各就各位</strong>：宽事件(记录保细节)、不可变+异步(高吞吐扛得住)、双存储(找得快又省)、多租户(服务所有人)、成本(长期养得起)——第54课的六个主题，在这条一生里各司其职。</li>
+    <li><strong>带走一种眼光</strong>：Langfuse 回答的大问题是「把 AI 应用的不可观测变回可观测」——记录→找到→评判→行动→负责任退场。你真正该带走的不是某段源码，而是用「目标+规模→取舍」的架构师眼光去看任何系统的能力。<strong>55 课到此为止，但这双眼睛刚刚睁开。</strong></li>
+  </ul>
+</div>
+""")
+
+_EN55.append(r"""
+<p class="lead">
+For the last lesson, we do something romantic: <strong>follow one trace through its whole life</strong>. The previous 54 lessons each dissected an organ — this one brings the trace <strong>alive</strong>, from the millisecond it's <strong>born</strong> in your app, to being ingested, stored, viewed, scored, triggering automations, and finally <strong>taking its bow</strong> when the retention period expires. Along the way, we mark each station with "this is the lesson that covered it," so you see with your own eyes how the parts you learned lesson by lesson <strong>mesh seamlessly into one complete machine</strong>.
+By the end of this journey, your understanding of Langfuse upgrades from "knowing each part" to "seeing the whole system collaborate." And you'll find this whole machine is, at bottom, calmly answering one question: what did your AI app actually do — and how do you <strong>record it, find it, judge it, and act on it</strong>?
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Picture a trace's life as a <strong>"parcel."</strong> It's <strong>born in the sender's hands</strong> (your app calls an LLM, the SDK packages that call); it's <strong>processed at high speed in a sorting center</strong> (the ingestion path: scan, register, sort, shelve); it's <strong>properly stored in a warehouse</strong> (three stores each hold a part: tracking info, details, oversized items); it's <strong>queried and tracked in the system</strong> (lists, details, viewing its story on a timeline); it's <strong>spot-checked and scored by QC</strong> (evaluation and monitoring); it triggers <strong>downstream linkage</strong> (arrival notice, forwarding, archival); and finally, <strong>destroyed when the storage period ends</strong>, with all three stores cleaned missing none.
+  Your previous 54 lessons toured the sending desk, the sorter, the shelves, the query counter, the QC station, the notification center, the destruction room separately — this lesson <strong>follows the same parcel, stringing these stations into one assembly line</strong>, watching them connect end to end to jointly accomplish "making every AI call <strong>traceable, assessable, and controllable</strong>."
+</div>
+""")
+
+_EN55.append(r"""
+<h2>Leg one: born → ingested → stored</h2>
+<p><strong>① Born (Lesson 12).</strong> Your app calls an LLM, the <strong>SDK</strong> creates a trace and its child observations on the spot, recording input, output, model, usage, <strong>batches them up</strong>, and async-POSTs to the ingestion API — your main flow <strong>barely notices</strong>. <strong>② Ingested (Lessons 13-19).</strong> The API first authenticates by API key (<strong>Lesson 49</strong>'s two-tier hash check), <strong>lands the raw event in S3</strong>, <strong>pushes the task to a Redis queue</strong>, and returns 200 immediately — that's "<strong>receive fast</strong>." Then the <strong>worker</strong> pulls from the queue, validates, parses, possibly merges, and <strong>upserts into ClickHouse</strong>. <strong>③ Stored (Lesson 13).</strong> The trace finally <strong>splits into three copies</strong> to settle: analyzable event detail into <strong>ClickHouse</strong> (immutable, AggregatingMergeTree merging at query), bulky inputs/outputs into <strong>S3</strong>, related metadata into <strong>Postgres</strong>. From birth to storage, Lesson 10's "dual (tri) storage" and Lesson 54's "async, immutability" themes first play in concert here.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="A trace's life timeline: born (SDK creates, L12) → ingested (API auth, land S3, push Redis queue, worker processes, L13-19/L49) → stored (split into three: ClickHouse events + S3 payloads + Postgres metadata) → read (list/detail/session/REST, L20-27) → evaluated (eval scoring, monitor alerts, datasets, L28-36) → acted on (automation webhook/Slack, analytics export, batch, L44-47) → retired (retention cross-store deletion, L52), observed by OTel throughout (L51), gated by plan (L50), isolated by project">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A trace's life: seven stations, one assembly line</text>
+  <line x1="40" y1="70" x2="690" y2="70" stroke="var(--faint)" stroke-width="2"/><polygon points="690,70 680,65 680,75" fill="var(--faint)"/>
+  <circle cx="70" cy="70" r="6" fill="var(--teal)"/><text x="70" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">①born</text><text x="70" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">SDK creates</text><text x="70" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L12</text>
+  <circle cx="170" cy="70" r="6" fill="var(--blue)"/><text x="170" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">②ingest</text><text x="170" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">S3+queue+worker</text><text x="170" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L13-19/L49</text>
+  <circle cx="280" cy="70" r="6" fill="var(--accent)"/><text x="280" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">③stored</text><text x="280" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">CH+S3+PG</text><text x="280" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L13</text>
+  <circle cx="390" cy="70" r="6" fill="var(--blue)"/><text x="390" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">④read</text><text x="390" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">list/detail/REST</text><text x="390" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L20-27</text>
+  <circle cx="500" cy="70" r="6" fill="var(--accent)"/><text x="500" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">⑤evaluate</text><text x="500" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">eval/monitor/dataset</text><text x="500" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L28-36</text>
+  <circle cx="600" cy="70" r="6" fill="var(--blue)"/><text x="600" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">⑥act on</text><text x="600" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">automation/export</text><text x="600" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L44-47</text>
+  <circle cx="675" cy="70" r="6" fill="var(--muted)"/><text x="672" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--muted)">⑦retire</text><text x="672" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">cross-store delete</text><text x="672" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L52</text>
+  <rect x="40" y="138" width="650" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="365" y="156" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">three hidden threads running throughout</text><text x="365" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">observed by the platform's own OTel/logs (L51) · features gated by org plan (L50) · every step isolated by projectId (multi-tenancy)</text>
+  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">the six themes take their places on this assembly line</text><text x="365" y="226" text-anchor="middle" font-size="6.4" fill="var(--muted)">wide events(shape)·immutability(how to write)·async(where work)·dual storage(where stored)·multi-tenancy(whose)·cost(what's worth doing)</text>
+</svg>
+<div class="figcap"><b>A trace's complete lifecycle</b>: born (L12 SDK) → ingested (L13-19 ingestion path + L49 API-key auth) → stored (L13 ClickHouse/S3/Postgres) → read (L20-27) → evaluated (L28-36) → acted on (L44-47) → retired (L52). Three hidden threads throughout: self-observability (L51), plan gating (L50), projectId multi-tenant isolation.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Born: SDK packages on the spot (L12)</h4><p>The app calls an LLM, the SDK creates trace + observations, records input/output/model/usage, batches and async-POSTs — the main flow barely notices.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Ingested: receive fast + process async (L13-19, L49)</h4><p>The API authenticates by API-key two-tier hash, lands the raw event in S3, pushes to a Redis queue and returns; the worker pulls, validates/parses, upserts into ClickHouse.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Stored: split into three to settle (L13)</h4><p>Event detail→ClickHouse (immutable, merge at query), bulky payloads→S3, metadata→Postgres. The "dual (tri) storage + async + immutability" themes first play in concert.</p></div></div>
+</div>
+""")
+
+_EN55.append(r"""
+<h2>Leg two: read → evaluated</h2>
+<p><strong>④ Read (Lessons 20-27).</strong> The data's in; people want to see it. The trace appears in the <strong>list view</strong> — which queries only ClickHouse's <strong>compact representation</strong> (narrow field selection, time windows, token pagination, Lesson 24), fast and cheap; you click into the <strong>detail view</strong>, and only then are the full observation tree and bulky inputs/outputs fetched from S3 (Lesson 25); the <strong>session view</strong> strings together one user's multiple traces (Lesson 26); and a program reads it via the <strong>public REST API</strong> (Lesson 27, a scale-aware contract). <strong>⑤ Evaluated (Lessons 28-36).</strong> Seeing isn't enough; you must <strong>judge quality</strong>: an <strong>LLM-as-judge</strong> evaluator reads this trace's input/output, calls a judge model to score it, and writes back a score (Lessons 28-31); a <strong>monitor</strong> watches the aggregate of scores and alerts when crossing a threshold (Lesson 33); the trace may also be <strong>added to a dataset</strong> as a test case and compared against other prompts/models in <strong>experiments</strong> (Lessons 34-36). Notice an elegant <strong>closed loop</strong> here: the trace produces a score, and the score in turn drives monitoring and experiments — <strong>the products of observation feed back to improve the app</strong>.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Read and evaluated: the stored trace is on one side read (list queries CH compact representation L24/detail fetches S3 big fields L25/session L26/REST L27), on the other evaluated (LLM judge scoring L28-31→score written back, monitor watches aggregate alerts on threshold L33, added to dataset for experiments L34-36); the score in turn drives monitoring and experiments forming a closed loop — observation products feed the app">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Both viewed and judged — and forms an improvement loop</text>
+  <rect x="280" y="44" width="160" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">the stored trace</text><text x="360" y="80" text-anchor="middle" font-size="6.2" fill="var(--muted)">CH detail + S3 payload + PG metadata</text>
+  <rect x="24" y="110" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">④ read (L20-27)</text><text x="124" y="145" text-anchor="middle" font-size="6.2" fill="var(--muted)">list: CH compact repr (L24)</text><text x="124" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">detail: fetch S3 big fields (L25)</text><text x="124" y="171" text-anchor="middle" font-size="6.2" fill="var(--muted)">session: string one user (L26)</text><text x="124" y="184" text-anchor="middle" font-size="6.2" fill="var(--muted)">REST: scale-aware contract (L27)</text><text x="124" y="198" text-anchor="middle" font-size="5.8" fill="var(--faint)">humans/programs read it</text>
+  <rect x="496" y="110" width="200" height="96" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">⑤ evaluated (L28-36)</text><text x="596" y="145" text-anchor="middle" font-size="6.2" fill="var(--muted)">LLM judge scores→score (L28-31)</text><text x="596" y="158" text-anchor="middle" font-size="6.2" fill="var(--muted)">monitor watches aggregate, alerts (L33)</text><text x="596" y="171" text-anchor="middle" font-size="6.2" fill="var(--muted)">add to dataset / experiment (L34-36)</text><text x="596" y="186" text-anchor="middle" font-size="6.2" fill="var(--muted)">human annotation adds score (L32)</text>
+  <line x1="280" y1="74" x2="224" y2="120" stroke="var(--blue)" stroke-width="1.3"/><polygon points="224,120 233,116 230,124" fill="var(--blue)"/>
+  <line x1="440" y1="74" x2="496" y2="120" stroke="var(--teal)" stroke-width="1.3"/><polygon points="496,120 487,116 490,124" fill="var(--teal)"/>
+  <path d="M 596 206 q 0 28 -236 6" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="360,213 369,210 367,218" fill="var(--accent)"/>
+  <text x="360" y="224" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">loop: score drives monitoring & experiments → in turn improves prompt/model/app</text>
+</svg>
+<div class="figcap"><b>Read + evaluated + closed loop</b>: read path L20-27 (list CH compact representation, detail fetch S3, session, public REST); evaluation L28-36 (LLM-as-judge writes back score, monitor aggregate alerts, human annotation, datasets/experiments). The score is both an observation product and a driver of monitoring and experiments — forming an "observe→evaluate→improve" loop.</div>
+</div>
+
+<div class="vflow">
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Read: list fast, detail full (L20-27)</h4><p>The list queries only CH compact representation (narrow columns/time windows/token pagination), detail fetches the full tree and big fields from S3; session strings one user; REST serves programs. The "dual storage + scale-aware contract + cost" themes are here.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>Evaluated: judge quality, close the loop (L28-36)</h4><p>LLM-judge/human annotation scores the trace, writes back; the monitor watches score aggregates and alerts on threshold; add to a dataset for experiments. The score drives improvement in turn — observation products feed the app.</p></div></div>
+</div>
+""")
+
+_EN55.append(r"""
+<h2>Leg three: acted on → retired (with the three hidden threads)</h2>
+<p><strong>⑥ Acted on (Lessons 44-47).</strong> The trace doesn't just lie there being viewed — it can <strong>trigger action</strong>. Some change in it (or an alert it raised) matches an <strong>automation</strong>'s trigger, delivering a <strong>webhook</strong> (Lesson 44, with full SSRF defense in depth) or posting to <strong>Slack</strong> (Lesson 45); it's continuously exported into your own PostHog/S3 by <strong>analytics integrations</strong> (Lesson 46, two-level fan-out + incremental watermark); you can also <strong>batch-export</strong> it together with a filtered set of traces to CSV (Lesson 47). <strong>⑦ Retired (Lesson 52).</strong> Data isn't immortal: when the retention period expires, it's <strong>deleted across all three stores missing none</strong> (ClickHouse + S3 first, Postgres last, keeping the retry anchor). A trace's life thus comes to a complete close.</p>
+
+<p>And this whole journey is always wrapped in <strong>three hidden threads</strong>: ① every step from birth to death is <strong>observed by the platform's own OTel/logs</strong> (Lesson 51, dogfooding — the observability tool observing itself); ② every feature it can use is <strong>silently gated by the org's plan/entitlement</strong> (Lesson 50); ③ its every read, write, delete is strictly <strong>isolated by projectId</strong> (multi-tenancy), untouchable by other tenants. <strong>Seven stations string the skeleton, three hidden threads weave the background</strong> — this is the full picture of the Langfuse machine.</p>
+
+<table class="t">
+  <thead><tr><th>Life station</th><th>What happened</th><th>Lesson</th><th>Lead theme</th></tr></thead>
+  <tbody>
+    <tr><td>① born</td><td>SDK creates trace+observation, batches async report</td><td>L12</td><td>async</td></tr>
+    <tr><td>② ingested</td><td>auth→land S3→Redis queue→worker processes</td><td>L13-19, L49</td><td>async·multi-tenancy</td></tr>
+    <tr><td>③ stored</td><td>split into three: CH detail + S3 payload + PG metadata</td><td>L13</td><td>dual storage·immutability</td></tr>
+    <tr><td>④ read</td><td>list compact/detail fetches big fields/session/REST</td><td>L20-27</td><td>dual storage·cost</td></tr>
+    <tr><td>⑤ evaluated</td><td>LLM judge scores→score, monitor alerts, datasets/experiments</td><td>L28-36</td><td>wide events(high cardinality)</td></tr>
+    <tr><td>⑥ acted on</td><td>webhook/Slack, analytics export, batch export</td><td>L44-47</td><td>async·cost</td></tr>
+    <tr><td>⑦ retired</td><td>retention expires, cross-store deletion (keep retry anchor)</td><td>L52</td><td>dual storage</td></tr>
+    <tr><td><b>throughout</b></td><td>self-observability · plan gating · projectId isolation</td><td>L51·L50·full-stack</td><td>multi-tenancy·cost</td></tr>
+  </tbody>
+</table>
+""")
+
+_EN55.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off · Send-off</div>
+  <strong>Having followed this trace's life, what's "the big question" you should carry away?</strong> It's this: <strong>when your app hands part of its judgment to an LLM you can't directly read and that often drifts, how do you reclaim "visible, articulable, controllable"?</strong> This seemingly-vast Langfuse machine is, from start to finish, calmly answering it. String the trace's seven stations together and the shape of the answer emerges — <strong>record (born+ingested+stored, turning each call into a queryable wide event) → find (read, locating fast among the masses) → judge (evaluated, giving "good or not" a quantifiable score) → act (acted on, letting conclusions auto-drive downstream)</strong>, and finally <strong>retire responsibly (deletion)</strong> — and all of this must hold under <strong>high scale, multi-tenancy, and controlled cost</strong>. You'll find Lesson 54's six themes aren't abstract slogans: wide events let "record" keep detail, dual storage lets "find" be fast and cheap, async keeps "record and act" from collapsing under high throughput, multi-tenancy lets it serve everyone, cost lets it stay affordable long-term. <strong>Every engineering trade-off ultimately serves one thing: turning an AI app's unobservability back into observability.</strong><br><br>
+  <strong>And what you should truly carry away from these 55 lessons isn't a snippet of source — it's a way of "seeing systems."</strong> Next time you face any unfamiliar complex system, don't just ask "what does this function do," but probe: what are its <strong>goal and scale premises</strong>? Where does data <strong>come from, what shape is it, where does it go</strong>? Which work <strong>must be sync, which can be async</strong>? Which state <strong>must be strongly consistent, which can be eventually consistent</strong>? How does it <strong>isolate tenants, control cost, observe itself</strong>? — these are exactly the questions these 55 lessons rehearsed over and over. Langfuse is merely a real-enough, complete-enough <strong>specimen</strong>; the real gain is that you can now use an <strong>architect's eyes</strong> to see, beneath any system's surface, the set of <strong>mutually-corroborating trade-offs</strong>. This journey ends here, but the journey of reading code with these eyes has only just begun.
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points · The end</div>
+  <ul>
+    <li><strong>A trace's seven stations</strong>: born (L12)→ingested (L13-19,L49)→stored (L13)→read (L20-27)→evaluated (L28-36)→acted on (L44-47)→retired (L52). The parts learned per lesson mesh seamlessly on this assembly line.</li>
+    <li><strong>Three hidden threads throughout</strong>: self-observability (L51 dogfooding), plan/entitlement gating (L50), projectId multi-tenant isolation (full-stack) — seven stations string the skeleton, three threads weave the background.</li>
+    <li><strong>An elegant closed loop</strong>: the trace produces a score, the score drives monitoring and experiments, in turn improving prompt/model/app — observation products feed the app, the soul of an "LLM engineering platform."</li>
+    <li><strong>The six themes take their places</strong>: wide events (record keeps detail), immutability+async (survives high throughput), dual storage (find fast and cheap), multi-tenancy (serve everyone), cost (affordable long-term) — Lesson 54's six themes each do their job across this life.</li>
+    <li><strong>Carry away a way of seeing</strong>: the big question Langfuse answers is "turn an AI app's unobservability back into observability" — record→find→judge→act→retire responsibly. What you should truly carry away isn't a snippet of source but the ability to see any system with an architect's "goal+scale→trade-offs" eyes. <strong>The 55 lessons end here, but these eyes have only just opened.</strong></li>
+  </ul>
+</div>
+""")
+
+LESSON_55 = {"zh": "\n".join(_ZH55), "en": "\n".join(_EN55)}

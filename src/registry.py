@@ -72,4 +72,5 @@ CONTENT = {
     "52-data-lifecycle-and-deletion.html": part10.LESSON_52,
     "53-build-test-dev-workflow.html": part10.LESSON_53,
     "54-design-themes-synthesis.html": part11.LESSON_54,
+    "55-capstone-trace-life.html": part11.LESSON_55,
 }
