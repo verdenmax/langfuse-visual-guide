@@ -474,6 +474,35 @@ Langfuse 只在<strong>运行时</strong>把发生的事记下来；它也<stron
 <div class="figcap"><b>包含关系</b>：一个 <b>trace</b> 把一次完整交互的所有步骤装在一起；每一步是一个 <b>observation</b>（可嵌套）；<b>score</b> 则是对 trace 或某个 observation 的评分。注意架构取向——<b>observation 才是主分析单元</b>，trace 更像把它们串起来的「关联句柄」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 292" role="img" aria-label="示例 trace chat-support 包含 SPAN retrieve-docs、GENERATION answer(model gpt-4o，带 usageDetails/costDetails/latency)、EVENT cache-write 三个 observation，trace 上挂一个 NUMERIC 的 score helpfulness=0.9，字段对齐 domain/observations.ts 与 scores.ts，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 trace 实际长什么样</text>
+  <rect x="20" y="38" width="680" height="240" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="38" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">trace · id=chat-support_a1b2 · userId=u_42</text>
+  <text x="682" y="60" text-anchor="end" font-size="8.5" fill="var(--muted)">totalCost≈$0.0042 · latency 1.93s</text>
+  <rect x="40" y="74" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/>
+  <rect x="50" y="84" width="70" height="20" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">SPAN</text>
+  <text x="130" y="90" font-size="10" font-weight="700" fill="var(--ink)">retrieve-docs</text>
+  <text x="130" y="106" font-size="8" fill="var(--muted)">latency 120ms · input {query} · output {3 docs}</text>
+  <text x="670" y="98" text-anchor="end" font-size="8" fill="var(--faint)">startTime +0ms</text>
+  <rect x="40" y="122" width="640" height="66" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/>
+  <rect x="50" y="132" width="98" height="20" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="99" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GENERATION</text>
+  <text x="158" y="138" font-size="10" font-weight="700" fill="var(--ink)">answer</text>
+  <text x="158" y="153" font-size="8" fill="var(--muted)">model gpt-4o · modelParameters {temperature: 0.2}</text>
+  <text x="158" y="167" font-size="8" fill="var(--muted)">usageDetails {input: 512, output: 88} · costDetails {total: 0.0041}</text>
+  <text x="158" y="181" font-size="8" fill="var(--faint)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="670" y="146" text-anchor="end" font-size="8" fill="var(--faint)">latency 1.8s</text>
+  <rect x="40" y="196" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--purple)"/>
+  <rect x="50" y="206" width="70" height="20" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="85" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">EVENT</text>
+  <text x="130" y="212" font-size="10" font-weight="700" fill="var(--ink)">cache-write</text>
+  <text x="130" y="228" font-size="8" fill="var(--muted)">latency 4ms · metadata {key: q:hash}</text>
+  <text x="670" y="220" text-anchor="end" font-size="8" fill="var(--faint)">startTime +1.92s</text>
+  <rect x="40" y="248" width="380" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="52" y="263" font-size="9" font-weight="700" fill="var(--teal)">score</text><text x="92" y="263" font-size="8.5" fill="var(--ink)">name=helpfulness · value=0.9 · dataType=NUMERIC</text>
+  <text x="670" y="263" text-anchor="end" font-size="8" fill="var(--faint)">source=EVAL</text>
+</svg>
+<div class="figcap"><b>示例 trace</b>（字段对齐 <code>domain/observations.ts</code> 与 <code>scores.ts</code>；<b>值为示例</b>）：一个 trace 串起三个 observation——<code>SPAN</code> 检索 → <code>GENERATION</code> 生成（带真实字段 <code>model/usageDetails/costDetails/latency</code>）→ <code>EVENT</code> 缓存写；<code>score</code> 以 <code>NUMERIC</code> 形式挂在 trace 上。这就是上图三支柱的具体一例。</div>
+</div>
+
 <div class="cols">
   <div class="col">
     <h4>🧵 trace · 关联句柄</h4>
@@ -831,6 +860,35 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   <text x="36" y="226" font-size="10.5" fill="var(--muted)">↑ a score attaches to a trace or an observation</text>
 </svg>
 <div class="figcap"><b>Containment</b>: a <b>trace</b> wraps all steps of one interaction; each step is an <b>observation</b> (which can nest); a <b>score</b> rates the trace or one observation. Note the architectural stance — <b>the observation is the primary analytical unit</b>; the trace is more of a "correlation handle" stringing them together.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 292" role="img" aria-label="Example trace chat-support with three observations: SPAN retrieve-docs, GENERATION answer (model gpt-4o with usageDetails/costDetails/latency), EVENT cache-write; a NUMERIC score helpfulness=0.9 hangs off the trace; fields per domain/observations.ts and scores.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: what a trace actually looks like</text>
+  <rect x="20" y="38" width="680" height="240" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="38" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">trace · id=chat-support_a1b2 · userId=u_42</text>
+  <text x="682" y="60" text-anchor="end" font-size="8.5" fill="var(--muted)">totalCost≈$0.0042 · latency 1.93s</text>
+  <rect x="40" y="74" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/>
+  <rect x="50" y="84" width="70" height="20" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">SPAN</text>
+  <text x="130" y="90" font-size="10" font-weight="700" fill="var(--ink)">retrieve-docs</text>
+  <text x="130" y="106" font-size="8" fill="var(--muted)">latency 120ms · input {query} · output {3 docs}</text>
+  <text x="670" y="98" text-anchor="end" font-size="8" fill="var(--faint)">startTime +0ms</text>
+  <rect x="40" y="122" width="640" height="66" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/>
+  <rect x="50" y="132" width="98" height="20" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="99" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GENERATION</text>
+  <text x="158" y="138" font-size="10" font-weight="700" fill="var(--ink)">answer</text>
+  <text x="158" y="153" font-size="8" fill="var(--muted)">model gpt-4o · modelParameters {temperature: 0.2}</text>
+  <text x="158" y="167" font-size="8" fill="var(--muted)">usageDetails {input: 512, output: 88} · costDetails {total: 0.0041}</text>
+  <text x="158" y="181" font-size="8" fill="var(--faint)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="670" y="146" text-anchor="end" font-size="8" fill="var(--faint)">latency 1.8s</text>
+  <rect x="40" y="196" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--purple)"/>
+  <rect x="50" y="206" width="70" height="20" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="85" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">EVENT</text>
+  <text x="130" y="212" font-size="10" font-weight="700" fill="var(--ink)">cache-write</text>
+  <text x="130" y="228" font-size="8" fill="var(--muted)">latency 4ms · metadata {key: q:hash}</text>
+  <text x="670" y="220" text-anchor="end" font-size="8" fill="var(--faint)">startTime +1.92s</text>
+  <rect x="40" y="248" width="380" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="52" y="263" font-size="9" font-weight="700" fill="var(--teal)">score</text><text x="92" y="263" font-size="8.5" fill="var(--ink)">name=helpfulness · value=0.9 · dataType=NUMERIC</text>
+  <text x="670" y="263" text-anchor="end" font-size="8" fill="var(--faint)">source=EVAL</text>
+</svg>
+<div class="figcap"><b>Example trace</b> (fields per <code>domain/observations.ts</code> and <code>scores.ts</code>; <b>values illustrative</b>): one trace strings three observations — <code>SPAN</code> retrieve → <code>GENERATION</code> answer (with real fields <code>model/usageDetails/costDetails/latency</code>) → <code>EVENT</code> cache-write; a <code>score</code> attaches to the trace as <code>NUMERIC</code>. A concrete instance of the three pillars above.</div>
 </div>
 
 <div class="cols">

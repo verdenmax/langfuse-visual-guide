@@ -402,6 +402,39 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>顶层就这几块</b>：<b>web</b>（门店）和 <b>worker</b>（车间）是两个运行时容器，都向上依赖 <b>packages/shared</b>（中央仓库 / 窄腰）；<b>ee</b> 是企业功能、被 web 引用；<b>fern</b> 定义公共 API 契约并生成 <b>generated</b> 客户端。记住这张图，后面所有「文件在哪」的问题都有了坐标系。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="四工作区的依赖方向矩阵：行可以 import 列。web 可 import @langfuse/shared 与 @langfuse/ee；worker 可 import @langfuse/shared；@langfuse/ee 可 import @langfuse/shared；@langfuse/shared 不 import 任何业务包（窄腰）。对角线为自身。依据 repo 的 .agents/AGENTS.md 依赖方向规则">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">谁能 import 谁：窄腰依赖矩阵</text>
+  <text x="360" y="38" text-anchor="middle" font-size="8.5" fill="var(--muted)">规则：行（importer）→ 列（被依赖包）；✓ 表示允许</text>
+  <text x="166" y="64" text-anchor="end" font-size="8" fill="var(--faint)">import →</text>
+  <rect x="170" y="48" width="128" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="234" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">web</text>
+  <rect x="302" y="48" width="128" height="26" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="366" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="434" y="48" width="128" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="566" y="48" width="120" height="26" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="626" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="30" y="80" width="136" height="34" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="42" y="101" font-size="8.5" font-weight="700" fill="var(--blue)">web (Next.js)</text>
+  <rect x="170" y="80" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="234" y="101" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="302" y="80" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="80" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="80" width="120" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="626" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="30" y="118" width="136" height="34" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="42" y="139" font-size="8.5" font-weight="700" fill="var(--purple)">worker (队列消费)</text>
+  <rect x="170" y="118" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="118" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="366" y="139" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="434" y="118" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="118" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="156" width="136" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="42" y="177" font-size="8" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="170" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="156" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="498" y="177" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="566" y="156" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="194" width="136" height="34" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="42" y="215" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="170" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="194" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="194" width="120" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="626" y="215" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+</svg>
+<div class="figcap"><b>窄腰依赖矩阵</b>（依据 repo 的 <code>.agents/AGENTS.md</code> 依赖方向规则）：箭头永远指向 <code>@langfuse/shared</code> 这个「窄腰」——<code>web</code>、<code>worker</code>、<code>@langfuse/ee</code> 都依赖它，而它<b>不反向依赖</b>任何业务包。空白格＝不允许 import，对角线＝自身。这把「谁能用谁」从口头约定变成一眼可查的结构。</div>
+</div>
+
 <p>稍微展开一下两个运行时各自在忙什么，你会更有体感。<strong>web</strong> 是那个你浏览器里打开的 Next.js 应用，它干三件事：渲染<strong>界面</strong>、
 给界面提供类型安全的内部 API（<strong>tRPC</strong>，<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）、以及给外部 SDK 提供<strong>公共 REST API</strong>（<code>web/src/pages/api/public</code>，<a class="xref" href="27-public-rest-api.html">第 27 课</a>）——
 摄取事件的入口就在这里。<strong>worker</strong> 则是个没有界面的后台进程，它订阅几十个 <strong>BullMQ 队列</strong>，把所有<strong>重活、慢活、可重试的活</strong>都揽下来：
@@ -658,6 +691,39 @@ internally into a few purpose-built "workspaces". Hold this map in mind and when
   <text x="530" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">API clients produced by Fern</text>
 </svg>
 <div class="figcap"><b>Just a few top-level blocks</b>: <b>web</b> (storefront) and <b>worker</b> (workshop) are two runtime containers, both depending up on <b>packages/shared</b> (central warehouse / narrow waist); <b>ee</b> holds enterprise features used by web; <b>fern</b> defines the public API contract and generates the <b>generated</b> clients. Remember this and every "where is file X" question has a coordinate system.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Dependency-direction matrix of the four workspaces: a row may import a column. web may import @langfuse/shared and @langfuse/ee; worker may import @langfuse/shared; @langfuse/ee may import @langfuse/shared; @langfuse/shared imports no business package (the narrow waist). Diagonal is self. Per the repo .agents/AGENTS.md dependency rule">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Who may import whom: the narrow-waist matrix</text>
+  <text x="360" y="38" text-anchor="middle" font-size="8.5" fill="var(--muted)">rule: row (importer) → column (imported package); ✓ = allowed</text>
+  <text x="166" y="64" text-anchor="end" font-size="8" fill="var(--faint)">imports →</text>
+  <rect x="170" y="48" width="128" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="234" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">web</text>
+  <rect x="302" y="48" width="128" height="26" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="366" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="434" y="48" width="128" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="566" y="48" width="120" height="26" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="626" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="30" y="80" width="136" height="34" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="42" y="101" font-size="8.5" font-weight="700" fill="var(--blue)">web (Next.js)</text>
+  <rect x="170" y="80" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="234" y="101" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="302" y="80" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="80" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="80" width="120" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="626" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="30" y="118" width="136" height="34" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="42" y="139" font-size="8.5" font-weight="700" fill="var(--purple)">worker (consumers)</text>
+  <rect x="170" y="118" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="118" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="366" y="139" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="434" y="118" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="118" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="156" width="136" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="42" y="177" font-size="8" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="170" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="156" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="498" y="177" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="566" y="156" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="194" width="136" height="34" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="42" y="215" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="170" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="194" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="194" width="120" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="626" y="215" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+</svg>
+<div class="figcap"><b>The narrow-waist matrix</b> (per the repo <code>.agents/AGENTS.md</code> dependency rule): arrows always point toward the <code>@langfuse/shared</code> "narrow waist" — <code>web</code>, <code>worker</code> and <code>@langfuse/ee</code> all depend on it, while it depends back on <b>no</b> business package. Blank cell = not allowed; diagonal = self. This turns "who may use whom" from a verbal convention into a structure you can check at a glance.</div>
 </div>
 
 <p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does

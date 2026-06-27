@@ -402,6 +402,31 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>1.0 vs 2.0</b>：传统三件套把信息<b>拆散</b>，回答跨维度问题前先得人肉拼接；宽事件把一步操作的数字、结构、业务字段<b>放进同一行</b>，「下钻」和「聚合」只是对同一张宽表的不同查询。这正是 <code>ARCHITECTURE_PRINCIPLES.md</code> 说的「<b>偏好宽而属性丰富的事件，而非需要事后重建的零散指标/日志/链路</b>」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="左侧可观测性 1.0 把同一步操作拆成 metric(latency=820ms)、log(INFO answered)、trace span 三条分散记录需按 traceId 事后拼接；右侧可观测性 2.0 用一行宽 observation 把 input/output/model/usageDetails/latency/userId/metadata 全装下，字段对齐 domain/observations.ts，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">同一步操作：拆成三条 vs 装进一行</text>
+  <text x="24" y="44" font-size="9.5" font-weight="700" fill="var(--red)">① 可观测性 1.0：三系统、三条记录</text>
+  <rect x="24" y="52" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="68" font-size="8.5" font-weight="700" fill="var(--ink)">metric · gen.latency = 820ms</text><text x="34" y="84" font-size="7.5" fill="var(--muted)">Prometheus · 只有数字，没有上下文</text>
+  <rect x="24" y="98" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="114" font-size="8.5" font-weight="700" fill="var(--ink)">log · INFO answered q_88</text><text x="34" y="130" font-size="7.5" fill="var(--muted)">Loki · 只有文本，难聚合</text>
+  <rect x="24" y="144" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="160" font-size="8.5" font-weight="700" fill="var(--ink)">trace span · id=sp_3</text><text x="34" y="176" font-size="7.5" fill="var(--muted)">Jaeger · 只有调用链，没数字/业务</text>
+  <path d="M24 192 q150 18 300 0" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="174" y="214" text-anchor="middle" font-size="8" fill="var(--red)">事后按 traceId 人肉拼接，跨维度提问很难</text>
+  <text x="360" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="var(--faint)">vs</text>
+  <text x="384" y="44" font-size="9.5" font-weight="700" fill="var(--accent-ink)">② 可观测性 2.0：一行宽 observation</text>
+  <rect x="384" y="52" width="316" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="396" y="70" font-size="9" font-weight="700" fill="var(--accent-ink)">observation（同一行装下全部）</text>
+  <text x="396" y="88" font-size="8" fill="var(--ink)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="396" y="104" font-size="8" fill="var(--ink)">model gpt-4o · latency 820ms</text>
+  <text x="396" y="120" font-size="8" fill="var(--ink)">usageDetails {input: 512, output: 88}</text>
+  <text x="396" y="136" font-size="8" fill="var(--ink)">costDetails {total: 0.0041}</text>
+  <text x="396" y="152" font-size="8" fill="var(--ink)">userId u_42 · metadata {env: prod} · tags [v3]</text>
+  <line x1="396" y1="164" x2="688" y2="164" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="396" y="182" font-size="8" font-weight="700" fill="var(--accent-ink)">→ 下钻 / 聚合 / 过滤</text>
+  <text x="396" y="198" font-size="7.8" fill="var(--muted)">都只是对这一张宽表的不同列查询，无需 JOIN</text>
+</svg>
+<div class="figcap"><b>拆散 vs 一行</b>（字段对齐 <code>domain/observations.ts</code>；<b>值为示例</b>）：左边 1.0 把一步操作的数字、文本、调用链分给三套系统，回答「这个用户这小时花了多少」要先按 <code>traceId</code> 拼三处；右边 2.0 把它们焊进<b>同一行宽 observation</b>，同样的问题只是这张宽表的一次列查询。</div>
+</div>
+
 <h2>可观测性 1.0 的困境</h2>
 <p>「指标 + 日志 + 链路」这套经典组合（业内常称<strong>可观测性 1.0</strong>）每一件单看都没错，问题出在<strong>三者分离</strong>：</p>
 <ul>
@@ -652,6 +677,31 @@ fifty-odd later lessons build on.
   <text x="545" y="226" text-anchor="middle" font-size="11" fill="var(--accent-ink)">✅ same wide table, new query = new view</text>
 </svg>
 <div class="figcap"><b>1.0 vs 2.0</b>: the classic three pillars <b>fragment</b> information, forcing manual reassembly before any cross-dimension question; a wide event puts the numbers, structure and business fields of one step <b>on a single row</b>, so "drill down" and "aggregate" are just different queries over one wide table. This is exactly what <code>ARCHITECTURE_PRINCIPLES.md</code> means by "<b>prefer wide, richly attributed events over fragmented metrics, logs, and trace records that require later reconstruction</b>".</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Left: Observability 1.0 splits one step into three scattered records — metric(latency=820ms), log(INFO answered), trace span — stitched later by traceId; right: Observability 2.0 puts input/output/model/usageDetails/latency/userId/metadata on one wide observation row; fields per domain/observations.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">One step: split into three vs put on one row</text>
+  <text x="24" y="44" font-size="9.5" font-weight="700" fill="var(--red)">① Observability 1.0: three systems, three records</text>
+  <rect x="24" y="52" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="68" font-size="8.5" font-weight="700" fill="var(--ink)">metric · gen.latency = 820ms</text><text x="34" y="84" font-size="7.5" fill="var(--muted)">Prometheus · numbers only, no context</text>
+  <rect x="24" y="98" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="114" font-size="8.5" font-weight="700" fill="var(--ink)">log · INFO answered q_88</text><text x="34" y="130" font-size="7.5" fill="var(--muted)">Loki · text only, hard to aggregate</text>
+  <rect x="24" y="144" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="160" font-size="8.5" font-weight="700" fill="var(--ink)">trace span · id=sp_3</text><text x="34" y="176" font-size="7.5" fill="var(--muted)">Jaeger · call tree only, no numbers</text>
+  <path d="M24 192 q150 18 300 0" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="174" y="214" text-anchor="middle" font-size="8" fill="var(--red)">stitch by traceId after the fact — cross-cutting Qs are hard</text>
+  <text x="360" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="var(--faint)">vs</text>
+  <text x="384" y="44" font-size="9.5" font-weight="700" fill="var(--accent-ink)">② Observability 2.0: one wide observation</text>
+  <rect x="384" y="52" width="316" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="396" y="70" font-size="9" font-weight="700" fill="var(--accent-ink)">observation (all on one row)</text>
+  <text x="396" y="88" font-size="8" fill="var(--ink)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="396" y="104" font-size="8" fill="var(--ink)">model gpt-4o · latency 820ms</text>
+  <text x="396" y="120" font-size="8" fill="var(--ink)">usageDetails {input: 512, output: 88}</text>
+  <text x="396" y="136" font-size="8" fill="var(--ink)">costDetails {total: 0.0041}</text>
+  <text x="396" y="152" font-size="8" fill="var(--ink)">userId u_42 · metadata {env: prod} · tags [v3]</text>
+  <line x1="396" y1="164" x2="688" y2="164" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="396" y="182" font-size="8" font-weight="700" fill="var(--accent-ink)">→ drill down / aggregate / filter</text>
+  <text x="396" y="198" font-size="7.8" fill="var(--muted)">all just column queries over this one wide table, no JOIN</text>
+</svg>
+<div class="figcap"><b>Split vs one row</b> (fields per <code>domain/observations.ts</code>; <b>values illustrative</b>): on the left, 1.0 scatters one step's numbers, text and call tree across three systems — answering "how much did this user spend this hour" means stitching three places by <code>traceId</code>; on the right, 2.0 welds them onto <b>one wide observation row</b>, and the same question is one column query.</div>
 </div>
 
 <h2>The trouble with Observability 1.0</h2>

@@ -232,6 +232,35 @@ _ZH.append(r"""
 <div class="figcap"><b>包含关系</b>：一个 <b>trace</b> 把一次完整交互的所有步骤装在一起；每一步是一个 <b>observation</b>（可嵌套）；<b>score</b> 则是对 trace 或某个 observation 的评分。注意架构取向——<b>observation 才是主分析单元</b>，trace 更像把它们串起来的「关联句柄」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 292" role="img" aria-label="示例 trace chat-support 包含 SPAN retrieve-docs、GENERATION answer(model gpt-4o，带 usageDetails/costDetails/latency)、EVENT cache-write 三个 observation，trace 上挂一个 NUMERIC 的 score helpfulness=0.9，字段对齐 domain/observations.ts 与 scores.ts，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 trace 实际长什么样</text>
+  <rect x="20" y="38" width="680" height="240" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="38" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">trace · id=chat-support_a1b2 · userId=u_42</text>
+  <text x="682" y="60" text-anchor="end" font-size="8.5" fill="var(--muted)">totalCost≈$0.0042 · latency 1.93s</text>
+  <rect x="40" y="74" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/>
+  <rect x="50" y="84" width="70" height="20" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">SPAN</text>
+  <text x="130" y="90" font-size="10" font-weight="700" fill="var(--ink)">retrieve-docs</text>
+  <text x="130" y="106" font-size="8" fill="var(--muted)">latency 120ms · input {query} · output {3 docs}</text>
+  <text x="670" y="98" text-anchor="end" font-size="8" fill="var(--faint)">startTime +0ms</text>
+  <rect x="40" y="122" width="640" height="66" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/>
+  <rect x="50" y="132" width="98" height="20" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="99" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GENERATION</text>
+  <text x="158" y="138" font-size="10" font-weight="700" fill="var(--ink)">answer</text>
+  <text x="158" y="153" font-size="8" fill="var(--muted)">model gpt-4o · modelParameters {temperature: 0.2}</text>
+  <text x="158" y="167" font-size="8" fill="var(--muted)">usageDetails {input: 512, output: 88} · costDetails {total: 0.0041}</text>
+  <text x="158" y="181" font-size="8" fill="var(--faint)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="670" y="146" text-anchor="end" font-size="8" fill="var(--faint)">latency 1.8s</text>
+  <rect x="40" y="196" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--purple)"/>
+  <rect x="50" y="206" width="70" height="20" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="85" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">EVENT</text>
+  <text x="130" y="212" font-size="10" font-weight="700" fill="var(--ink)">cache-write</text>
+  <text x="130" y="228" font-size="8" fill="var(--muted)">latency 4ms · metadata {key: q:hash}</text>
+  <text x="670" y="220" text-anchor="end" font-size="8" fill="var(--faint)">startTime +1.92s</text>
+  <rect x="40" y="248" width="380" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="52" y="263" font-size="9" font-weight="700" fill="var(--teal)">score</text><text x="92" y="263" font-size="8.5" fill="var(--ink)">name=helpfulness · value=0.9 · dataType=NUMERIC</text>
+  <text x="670" y="263" text-anchor="end" font-size="8" fill="var(--faint)">source=EVAL</text>
+</svg>
+<div class="figcap"><b>示例 trace</b>（字段对齐 <code>domain/observations.ts</code> 与 <code>scores.ts</code>；<b>值为示例</b>）：一个 trace 串起三个 observation——<code>SPAN</code> 检索 → <code>GENERATION</code> 生成（带真实字段 <code>model/usageDetails/costDetails/latency</code>）→ <code>EVENT</code> 缓存写；<code>score</code> 以 <code>NUMERIC</code> 形式挂在 trace 上。这就是上图三支柱的具体一例。</div>
+</div>
+
 <div class="cols">
   <div class="col">
     <h4>🧵 trace · 关联句柄</h4>
@@ -328,6 +357,35 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
   <text x="36" y="226" font-size="10.5" fill="var(--muted)">↑ a score attaches to a trace or an observation</text>
 </svg>
 <div class="figcap"><b>Containment</b>: a <b>trace</b> wraps all steps of one interaction; each step is an <b>observation</b> (which can nest); a <b>score</b> rates the trace or one observation. Note the architectural stance — <b>the observation is the primary analytical unit</b>; the trace is more of a "correlation handle" stringing them together.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 292" role="img" aria-label="Example trace chat-support with three observations: SPAN retrieve-docs, GENERATION answer (model gpt-4o with usageDetails/costDetails/latency), EVENT cache-write; a NUMERIC score helpfulness=0.9 hangs off the trace; fields per domain/observations.ts and scores.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: what a trace actually looks like</text>
+  <rect x="20" y="38" width="680" height="240" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="38" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">trace · id=chat-support_a1b2 · userId=u_42</text>
+  <text x="682" y="60" text-anchor="end" font-size="8.5" fill="var(--muted)">totalCost≈$0.0042 · latency 1.93s</text>
+  <rect x="40" y="74" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/>
+  <rect x="50" y="84" width="70" height="20" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">SPAN</text>
+  <text x="130" y="90" font-size="10" font-weight="700" fill="var(--ink)">retrieve-docs</text>
+  <text x="130" y="106" font-size="8" fill="var(--muted)">latency 120ms · input {query} · output {3 docs}</text>
+  <text x="670" y="98" text-anchor="end" font-size="8" fill="var(--faint)">startTime +0ms</text>
+  <rect x="40" y="122" width="640" height="66" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/>
+  <rect x="50" y="132" width="98" height="20" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="99" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GENERATION</text>
+  <text x="158" y="138" font-size="10" font-weight="700" fill="var(--ink)">answer</text>
+  <text x="158" y="153" font-size="8" fill="var(--muted)">model gpt-4o · modelParameters {temperature: 0.2}</text>
+  <text x="158" y="167" font-size="8" fill="var(--muted)">usageDetails {input: 512, output: 88} · costDetails {total: 0.0041}</text>
+  <text x="158" y="181" font-size="8" fill="var(--faint)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="670" y="146" text-anchor="end" font-size="8" fill="var(--faint)">latency 1.8s</text>
+  <rect x="40" y="196" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--purple)"/>
+  <rect x="50" y="206" width="70" height="20" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="85" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">EVENT</text>
+  <text x="130" y="212" font-size="10" font-weight="700" fill="var(--ink)">cache-write</text>
+  <text x="130" y="228" font-size="8" fill="var(--muted)">latency 4ms · metadata {key: q:hash}</text>
+  <text x="670" y="220" text-anchor="end" font-size="8" fill="var(--faint)">startTime +1.92s</text>
+  <rect x="40" y="248" width="380" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="52" y="263" font-size="9" font-weight="700" fill="var(--teal)">score</text><text x="92" y="263" font-size="8.5" fill="var(--ink)">name=helpfulness · value=0.9 · dataType=NUMERIC</text>
+  <text x="670" y="263" text-anchor="end" font-size="8" fill="var(--faint)">source=EVAL</text>
+</svg>
+<div class="figcap"><b>Example trace</b> (fields per <code>domain/observations.ts</code> and <code>scores.ts</code>; <b>values illustrative</b>): one trace strings three observations — <code>SPAN</code> retrieve → <code>GENERATION</code> answer (with real fields <code>model/usageDetails/costDetails/latency</code>) → <code>EVENT</code> cache-write; a <code>score</code> attaches to the trace as <code>NUMERIC</code>. A concrete instance of the three pillars above.</div>
 </div>
 
 <div class="cols">
@@ -757,6 +815,31 @@ _ZH2.append(r"""
 <div class="figcap"><b>1.0 vs 2.0</b>：传统三件套把信息<b>拆散</b>，回答跨维度问题前先得人肉拼接；宽事件把一步操作的数字、结构、业务字段<b>放进同一行</b>，「下钻」和「聚合」只是对同一张宽表的不同查询。这正是 <code>ARCHITECTURE_PRINCIPLES.md</code> 说的「<b>偏好宽而属性丰富的事件，而非需要事后重建的零散指标/日志/链路</b>」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="左侧可观测性 1.0 把同一步操作拆成 metric(latency=820ms)、log(INFO answered)、trace span 三条分散记录需按 traceId 事后拼接；右侧可观测性 2.0 用一行宽 observation 把 input/output/model/usageDetails/latency/userId/metadata 全装下，字段对齐 domain/observations.ts，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">同一步操作：拆成三条 vs 装进一行</text>
+  <text x="24" y="44" font-size="9.5" font-weight="700" fill="var(--red)">① 可观测性 1.0：三系统、三条记录</text>
+  <rect x="24" y="52" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="68" font-size="8.5" font-weight="700" fill="var(--ink)">metric · gen.latency = 820ms</text><text x="34" y="84" font-size="7.5" fill="var(--muted)">Prometheus · 只有数字，没有上下文</text>
+  <rect x="24" y="98" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="114" font-size="8.5" font-weight="700" fill="var(--ink)">log · INFO answered q_88</text><text x="34" y="130" font-size="7.5" fill="var(--muted)">Loki · 只有文本，难聚合</text>
+  <rect x="24" y="144" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="160" font-size="8.5" font-weight="700" fill="var(--ink)">trace span · id=sp_3</text><text x="34" y="176" font-size="7.5" fill="var(--muted)">Jaeger · 只有调用链，没数字/业务</text>
+  <path d="M24 192 q150 18 300 0" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="174" y="214" text-anchor="middle" font-size="8" fill="var(--red)">事后按 traceId 人肉拼接，跨维度提问很难</text>
+  <text x="360" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="var(--faint)">vs</text>
+  <text x="384" y="44" font-size="9.5" font-weight="700" fill="var(--accent-ink)">② 可观测性 2.0：一行宽 observation</text>
+  <rect x="384" y="52" width="316" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="396" y="70" font-size="9" font-weight="700" fill="var(--accent-ink)">observation（同一行装下全部）</text>
+  <text x="396" y="88" font-size="8" fill="var(--ink)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="396" y="104" font-size="8" fill="var(--ink)">model gpt-4o · latency 820ms</text>
+  <text x="396" y="120" font-size="8" fill="var(--ink)">usageDetails {input: 512, output: 88}</text>
+  <text x="396" y="136" font-size="8" fill="var(--ink)">costDetails {total: 0.0041}</text>
+  <text x="396" y="152" font-size="8" fill="var(--ink)">userId u_42 · metadata {env: prod} · tags [v3]</text>
+  <line x1="396" y1="164" x2="688" y2="164" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="396" y="182" font-size="8" font-weight="700" fill="var(--accent-ink)">→ 下钻 / 聚合 / 过滤</text>
+  <text x="396" y="198" font-size="7.8" fill="var(--muted)">都只是对这一张宽表的不同列查询，无需 JOIN</text>
+</svg>
+<div class="figcap"><b>拆散 vs 一行</b>（字段对齐 <code>domain/observations.ts</code>；<b>值为示例</b>）：左边 1.0 把一步操作的数字、文本、调用链分给三套系统，回答「这个用户这小时花了多少」要先按 <code>traceId</code> 拼三处；右边 2.0 把它们焊进<b>同一行宽 observation</b>，同样的问题只是这张宽表的一次列查询。</div>
+</div>
+
 <h2>可观测性 1.0 的困境</h2>
 <p>「指标 + 日志 + 链路」这套经典组合（业内常称<strong>可观测性 1.0</strong>）每一件单看都没错，问题出在<strong>三者分离</strong>：</p>
 <ul>
@@ -804,6 +887,31 @@ _EN2.append(r"""
   <text x="545" y="226" text-anchor="middle" font-size="11" fill="var(--accent-ink)">✅ same wide table, new query = new view</text>
 </svg>
 <div class="figcap"><b>1.0 vs 2.0</b>: the classic three pillars <b>fragment</b> information, forcing manual reassembly before any cross-dimension question; a wide event puts the numbers, structure and business fields of one step <b>on a single row</b>, so "drill down" and "aggregate" are just different queries over one wide table. This is exactly what <code>ARCHITECTURE_PRINCIPLES.md</code> means by "<b>prefer wide, richly attributed events over fragmented metrics, logs, and trace records that require later reconstruction</b>".</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Left: Observability 1.0 splits one step into three scattered records — metric(latency=820ms), log(INFO answered), trace span — stitched later by traceId; right: Observability 2.0 puts input/output/model/usageDetails/latency/userId/metadata on one wide observation row; fields per domain/observations.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">One step: split into three vs put on one row</text>
+  <text x="24" y="44" font-size="9.5" font-weight="700" fill="var(--red)">① Observability 1.0: three systems, three records</text>
+  <rect x="24" y="52" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="68" font-size="8.5" font-weight="700" fill="var(--ink)">metric · gen.latency = 820ms</text><text x="34" y="84" font-size="7.5" fill="var(--muted)">Prometheus · numbers only, no context</text>
+  <rect x="24" y="98" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="114" font-size="8.5" font-weight="700" fill="var(--ink)">log · INFO answered q_88</text><text x="34" y="130" font-size="7.5" fill="var(--muted)">Loki · text only, hard to aggregate</text>
+  <rect x="24" y="144" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="160" font-size="8.5" font-weight="700" fill="var(--ink)">trace span · id=sp_3</text><text x="34" y="176" font-size="7.5" fill="var(--muted)">Jaeger · call tree only, no numbers</text>
+  <path d="M24 192 q150 18 300 0" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="174" y="214" text-anchor="middle" font-size="8" fill="var(--red)">stitch by traceId after the fact — cross-cutting Qs are hard</text>
+  <text x="360" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="var(--faint)">vs</text>
+  <text x="384" y="44" font-size="9.5" font-weight="700" fill="var(--accent-ink)">② Observability 2.0: one wide observation</text>
+  <rect x="384" y="52" width="316" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="396" y="70" font-size="9" font-weight="700" fill="var(--accent-ink)">observation (all on one row)</text>
+  <text x="396" y="88" font-size="8" fill="var(--ink)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="396" y="104" font-size="8" fill="var(--ink)">model gpt-4o · latency 820ms</text>
+  <text x="396" y="120" font-size="8" fill="var(--ink)">usageDetails {input: 512, output: 88}</text>
+  <text x="396" y="136" font-size="8" fill="var(--ink)">costDetails {total: 0.0041}</text>
+  <text x="396" y="152" font-size="8" fill="var(--ink)">userId u_42 · metadata {env: prod} · tags [v3]</text>
+  <line x1="396" y1="164" x2="688" y2="164" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="396" y="182" font-size="8" font-weight="700" fill="var(--accent-ink)">→ drill down / aggregate / filter</text>
+  <text x="396" y="198" font-size="7.8" fill="var(--muted)">all just column queries over this one wide table, no JOIN</text>
+</svg>
+<div class="figcap"><b>Split vs one row</b> (fields per <code>domain/observations.ts</code>; <b>values illustrative</b>): on the left, 1.0 scatters one step's numbers, text and call tree across three systems — answering "how much did this user spend this hour" means stitching three places by <code>traceId</code>; on the right, 2.0 welds them onto <b>one wide observation row</b>, and the same question is one column query.</div>
 </div>
 
 <h2>The trouble with Observability 1.0</h2>
@@ -1198,6 +1306,23 @@ _ZH3.append(r"""
 <div class="figcap"><b>树是「指」出来的</b>：observation 表里并没有「children」字段；每个 observation 只记一个 <code>parentObservationId</code> 指向父节点，UI 再据此<b>反向拼出</b>整棵调用树（第 25 课）。根节点的 parent 为 null。这种「只存父指针」的设计，让写入时各 observation <b>互相独立、可乱序到达</b>——非常契合异步摄取。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="示例 observation 调用树：trace agent_7 外壳下，SPAN agent-run 为根(parentObservationId=null)，其下嵌 GENERATION plan 与 SPAN tool:search，后者再嵌 GENERATION summarize，每行带 type 徽章与 latency 条，末端挂 NUMERIC score，字段对齐 domain/observations.ts，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">observation 靠 parentObservationId 嵌成调用树</text>
+  <rect x="20" y="34" width="680" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="32" y="50" font-size="9.5" font-weight="700" fill="var(--accent-ink)">trace · id=agent_7（外壳，本身不是 observation）</text>
+  <line x1="40" y1="58" x2="40" y2="80" stroke="var(--line)" stroke-width="1.2"/><line x1="40" y1="80" x2="50" y2="80" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="50" y="66" width="630" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="58" y="72" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="84" y="84" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="118" y="84" font-size="9" font-weight="700" fill="var(--ink)">agent-run</text><text x="290" y="84" font-size="7.5" fill="var(--faint)">parent = null（根）</text><rect x="556" y="74" width="116" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="83" text-anchor="end" font-size="7" fill="var(--muted)">2.4s</text>
+  <line x1="70" y1="94" x2="70" y2="112" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="112" x2="80" y2="112" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="98" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="88" y="104" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="131" y="116" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="182" y="116" font-size="9" font-weight="700" fill="var(--ink)">plan · gpt-4o</text><text x="320" y="116" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="592" y="106" width="40" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="115" text-anchor="end" font-size="7" fill="var(--muted)">0.6s</text>
+  <line x1="70" y1="126" x2="70" y2="144" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="144" x2="80" y2="144" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="130" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="88" y="136" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="114" y="148" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="148" y="148" font-size="9" font-weight="700" fill="var(--ink)">tool: search</text><text x="320" y="148" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="600" y="138" width="32" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="147" text-anchor="end" font-size="7" fill="var(--muted)">0.5s</text>
+  <line x1="100" y1="158" x2="100" y2="176" stroke="var(--line)" stroke-width="1.2"/><line x1="100" y1="176" x2="110" y2="176" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="110" y="162" width="570" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="118" y="168" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="161" y="180" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="212" y="180" font-size="9" font-weight="700" fill="var(--ink)">summarize</text><text x="340" y="180" font-size="7.5" fill="var(--faint)">parent = tool: search</text><rect x="616" y="170" width="16" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="179" text-anchor="end" font-size="7" fill="var(--muted)">0.3s</text>
+  <rect x="50" y="200" width="372" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="62" y="215" font-size="8.5" font-weight="700" fill="var(--teal)">score</text><text x="100" y="215" font-size="8" fill="var(--ink)">name=relevance · value=0.85 · dataType=NUMERIC</text>
+</svg>
+<div class="figcap"><b>嵌套 = 一棵树</b>（字段对齐 <code>domain/observations.ts</code>；<b>值为示例</b>）：每个 observation 用 <code>parentObservationId</code> 指向父节点，根节点为 <code>null</code>；于是「谁调用了谁、各花多久」就是这棵树的结构 + 每行的 <code>latency</code>。<code>score</code> 可挂在 trace 或任一 observation 上。</div>
+</div>
+
 <h2>trace：薄薄的关联句柄</h2>
 <p>先看最简单的 trace。它的领域模型 <code>TraceDomain</code> 字段很少，几乎都是<strong>身份与标记</strong>，没有什么「重」数据：</p>
 
@@ -1311,6 +1436,23 @@ _EN3.append(r"""
   <text x="250" y="150" font-size="9" fill="var(--faint)">parentObservationId →</text>
 </svg>
 <div class="figcap"><b>The tree is "pointed" into existence</b>: the observations table has no "children" field; each observation stores one <code>parentObservationId</code> pointing at its parent, and the UI <b>reconstructs</b> the call tree from that (L25). The root's parent is null. Storing only a parent pointer lets observations be <b>independent and arrive out of order</b> at write time — ideal for async ingestion.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="Example observation call tree: under trace agent_7, SPAN agent-run is the root (parentObservationId=null), nesting GENERATION plan and SPAN tool:search, the latter nesting GENERATION summarize; each row has a type badge and latency bar, a NUMERIC score hangs at the end; fields per domain/observations.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">observations nest into a call tree via parentObservationId</text>
+  <rect x="20" y="34" width="680" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="32" y="50" font-size="9.5" font-weight="700" fill="var(--accent-ink)">trace · id=agent_7 (the shell, not an observation itself)</text>
+  <line x1="40" y1="58" x2="40" y2="80" stroke="var(--line)" stroke-width="1.2"/><line x1="40" y1="80" x2="50" y2="80" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="50" y="66" width="630" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="58" y="72" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="84" y="84" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="118" y="84" font-size="9" font-weight="700" fill="var(--ink)">agent-run</text><text x="290" y="84" font-size="7.5" fill="var(--faint)">parent = null (root)</text><rect x="556" y="74" width="116" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="83" text-anchor="end" font-size="7" fill="var(--muted)">2.4s</text>
+  <line x1="70" y1="94" x2="70" y2="112" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="112" x2="80" y2="112" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="98" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="88" y="104" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="131" y="116" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="182" y="116" font-size="9" font-weight="700" fill="var(--ink)">plan · gpt-4o</text><text x="320" y="116" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="592" y="106" width="40" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="115" text-anchor="end" font-size="7" fill="var(--muted)">0.6s</text>
+  <line x1="70" y1="126" x2="70" y2="144" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="144" x2="80" y2="144" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="130" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="88" y="136" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="114" y="148" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="148" y="148" font-size="9" font-weight="700" fill="var(--ink)">tool: search</text><text x="320" y="148" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="600" y="138" width="32" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="147" text-anchor="end" font-size="7" fill="var(--muted)">0.5s</text>
+  <line x1="100" y1="158" x2="100" y2="176" stroke="var(--line)" stroke-width="1.2"/><line x1="100" y1="176" x2="110" y2="176" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="110" y="162" width="570" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="118" y="168" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="161" y="180" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="212" y="180" font-size="9" font-weight="700" fill="var(--ink)">summarize</text><text x="340" y="180" font-size="7.5" fill="var(--faint)">parent = tool: search</text><rect x="616" y="170" width="16" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="179" text-anchor="end" font-size="7" fill="var(--muted)">0.3s</text>
+  <rect x="50" y="200" width="372" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="62" y="215" font-size="8.5" font-weight="700" fill="var(--teal)">score</text><text x="100" y="215" font-size="8" fill="var(--ink)">name=relevance · value=0.85 · dataType=NUMERIC</text>
+</svg>
+<div class="figcap"><b>Nesting = a tree</b> (fields per <code>domain/observations.ts</code>; <b>values illustrative</b>): each observation points at its parent via <code>parentObservationId</code>, the root being <code>null</code>; so "who called whom, taking how long" is just this tree's shape plus each row's <code>latency</code>. A <code>score</code> can attach to the trace or any observation.</div>
 </div>
 
 <h2>trace: the thin correlation handle</h2>
@@ -1693,6 +1835,39 @@ _ZH4.append(r"""
 <div class="figcap"><b>顶层就这几块</b>：<b>web</b>（门店）和 <b>worker</b>（车间）是两个运行时容器，都向上依赖 <b>packages/shared</b>（中央仓库 / 窄腰）；<b>ee</b> 是企业功能、被 web 引用；<b>fern</b> 定义公共 API 契约并生成 <b>generated</b> 客户端。记住这张图，后面所有「文件在哪」的问题都有了坐标系。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="四工作区的依赖方向矩阵：行可以 import 列。web 可 import @langfuse/shared 与 @langfuse/ee；worker 可 import @langfuse/shared；@langfuse/ee 可 import @langfuse/shared；@langfuse/shared 不 import 任何业务包（窄腰）。对角线为自身。依据 repo 的 .agents/AGENTS.md 依赖方向规则">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">谁能 import 谁：窄腰依赖矩阵</text>
+  <text x="360" y="38" text-anchor="middle" font-size="8.5" fill="var(--muted)">规则：行（importer）→ 列（被依赖包）；✓ 表示允许</text>
+  <text x="166" y="64" text-anchor="end" font-size="8" fill="var(--faint)">import →</text>
+  <rect x="170" y="48" width="128" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="234" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">web</text>
+  <rect x="302" y="48" width="128" height="26" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="366" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="434" y="48" width="128" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="566" y="48" width="120" height="26" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="626" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="30" y="80" width="136" height="34" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="42" y="101" font-size="8.5" font-weight="700" fill="var(--blue)">web (Next.js)</text>
+  <rect x="170" y="80" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="234" y="101" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="302" y="80" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="80" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="80" width="120" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="626" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="30" y="118" width="136" height="34" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="42" y="139" font-size="8.5" font-weight="700" fill="var(--purple)">worker (队列消费)</text>
+  <rect x="170" y="118" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="118" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="366" y="139" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="434" y="118" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="118" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="156" width="136" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="42" y="177" font-size="8" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="170" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="156" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="498" y="177" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="566" y="156" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="194" width="136" height="34" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="42" y="215" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="170" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="194" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="194" width="120" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="626" y="215" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+</svg>
+<div class="figcap"><b>窄腰依赖矩阵</b>（依据 repo 的 <code>.agents/AGENTS.md</code> 依赖方向规则）：箭头永远指向 <code>@langfuse/shared</code> 这个「窄腰」——<code>web</code>、<code>worker</code>、<code>@langfuse/ee</code> 都依赖它，而它<b>不反向依赖</b>任何业务包。空白格＝不允许 import，对角线＝自身。这把「谁能用谁」从口头约定变成一眼可查的结构。</div>
+</div>
+
 <p>稍微展开一下两个运行时各自在忙什么，你会更有体感。<strong>web</strong> 是那个你浏览器里打开的 Next.js 应用，它干三件事：渲染<strong>界面</strong>、
 给界面提供类型安全的内部 API（<strong>tRPC</strong>，第 21 课）、以及给外部 SDK 提供<strong>公共 REST API</strong>（<code>web/src/pages/api/public</code>，第 27 课）——
 摄取事件的入口就在这里。<strong>worker</strong> 则是个没有界面的后台进程，它订阅几十个 <strong>BullMQ 队列</strong>，把所有<strong>重活、慢活、可重试的活</strong>都揽下来：
@@ -1905,6 +2080,39 @@ _EN4.append(r"""
   <text x="530" y="290" text-anchor="middle" font-size="9.5" fill="var(--muted)">API clients produced by Fern</text>
 </svg>
 <div class="figcap"><b>Just a few top-level blocks</b>: <b>web</b> (storefront) and <b>worker</b> (workshop) are two runtime containers, both depending up on <b>packages/shared</b> (central warehouse / narrow waist); <b>ee</b> holds enterprise features used by web; <b>fern</b> defines the public API contract and generates the <b>generated</b> clients. Remember this and every "where is file X" question has a coordinate system.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Dependency-direction matrix of the four workspaces: a row may import a column. web may import @langfuse/shared and @langfuse/ee; worker may import @langfuse/shared; @langfuse/ee may import @langfuse/shared; @langfuse/shared imports no business package (the narrow waist). Diagonal is self. Per the repo .agents/AGENTS.md dependency rule">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Who may import whom: the narrow-waist matrix</text>
+  <text x="360" y="38" text-anchor="middle" font-size="8.5" fill="var(--muted)">rule: row (importer) → column (imported package); ✓ = allowed</text>
+  <text x="166" y="64" text-anchor="end" font-size="8" fill="var(--faint)">imports →</text>
+  <rect x="170" y="48" width="128" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="234" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">web</text>
+  <rect x="302" y="48" width="128" height="26" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="366" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="434" y="48" width="128" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="566" y="48" width="120" height="26" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="626" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="30" y="80" width="136" height="34" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="42" y="101" font-size="8.5" font-weight="700" fill="var(--blue)">web (Next.js)</text>
+  <rect x="170" y="80" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="234" y="101" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="302" y="80" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="80" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="80" width="120" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="626" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="30" y="118" width="136" height="34" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="42" y="139" font-size="8.5" font-weight="700" fill="var(--purple)">worker (consumers)</text>
+  <rect x="170" y="118" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="118" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="366" y="139" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="434" y="118" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="118" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="156" width="136" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="42" y="177" font-size="8" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="170" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="156" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="498" y="177" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="566" y="156" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="194" width="136" height="34" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="42" y="215" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="170" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="194" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="194" width="120" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="626" y="215" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+</svg>
+<div class="figcap"><b>The narrow-waist matrix</b> (per the repo <code>.agents/AGENTS.md</code> dependency rule): arrows always point toward the <code>@langfuse/shared</code> "narrow waist" — <code>web</code>, <code>worker</code> and <code>@langfuse/ee</code> all depend on it, while it depends back on <b>no</b> business package. Blank cell = not allowed; diagonal = self. This turns "who may use whom" from a verbal convention into a structure you can check at a glance.</div>
 </div>
 
 <p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does
@@ -2146,6 +2354,36 @@ _ZH5.append(r"""
 <div class="figcap"><b>一条 trace 的完整旅程</b>：上半是<b>写入链路</b>（SDK→API→Redis→worker→ClickHouse，旁挂 S3），每段标了对应课号（第 12–19 课）；下半是<b>读取链路</b>（ClickHouse→repository→tRPC→UI，第 20–27 课）。两条链路在 ClickHouse 这张宽表上「碰头」：写入把数据放进去，读取把它取出来。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="写路径时序图：SDK POST /api/public/ingestion 批量事件到 web；web 入队 Redis 后立刻返回 207 Multi-Status（早返回，带每事件 successes/errors）；越过异步边界后 worker 从队列取出、合并并写入 ClickHouse 与 S3，再 ack。207 与落库之间是最终一致窗口。依据 api/public/ingestion 与 server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">写路径时序：早返回 + 异步落库</text>
+  <rect x="40" y="32" width="92" height="26" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="86" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">SDK</text>
+  <rect x="186" y="32" width="98" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">web /ingestion</text>
+  <rect x="330" y="32" width="92" height="26" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="376" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">Redis 队列</text>
+  <rect x="466" y="32" width="90" height="26" rx="6" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="511" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="600" y="32" width="100" height="26" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="650" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">ClickHouse+S3</text>
+  <line x1="86" y1="58" x2="86" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="235" y1="58" x2="235" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="376" y1="58" x2="376" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="511" y1="58" x2="511" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="650" y1="58" x2="650" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <text x="160" y="76" text-anchor="middle" font-size="7.5" fill="var(--muted)">① POST /ingestion {batch:[…]}</text>
+  <line x1="86" y1="80" x2="233" y2="80" stroke="var(--blue)" stroke-width="1.4"/><polygon points="233,80 224,76 224,84" fill="var(--blue)"/>
+  <text x="305" y="98" text-anchor="middle" font-size="7.5" fill="var(--muted)">② 校验 + 入队</text>
+  <line x1="235" y1="102" x2="374" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="374,102 365,98 365,106" fill="var(--accent)"/>
+  <text x="160" y="120" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">③ 207 Multi-Status（早返回）</text>
+  <line x1="233" y1="124" x2="88" y2="124" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="88,124 97,120 97,128" fill="var(--accent)"/>
+  <rect x="40" y="134" width="660" height="20" rx="5" fill="var(--amber-soft)" opacity="0.5"/><text x="360" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">⟵ 异步边界：最终一致窗口（几十毫秒~几秒）⟶</text>
+  <text x="443" y="172" text-anchor="middle" font-size="7.5" fill="var(--muted)">④ 取出事件</text>
+  <line x1="376" y1="176" x2="509" y2="176" stroke="var(--purple)" stroke-width="1.4"/><polygon points="509,176 500,172 500,180" fill="var(--purple)"/>
+  <text x="580" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑤ 合并 + 批量写</text>
+  <line x1="511" y1="200" x2="648" y2="200" stroke="var(--amber)" stroke-width="1.4"/><polygon points="648,200 639,196 639,204" fill="var(--amber)"/>
+  <text x="580" y="220" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑥ ack</text>
+  <line x1="648" y1="224" x2="513" y2="224" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="513,224 522,220 522,228" fill="var(--amber)"/>
+</svg>
+<div class="figcap"><b>写路径＝一次异步握手</b>（依据 <code>api/public/ingestion</code> 与 <code>packages/shared/src/server/queues.ts</code>）：SDK 发批量事件 → web 校验并入 Redis → <b>立刻回 207 Multi-Status</b>（带每事件 successes/errors，不等落库）；越过异步边界后，worker 才慢慢取出、合并、写 ClickHouse+S3。所以「写完」到「查得到」之间有个<b>最终一致窗口</b>——这正是 trace 偶尔「刚发还看不到」的原因。</div>
+</div>
+
 <h2>上行 · 写：从 SDK 到 ClickHouse</h2>
 <p>先看包裹「寄出到入库」的全过程。它被刻意设计成<strong>异步</strong>的——API 只负责飞快地收下并入队，真正的重活交给 worker 慢慢做：</p>
 
@@ -2309,6 +2547,36 @@ _EN5.append(r"""
   <text x="360" y="312" text-anchor="middle" font-size="10" fill="var(--faint)">writes are async (seconds of lag) · reads are real-time (one click queries)</text>
 </svg>
 <div class="figcap"><b>A trace's full journey</b>: the top half is the <b>write path</b> (SDK→API→Redis→worker→ClickHouse, with S3 alongside), each leg tagged with its lesson (L12–19); the bottom half is the <b>read path</b> (ClickHouse→repository→tRPC→UI, L20–27). The two paths "meet" at the ClickHouse wide table: writes put data in, reads take it out.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Write-path sequence diagram: SDK POSTs a batch of events to web /ingestion; web enqueues to Redis then immediately returns 207 Multi-Status (early return, with per-event successes/errors); across the async boundary the worker dequeues, merges and writes to ClickHouse and S3, then acks. Between the 207 and the persisted write is an eventual-consistency window. Per api/public/ingestion and server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Write-path sequence: early return + async persist</text>
+  <rect x="40" y="32" width="92" height="26" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="86" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">SDK</text>
+  <rect x="186" y="32" width="98" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">web /ingestion</text>
+  <rect x="330" y="32" width="92" height="26" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="376" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">Redis queue</text>
+  <rect x="466" y="32" width="90" height="26" rx="6" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="511" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="600" y="32" width="100" height="26" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="650" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">ClickHouse+S3</text>
+  <line x1="86" y1="58" x2="86" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="235" y1="58" x2="235" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="376" y1="58" x2="376" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="511" y1="58" x2="511" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="650" y1="58" x2="650" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <text x="160" y="76" text-anchor="middle" font-size="7.5" fill="var(--muted)">① POST /ingestion {batch:[…]}</text>
+  <line x1="86" y1="80" x2="233" y2="80" stroke="var(--blue)" stroke-width="1.4"/><polygon points="233,80 224,76 224,84" fill="var(--blue)"/>
+  <text x="305" y="98" text-anchor="middle" font-size="7.5" fill="var(--muted)">② validate + enqueue</text>
+  <line x1="235" y1="102" x2="374" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="374,102 365,98 365,106" fill="var(--accent)"/>
+  <text x="160" y="120" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">③ 207 Multi-Status (early return)</text>
+  <line x1="233" y1="124" x2="88" y2="124" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="88,124 97,120 97,128" fill="var(--accent)"/>
+  <rect x="40" y="134" width="660" height="20" rx="5" fill="var(--amber-soft)" opacity="0.5"/><text x="360" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">⟵ async boundary: eventual-consistency window (tens of ms ~ seconds) ⟶</text>
+  <text x="443" y="172" text-anchor="middle" font-size="7.5" fill="var(--muted)">④ dequeue</text>
+  <line x1="376" y1="176" x2="509" y2="176" stroke="var(--purple)" stroke-width="1.4"/><polygon points="509,176 500,172 500,180" fill="var(--purple)"/>
+  <text x="580" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑤ merge + batch write</text>
+  <line x1="511" y1="200" x2="648" y2="200" stroke="var(--amber)" stroke-width="1.4"/><polygon points="648,200 639,196 639,204" fill="var(--amber)"/>
+  <text x="580" y="220" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑥ ack</text>
+  <line x1="648" y1="224" x2="513" y2="224" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="513,224 522,220 522,228" fill="var(--amber)"/>
+</svg>
+<div class="figcap"><b>The write path is one async handshake</b> (per <code>api/public/ingestion</code> and <code>packages/shared/src/server/queues.ts</code>): SDK sends a batch → web validates and enqueues to Redis → <b>returns 207 Multi-Status immediately</b> (with per-event successes/errors, not waiting for persistence); only across the async boundary does the worker dequeue, merge and write ClickHouse+S3. So between "written" and "queryable" there is an <b>eventual-consistency window</b> — exactly why a just-sent trace is sometimes not visible yet.</div>
 </div>
 
 <h2>Top half · write: SDK to ClickHouse</h2>
