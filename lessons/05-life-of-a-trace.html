@@ -714,7 +714,7 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why tolerate that lag and go async?</strong> Because ingestion must absorb <strong>very high write throughput</strong> while
   your app <strong>can't afford to wait</strong>. If the API synchronously merged, computed cost and wrote before returning, every LLM
   call would be slowed by Langfuse and could fail on downstream hiccups. Async decouples "accept" from "process": the API always

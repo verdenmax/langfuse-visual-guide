@@ -128,6 +128,8 @@ def check_score_terms(lesson_html):
     for fname, html in lesson_html.items():
         if "打分" in html:
             add("ERR", fname, "uses 「打分」 — unify to 「评分」 (scoring act/entity)")
+        if re.search(r"\btradeoffs?\b", html):
+            add("ERR", fname, "uses 'tradeoff(s)' — unify to the hyphenated 'trade-off'")
 
 
 def check_prereqs():

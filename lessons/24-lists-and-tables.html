@@ -600,7 +600,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 <h2>Conditional FINAL: the default view reads only the latest partition</h2>
 <p>Here hides an optimization only ClickHouse veterans appreciate. Recall <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
 (create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
-correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
+correct but <strong>slow</strong>. Langfuse's trade-off: <strong>avoid FINAL whenever possible</strong>:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="default ordering by toDate(timestamp)+event_ts desc with LIMIT 1 BY id skips FINAL and reads only the latest partition deduping in memory; non-default ordering falls back to FROM traces FINAL full dedup">
@@ -672,7 +672,7 @@ Langfuse's answer is <strong>three layers, with the URL as the source of truth</
 the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not fetch it all at once (rows + all metrics), instead of two calls and a pile of "on-demand" switches?</strong> Because <strong>the list's experience
   goal is "instant", while metrics are inherently expensive</strong>. Cost, latency, scores need 2 big-table JOINs to compute; bound to the rows, the whole table must
   <strong>wait for the slowest call</strong> to show — the user stares at blank space. Split them and the compact rows (cheap, everyone wants) <strong>arrive

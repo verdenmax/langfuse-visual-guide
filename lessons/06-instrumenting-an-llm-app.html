@@ -720,7 +720,7 @@ main flow</strong> — SDKs typically send asynchronously, batched, drop-on-fail
   <div class="col"><h4>🔌 OpenTelemetry (OTLP)</h4><p>If your system <strong>already uses OTel</strong> for observability and you'd rather not add another SDK, send OTel spans to Langfuse's OTLP endpoint (<code>otel/v1/traces</code>). Langfuse <strong>maps standard spans to observations</strong>. The cost: some Langfuse-specific semantics ride on convention-based attribute names.</p></div>
 </div>
 
-<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> tradeoff. OTel is the de-facto standard for
+<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> trade-off. OTel is the de-facto standard for
 cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
 your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
 version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
@@ -756,7 +756,7 @@ worth observing. Incremental reporting + server merge is the protocol-level expr
 observability.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
   SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
   tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (<a class="xref" href="15-ingestion-service.html">L15</a>). The payoff: the

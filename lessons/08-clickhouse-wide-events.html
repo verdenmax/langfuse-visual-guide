@@ -634,7 +634,7 @@ isolation = ordering-key prefix" idea:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>ReplacingMergeTree's overwrite is "eventual", not "immediate"</strong> — background merge takes time, so in principle you could
   read the old row in the instant both writes exist but aren't merged yet. That's the price of "just append, write fast". The fix: on the
   query side use the <code>FINAL</code> keyword to force-merge before reading, or use <strong>aggregation</strong> (take the max-event_ts
@@ -683,11 +683,11 @@ isolation = ordering-key prefix" idea:</p>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What tradeoff does this bring, and how does Langfuse handle it?</div>
+  <div class="qn">3. ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What trade-off does this bring, and how does Langfuse handle it?</div>
   <ol class="opts">
     <li>You may only query once a day</li>
     <li>Before merge you might read an old row; use FINAL or aggregate (max event_ts per id) for the final state — moving dedup cost from 'every write' to 'query time, controllable', buying fast writes</li>
-    <li>No tradeoff at all, always strongly consistent</li>
+    <li>No trade-off at all, always strongly consistent</li>
     <li>You must take downtime to merge</li>
   </ol>
   <details class="accordion">

@@ -724,9 +724,9 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Are four infra dependencies a burden for self-hosters?</strong> Honestly, yes — versus "one binary + one SQLite", Langfuse's
-  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>'s tradeoff: to handle
+  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>'s trade-off: to handle
   production scale (massive telemetry, async ingestion, object storage), none of the four is droppable. Langfuse's mitigation is bringing up
   all six containers with <strong>one docker-compose command</strong> and using a <strong>MinIO stand-in</strong> to remove the dependency on
   cloud S3, making "run the whole thing on your own machine" easy. <strong>Complexity can't be erased, but it can be packaged and delivered in

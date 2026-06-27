@@ -624,7 +624,7 @@ picked <strong>ClickHouse</strong> — columnar storage is built for "time-bound
 wide table".</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why keep each row "wide" instead of splitting it into tidy normalized tables?</strong> Because the
   essence of observability is <strong>answering questions you didn't think of at the time</strong> (unknown
   unknowns). If you split fields into fixed metrics before shipping, you can <strong>only</strong> query the
@@ -649,7 +649,7 @@ wide table".</p>
 <h2>How to read this guide</h2>
 <p>This guide <strong>follows the data</strong>: lay the foundations first, then walk the two main paths
 "write → read", then take apart the feature subsystems one by one, and finally cover platform & operations.
-Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design-tradeoff
+Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design trade-off
 box, and closes with a short self-test. This guide makes one <strong>hard promise</strong>: every technical claim corresponds to
 source that <strong>really exists</strong> in <code>langfuse/langfuse</code>, <strong>never invented</strong>; citations carry
 "file:line" so you can open the repo and check. Where something is unclear, following the citation into the source often beats
@@ -1024,7 +1024,7 @@ redundancy for not joining at query time.</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   Wide events aren't free: wider rows, more data written, and you need smart writes + compression. Langfuse's trade is
   <strong>a little storage and write complexity for the freedom to ask anything later</strong>. It tames the cost three ways:
   <strong>columnar storage</strong> (read only the columns you query), <strong>ZSTD compression</strong> (big input/output fields
@@ -1613,7 +1613,7 @@ lessons cover ingestion, querying, evaluation or dashboards, they all operate on
 mind now and the rest gets much easier.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why pile the "heavy" fields on the observation and keep the trace so thin?</strong> Because the vast majority of queries
   happen at the "step" granularity: you aggregate and filter by model, by prompt version, by tool call — dimensions that naturally
   belong to <strong>one step</strong>, not the whole interaction. Put them on the observation and common queries become direct column
@@ -2069,7 +2069,7 @@ public API means updating the <code>fern/</code> sources too (L27). This "contra
 the server, and the per-language SDKs always in sync.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why a monorepo + narrow waist instead of three separate repos (polyrepo) for web/worker/shared?</strong> Because web and
   worker share domain models and queue contracts heavily; split into repos and every data-structure change means
   <strong>cross-repo releases and version juggling</strong>, inviting drift ("web thinks the field is A, worker still uses B"). A
@@ -2418,7 +2418,7 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why tolerate that lag and go async?</strong> Because ingestion must absorb <strong>very high write throughput</strong> while
   your app <strong>can't afford to wait</strong>. If the API synchronously merged, computed cost and wrote before returning, every LLM
   call would be slowed by Langfuse and could fail on downstream hiccups. Async decouples "accept" from "process": the API always

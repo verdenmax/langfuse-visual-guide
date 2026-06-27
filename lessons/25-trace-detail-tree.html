@@ -668,7 +668,7 @@ unbounded one</strong>:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why does detail dare to "fetch the whole tree", while the list "defers aggressively"?</strong> The key is <strong>boundedness</strong>. The list faces an
   <strong>unbounded number of rows</strong> (thousands, tens of thousands of traces), so even a slightly pricey column per row must be deferred; the detail faces
   <strong>one trace</strong> — however many observations it has, that count is <strong>bounded</strong>, and "seeing this one in full" is precisely the detail page's value, so

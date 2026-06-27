@@ -756,7 +756,7 @@ redundancy for not joining at query time.</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   Wide events aren't free: wider rows, more data written, and you need smart writes + compression. Langfuse's trade is
   <strong>a little storage and write complexity for the freedom to ask anything later</strong>. It tames the cost three ways:
   <strong>columnar storage</strong> (read only the columns you query), <strong>ZSTD compression</strong> (big input/output fields

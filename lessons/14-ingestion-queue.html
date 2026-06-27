@@ -721,7 +721,7 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why insist on queue + S3 — why not have the API write the DB directly?</strong> Because the combo buys both <strong>decoupling</strong> and
   <strong>durability</strong>. Decoupling: web and worker each run at their own pace; if the worker dies or ClickHouse hiccups, events queue in Redis and
   rest in S3, <strong>not one lost</strong>, digested once downstream recovers (<a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s eventual consistency). Durability: S3 is the events' "real

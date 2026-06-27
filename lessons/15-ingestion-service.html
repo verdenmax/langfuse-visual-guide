@@ -738,7 +738,7 @@ This two-stage "compute the record fully in memory, then hand it to a dedicated 
 columnar store; <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a> shows how the writer batches per table and flushes on a timer.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>If <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
   <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
   — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,

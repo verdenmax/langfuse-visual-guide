@@ -726,7 +726,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 </svg>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>What's the biggest payoff of splitting "control plane" and "data plane" into two databases?</strong> Letting each
   <strong>evolve and scale by its own rules</strong>. The control plane is small and needs strong consistency — fine for a single (or
   primary/replica) Postgres; the data plane is a flood needing a horizontally-scalable ClickHouse cluster. Force them into one store and

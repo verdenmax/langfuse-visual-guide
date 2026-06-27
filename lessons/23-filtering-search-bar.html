@@ -692,7 +692,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
   "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
   backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.

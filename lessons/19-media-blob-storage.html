@@ -680,7 +680,7 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why go to all this trouble to pull media out, rather than just stuffing it into the event?</strong> Because <strong>blobs and telemetry have utterly
   different constitutions</strong>, and cramming them together hurts both. Telemetry (trace/observation) is <strong>small, structured, queried and aggregated
   frequently</strong>, so it lives in ClickHouse wide tables (<a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>); media is <strong>large, opaque binary, almost only fetched whole by id</strong>,

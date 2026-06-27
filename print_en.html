@@ -688,7 +688,7 @@ picked <strong>ClickHouse</strong> — columnar storage is built for "time-bound
 wide table".</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why keep each row "wide" instead of splitting it into tidy normalized tables?</strong> Because the
   essence of observability is <strong>answering questions you didn't think of at the time</strong> (unknown
   unknowns). If you split fields into fixed metrics before shipping, you can <strong>only</strong> query the
@@ -713,7 +713,7 @@ wide table".</p>
 <h2>How to read this guide</h2>
 <p>This guide <strong>follows the data</strong>: lay the foundations first, then walk the two main paths
 "write → read", then take apart the feature subsystems one by one, and finally cover platform & operations.
-Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design-tradeoff
+Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design trade-off
 box, and closes with a short self-test. This guide makes one <strong>hard promise</strong>: every technical claim corresponds to
 source that <strong>really exists</strong> in <code>langfuse/langfuse</code>, <strong>never invented</strong>; citations carry
 "file:line" so you can open the repo and check. Where something is unclear, following the citation into the source often beats
@@ -776,7 +776,7 @@ ten paragraphs of explanation.</p>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the tradeoff to weigh.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the trade-off to weigh.</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -942,7 +942,7 @@ redundancy for not joining at query time.</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   Wide events aren't free: wider rows, more data written, and you need smart writes + compression. Langfuse's trade is
   <strong>a little storage and write complexity for the freedom to ask anything later</strong>. It tames the cost three ways:
   <strong>columnar storage</strong> (read only the columns you query), <strong>ZSTD compression</strong> (big input/output fields
@@ -1309,7 +1309,7 @@ lessons cover ingestion, querying, evaluation or dashboards, they all operate on
 mind now and the rest gets much easier.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why pile the "heavy" fields on the observation and keep the trace so thin?</strong> Because the vast majority of queries
   happen at the "step" granularity: you aggregate and filter by model, by prompt version, by tool call — dimensions that naturally
   belong to <strong>one step</strong>, not the whole interaction. Put them on the observation and common queries become direct column
@@ -1594,7 +1594,7 @@ public API means updating the <code>fern/</code> sources too (L27). This "contra
 the server, and the per-language SDKs always in sync.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why a monorepo + narrow waist instead of three separate repos (polyrepo) for web/worker/shared?</strong> Because web and
   worker share domain models and queue contracts heavily; split into repos and every data-structure change means
   <strong>cross-repo releases and version juggling</strong>, inviting drift ("web thinks the field is A, worker still uses B"). A
@@ -1824,7 +1824,7 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why tolerate that lag and go async?</strong> Because ingestion must absorb <strong>very high write throughput</strong> while
   your app <strong>can't afford to wait</strong>. If the API synchronously merged, computed cost and wrote before returning, every LLM
   call would be slowed by Langfuse and could fail on downstream hiccups. Async decouples "accept" from "process": the API always
@@ -2037,7 +2037,7 @@ main flow</strong> — SDKs typically send asynchronously, batched, drop-on-fail
   <div class="col"><h4>🔌 OpenTelemetry (OTLP)</h4><p>If your system <strong>already uses OTel</strong> for observability and you'd rather not add another SDK, send OTel spans to Langfuse's OTLP endpoint (<code>otel/v1/traces</code>). Langfuse <strong>maps standard spans to observations</strong>. The cost: some Langfuse-specific semantics ride on convention-based attribute names.</p></div>
 </div>
 
-<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> tradeoff. OTel is the de-facto standard for
+<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> trade-off. OTel is the de-facto standard for
 cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
 your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
 version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
@@ -2073,7 +2073,7 @@ worth observing. Incremental reporting + server merge is the protocol-level expr
 observability.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
   SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
   tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (L15). The payoff: the
@@ -2252,7 +2252,7 @@ stores</strong> — which is why Part 2 spends a whole lesson on the storage div
 of every later path lesson.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Four stores = four operational burdens, so why split this much?</strong> Lesson 2 has a principle: "treat cost and
   operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
   because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
@@ -2483,7 +2483,7 @@ isolation = ordering-key prefix" idea:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>ReplacingMergeTree's overwrite is "eventual", not "immediate"</strong> — background merge takes time, so in principle you could
   read the old row in the instant both writes exist but aren't merged yet. That's the price of "just append, write fast". The fix: on the
   query side use the <code>FINAL</code> keyword to force-merge before reading, or use <strong>aggregation</strong> (take the max-event_ts
@@ -2533,11 +2533,11 @@ isolation = ordering-key prefix" idea:</p>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What tradeoff does this bring, and how does Langfuse handle it?</div>
+  <div class="qn">3. ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What trade-off does this bring, and how does Langfuse handle it?</div>
   <ol class="opts">
     <li>You may only query once a day</li>
     <li>Before merge you might read an old row; use FINAL or aggregate (max event_ts per id) for the final state — moving dedup cost from 'every write' to 'query time, controllable', buying fast writes</li>
-    <li>No tradeoff at all, always strongly consistent</li>
+    <li>No trade-off at all, always strongly consistent</li>
     <li>You must take downtime to merge</li>
   </ol>
   <details class="accordion" open>
@@ -2715,7 +2715,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 </svg>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>What's the biggest payoff of splitting "control plane" and "data plane" into two databases?</strong> Letting each
   <strong>evolve and scale by its own rules</strong>. The control plane is small and needs strong consistency — fine for a single (or
   primary/replica) Postgres; the data plane is a flood needing a horizontally-scalable ClickHouse cluster. Force them into one store and
@@ -2943,7 +2943,7 @@ ordering key.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why weld project_id into the ordering key instead of treating it as an ordinary filter column?</strong> Because that makes
   <strong>"isolation" and "efficiency" the same thing</strong>. If project_id were just a column, "see only my project" would be a full-table
   filter — slow at scale and dangerous (miss the filter once and you leak across tenants). Put it <strong>first</strong> in the ordering key
@@ -3175,9 +3175,9 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Are four infra dependencies a burden for self-hosters?</strong> Honestly, yes — versus "one binary + one SQLite", Langfuse's
-  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of Lesson 7's tradeoff: to handle
+  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of Lesson 7's trade-off: to handle
   production scale (massive telemetry, async ingestion, object storage), none of the four is droppable. Langfuse's mitigation is bringing up
   all six containers with <strong>one docker-compose command</strong> and using a <strong>MinIO stand-in</strong> to remove the dependency on
   cloud S3, making "run the whole thing on your own machine" easy. <strong>Complexity can't be erased, but it can be packaged and delivered in
@@ -3405,7 +3405,7 @@ reasons</strong>, instead of throwing out the whole pot for a few bad apples. Hu
 no full-batch retry.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why does the API only "auth + validate + enqueue", pushing all heavy work to the worker?</strong> Because the ingestion API is the
   layer <strong>facing your app directly</strong>, and its top KPI is "<strong>always fast, never drag the caller</strong>". Any extra work
   here — merging, looking up pricing, writing the DB — becomes latency on every instrumentation call and can fail on downstream hiccups. So
@@ -3665,7 +3665,7 @@ decides "what it's named in S3"</strong>. The former lets create/update converge
 hundred times still counts once. Two ids, two purposes, fitting together seamlessly.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not just do an upsert — why split into two create / update events?</strong> Because <strong>the SDK shouldn't carry state</strong>. An
   LLM call can take seconds, even tens of seconds, between start and end; meanwhile the app might crash or move machines. Requiring "wait until the
   end, then upsert the whole thing" forces the SDK to <strong>hold</strong> that record in memory until completion — costing memory and risking loss.
@@ -3893,7 +3893,7 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why insist on queue + S3 — why not have the API write the DB directly?</strong> Because the combo buys both <strong>decoupling</strong> and
   <strong>durability</strong>. Decoupling: web and worker each run at their own pace; if the worker dies or ClickHouse hiccups, events queue in Redis and
   rest in S3, <strong>not one lost</strong>, digested once downstream recovers (Lesson 5's eventual consistency). Durability: S3 is the events' "real
@@ -4130,7 +4130,7 @@ This two-stage "compute the record fully in memory, then hand it to a dedicated 
 columnar store; Lesson 17 shows how the writer batches per table and flushes on a timer.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>If Lesson 8's ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
   <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
   — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,
@@ -4349,7 +4349,7 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
 <strong>living pricing system</strong> that evolves with the model market.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why so adamant that "provided beats computed" — rather than averaging the two, or taking the larger?</strong> Because it's a stance on
   <strong>data trustworthiness</strong>. The token count an LLM provider returns in its response is the <strong>authoritative basis for billing</strong> — it
   knows how it tokenized, far more accurately than Langfuse estimating from outside with a generic tokenizer. The system's job is to <strong>record
@@ -4571,7 +4571,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
   because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
   until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
@@ -4796,7 +4796,7 @@ a new convention, just <strong>add a few attribute keys</strong> to the priority
 time.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>If the native channel is more precise, why bother supporting OpenTelemetry?</strong> Because you <strong>meet users where they are</strong>.
   OpenTelemetry is the de facto observability standard; countless teams' apps are already instrumented with it. If Langfuse only spoke its own SDK, it would
   demand users <strong>re-instrument just for it</strong> — a barrier that turns many away. Supporting OTLP means "you <strong>change not one line of
@@ -4846,7 +4846,7 @@ time.</p>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. Native ingestion is more precise than OTel — so why does Langfuse still support OpenTelemetry, and what's the essence of the tradeoff?</div>
+  <div class="qn">3. Native ingestion is more precise than OTel — so why does Langfuse still support OpenTelemetry, and what's the essence of the trade-off?</div>
   <ol class="opts">
     <li>purely a marketing gimmick</li>
     <li>because OTel is faster than native</li>
@@ -5003,7 +5003,7 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why go to all this trouble to pull media out, rather than just stuffing it into the event?</strong> Because <strong>blobs and telemetry have utterly
   different constitutions</strong>, and cramming them together hurts both. Telemetry (trace/observation) is <strong>small, structured, queried and aggregated
   frequently</strong>, so it lives in ClickHouse wide tables (Lesson 8); media is <strong>large, opaque binary, almost only fetched whole by id</strong>,
@@ -5220,7 +5220,7 @@ other. This is the master plan of Part 4's read path.</p>
 
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not chase the trend and migrate fully to App Router, or just use REST as the one API?</strong> Because <strong>architecture choices should serve
   team reality, not novelty</strong>. Langfuse laid a solid foundation on Pages Router + tRPC before the App Router matured — tRPC lets front and back
   <strong>share one type system</strong>, the key to this full-stack team iterating fast; a rash migration is low-reward, high-risk. As for the API: internal and
@@ -5455,7 +5455,7 @@ isolation key"):</p>
 
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
   "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
@@ -5649,7 +5649,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
 (~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
@@ -5664,7 +5664,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why cram all reads into one executor, instead of writing SQL wherever you need it?</strong> Because <strong>cross-cutting concerns most dread being
   scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
   a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're
@@ -5877,7 +5877,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
   "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
   backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.
@@ -6008,7 +6008,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 <h2>Conditional FINAL: the default view reads only the latest partition</h2>
 <p>Here hides an optimization only ClickHouse veterans appreciate. Recall Lesson 8: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
 (create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
-correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
+correct but <strong>slow</strong>. Langfuse's trade-off: <strong>avoid FINAL whenever possible</strong>:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="default ordering by toDate(timestamp)+event_ts desc with LIMIT 1 BY id skips FINAL and reads only the latest partition deduping in memory; non-default ordering falls back to FROM traces FINAL full dedup">
@@ -6080,7 +6080,7 @@ Langfuse's answer is <strong>three layers, with the URL as the source of truth</
 the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not fetch it all at once (rows + all metrics), instead of two calls and a pile of "on-demand" switches?</strong> Because <strong>the list's experience
   goal is "instant", while metrics are inherently expensive</strong>. Cost, latency, scores need 2 big-table JOINs to compute; bound to the rows, the whole table must
   <strong>wait for the slowest call</strong> to show — the user stares at blank space. Split them and the compact rows (cheap, everyone wants) <strong>arrive
@@ -6281,7 +6281,7 @@ unbounded one</strong>:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why does detail dare to "fetch the whole tree", while the list "defers aggressively"?</strong> The key is <strong>boundedness</strong>. The list faces an
   <strong>unbounded number of rows</strong> (thousands, tens of thousands of traces), so even a slightly pricey column per row must be deferred; the detail faces
   <strong>one trace</strong> — however many observations it has, that count is <strong>bounded</strong>, and "seeing this one in full" is precisely the detail page's value, so
@@ -6459,7 +6459,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
 (like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
 table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
-but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+but all of its metrics and listing are derived</strong>. That's exactly the trade-off — <strong>store what should be stored (identity, metadata), don't store what can be
 computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
@@ -6502,7 +6502,7 @@ shaped the next, where the conversation started to go off the rails.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
   don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
   naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that
@@ -6717,7 +6717,7 @@ generation</strong> ensures "multi-language consistency, contract-as-docs". Pair
 silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
   <strong>different audiences, different constraints</strong> (echoing Lesson 20). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
   speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +
@@ -10092,7 +10092,7 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
 <div class="fig">
 <svg viewBox="0 0 720 230" role="img" aria-label="webhook SSRF defense in depth: a user-supplied URL must pass in order a protocol allowlist (http/https only), a port allowlist (80/443 only), a hostname blocklist (localhost/metadata), an IP CIDR blocklist (private/loopback/link-local), and fail-closed on unparseable; only if all pass is the request sent, otherwise rejected">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The user URL must clear five gates; only all-pass is let through</text>
-  <rect x="20" y="44" width="120" height="150" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="80" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">user-supplied URL</text><text x="80" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">legit:</text><text x="80" y="96" text-anchor="middle" font-size="5.8" fill="var(--teal)">https://hooks.x.com/…</text><text x="80" y="120" text-anchor="middle" font-size="6.2" fill="var(--muted)">malicious:</text><text x="80" y="132" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">http://169.254.169.254</text><text x="80" y="144" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">http://localhost:6379</text><text x="80" y="156" text-anchor="middle" font-size="5.6" fill="var(--accent-ink)">file:///etc/passwd</text>
+  <rect x="20" y="44" width="120" height="150" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="80" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">user-supplied URL</text><text x="80" y="84" text-anchor="middle" font-size="6.2" fill="var(--muted)">legit:</text><text x="80" y="96" text-anchor="middle" font-size="5.8" fill="var(--teal)">https://hooks.x.com/…</text><text x="80" y="120" text-anchor="middle" font-size="6.2" fill="var(--muted)">malicious:</text><text x="80" y="132" text-anchor="middle" font-size="5.6" fill="var(--red)">http://169.254.169.254</text><text x="80" y="144" text-anchor="middle" font-size="5.6" fill="var(--red)">http://localhost:6379</text><text x="80" y="156" text-anchor="middle" font-size="5.6" fill="var(--red)">file:///etc/passwd</text>
   <rect x="165" y="44" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="62" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate1 protocol</text><text x="215" y="76" text-anchor="middle" font-size="6.0" fill="var(--muted)">http/https only</text>
   <rect x="165" y="96" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="114" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate2 port</text><text x="215" y="128" text-anchor="middle" font-size="6.0" fill="var(--muted)">80 / 443 only</text>
   <rect x="165" y="148" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="215" y="166" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">gate3 hostname</text><text x="215" y="180" text-anchor="middle" font-size="5.6" fill="var(--muted)">block localhost/metadata</text>
@@ -12168,7 +12168,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <line x1="170" y1="86" x2="220" y2="86" stroke="var(--accent)" stroke-width="2"></line>
   <line x1="170" y1="138" x2="220" y2="138" stroke="var(--accent)" stroke-width="2"></line>
   <line x1="170" y1="190" x2="220" y2="190" stroke="var(--accent)" stroke-width="2"></line>
-  <text x="360" y="232" font-size="10" text-anchor="middle" fill="var(--muted)">remove any one and the rest feel off — architecture is a set of mutually-reinforcing tradeoffs for one goal</text>
+  <text x="360" y="232" font-size="10" text-anchor="middle" fill="var(--muted)">remove any one and the rest feel off — architecture is a set of mutually-reinforcing trade-offs for one goal</text>
 </svg>
 
 <table class="t">

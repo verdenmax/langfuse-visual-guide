@@ -104,7 +104,7 @@ QUIZZES = {
                 "answer": 0,
                 "why": {
                     "zh": "把“接收”和“处理”分开，是高吞吐遥测系统的经典做法。API 端轻量、可水平扩展、对 SDK 低延迟；worker 端可重试、可批量、可分片（主/次队列隔离高吞吐项目）。代价是“最终一致”——数据有秒级处理延迟，这正是 §设计取舍要权衡的。",
-                    "en": "Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the tradeoff to weigh.",
+                    "en": "Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the trade-off to weigh.",
                 },
             },
         ],
@@ -580,14 +580,14 @@ QUIZZES = {
             {
                 "q": {
                     "zh": "ReplacingMergeTree 的覆盖是“最终”的（后台合并需要时间）。这带来什么取舍，Langfuse 怎么应对？",
-                    "en": "ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What tradeoff does this bring, and how does Langfuse handle it?",
+                    "en": "ReplacingMergeTree's overwrite is 'eventual' (background merge takes time). What trade-off does this bring, and how does Langfuse handle it?",
                 },
                 "opts": [
                     {
                         "zh": "未合并瞬间可能读到旧行；用 FINAL 或按 id 取最大 event_ts 的聚合保证最终态——把去重成本从“每次写入”挪到“查询时且可控”，换来写入飞快",
                         "en": "Before merge you might read an old row; use FINAL or aggregate (max event_ts per id) for the final state — moving dedup cost from 'every write' to 'query time, controllable', buying fast writes",
                     },
-                    {"zh": "没有任何取舍，永远强一致", "en": "No tradeoff at all, always strongly consistent"},
+                    {"zh": "没有任何取舍，永远强一致", "en": "No trade-off at all, always strongly consistent"},
                     {"zh": "必须停机合并", "en": "You must take downtime to merge"},
                     {"zh": "只能每天查询一次", "en": "You may only query once a day"},
                 ],
@@ -1280,7 +1280,7 @@ QUIZZES = {
             {
                 "q": {
                     "zh": "原生摄取比 OTel 更精确，为什么 Langfuse 还要支持 OpenTelemetry？这个取舍的本质是什么？",
-                    "en": "Native ingestion is more precise than OTel — so why does Langfuse still support OpenTelemetry, and what's the essence of the tradeoff?",
+                    "en": "Native ingestion is more precise than OTel — so why does Langfuse still support OpenTelemetry, and what's the essence of the trade-off?",
                 },
                 "opts": [
                     {

@@ -716,7 +716,7 @@ ordering key.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why weld project_id into the ordering key instead of treating it as an ordinary filter column?</strong> Because that makes
   <strong>"isolation" and "efficiency" the same thing</strong>. If project_id were just a column, "see only my project" would be a full-table
   filter — slow at scale and dangerous (miss the filter once and you leak across tenants). Put it <strong>first</strong> in the ordering key

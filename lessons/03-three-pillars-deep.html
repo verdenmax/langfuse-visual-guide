@@ -876,7 +876,7 @@ lessons cover ingestion, querying, evaluation or dashboards, they all operate on
 mind now and the rest gets much easier.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why pile the "heavy" fields on the observation and keep the trace so thin?</strong> Because the vast majority of queries
   happen at the "step" granularity: you aggregate and filter by model, by prompt version, by tool call — dimensions that naturally
   belong to <strong>one step</strong>, not the whole interaction. Put them on the observation and common queries become direct column

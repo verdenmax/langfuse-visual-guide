@@ -322,7 +322,7 @@ other. This is the master plan of Part 4's read path.</p>
 
 _EN20.append(r"""
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not chase the trend and migrate fully to App Router, or just use REST as the one API?</strong> Because <strong>architecture choices should serve
   team reality, not novelty</strong>. Langfuse laid a solid foundation on Pages Router + tRPC before the App Router matured — tRPC lets front and back
   <strong>share one type system</strong>, the key to this full-stack team iterating fast; a rash migration is low-reward, high-risk. As for the API: internal and
@@ -699,7 +699,7 @@ isolation key"):</p>
 
 _EN21.append(r"""
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
   "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
@@ -1010,7 +1010,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
 (~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
@@ -1025,7 +1025,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why cram all reads into one executor, instead of writing SQL wherever you need it?</strong> Because <strong>cross-cutting concerns most dread being
   scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
   a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're
@@ -1358,7 +1358,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not let the search bar and AI each generate SQL directly, instead of all converging to FilterState first?</strong> Because <strong>there are multiple
   "input surfaces" AND multiple "backends"</strong>. Inputs: sidebar, search bar, AI, more to come; backends: ClickHouse, Postgres. Wire each input straight to each
   backend and it's N×M translation logics, N×M injection risks — and adding one input means <strong>rewriting</strong> every backend's wiring and every safety check.
@@ -1600,7 +1600,7 @@ _EN24.append(r"""
 <h2>Conditional FINAL: the default view reads only the latest partition</h2>
 <p>Here hides an optimization only ClickHouse veterans appreciate. Recall Lesson 8: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
 (create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
-correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
+correct but <strong>slow</strong>. Langfuse's trade-off: <strong>avoid FINAL whenever possible</strong>:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="default ordering by toDate(timestamp)+event_ts desc with LIMIT 1 BY id skips FINAL and reads only the latest partition deduping in memory; non-default ordering falls back to FROM traces FINAL full dedup">
@@ -1672,7 +1672,7 @@ Langfuse's answer is <strong>three layers, with the URL as the source of truth</
 the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not fetch it all at once (rows + all metrics), instead of two calls and a pile of "on-demand" switches?</strong> Because <strong>the list's experience
   goal is "instant", while metrics are inherently expensive</strong>. Cost, latency, scores need 2 big-table JOINs to compute; bound to the rows, the whole table must
   <strong>wait for the slowest call</strong> to show — the user stares at blank space. Split them and the compact rows (cheap, everyone wants) <strong>arrive
@@ -1977,7 +1977,7 @@ unbounded one</strong>:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why does detail dare to "fetch the whole tree", while the list "defers aggressively"?</strong> The key is <strong>boundedness</strong>. The list faces an
   <strong>unbounded number of rows</strong> (thousands, tens of thousands of traces), so even a slightly pricey column per row must be deferred; the detail faces
   <strong>one trace</strong> — however many observations it has, that count is <strong>bounded</strong>, and "seeing this one in full" is precisely the detail page's value, so
@@ -2282,7 +2282,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
 (like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
 table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
-but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+but all of its metrics and listing are derived</strong>. That's exactly the trade-off — <strong>store what should be stored (identity, metadata), don't store what can be
 computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
@@ -2325,7 +2325,7 @@ shaped the next, where the conversation started to go off the rails.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
   don't store again</strong>. <code>session_id</code> is already a column on Lesson 8's wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
   naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that
@@ -2661,7 +2661,7 @@ generation</strong> ensures "multi-language consistency, contract-as-docs". Pair
 silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
   <strong>different audiences, different constraints</strong> (echoing Lesson 20). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
   speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +

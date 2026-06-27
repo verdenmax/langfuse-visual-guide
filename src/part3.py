@@ -340,7 +340,7 @@ reasons</strong>, instead of throwing out the whole pot for a few bad apples. Hu
 no full-batch retry.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why does the API only "auth + validate + enqueue", pushing all heavy work to the worker?</strong> Because the ingestion API is the
   layer <strong>facing your app directly</strong>, and its top KPI is "<strong>always fast, never drag the caller</strong>". Any extra work
   here — merging, looking up pricing, writing the DB — becomes latency on every instrumentation call and can fail on downstream hiccups. So
@@ -768,7 +768,7 @@ decides "what it's named in S3"</strong>. The former lets create/update converge
 hundred times still counts once. Two ids, two purposes, fitting together seamlessly.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not just do an upsert — why split into two create / update events?</strong> Because <strong>the SDK shouldn't carry state</strong>. An
   LLM call can take seconds, even tens of seconds, between start and end; meanwhile the app might crash or move machines. Requiring "wait until the
   end, then upsert the whole thing" forces the SDK to <strong>hold</strong> that record in memory until completion — costing memory and risking loss.
@@ -1131,7 +1131,7 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why insist on queue + S3 — why not have the API write the DB directly?</strong> Because the combo buys both <strong>decoupling</strong> and
   <strong>durability</strong>. Decoupling: web and worker each run at their own pace; if the worker dies or ClickHouse hiccups, events queue in Redis and
   rest in S3, <strong>not one lost</strong>, digested once downstream recovers (Lesson 5's eventual consistency). Durability: S3 is the events' "real
@@ -1510,7 +1510,7 @@ This two-stage "compute the record fully in memory, then hand it to a dedicated 
 columnar store; Lesson 17 shows how the writer batches per table and flushes on a timer.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>If Lesson 8's ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
   <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
   — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,
@@ -1855,7 +1855,7 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
 <strong>living pricing system</strong> that evolves with the model market.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why so adamant that "provided beats computed" — rather than averaging the two, or taking the larger?</strong> Because it's a stance on
   <strong>data trustworthiness</strong>. The token count an LLM provider returns in its response is the <strong>authoritative basis for billing</strong> — it
   knows how it tokenized, far more accurately than Langfuse estimating from outside with a generic tokenizer. The system's job is to <strong>record
@@ -2205,7 +2205,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
   because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
   until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
@@ -2563,7 +2563,7 @@ a new convention, just <strong>add a few attribute keys</strong> to the priority
 time.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>If the native channel is more precise, why bother supporting OpenTelemetry?</strong> Because you <strong>meet users where they are</strong>.
   OpenTelemetry is the de facto observability standard; countless teams' apps are already instrumented with it. If Langfuse only spoke its own SDK, it would
   demand users <strong>re-instrument just for it</strong> — a barrier that turns many away. Supporting OTLP means "you <strong>change not one line of
@@ -2885,7 +2885,7 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why go to all this trouble to pull media out, rather than just stuffing it into the event?</strong> Because <strong>blobs and telemetry have utterly
   different constitutions</strong>, and cramming them together hurts both. Telemetry (trace/observation) is <strong>small, structured, queried and aggregated
   frequently</strong>, so it lives in ClickHouse wide tables (Lesson 8); media is <strong>large, opaque binary, almost only fetched whole by id</strong>,

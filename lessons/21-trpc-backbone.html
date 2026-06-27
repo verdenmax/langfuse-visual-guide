@@ -735,7 +735,7 @@ isolation key"):</p>
 
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
   "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them

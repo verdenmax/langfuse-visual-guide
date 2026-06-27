@@ -669,7 +669,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
 (~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
@@ -684,7 +684,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why cram all reads into one executor, instead of writing SQL wherever you need it?</strong> Because <strong>cross-cutting concerns most dread being
   scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
   a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're

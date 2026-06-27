@@ -708,7 +708,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
   because the real "ledger" isn't here. Recall <a class="xref" href="14-ingestion-queue.html">Lesson 14</a>: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
   until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is

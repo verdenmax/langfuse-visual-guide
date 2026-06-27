@@ -664,7 +664,7 @@ part"</strong>: any new "list aggregated by some dimension" (sessions, users, mo
 NOTHING</code> — registered once per session). Its job is to "<strong>register that this session exists</strong>" and to hang some <strong>session-level metadata</strong>
 (like bookmarked, public). But note: the truly expensive parts — <strong>user_ids, round count, duration, total cost, the trace list — are none of them in this
 table</strong>; they're all computed by ClickHouse grouping traces on the fly. So the precise statement is: <strong>a lightweight session metadata entity is persisted,
-but all of its metrics and listing are derived</strong>. That's exactly the tradeoff — <strong>store what should be stored (identity, metadata), don't store what can be
+but all of its metrics and listing are derived</strong>. That's exactly the trade-off — <strong>store what should be stored (identity, metadata), don't store what can be
 computed (aggregate metrics)</strong>.</p>
 
 <h2>Session detail: the conversation laid out over time</h2>
@@ -707,7 +707,7 @@ shaped the next, where the conversation started to go off the rails.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why compute a session's metrics on the fly rather than pre-compute and store the aggregates?</strong> Because <strong>aggregates you can compute from existing data,
   don't store again</strong>. <code>session_id</code> is already a column on <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s wide table, so grouping by it is <strong>free</strong>; and this on-the-fly form is
   naturally <strong>always consistent with the underlying traces</strong> — a new trace bearing some session_id is <strong>automatically</strong> counted into that

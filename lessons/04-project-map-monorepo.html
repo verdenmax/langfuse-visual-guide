@@ -821,7 +821,7 @@ public API means updating the <code>fern/</code> sources too (<a class="xref" hr
 the server, and the per-language SDKs always in sync.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why a monorepo + narrow waist instead of three separate repos (polyrepo) for web/worker/shared?</strong> Because web and
   worker share domain models and queue contracts heavily; split into repos and every data-structure change means
   <strong>cross-repo releases and version juggling</strong>, inviting drift ("web thinks the field is A, worker still uses B"). A

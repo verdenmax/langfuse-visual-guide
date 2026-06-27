@@ -336,7 +336,7 @@ _EN6.append(r"""
   <div class="col"><h4>🔌 OpenTelemetry (OTLP)</h4><p>If your system <strong>already uses OTel</strong> for observability and you'd rather not add another SDK, send OTel spans to Langfuse's OTLP endpoint (<code>otel/v1/traces</code>). Langfuse <strong>maps standard spans to observations</strong>. The cost: some Langfuse-specific semantics ride on convention-based attribute names.</p></div>
 </div>
 
-<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> tradeoff. OTel is the de-facto standard for
+<p>This is a classic <strong>"embrace the standard vs play to your strengths"</strong> trade-off. OTel is the de-facto standard for
 cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
 your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
 version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
@@ -372,7 +372,7 @@ worth observing. Incremental reporting + server merge is the protocol-level expr
 observability.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
   SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
   tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (L15). The payoff: the
@@ -677,7 +677,7 @@ stores</strong> — which is why Part 2 spends a whole lesson on the storage div
 of every later path lesson.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Four stores = four operational burdens, so why split this much?</strong> Lesson 2 has a principle: "treat cost and
   operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
   because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
@@ -995,7 +995,7 @@ isolation = ordering-key prefix" idea:</p>
 </table>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>ReplacingMergeTree's overwrite is "eventual", not "immediate"</strong> — background merge takes time, so in principle you could
   read the old row in the instant both writes exist but aren't merged yet. That's the price of "just append, write fast". The fix: on the
   query side use the <code>FINAL</code> keyword to force-merge before reading, or use <strong>aggregation</strong> (take the max-event_ts
@@ -1357,7 +1357,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 </svg>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>What's the biggest payoff of splitting "control plane" and "data plane" into two databases?</strong> Letting each
   <strong>evolve and scale by its own rules</strong>. The control plane is small and needs strong consistency — fine for a single (or
   primary/replica) Postgres; the data plane is a flood needing a horizontally-scalable ClickHouse cluster. Force them into one store and
@@ -1708,7 +1708,7 @@ ordering key.</p>
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why weld project_id into the ordering key instead of treating it as an ordinary filter column?</strong> Because that makes
   <strong>"isolation" and "efficiency" the same thing</strong>. If project_id were just a column, "see only my project" would be a full-table
   filter — slow at scale and dangerous (miss the filter once and you leak across tenants). Put it <strong>first</strong> in the ordering key
@@ -2067,9 +2067,9 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
 </div>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Are four infra dependencies a burden for self-hosters?</strong> Honestly, yes — versus "one binary + one SQLite", Langfuse's
-  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of Lesson 7's tradeoff: to handle
+  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of Lesson 7's trade-off: to handle
   production scale (massive telemetry, async ingestion, object storage), none of the four is droppable. Langfuse's mitigation is bringing up
   all six containers with <strong>one docker-compose command</strong> and using a <strong>MinIO stand-in</strong> to remove the dependency on
   cloud S3, making "run the whole thing on your own machine" easy. <strong>Complexity can't be erased, but it can be packaged and delivered in

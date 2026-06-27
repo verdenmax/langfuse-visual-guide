@@ -781,7 +781,7 @@ decides "what it's named in S3"</strong>. The former lets create/update converge
 hundred times still counts once. Two ids, two purposes, fitting together seamlessly.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why not just do an upsert — why split into two create / update events?</strong> Because <strong>the SDK shouldn't carry state</strong>. An
   LLM call can take seconds, even tens of seconds, between start and end; meanwhile the app might crash or move machines. Requiring "wait until the
   end, then upsert the whole thing" forces the SDK to <strong>hold</strong> that record in memory until completion — costing memory and risking loss.

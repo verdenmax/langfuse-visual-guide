@@ -996,7 +996,7 @@ picked <strong>ClickHouse</strong> — columnar storage is built for "time-bound
 wide table".</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Why keep each row "wide" instead of splitting it into tidy normalized tables?</strong> Because the
   essence of observability is <strong>answering questions you didn't think of at the time</strong> (unknown
   unknowns). If you split fields into fixed metrics before shipping, you can <strong>only</strong> query the
@@ -1021,7 +1021,7 @@ wide table".</p>
 <h2>How to read this guide</h2>
 <p>This guide <strong>follows the data</strong>: lay the foundations first, then walk the two main paths
 "write → read", then take apart the feature subsystems one by one, and finally cover platform & operations.
-Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design-tradeoff
+Every lesson ships <strong>real source citations (file:line)</strong>, hand-drawn diagrams and a design trade-off
 box, and closes with a short self-test. This guide makes one <strong>hard promise</strong>: every technical claim corresponds to
 source that <strong>really exists</strong> in <code>langfuse/langfuse</code>, <strong>never invented</strong>; citations carry
 "file:line" so you can open the repo and check. Where something is unclear, following the citation into the source often beats
@@ -1083,7 +1083,7 @@ ten paragraphs of explanation.</p>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the tradeoff to weigh.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Separating 'accept' from 'process' is the classic shape for high-throughput telemetry. The API stays lightweight, horizontally scalable and low-latency to the SDK; the worker can retry, batch and shard (primary/secondary queues isolate high-throughput projects). The cost is eventual consistency — a few seconds of processing lag, exactly the trade-off to weigh.</div></div></div>
   </details>
 </div>
 <div class="card spark">

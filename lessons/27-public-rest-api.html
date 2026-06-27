@@ -693,7 +693,7 @@ generation</strong> ensures "multi-language consistency, contract-as-docs". Pair
 silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
   <strong>different audiences, different constraints</strong> (echoing <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
   speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +

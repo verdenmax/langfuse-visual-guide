@@ -671,7 +671,7 @@ stores</strong> — which is why Part 2 spends a whole lesson on the storage div
 of every later path lesson.</p>
 
 <div class="card spark">
-  <div class="tag">🎯 Design tradeoff</div>
+  <div class="tag">🎯 Design trade-off</div>
   <strong>Four stores = four operational burdens, so why split this much?</strong> <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a> has a principle: "treat cost and
   operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
   because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
