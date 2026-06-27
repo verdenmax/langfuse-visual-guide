@@ -1958,15 +1958,15 @@ _ZH17.append(r"""
   <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">高峰期</text>
   <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
   <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ 瞬间坐满 batchSize</text>
-  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① 立刻 flush（按量）</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① 立刻 flush（按量）</text>
   <text x="448" y="81" font-size="8" fill="var(--muted)">延迟极低、批批都满，吞吐拉满</text>
   <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">低谷期</text>
   <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
   <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ 半天才两条，凑不满</text>
-  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② 到点 flush（按时）</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② 到点 flush（按时）</text>
   <text x="448" y="141" font-size="8" fill="var(--muted)">每 writeInterval 一刷，不让数据干等</text>
   <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">关机时</text>
-  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) 排空</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">flushAll(true) 排空</text>
   <text x="448" y="183" font-size="8" fill="var(--muted)">清定时器 + 把所有队列一次写尽，不丢数据</text>
 </svg>
 <div class="figcap"><b>两条件互补 + 优雅关机</b>：高峰靠 <code>batchSize</code> 保吞吐，低谷靠 <code>writeInterval</code> 保延迟上限；<code>shutdown</code> 先 <code>clearInterval</code> 再 <code>flushAll(true)</code> 把内存里剩的全部写尽。<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</div>
@@ -2128,15 +2128,15 @@ _EN17.append(r"""
   <text x="20" y="58" font-size="9" font-weight="700" fill="var(--accent-ink)">rush hour</text>
   <rect x="20" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="44" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="68" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="92" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><rect x="116" y="66" width="20" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
   <text x="150" y="81" font-size="8.5" fill="var(--ink)">▶ fills batchSize instantly</text>
-  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">① flush now (by size)</text>
+  <rect x="300" y="64" width="120" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="360" y="81" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① flush now (by size)</text>
   <text x="448" y="81" font-size="8" fill="var(--muted)">low latency, full batches, max throughput</text>
   <text x="20" y="118" font-size="9" font-weight="700" fill="var(--blue)">lull</text>
   <rect x="20" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><rect x="44" y="126" width="20" height="22" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/>
   <text x="80" y="141" font-size="8.5" fill="var(--ink)">▶ only two in ages, never fills</text>
-  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">② flush on time</text>
+  <rect x="300" y="124" width="120" height="26" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="141" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">② flush on time</text>
   <text x="448" y="141" font-size="8" fill="var(--muted)">flush every writeInterval, no waiting forever</text>
   <text x="20" y="178" font-size="9" font-weight="700" fill="var(--amber)">on shutdown</text>
-  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff">flushAll(true) drain</text>
+  <rect x="300" y="166" width="120" height="26" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="360" y="183" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">flushAll(true) drain</text>
   <text x="448" y="183" font-size="8" fill="var(--muted)">clear timer + write out every queue, no loss</text>
 </svg>
 <div class="figcap"><b>Complementary conditions + graceful shutdown</b>: rush hour leans on <code>batchSize</code> for throughput, lulls on <code>writeInterval</code> to cap latency; <code>shutdown</code> first <code>clearInterval</code> then <code>flushAll(true)</code> writes out everything left in memory. <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</div>
