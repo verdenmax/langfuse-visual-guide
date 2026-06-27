@@ -336,7 +336,7 @@ _ZH55.append(r"""
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
-  把一条 trace 想象成一个<strong>「快递包裹」</strong>的一生。它在<strong>寄件人手里诞生</strong>（你的应用调用 LLM，SDK 把这次调用打包）；在<strong>分拣中心被高速处理</strong>（摄取链路：扫码登记、分拣、入库）；在<strong>仓库里被妥善存放</strong>（三个库各放一部分：单号信息、明细、大件）；被人<strong>在系统里查询追踪</strong>（列表、详情、按时间线看它的来龙去脉）；被<strong>质检员抽检打分</strong>（评估与监控）；触发<strong>下游联动</strong>（到货通知、转寄、归档）；最后在<strong>保管期满时被销毁</strong>，且三个库一处不漏地清干净。
+  把一条 trace 想象成一个<strong>「快递包裹」</strong>的一生。它在<strong>寄件人手里诞生</strong>（你的应用调用 LLM，SDK 把这次调用打包）；在<strong>分拣中心被高速处理</strong>（摄取链路：扫码登记、分拣、入库）；在<strong>仓库里被妥善存放</strong>（三个库各放一部分：单号信息、明细、大件）；被人<strong>在系统里查询追踪</strong>（列表、详情、按时间线看它的来龙去脉）；被<strong>质检员抽检评分</strong>（评估与监控）；触发<strong>下游联动</strong>（到货通知、转寄、归档）；最后在<strong>保管期满时被销毁</strong>，且三个库一处不漏地清干净。
   你前面 54 课，是分别参观了寄件台、分拣机、货架、查询台、质检站、通知中心、销毁间——这一课，是<strong>跟着同一个包裹，把这些站点一次性串成一条流水线</strong>，看它们如何首尾相接、共同完成「让每一次 AI 调用都<strong>有据可查、可评可控</strong>」这件事。
 </div>
 """)
@@ -348,7 +348,7 @@ _ZH55.append(r"""
 <p><strong>① 出生（第12课）。</strong>你的应用调一次 LLM，<strong>SDK</strong> 就地创建一条 trace 和它下面的若干 observation，把输入、输出、模型、用量都记下来，<strong>攒成一批</strong>，异步 POST 到摄取 API——你的主流程<strong>几乎无感</strong>。<strong>② 摄取（第13-19课）。</strong>API 先用 API key 认证（<strong>第49课</strong>的两层哈希校验），把原始事件<strong>落进 S3</strong>、把任务<strong>塞进 Redis 队列</strong>就立刻 200 返回——这就是「<strong>快接收</strong>」。然后 <strong>worker</strong> 从队列取出，做校验、解析、可能的合并，<strong>upsert 进 ClickHouse</strong>。<strong>③ 落库（第13课）。</strong>这条 trace 最终<strong>散成三份</strong>安家：可分析的事件明细进 <strong>ClickHouse</strong>（不可变、ReplacingMergeTree 查时去重保留最新）、大块输入输出进 <strong>S3</strong>、相关元数据进 <strong>Postgres</strong>。出生到落库，第10课「双(三)存储」与第54课「异步、不可变」两大主题，在这里第一次合奏。</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 250" role="img" aria-label="一条trace的一生时间线：出生(SDK创建,L12)→摄取(API认证落S3塞Redis队列worker处理,L13-19/L49)→落库(散成三份:ClickHouse事件+S3负载+Postgres元数据)→被读(列表详情会话REST,L20-27)→被评估(eval打分监控告警数据集,L28-36)→被作用(自动化webhook/Slack分析导出批量,L44-47)→退场(保留期跨三存储删除,L52)，全程被OTel观测(L51)、按plan门控(L50)、按project隔离">
+<svg viewBox="0 0 720 250" role="img" aria-label="一条trace的一生时间线：出生(SDK创建,L12)→摄取(API认证落S3塞Redis队列worker处理,L13-19/L49)→落库(散成三份:ClickHouse事件+S3负载+Postgres元数据)→被读(列表详情会话REST,L20-27)→被评估(eval评分监控告警数据集,L28-36)→被作用(自动化webhook/Slack分析导出批量,L44-47)→退场(保留期跨三存储删除,L52)，全程被OTel观测(L51)、按plan门控(L50)、按project隔离">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一条 trace 的一生：七个驿站，串成一条流水线</text>
   <line x1="40" y1="70" x2="690" y2="70" stroke="var(--faint)" stroke-width="2"/><polygon points="690,70 680,65 680,75" fill="var(--faint)"/>
   <circle cx="70" cy="70" r="6" fill="var(--teal)"/><text x="70" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--teal)">①出生</text><text x="70" y="90" text-anchor="middle" font-size="6.5" fill="var(--muted)">SDK创建</text><text x="70" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L12</text>
@@ -388,14 +388,14 @@ _ZH55.append(r"""
 
 _ZH55.append(r"""
 <h2>第二程：被读 → 被评估</h2>
-<p><strong>④ 被读（第20-27课）。</strong>数据进来了，人要看。trace 出现在<strong>列表页</strong>——这里只查 ClickHouse 的<strong>紧凑表示</strong>（窄选列、时间窗、token 分页，第24课），快而省；你点进<strong>详情页</strong>，才把完整的 observation 树和大块输入输出从 S3 取出来（第25课）；<strong>会话视图</strong>把同一用户的多条 trace 串起来看（第26课）；而程序想读，走<strong>公共 REST API</strong>（第27课，scale-aware 契约）。<strong>⑤ 被评估（第28-36课）。</strong>光看不够，还要<strong>判好坏</strong>：一条 <strong>LLM-as-judge</strong> 评估器读这条 trace 的输入输出、调一个裁判模型给它打分写回 score（第28-31课）；<strong>监控</strong>盯着分数的聚合，越过阈值就发告警（第33课）；这条 trace 还可能被<strong>加进数据集</strong>当测试用例、在<strong>实验</strong>里和别的 prompt/模型对比（第34-36课）。注意这里出现了一个优雅的<strong>闭环</strong>：trace 产生 score、score 又能驱动监控与实验，<strong>观测的产物反过来改进应用</strong>。</p>
+<p><strong>④ 被读（第20-27课）。</strong>数据进来了，人要看。trace 出现在<strong>列表页</strong>——这里只查 ClickHouse 的<strong>紧凑表示</strong>（窄选列、时间窗、token 分页，第24课），快而省；你点进<strong>详情页</strong>，才把完整的 observation 树和大块输入输出从 S3 取出来（第25课）；<strong>会话视图</strong>把同一用户的多条 trace 串起来看（第26课）；而程序想读，走<strong>公共 REST API</strong>（第27课，scale-aware 契约）。<strong>⑤ 被评估（第28-36课）。</strong>光看不够，还要<strong>判好坏</strong>：一条 <strong>LLM-as-judge</strong> 评估器读这条 trace 的输入输出、调一个裁判模型给它评分写回 score（第28-31课）；<strong>监控</strong>盯着分数的聚合，越过阈值就发告警（第33课）；这条 trace 还可能被<strong>加进数据集</strong>当测试用例、在<strong>实验</strong>里和别的 prompt/模型对比（第34-36课）。注意这里出现了一个优雅的<strong>闭环</strong>：trace 产生 score、score 又能驱动监控与实验，<strong>观测的产物反过来改进应用</strong>。</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 230" role="img" aria-label="被读与被评估：落库的trace一面被读(列表查CH紧凑表示L24/详情取S3大字段L25/会话L26/REST L27)，一面被评估(LLM裁判打分L28-31→score写回，监控盯聚合越阈值告警L33，加数据集做实验L34-36)；score又驱动监控与实验形成闭环——观测产物反哺应用">
+<svg viewBox="0 0 720 230" role="img" aria-label="被读与被评估：落库的trace一面被读(列表查CH紧凑表示L24/详情取S3大字段L25/会话L26/REST L27)，一面被评估(LLM裁判评分L28-31→score写回，监控盯聚合越阈值告警L33，加数据集做实验L34-36)；score又驱动监控与实验形成闭环——观测产物反哺应用">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">既被人看，也被评判——还形成改进闭环</text>
   <rect x="280" y="44" width="160" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">落库的 trace</text><text x="360" y="80" text-anchor="middle" font-size="6.5" fill="var(--muted)">CH 明细 + S3 负载 + PG 元数据</text>
   <rect x="24" y="110" width="200" height="96" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="124" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">④ 被读（L20-27）</text><text x="124" y="145" text-anchor="middle" font-size="6.5" fill="var(--muted)">列表：CH 紧凑表示(L24)</text><text x="124" y="158" text-anchor="middle" font-size="6.5" fill="var(--muted)">详情：取 S3 大字段(L25)</text><text x="124" y="171" text-anchor="middle" font-size="6.5" fill="var(--muted)">会话：串同用户(L26)</text><text x="124" y="184" text-anchor="middle" font-size="6.5" fill="var(--muted)">REST：scale-aware 契约(L27)</text><text x="124" y="198" text-anchor="middle" font-size="6.5" fill="var(--faint)">人/程序读它</text>
-  <rect x="496" y="110" width="200" height="96" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">⑤ 被评估（L28-36）</text><text x="596" y="145" text-anchor="middle" font-size="6.5" fill="var(--muted)">LLM 裁判打分→score(L28-31)</text><text x="596" y="158" text-anchor="middle" font-size="6.5" fill="var(--muted)">监控盯聚合越阈值告警(L33)</text><text x="596" y="171" text-anchor="middle" font-size="6.5" fill="var(--muted)">加数据集/做实验(L34-36)</text><text x="596" y="186" text-anchor="middle" font-size="6.5" fill="var(--muted)">人工标注补 score(L32)</text>
+  <rect x="496" y="110" width="200" height="96" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="596" y="128" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">⑤ 被评估（L28-36）</text><text x="596" y="145" text-anchor="middle" font-size="6.5" fill="var(--muted)">LLM 裁判评分→score(L28-31)</text><text x="596" y="158" text-anchor="middle" font-size="6.5" fill="var(--muted)">监控盯聚合越阈值告警(L33)</text><text x="596" y="171" text-anchor="middle" font-size="6.5" fill="var(--muted)">加数据集/做实验(L34-36)</text><text x="596" y="186" text-anchor="middle" font-size="6.5" fill="var(--muted)">人工标注补 score(L32)</text>
   <line x1="280" y1="74" x2="224" y2="120" stroke="var(--blue)" stroke-width="1.3"/><polygon points="224,120 233,116 230,124" fill="var(--blue)"/>
   <line x1="440" y1="74" x2="496" y2="120" stroke="var(--teal)" stroke-width="1.3"/><polygon points="496,120 487,116 490,124" fill="var(--teal)"/>
   <path d="M 596 206 q 0 28 -236 6" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="4 3"/><polygon points="360,213 369,210 367,218" fill="var(--accent)"/>
@@ -406,7 +406,7 @@ _ZH55.append(r"""
 
 <div class="vflow">
   <div class="step"><div class="num">4</div><div class="sc"><h4>被读：列表快、详情全（L20-27）</h4><p>列表只查 CH 紧凑表示(窄列/时间窗/token 分页)，详情才从 S3 取完整树与大字段；会话串同用户；REST 给程序读。「双存储 + scale-aware 契约 + 成本」主题在此。</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>被评估：判好坏、成闭环（L28-36）</h4><p>LLM 裁判/人工标注给 trace 打分写回 score；监控盯分数聚合越阈值告警；加数据集做实验。score 反向驱动改进——观测的产物反哺应用。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>被评估：判好坏、成闭环（L28-36）</h4><p>LLM 裁判/人工标注给 trace 评分写回 score；监控盯分数聚合越阈值告警；加数据集做实验。score 反向驱动改进——观测的产物反哺应用。</p></div></div>
 </div>
 """)
 
@@ -453,7 +453,7 @@ _ZH55.append(r"""
     <tr><td>② 摄取</td><td>认证→落 S3→Redis 队列→worker 处理</td><td>L13-19, L49</td><td>异步·多租户</td></tr>
     <tr><td>③ 落库</td><td>散成三份：CH 明细 + S3 负载 + PG 元数据</td><td>L13</td><td>双存储·不可变</td></tr>
     <tr><td>④ 被读</td><td>列表紧凑/详情取大字段/会话/REST</td><td>L20-27</td><td>双存储·成本</td></tr>
-    <tr><td>⑤ 被评估</td><td>LLM 裁判打分→score、监控告警、数据集/实验</td><td>L28-36</td><td>宽事件(高基数)</td></tr>
+    <tr><td>⑤ 被评估</td><td>LLM 裁判评分→score、监控告警、数据集/实验</td><td>L28-36</td><td>宽事件(高基数)</td></tr>
     <tr><td>⑥ 被作用</td><td>webhook/Slack、分析导出、批量导出</td><td>L44-47</td><td>异步·成本</td></tr>
     <tr><td>⑦ 退场</td><td>保留期到，跨三存储删除(留重试锚点)</td><td>L52</td><td>双存储</td></tr>
     <tr><td><b>贯穿</b></td><td>自观测 · plan 门控 · projectId 隔离</td><td>L51·L50·全栈</td><td>多租户·成本</td></tr>

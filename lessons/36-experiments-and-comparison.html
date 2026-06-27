@@ -357,7 +357,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 前两课造好了「考卷」（数据集）和「考试机制」（run）。这一课讲怎么用它们<strong>做决策</strong>——这就是<strong>实验（experiment）</strong>。一次实验，就是拿一个具体的 <strong>prompt + 模型</strong>配置，在整个数据集上自动跑一遍（产出一次 run），再把<strong>多次 run 并排对比</strong>，挑出最优的那套。它把「改 prompt、换模型到底好不好」从<strong>拍脑袋</strong>变成<strong>有数据</strong>——这是 LLM 工程里最接近「科学方法」的一环。
-重点有三：实验是怎么<strong>服务端自动跑</strong>的（把题目填进 prompt 变量、调 LLM、产 trace）；评分怎么<strong>自动接上</strong>（复用第 30、35 课）；以及对比怎么用 <strong>baseline + 增量</strong>让你一眼看出涨跌。这一课也为 Part 7 的 prompt 管理埋下伏笔——实验里被考的那个 prompt，正是下一课的主角。
+重点有三：实验是怎么<strong>服务端自动跑</strong>的（把题目填进 prompt 变量、调 LLM、产 trace）；评分怎么<strong>自动接上</strong>（复用第 <a class="xref" href="30-eval-execution-pipeline.html">30</a>、<a class="xref" href="35-dataset-runs.html">35</a> 课）；以及对比怎么用 <strong>baseline + 增量</strong>让你一眼看出涨跌。这一课也为 Part 7 的 prompt 管理埋下伏笔——实验里被考的那个 prompt，正是下一课的主角。
 </p>
 
 <div class="card analogy">
@@ -419,7 +419,7 @@ modelParams = { provider: config.provider, model: config.model,
 
 
 <h2>对比：选一组当基准，其余看增量</h2>
-<p>实验跑完，每条 trace 经第 30、35 课<strong>自动评分并按 run 聚合</strong>，于是每场 run 都有了一张「成绩单」（各 score 名的平均分）。对比的精髓不是看绝对分，而是<strong>并排 + 增量</strong>：你钦定一场 run 当 <strong>baseline（基准）</strong>，其余各场就显示「比基准高/低多少」。Langfuse 的实验对比页（<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>）正是干这个的。</p>
+<p>实验跑完，每条 trace 经第 <a class="xref" href="30-eval-execution-pipeline.html">30</a>、<a class="xref" href="35-dataset-runs.html">35</a> 课<strong>自动评分并按 run 聚合</strong>，于是每场 run 都有了一张「成绩单」（各 score 名的平均分）。对比的精髓不是看绝对分，而是<strong>并排 + 增量</strong>：你钦定一场 run 当 <strong>baseline（基准）</strong>，其余各场就显示「比基准高/低多少」。Langfuse 的实验对比页（<code>ExperimentComparisonSelector</code> / <code>ExperimentBaselineControls</code> / <code>ExperimentChartsGrid</code>）正是干这个的。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 215" role="img" aria-label="实验对比：多场 run 并排，选一场为 baseline，其余 run 的每个 score 显示相对 baseline 的增量（绿升红降），让 prompt/模型改动的好坏一眼可判">
@@ -445,7 +445,7 @@ modelParams = { provider: config.provider, model: config.model,
 <svg viewBox="0 0 720 230" role="img" aria-label="持续改进飞轮五步循环：① 攒数据集（L34 把生产里答砸的 case 提拔成测试题）→ ② 跑实验（本课服务端 run）→ ③ 自动评分（L30/35 聚合成绩单）→ ④ 对比决策（baseline 加增量，更好才上线）→ ⑤ 上线遇新难 case 回流第 1 步，飞轮越转应用越稳">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
   <text x="360" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">持续改进飞轮</text>
-  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">把「能打分」升级成「能用分做决策」</text>
+  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">把「能评分」升级成「能用分做决策」</text>
   <rect x="282" y="31" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
   <text x="360" y="50" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 攒数据集</text>
   <text x="360" y="67" font-size="9" text-anchor="middle" fill="var(--muted)">L34 提拔生产 case</text>
@@ -471,12 +471,12 @@ modelParams = { provider: config.provider, model: config.model,
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（<a class="xref" href="34-datasets-and-items.html">第34课</a>），让考卷紧贴真实分布。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>跑实验</h4><p>对一个候选 prompt/模型配置，服务端在整套题上跑一场 run（本课），产出一批 trace。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>自动评分</h4><p>第30、35课自动给每条 trace 评分、按 run 聚合出这场的成绩单。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>自动评分</h4><p>第<a class="xref" href="30-eval-execution-pipeline.html">30</a>、<a class="xref" href="35-dataset-runs.html">35</a>课自动给每条 trace 评分、按 run 聚合出这场的成绩单。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>对比决策</h4><p>和 baseline（现役配置）并排看增量：真的更好就上线，退步就否决——不靠感觉。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>回到第1步</h4><p>上线后又会遇到新的难 case，再提拔成题……飞轮转起来，应用越改越稳。</p></div></div>
 </div>
 
-<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量打分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
+<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量评分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
 
 
 <div class="card spark">
@@ -492,7 +492,7 @@ modelParams = { provider: config.provider, model: config.model,
     <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（<a class="xref" href="37-prompt-management.html">第37课</a>）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
     <li><strong>评分自动接上</strong>：复用<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> <code>dataset-run-item-upsert</code> 触发、<a class="xref" href="35-dataset-runs.html">第 35 课</a>按 run 聚合，跑完即有成绩单，无需手动。</li>
     <li><strong>对比靠 baseline + 增量</strong>：<code>ExperimentBaselineControls</code> 选基准、<code>ExperimentComparisonSelector</code> 挑 run、<code>ExperimentChartsGrid</code> 画多维增量——绝对分难判，相对变化才能决策。</li>
-    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能打分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
+    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能评分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -500,7 +500,7 @@ modelParams = { provider: config.provider, model: config.model,
 <div class="quiz">
   <div class="qn">1. Langfuse 的服务端实验（createExperimentJobClickhouse）对数据集的每道题做什么？</div>
   <ol class="opts">
-    <li>直接给数据项打分，不调 LLM</li>
+    <li>直接给数据项评分，不调 LLM</li>
     <li>在前端用 JavaScript 跑模型</li>
     <li>replaceVariablesInPrompt 把这道题的 input 填进 prompt 的变量空格，用选定 provider/model 调一次 LLM，写成一条 trace（标 PromptExperiments 环境、链接被考 prompt、钉住 item 版本）+ run item</li>
     <li>只把数据项复制到一张新表</li>
@@ -529,11 +529,11 @@ modelParams = { provider: config.provider, model: config.model,
     <li>升级成实时监控</li>
     <li>升级成更快的数据库</li>
     <li>升级成自动写 prompt</li>
-    <li>从「能给质量打分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环</li>
+    <li>从「能给质量评分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。第5部分让你「能看见、能打分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。第5部分让你「能看见、能评分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。</div></div></div>
   </details>
 </div>
 <div class="card spark">

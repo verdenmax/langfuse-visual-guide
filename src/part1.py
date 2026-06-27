@@ -113,7 +113,7 @@ _ZH.append(r"""
 <table class="t">
   <tr><th>能力</th><th>解决什么问题</th><th>仓库里的实现</th></tr>
   <tr><td><b>🔭 可观测 Tracing</b></td><td>看清每一次调用：调用树、输入输出、token、成本、延迟</td><td class="mono">web/src/features/traces · tracing-tables</td></tr>
-  <tr><td><b>✅ 评估 Evaluation</b></td><td>给输出打分：LLM-as-judge、人工标注、自定义代码评估</td><td class="mono">web/src/features/evals · scores · annotation-queues</td></tr>
+  <tr><td><b>✅ 评估 Evaluation</b></td><td>给输出评分：LLM-as-judge、人工标注、自定义代码评估</td><td class="mono">web/src/features/evals · scores · annotation-queues</td></tr>
   <tr><td><b>📝 Prompt 管理</b></td><td>把 prompt 版本化，线上动态拉取、回滚、对比</td><td class="mono">web/src/features/prompts</td></tr>
   <tr><td><b>🧪 数据集与实验</b></td><td>攒测试集、跑实验、并排对比不同版本</td><td class="mono">web/src/features/datasets · experiments</td></tr>
 </table>
@@ -571,7 +571,7 @@ _ZH.append(r"""
   <div class="arrow">→</div>
   <div class="node"><div class="nt">监控 Monitor</div><div class="nd">看 trace·成本·延迟</div></div>
   <div class="arrow">→</div>
-  <div class="node"><div class="nt">评估 Evaluate</div><div class="nd">打分·标注·实验</div></div>
+  <div class="node"><div class="nt">评估 Evaluate</div><div class="nd">评分·标注·实验</div></div>
   <div class="arrow">→</div>
   <div class="node"><div class="nt">调试 Debug</div><div class="nd">定位坏 case·改</div></div>
   <div class="arrow">↺</div>
@@ -1146,7 +1146,7 @@ _ZH3.append(r"""
   <div class="tag">🔌 生活类比</div>
   把一次完整的用户交互想成医院里<strong>一个病历夹</strong>（trace）：夹子封面只写几行身份信息（谁、什么时候、贴了哪些标签）。
   夹子里<strong>一页页具体记录</strong>才是重点（observation）：这页是「拍了 CT」、那页是「开了药」、再一页是「医生下了诊断」——
-  每页都详细写明用了什么、花了多久、多少钱。最后，<strong>页边的红笔批注</strong>（score）给某一页或整个夹子打分：「这个诊断准确吗？9 分」。
+  每页都详细写明用了什么、花了多久、多少钱。最后，<strong>页边的红笔批注</strong>（score）给某一页或整个夹子评分：「这个诊断准确吗？9 分」。
   封面薄、内页厚、批注点睛——这正是三大支柱的分工。把这套「夹子—内页—批注」的画面记住，下面看字段时就不会迷路：凡是「整次交互级」的信息往封面（trace）放，凡是「某一步级」的信息往内页（observation）放，凡是「评判级」的信息就是批注（score）。
 </div>
 """)
@@ -1430,8 +1430,8 @@ _ZH3.append(r"""
   <line x1="180" y1="70" x2="298" y2="112" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,112 287,110 291,118" fill="var(--faint)"/>
   <line x1="180" y1="125" x2="298" y2="125" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,125 288,120 288,130" fill="var(--faint)"/>
   <line x1="180" y1="180" x2="298" y2="138" stroke="var(--faint)" stroke-width="1.6"/><polygon points="298,138 287,138 291,131" fill="var(--faint)"/>
-  <rect x="540" y="72" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">trace</text><text x="615" y="105" text-anchor="middle" font-size="9" fill="var(--muted)">给整次交互打分</text>
-  <rect x="540" y="138" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="156" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">observation</text><text x="615" y="171" text-anchor="middle" font-size="9" fill="var(--muted)">给某一步打分</text>
+  <rect x="540" y="72" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="90" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">trace</text><text x="615" y="105" text-anchor="middle" font-size="9" fill="var(--muted)">给整次交互评分</text>
+  <rect x="540" y="138" width="150" height="40" rx="9" fill="var(--panel)" stroke="var(--accent)"/><text x="615" y="156" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">observation</text><text x="615" y="171" text-anchor="middle" font-size="9" fill="var(--muted)">给某一步评分</text>
   <line x1="420" y1="118" x2="538" y2="92" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,92 527,92 531,99" fill="var(--accent)"/>
   <line x1="420" y1="132" x2="538" y2="158" stroke="var(--accent)" stroke-width="1.6"/><polygon points="538,158 527,151 531,160" fill="var(--accent)"/>
 </svg>
@@ -1453,7 +1453,7 @@ _ZH3.append(r"""
   <tr><td class="mono">TEXT</td><td>一段自由文本（≤500 字）</td><td>评语、理由</td></tr>
 </table>
 
-<p>三种<strong>来源</strong>也不是随便分的，它们对应着不同的「打分主体」，权限也不同：<code>EVAL</code> 是 Langfuse <strong>内部评估器</strong>的产物
+<p>三种<strong>来源</strong>也不是随便分的，它们对应着不同的「评分主体」，权限也不同：<code>EVAL</code> 是 Langfuse <strong>内部评估器</strong>的产物
 （LLM-as-judge、代码评估，第 29–31 课），<strong>保留给系统内部</strong>使用；<code>ANNOTATION</code> 是人在 UI 里手动标注；<code>API</code> 则是你的应用
 通过 SDK 直接提交（比如把用户点的「👍/👎」上报成分数）。源码里有个细节能印证这点：公共建分接口允许的来源只有 <code>API</code> 和 <code>ANNOTATION</code>
 两种（<code>PublicApiCreateScoreSourceDomain</code>），<code>EVAL</code> 被刻意排除在外——因为它是平台自己产生的，不该由外部冒充。这种「按来源划权限」的小设计，

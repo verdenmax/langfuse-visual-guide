@@ -13,7 +13,7 @@ _EN28 = []
 
 _ZH28.append(r"""
 <p class="lead">
-前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 打分。而一切的原子单位，是 <strong>score（评分）</strong>。
+前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 评分。而一切的原子单位，是 <strong>score（评分）</strong>。
 这一课先把 score 的<strong>数据模型</strong>讲透：一个 score 长什么样、有哪<strong>三种数据类型</strong>（数值/分类/布尔）、<strong>score config</strong> 这个「评分的 schema」管什么，以及一个 score 可能来自哪<strong>三种来源</strong>。
 理解了这套模型，后面五课（LLM 评判、代码 eval、人工标注、监控）就都只是「<strong>用不同方式生产 score</strong>」而已。
 </p>
@@ -98,7 +98,7 @@ _ZH28.append(r"""
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 6、12 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（第 29 课）或代码 eval（第 31 课）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（第 32 课）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（第 32 课）按 config 给 trace 评分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
 </div>
 
 <h2>一个 score 对象到底有哪些字段</h2>
@@ -140,7 +140,7 @@ _ZH28.append(r"""
 _ZH28.append(r"""
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么要专门搞一个 score config，而不是让大家随手打分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
+  <strong>为什么要专门搞一个 score config，而不是让大家随手评分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
   那这些分数<strong>放在一起毫无意义</strong>——求平均是错的、画趋势是错的、做对比更是错的。score config 把「某个名字 = 某种刻度」<strong>固定下来、强制校验</strong>，于是同名分数永远可比，
   你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和第 8 课「provided vs computed」、第 16 课「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
   下游的一切分析才有坚实地基</strong>。而把三种来源统一到同一张 scores 表、同一套 config，则让「AI 评的」「人审的」「API 报的」分数活在一个空间里——<strong>这正是 Part 5 后续每一课的共同终点：生产可比的 score</strong>。
@@ -312,8 +312,8 @@ _EN29 = []
 
 _ZH29.append(r"""
 <p class="lead">
-上一课说 score 是评估的原子单位，也说了它有三种来源。这一课讲最有意思的那种来源：<strong>EVAL——用一个 LLM 去给另一个 LLM 的输出打分</strong>，业界叫 <strong>LLM-as-a-judge（LLM 当裁判）</strong>。
-人工标注准但慢且贵，规则匹配快但只能查表面。让一个「裁判 LLM」读你的 trace、按你给的标准打分，就能<strong>自动、可扩展地</strong>评估「这次回答到底好不好」。这一课拆开 Langfuse 的裁判流水线：
+上一课说 score 是评估的原子单位，也说了它有三种来源。这一课讲最有意思的那种来源：<strong>EVAL——用一个 LLM 去给另一个 LLM 的输出评分</strong>，业界叫 <strong>LLM-as-a-judge（LLM 当裁判）</strong>。
+人工标注准但慢且贵，规则匹配快但只能查表面。让一个「裁判 LLM」读你的 trace、按你给的标准评分，就能<strong>自动、可扩展地</strong>评估「这次回答到底好不好」。这一课拆开 Langfuse 的裁判流水线：
 <strong>模板</strong>（评分标准）、<strong>变量映射</strong>（把 trace 的哪些部分递给裁判看）、<strong>结构化输出</strong>（裁判必须返回规整的分数 + 理由），以及最关键的——评出来的分<strong>怎么变回一个 score</strong>。
 </p>
 
@@ -478,7 +478,7 @@ _ZH29.append(r"""
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>LLM-as-a-judge = 用一个 LLM 给另一个 LLM 的输出打分</strong>：在人工（准但慢）与规则（快但浅）之间，提供自动、可扩展的质量评估。</li>
+    <li><strong>LLM-as-a-judge = 用一个 LLM 给另一个 LLM 的输出评分</strong>：在人工（准但慢）与规则（快但浅）之间，提供自动、可扩展的质量评估。</li>
     <li><strong>三件套</strong>：模板（prompt+输出定义+模型，描述「怎么评」）、评估器（过滤目标+变量映射+scoreName，描述「评谁」）、执行（每条 trace 实际跑一次）。</li>
     <li><strong>变量映射</strong>：模板的 <code>{{占位符}}</code> 各自声明来自 trace/observation/dataset_item 的哪一列；<code>extractVariablesFromTracingData</code> 执行时去真实数据里取值，<code>compileEvalPrompt</code> 在「喂给 LLM」的边界才拍平成字符串。</li>
     <li><strong>结构化输出</strong>：裁判被强制返回 <code>{score, reasoning}</code>（或分类的 <code>{matches, reasoning}</code>）；<code>toNormalizedScores</code> 归一为 value=分、comment=理由——可聚合又可追溯。</li>
@@ -1426,7 +1426,7 @@ _EN32 = []
 
 _ZH32.append(r"""
 <p class="lead">
-前三课让机器自动打分——LLM 当裁判、代码做确定性检查。但有些判断<strong>离不开人</strong>：建立可信的 ground truth（基准答案）、审核「AI 到底判得对不对」、处理 AI 拿不准的边界情形、给训练/对齐采人类偏好。这一课讲第 28 课埋下的<strong>第三种 score 来源——人工标注（source=ANNOTATION）</strong>，以及把「请人评审」这件本质上<strong>无序又易冲突</strong>的事，组织成有序流程的工具：<strong>标注队列（annotation queue）</strong>。
+前三课让机器自动评分——LLM 当裁判、代码做确定性检查。但有些判断<strong>离不开人</strong>：建立可信的 ground truth（基准答案）、审核「AI 到底判得对不对」、处理 AI 拿不准的边界情形、给训练/对齐采人类偏好。这一课讲第 28 课埋下的<strong>第三种 score 来源——人工标注（source=ANNOTATION）</strong>，以及把「请人评审」这件本质上<strong>无序又易冲突</strong>的事，组织成有序流程的工具：<strong>标注队列（annotation queue）</strong>。
 重点有三：队列的<strong>数据模型</strong>（绑一组 score config、装一批待评对象）、一个有意思的<strong>5 分钟时间锁</strong>（人类尺度的并发控制），以及人工分如何和前两课的 EVAL 分<strong>同表汇合</strong>——从而成为校准 AI 裁判的标尺。
 </p>
 
@@ -1434,7 +1434,7 @@ _ZH32.append(r"""
   <div class="tag">📋 生活类比</div>
   标注队列像医院的<strong>待会诊病历筐</strong>。每份需要人来看的病历（一条 trace、一次 observation、或整个 session）被放进筐里排队；筐口贴着一张<strong>统一的评分表</strong>（队列绑定的 score config，决定医生要填哪几项、每项什么刻度）。
   医生从筐里<strong>取一份</strong>来看，系统立刻给这份病历<strong>上锁 5 分钟</strong>——这样另一位医生同时来取时，不会拿到同一份重复会诊；而要是这位医生中途走开了，锁会自动过期，病历重新可领，<strong>不会被永久占住</strong>。
-  看完，医生<strong>填表打分、可附一句评语</strong>，把病历标成「已会诊」，并记下<strong>是谁看的</strong>。这些人工评分和前两课 AI 评的分<strong>进同一本病案室</strong>（scores 表）——于是你能把「人怎么判的」和「AI 怎么判的」摆在一起对照，看 AI 靠不靠谱。
+  看完，医生<strong>填表评分、可附一句评语</strong>，把病历标成「已会诊」，并记下<strong>是谁看的</strong>。这些人工评分和前两课 AI 评的分<strong>进同一本病案室</strong>（scores 表）——于是你能把「人怎么判的」和「AI 怎么判的」摆在一起对照，看 AI 靠不靠谱。
 </div>
 """)
 
@@ -1463,7 +1463,7 @@ _ZH32.append(r"""
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">建基准</span><span class="name">ground truth</span></div><div class="ld">很多评估要有「标准答案」才谈得上准不准。人类专家在一小撮代表性样本上打的分，就是这把<strong>金标准</strong>——AI 裁判、回归测试、模型对比都拿它当参照系。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">审裁判</span><span class="name">审核 AI 判得对不对</span></div><div class="ld">第 29 课问过「裁判自己靠不靠谱」。答案就在这：把同一批 trace 既让 AI 裁判评、又让人评，<strong>看两者一致不一致</strong>。不一致的地方，要么改 prompt、要么换模型——人工标注是<strong>校准裁判的反馈回路</strong>。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">啃边界</span><span class="name">AI 拿不准的情形</span></div><div class="ld">对那些 AI 反复打分摇摆、或明显需要领域知识/价值判断的样本，直接交给人。人工标注专攻<strong>机器最不擅长的长尾</strong>，把宝贵人力花在刀刃上。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">啃边界</span><span class="name">AI 拿不准的情形</span></div><div class="ld">对那些 AI 反复评分摇摆、或明显需要领域知识/价值判断的样本，直接交给人。人工标注专攻<strong>机器最不擅长的长尾</strong>，把宝贵人力花在刀刃上。</div></div>
 </div>
 """)
 
@@ -1501,7 +1501,7 @@ _ZH32.append(r"""
   <tbody>
     <tr><td colspan="3" style="background:var(--purple-soft);font-weight:700">AnnotationQueue（评审任务）</td></tr>
     <tr><td><code>name / description</code></td><td>队列名与说明</td><td>一个项目可有多个队列（如「事实性核查」「语气审查」）</td></tr>
-    <tr><td><code>scoreConfigIds[]</code></td><td>绑定的一组 score config</td><td><b>统一评分表</b>：所有评审员按同一组 config 打分，分数才可比（呼应第 28 课）</td></tr>
+    <tr><td><code>scoreConfigIds[]</code></td><td>绑定的一组 score config</td><td><b>统一评分表</b>：所有评审员按同一组 config 评分，分数才可比（呼应第 28 课）</td></tr>
     <tr><td colspan="3" style="background:var(--blue-soft);font-weight:700">AnnotationQueueItem（一份待评对象）</td></tr>
     <tr><td><code>objectType / objectId</code></td><td>评的是什么：TRACE / OBSERVATION / SESSION</td><td>三种粒度都能评——整条对话、某一步、或整个会话</td></tr>
     <tr><td><code>status</code></td><td>PENDING / COMPLETED</td><td>队列的进度就是「还剩多少 PENDING」</td></tr>
@@ -1576,7 +1576,7 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
   <div class="step"><div class="num">1</div><div class="sc"><h4>进入被指派的队列</h4><p>评审员看到指派给自己的队列（<code>AnnotationQueueAssignment</code>）和里面待评的 PENDING item。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>领一份 → 自动上锁</h4><p>打开一份 item，系统写 <code>lockedByUserId/lockedAt</code>，5 分钟内别人看到「已锁」、跳过。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>看对象</h4><p>按 <code>objectType</code> 展开要评的 TRACE / OBSERVATION / SESSION——直接复用第 25、26 课的详情视图。</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>按 config 打分 + 评语</h4><p>填队列绑定的每个 score config，可附 <code>comment</code>。分即时写成 <code>source=ANNOTATION</code>、带 <code>authorUserId</code>。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>按 config 评分 + 评语</h4><p>填队列绑定的每个 score config，可附 <code>comment</code>。分即时写成 <code>source=ANNOTATION</code>、带 <code>authorUserId</code>。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>提交 → 跳下一份</h4><p>item 标 <code>COMPLETED</code> + 记 <code>annotatorUserId/completedAt</code>，锁释放，自动推进队列里下一份 PENDING。</p></div></div>
 </div>
 """)
@@ -1787,7 +1787,7 @@ _EN33 = []
 
 _ZH33.append(r"""
 <p class="lead">
-Part 5 让你能给质量<strong>打分</strong>了——但分数躺在库里，你不可能一直盯着看。这一课讲 Part 5 的收尾，也是让评估<strong>真正起作用</strong>的最后一环：<strong>监控器（monitor）</strong>。它是「主动」的那一半——按固定节奏盯着某个指标或分数，一旦<strong>越过你设的线</strong>，就主动发出告警。一句话：把质量监测从「<strong>你去拉</strong>」（看仪表盘）变成「<strong>它来推</strong>」（异常即告警）。
+Part 5 让你能给质量<strong>评分</strong>了——但分数躺在库里，你不可能一直盯着看。这一课讲 Part 5 的收尾，也是让评估<strong>真正起作用</strong>的最后一环：<strong>监控器（monitor）</strong>。它是「主动」的那一半——按固定节奏盯着某个指标或分数，一旦<strong>越过你设的线</strong>，就主动发出告警。一句话：把质量监测从「<strong>你去拉</strong>」（看仪表盘）变成「<strong>它来推</strong>」（异常即告警）。
 我们会看到一个优雅的复用：<strong>monitor 本质上是一个「会自己盯着自己」的仪表盘组件</strong>；一台把指标值映射成 OK/WARNING/ALERT 的<strong>严重度状态机</strong>；以及一条「<strong>只在状态变化时才告警</strong>、并把投递解耦出去」的链路。
 </p>
 

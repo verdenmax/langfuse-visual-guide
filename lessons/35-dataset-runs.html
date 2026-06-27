@@ -388,12 +388,12 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">一场考试</span><span class="name">DatasetRuns</span></div><div class="ld">一次 run 代表「用某套固定配置（模型/prompt/版本）把整个数据集跑一遍」。它有 name（如「gpt-4o-2025-baseline」）、description、metadata，归属一个 dataset。同一数据集下 run 名唯一，方便你按名字回溯每次实验。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">答题卡存根</span><span class="name">DatasetRunItems</span></div><div class="ld">连接器：<code>datasetRunId</code>（哪场）+ <code>datasetItemId</code>（哪题）→ <code>traceId</code>（哪份答卷）。它本身不存输入输出——那些都在它指向的 trace 里。它只负责把「实验 / 题目 / 执行记录」三者牢牢绑定，让你能从一场 run 顺藤摸到每道题的完整执行细节。</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">复用一切</span><span class="name">trace 就是普通 trace</span></div><div class="ld">妙在 run 产生的 trace 和生产 trace<strong>毫无二致</strong>——同样的观测树（第 13、25 课）、同样能挂 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）、同样走摄取链路（<a class="xref" href="12-ingestion-api.html">第 12 课</a>）。实验不是另一套系统，而是「用数据集喂出来的一批普通 trace」，前 5 部分的能力全部复用。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">复用一切</span><span class="name">trace 就是普通 trace</span></div><div class="ld">妙在 run 产生的 trace 和生产 trace<strong>毫无二致</strong>——同样的观测树（第 <a class="xref" href="13-event-types-merge.html">13</a>、<a class="xref" href="25-trace-detail-tree.html">25</a> 课）、同样能挂 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）、同样走摄取链路（<a class="xref" href="12-ingestion-api.html">第 12 课</a>）。实验不是另一套系统，而是「用数据集喂出来的一批普通 trace」，前 5 部分的能力全部复用。</div></div>
 </div>
 
 
 <h2>镜像到 ClickHouse：连题面一起快照下来</h2>
-<p>run item 在 Postgres 有一份（关系真相），但要算「这场考试平均分多少、和上一场比涨跌如何」，得在<strong>海量 run item × 海量 score</strong> 上做聚合——这是 OLAP 活，归 ClickHouse（第 17、22 课）。所以 run item 被<strong>镜像</strong>到 CH 的 <code>dataset_run_items_rmt</code> 表。最值得玩味的是：这张表不只存 id，还<strong>反范式地把 run 字段和题面快照</strong>了进来。</p>
+<p>run item 在 Postgres 有一份（关系真相），但要算「这场考试平均分多少、和上一场比涨跌如何」，得在<strong>海量 run item × 海量 score</strong> 上做聚合——这是 OLAP 活，归 ClickHouse（第 <a class="xref" href="17-clickhouse-writer.html">17</a>、<a class="xref" href="22-repository-layer.html">22</a> 课）。所以 run item 被<strong>镜像</strong>到 CH 的 <code>dataset_run_items_rmt</code> 表。最值得玩味的是：这张表不只存 id，还<strong>反范式地把 run 字段和题面快照</strong>了进来。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 215" role="img" aria-label="run item 镜像到 ClickHouse：PG 里的 DatasetRunItem 被同步到 CH dataset_run_items_rmt 表，该表反范式地内联了 run 名/描述等不可变字段，以及数据项的 input/expectedOutput 快照；用 ReplacingMergeTree 去重；按 project/dataset/run 排序便于聚合">
@@ -436,7 +436,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
-<p>run item 指向 trace，trace 上挂着 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
+<p>run item 指向 trace，trace 上挂着 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 评分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
 
 <svg viewBox="0 0 720 230" role="img" aria-label="跑一场实验的聚合链路：数据集 N 道题，run 逐题跑应用各产出一条 trace，自动评分（L29-32）给每条 trace 挂上 score，再按 run 聚合 JOIN scores 对每个 score 名求平均得到 agg_scores_avg，例如 helpfulness 0.82、toxicity 0.03，交给 L36 做实验对比">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
@@ -491,7 +491,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么要专门建一个 run item 表，而不是直接给 trace 打个「属于哪场实验」的标签？</strong> 因为这是个<strong>多对多</strong>的关系，而且要支撑高效聚合。一条 trace 概念上属于「某场 run 的某道题」，但「run」「item」「trace」各自都是独立演化的实体（题会改版、run 会重跑、trace 有完整生命周期）。用一张专门的连接表（run item）承载这个三元关系，既让三者解耦、各自独立，又给了你一个干净的聚合入口：要算「这场考了哪些题、平均分多少」，只需扫这张表 JOIN 一下 score，而不用在庞大的 trace 海里捞带特定标签的针。<strong>关系独立建模，是它能被高效查询和聚合的前提。</strong><br><br>
-  <strong>为什么 CH 镜像表要反范式地把 run 字段和题面「快照」进去？</strong> 两个理由叠加。其一是<strong>聚合速度</strong>（第 17、22 课的老主题）：把 run name、题面直接内联，算「按 run 分组的平均分」时省掉一次次回表 JOIN——OLAP 就吃这一套。其二更微妙，是<strong>记忆</strong>：题目会改版（<a class="xref" href="34-datasets-and-items.html">第 34 课</a>），但一场三月的实验，理应永远记得它三月考的是<strong>那时</strong>的题面。把 input/expectedOutput 在 run 时<strong>快照</strong>进 run item，等于给「可复现」再上一道保险——即便原题后来面目全非，这场实验的语境也分毫不失。<strong>快照不是冗余，而是把「当时的真相」固化下来。</strong>
+  <strong>为什么 CH 镜像表要反范式地把 run 字段和题面「快照」进去？</strong> 两个理由叠加。其一是<strong>聚合速度</strong>（第 <a class="xref" href="17-clickhouse-writer.html">17</a>、<a class="xref" href="22-repository-layer.html">22</a> 课的老主题）：把 run name、题面直接内联，算「按 run 分组的平均分」时省掉一次次回表 JOIN——OLAP 就吃这一套。其二更微妙，是<strong>记忆</strong>：题目会改版（<a class="xref" href="34-datasets-and-items.html">第 34 课</a>），但一场三月的实验，理应永远记得它三月考的是<strong>那时</strong>的题面。把 input/expectedOutput 在 run 时<strong>快照</strong>进 run item，等于给「可复现」再上一道保险——即便原题后来面目全非，这场实验的语境也分毫不失。<strong>快照不是冗余，而是把「当时的真相」固化下来。</strong>
 </div>
 
 <div class="card key">
@@ -537,7 +537,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <ol class="opts">
     <li>创建 run item 会发出 dataset-run-item-upsert 事件，触发<a class="xref" href="30-eval-execution-pipeline.html">第30课</a>的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-run-items.ts JOIN scores 按名求平均(agg_scores_avg)</li>
     <li>ClickHouse 自动计算</li>
-    <li>前端每秒轮询打分</li>
+    <li>前端每秒轮询评分</li>
     <li>run 结束时手动点击评分</li>
   </ol>
   <details class="accordion">

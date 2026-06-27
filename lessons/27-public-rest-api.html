@@ -489,7 +489,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="tag">🎯 设计取舍</div>
   <strong>同样是「把数据查出来」，为什么 UI 走 tRPC、SDK 却要这一整套 REST 工厂 + 缓存 + 版本 + Fern？</strong> 因为<strong>受众不同，约束就不同</strong>（呼应<a class="xref" href="20-web-app-architecture.html">第 20 课</a>）。
   UI 是自家的、同仓库的，所以 tRPC 用<strong>类型贯穿</strong>换迭代速度，接口天天改也无妨。而 SDK 面向<strong>外部、海量、长期</strong>的用户：海量，所以鉴权必须<strong>能缓存</strong>（Redis + 负缓存），否则数据库被验 key 拖垮；
-  长期，所以接口必须<strong>带版本</strong>（文件夹 + Fern），否则一改就破坏别人两年前写的集成。同一个「把横切关注收敛到一处」的工厂模式（第 21、22 课），
+  长期，所以接口必须<strong>带版本</strong>（文件夹 + Fern），否则一改就破坏别人两年前写的集成。同一个「把横切关注收敛到一处」的工厂模式（第 <a class="xref" href="21-trpc-backbone.html">21</a>、<a class="xref" href="22-repository-layer.html">22</a> 课），
   在这里被赋予了<strong>面向公众</strong>的新内涵：限流防滥用、响应校验防契约漂移、缓存扛流量、版本保稳定。<strong>对内优化「改得快」，对外优化「不破坏」——这是同一套数据，两种工程价值观的分野。</strong>
   至此，<a class="xref" href="20-web-app-architecture.html">第 20 课</a>的「三道门」全部走完：tRPC 给 UI、REST 给 SDK、App-Router 给流式/webhook，各按受众分而治之。
 </div>

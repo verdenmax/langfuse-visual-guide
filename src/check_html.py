@@ -121,6 +121,15 @@ def check_glossary():
         add("ERR", "glossary.html", "missing (run build.py)")
 
 
+def check_score_terms(lesson_html):
+    """Score terminology stays consistent: the scoring act/entity is 「评分」, the
+    numeric value is 「分数」. 「打分」 was unified to 「评分」 and must not reappear
+    (checked on rendered output so quiz/chrome sources are covered too)."""
+    for fname, html in lesson_html.items():
+        if "打分" in html:
+            add("ERR", fname, "uses 「打分」 — unify to 「评分」 (scoring act/entity)")
+
+
 def check_prereqs():
     """Every PREREQS key must be a real lesson, and its hint may only reference
     EARLIER lessons (no forward or self references)."""
@@ -249,6 +258,7 @@ def main():
     check_glossary()
     check_part_finales(lesson_html)
     check_prereqs()
+    check_score_terms(lesson_html)
 
     index_path = os.path.join(ROOT, shell.INDEX_FILE)
     with open(index_path, encoding="utf-8") as fh:

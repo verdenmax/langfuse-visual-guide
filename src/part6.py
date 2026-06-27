@@ -393,7 +393,7 @@ _ZH35.append(r"""
 
 _ZH35.append(r"""
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
-<p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
+<p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 评分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
 
 <svg viewBox="0 0 720 230" role="img" aria-label="跑一场实验的聚合链路：数据集 N 道题，run 逐题跑应用各产出一条 trace，自动评分（L29-32）给每条 trace 挂上 score，再按 run 聚合 JOIN scores 对每个 score 名求平均得到 agg_scores_avg，例如 helpfulness 0.82、toxicity 0.03，交给 L36 做实验对比">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
@@ -731,7 +731,7 @@ _ZH36.append(r"""
 <svg viewBox="0 0 720 230" role="img" aria-label="持续改进飞轮五步循环：① 攒数据集（L34 把生产里答砸的 case 提拔成测试题）→ ② 跑实验（本课服务端 run）→ ③ 自动评分（L30/35 聚合成绩单）→ ④ 对比决策（baseline 加增量，更好才上线）→ ⑤ 上线遇新难 case 回流第 1 步，飞轮越转应用越稳">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
   <text x="360" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">持续改进飞轮</text>
-  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">把「能打分」升级成「能用分做决策」</text>
+  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">把「能评分」升级成「能用分做决策」</text>
   <rect x="282" y="31" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
   <text x="360" y="50" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 攒数据集</text>
   <text x="360" y="67" font-size="9" text-anchor="middle" fill="var(--muted)">L34 提拔生产 case</text>
@@ -762,7 +762,7 @@ _ZH36.append(r"""
   <div class="step"><div class="num">5</div><div class="sc"><h4>回到第1步</h4><p>上线后又会遇到新的难 case，再提拔成题……飞轮转起来，应用越改越稳。</p></div></div>
 </div>
 
-<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量打分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
+<p>这就是 Part 6 的全部价值：它把第 5 部分「能给质量评分」升级成「<strong>能用分数做决策</strong>」。而被实验反复考的那个核心变量——<strong>prompt</strong>——正是下一部分（Part 7）的主角：它怎么版本化、怎么被高速服务、怎么在 Playground 里交互调试。评估告诉你「现在多好」，实验告诉你「改了会不会更好」，而 prompt 管理则给了你「<strong>安全地改</strong>」的底气。</p>
 """)
 
 _ZH36.append(r"""
@@ -779,7 +779,7 @@ _ZH36.append(r"""
     <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（第37课）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
     <li><strong>评分自动接上</strong>：复用第 30 课 <code>dataset-run-item-upsert</code> 触发、第 35 课按 run 聚合，跑完即有成绩单，无需手动。</li>
     <li><strong>对比靠 baseline + 增量</strong>：<code>ExperimentBaselineControls</code> 选基准、<code>ExperimentComparisonSelector</code> 挑 run、<code>ExperimentChartsGrid</code> 画多维增量——绝对分难判，相对变化才能决策。</li>
-    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能打分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
+    <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能评分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
   </ul>
 </div>
 """)

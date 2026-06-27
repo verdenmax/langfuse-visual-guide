@@ -456,7 +456,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>为什么 Postgres 里还有 trace 表？</h2>
 <p>翻 <code>schema.prisma</code> 时你可能会困惑：怎么还有 <code>LegacyPrismaTrace</code>、<code>LegacyPrismaObservation</code>、<code>LegacyPrismaScore</code>？
 不是说遥测都在 ClickHouse 吗？答案在名字里——<strong>Legacy（遗留）</strong>。这是 Langfuse 早期把 trace/observation/score 存在 Postgres 的<strong>历史残留</strong>；
-后来为了应对规模，分析数据整体<strong>迁到了 ClickHouse</strong>（这正是第 7、8 课的存在理由）。这些 legacy 模型留着主要是<strong>兼容与迁移</strong>用，不再是热路径。
+后来为了应对规模，分析数据整体<strong>迁到了 ClickHouse</strong>（这正是第 <a class="xref" href="07-dual-store-architecture.html">7</a>、<a class="xref" href="08-clickhouse-wide-events.html">8</a> 课的存在理由）。这些 legacy 模型留着主要是<strong>兼容与迁移</strong>用，不再是热路径。
 看到带 <code>Legacy</code> 前缀的，就知道「这是老路，别照着学」。</p>
 
 <h2>API key 与权限（预览）</h2>
@@ -472,7 +472,7 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
 </div>
 
 <p>注意：<strong>密钥本身从不以明文存库</strong>，只存哈希——这样即使数据库泄露，攻击者也拿不到可用的 key。权限则用 <code>Role</code> 枚举表达：
-<code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>，配合组织级与项目级的 membership 决定「谁能在哪个项目做什么」。这套鉴权与权限会在第 49、53 课展开，
+<code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>，配合组织级与项目级的 membership 决定「谁能在哪个项目做什么」。这套鉴权与权限会在第 <a class="xref" href="49-rbac-apikeys-scim.html">49</a>、<a class="xref" href="53-build-test-dev-workflow.html">53</a> 课展开，
 这里你只需建立印象：<strong>控制面不仅存「配置」，也存「谁能碰这些配置」。</strong></p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="API key 安全：明文密钥只在创建时显示一次给用户，Postgres 的 model ApiKey 只存 publicKey 明文与 hashedSecretKey、fastHashedSecretKey、displaySecretKey 这些哈希或脱敏片段，从不存密钥明文；校验时把请求里的 key 哈希后比对 fastHashedSecretKey，即使数据库泄露也拿不到可用 key">
@@ -514,7 +514,7 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
     <li><strong>Postgres = 控制面</strong>：存「平台怎么配置」——org/project/user、API key、prompt、eval/数据集配置、模型定价、集成、审计。定义在 <code>schema.prisma</code>。</li>
     <li><strong>Project 是枢纽</strong>：字段不多但挂着几十条关系，几乎一切都 1:N 属于某个 project——它是天然的<strong>数据边界</strong>（多租户基础）。</li>
     <li><strong>LegacyPrismaTrace/Observation/Score 是历史残留</strong>：分析数据早已迁到 ClickHouse，这些只为兼容/迁移而留。</li>
-    <li><strong>API key 存哈希、不存明文</strong>；权限用 <code>Role</code>（OWNER/ADMIN/MEMBER/VIEWER/NONE）+ 组织/项目 membership（第 49、53 课）。</li>
+    <li><strong>API key 存哈希、不存明文</strong>；权限用 <code>Role</code>（OWNER/ADMIN/MEMBER/VIEWER/NONE）+ 组织/项目 membership（第 <a class="xref" href="49-rbac-apikeys-scim.html">49</a>、<a class="xref" href="53-build-test-dev-workflow.html">53</a> 课）。</li>
     <li>控制面 vs 数据面，是<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>「领域形状 vs 物理存储」的宏观版：<strong>按职责分库</strong>，各做擅长的事。</li>
   </ul>
 </div>
@@ -556,7 +556,7 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。带 Legacy 前缀=老路：遥测早已迁 ClickHouse（第 7、8 课的存在理由），这些只为兼容/迁移留着。API key 只存 hashedSecretKey 等哈希，即使库泄露也拿不到可用 key——安全细节，第 49/53 课展开。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。带 Legacy 前缀=老路：遥测早已迁 ClickHouse（第 <a class="xref" href="07-dual-store-architecture.html">7</a>、<a class="xref" href="08-clickhouse-wide-events.html">8</a> 课的存在理由），这些只为兼容/迁移留着。API key 只存 hashedSecretKey 等哈希，即使库泄露也拿不到可用 key——安全细节，第 49/53 课展开。</div></div></div>
   </details>
 </div>
 <div class="card spark">

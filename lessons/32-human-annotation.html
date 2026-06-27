@@ -356,7 +356,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="28-scoring-model.html">第28课</a> 的评分模型，本课讲人工标注如何产出 score。</div><div class="lang-en">Read <a class="xref" href="28-scoring-model.html">Lesson 28</a> on the scoring model; this lesson covers how human annotation produces scores.</div></div>
   <div class="lang-zh">
 <p class="lead">
-前三课让机器自动打分——LLM 当裁判、代码做确定性检查。但有些判断<strong>离不开人</strong>：建立可信的 ground truth（基准答案）、审核「AI 到底判得对不对」、处理 AI 拿不准的边界情形、给训练/对齐采人类偏好。这一课讲<a class="xref" href="28-scoring-model.html">第 28 课</a>埋下的<strong>第三种 score 来源——人工标注（source=ANNOTATION）</strong>，以及把「请人评审」这件本质上<strong>无序又易冲突</strong>的事，组织成有序流程的工具：<strong>标注队列（annotation queue）</strong>。
+前三课让机器自动评分——LLM 当裁判、代码做确定性检查。但有些判断<strong>离不开人</strong>：建立可信的 ground truth（基准答案）、审核「AI 到底判得对不对」、处理 AI 拿不准的边界情形、给训练/对齐采人类偏好。这一课讲<a class="xref" href="28-scoring-model.html">第 28 课</a>埋下的<strong>第三种 score 来源——人工标注（source=ANNOTATION）</strong>，以及把「请人评审」这件本质上<strong>无序又易冲突</strong>的事，组织成有序流程的工具：<strong>标注队列（annotation queue）</strong>。
 重点有三：队列的<strong>数据模型</strong>（绑一组 score config、装一批待评对象）、一个有意思的<strong>5 分钟时间锁</strong>（人类尺度的并发控制），以及人工分如何和前两课的 EVAL 分<strong>同表汇合</strong>——从而成为校准 AI 裁判的标尺。
 </p>
 
@@ -364,7 +364,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="tag">📋 生活类比</div>
   标注队列像医院的<strong>待会诊病历筐</strong>。每份需要人来看的病历（一条 trace、一次 observation、或整个 session）被放进筐里排队；筐口贴着一张<strong>统一的评分表</strong>（队列绑定的 score config，决定医生要填哪几项、每项什么刻度）。
   医生从筐里<strong>取一份</strong>来看，系统立刻给这份病历<strong>上锁 5 分钟</strong>——这样另一位医生同时来取时，不会拿到同一份重复会诊；而要是这位医生中途走开了，锁会自动过期，病历重新可领，<strong>不会被永久占住</strong>。
-  看完，医生<strong>填表打分、可附一句评语</strong>，把病历标成「已会诊」，并记下<strong>是谁看的</strong>。这些人工评分和前两课 AI 评的分<strong>进同一本病案室</strong>（scores 表）——于是你能把「人怎么判的」和「AI 怎么判的」摆在一起对照，看 AI 靠不靠谱。
+  看完，医生<strong>填表评分、可附一句评语</strong>，把病历标成「已会诊」，并记下<strong>是谁看的</strong>。这些人工评分和前两课 AI 评的分<strong>进同一本病案室</strong>（scores 表）——于是你能把「人怎么判的」和「AI 怎么判的」摆在一起对照，看 AI 靠不靠谱。
 </div>
 
 
@@ -392,7 +392,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">建基准</span><span class="name">ground truth</span></div><div class="ld">很多评估要有「标准答案」才谈得上准不准。人类专家在一小撮代表性样本上打的分，就是这把<strong>金标准</strong>——AI 裁判、回归测试、模型对比都拿它当参照系。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">审裁判</span><span class="name">审核 AI 判得对不对</span></div><div class="ld"><a class="xref" href="29-llm-as-a-judge.html">第 29 课</a>问过「裁判自己靠不靠谱」。答案就在这：把同一批 trace 既让 AI 裁判评、又让人评，<strong>看两者一致不一致</strong>。不一致的地方，要么改 prompt、要么换模型——人工标注是<strong>校准裁判的反馈回路</strong>。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">啃边界</span><span class="name">AI 拿不准的情形</span></div><div class="ld">对那些 AI 反复打分摇摆、或明显需要领域知识/价值判断的样本，直接交给人。人工标注专攻<strong>机器最不擅长的长尾</strong>，把宝贵人力花在刀刃上。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">啃边界</span><span class="name">AI 拿不准的情形</span></div><div class="ld">对那些 AI 反复评分摇摆、或明显需要领域知识/价值判断的样本，直接交给人。人工标注专攻<strong>机器最不擅长的长尾</strong>，把宝贵人力花在刀刃上。</div></div>
 </div>
 
 
@@ -427,7 +427,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <tbody>
     <tr><td colspan="3" style="background:var(--purple-soft);font-weight:700">AnnotationQueue（评审任务）</td></tr>
     <tr><td><code>name / description</code></td><td>队列名与说明</td><td>一个项目可有多个队列（如「事实性核查」「语气审查」）</td></tr>
-    <tr><td><code>scoreConfigIds[]</code></td><td>绑定的一组 score config</td><td><b>统一评分表</b>：所有评审员按同一组 config 打分，分数才可比（呼应<a class="xref" href="28-scoring-model.html">第 28 课</a>）</td></tr>
+    <tr><td><code>scoreConfigIds[]</code></td><td>绑定的一组 score config</td><td><b>统一评分表</b>：所有评审员按同一组 config 评分，分数才可比（呼应<a class="xref" href="28-scoring-model.html">第 28 课</a>）</td></tr>
     <tr><td colspan="3" style="background:var(--blue-soft);font-weight:700">AnnotationQueueItem（一份待评对象）</td></tr>
     <tr><td><code>objectType / objectId</code></td><td>评的是什么：TRACE / OBSERVATION / SESSION</td><td>三种粒度都能评——整条对话、某一步、或整个会话</td></tr>
     <tr><td><code>status</code></td><td>PENDING / COMPLETED</td><td>队列的进度就是「还剩多少 PENDING」</td></tr>
@@ -498,8 +498,8 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>进入被指派的队列</h4><p>评审员看到指派给自己的队列（<code>AnnotationQueueAssignment</code>）和里面待评的 PENDING item。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>领一份 → 自动上锁</h4><p>打开一份 item，系统写 <code>lockedByUserId/lockedAt</code>，5 分钟内别人看到「已锁」、跳过。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>看对象</h4><p>按 <code>objectType</code> 展开要评的 TRACE / OBSERVATION / SESSION——直接复用第 25、26 课的详情视图。</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>按 config 打分 + 评语</h4><p>填队列绑定的每个 score config，可附 <code>comment</code>。分即时写成 <code>source=ANNOTATION</code>、带 <code>authorUserId</code>。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>看对象</h4><p>按 <code>objectType</code> 展开要评的 TRACE / OBSERVATION / SESSION——直接复用第 <a class="xref" href="25-trace-detail-tree.html">25</a>、<a class="xref" href="26-sessions.html">26</a> 课的详情视图。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>按 config 评分 + 评语</h4><p>填队列绑定的每个 score config，可附 <code>comment</code>。分即时写成 <code>source=ANNOTATION</code>、带 <code>authorUserId</code>。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>提交 → 跳下一份</h4><p>item 标 <code>COMPLETED</code> + 记 <code>annotatorUserId/completedAt</code>，锁释放，自动推进队列里下一份 PENDING。</p></div></div>
 </div>
 
@@ -552,7 +552,7 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
   <div class="qn">3. 一个 AnnotationQueue 上绑了一组 scoreConfigIds。这个绑定起什么作用？</div>
   <ol class="opts">
     <li>决定队列指派给哪些评审员</li>
-    <li>它是这个队列的「统一评分表」：规定所有评审员要按同一组 score config 打分（同名同刻度），分数才可比、才能聚合——直接复用<a class="xref" href="28-scoring-model.html">第 28 课</a>的 config</li>
+    <li>它是这个队列的「统一评分表」：规定所有评审员要按同一组 score config 评分（同名同刻度），分数才可比、才能聚合——直接复用<a class="xref" href="28-scoring-model.html">第 28 课</a>的 config</li>
     <li>控制 5 分钟锁的时长</li>
     <li>决定评哪些 trace</li>
   </ol>

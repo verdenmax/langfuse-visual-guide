@@ -480,10 +480,10 @@ web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流
 </svg>
 
 <div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>入口（tRPC 或 REST）</h4><p>UI 发 tRPC 调用、SDK 发 REST 请求；各自的入口先做<strong>鉴权</strong>，确认你能读这个 project（第 21、27 课）。</p></div></div>
+  <div class="step"><div class="num">1</div><div class="sc"><h4>入口（tRPC 或 REST）</h4><p>UI 发 tRPC 调用、SDK 发 REST 请求；各自的入口先做<strong>鉴权</strong>，确认你能读这个 project（第 <a class="xref" href="21-trpc-backbone.html">21</a>、<a class="xref" href="27-public-rest-api.html">27</a> 课）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>过滤与查询构建</h4><p>把 UI 的 <code>FilterState</code>（或 SDK 的查询参数）<strong>编译成参数化 SQL</strong>，并带上强制的 project_id 与时间窗（<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>）。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>仓储层执行</h4><p>经过统一的 ClickHouse 执行器：打 OTel span、贴查询 tag、失败退避重试、把资源错误翻成友好提示（<a class="xref" href="22-repository-layer.html">第 22 课</a>）。</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>读模型塑形</h4><p>列表走「紧凑行 + 懒加载指标」的双查询，详情走「整棵观测树」的全量取——按场景选不同读模型（第 24、25 课）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>读模型塑形</h4><p>列表走「紧凑行 + 懒加载指标」的双查询，详情走「整棵观测树」的全量取——按场景选不同读模型（第 <a class="xref" href="24-lists-and-tables.html">24</a>、<a class="xref" href="25-trace-detail-tree.html">25</a> 课）。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>返回 + 前端渲染</h4><p>结果回到 UI，表格系统用 URL 状态、列预设、行选择把它<strong>快速且可分享地</strong>渲染出来（<a class="xref" href="24-lists-and-tables.html">第 24 课</a>）。</p></div></div>
 </div>
 

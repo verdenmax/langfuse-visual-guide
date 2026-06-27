@@ -530,7 +530,7 @@ _ZH7.append(r"""
   <rect x="398" y="128" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
   <text x="408" y="147" font-size="12" fill="var(--ink)">observations　（每一步 LLM/工具）</text>
   <rect x="398" y="164" width="280" height="30" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
-  <text x="408" y="183" font-size="12" fill="var(--ink)">scores　（评估/打分）</text>
+  <text x="408" y="183" font-size="12" fill="var(--ink)">scores　（评估/评分）</text>
   <text x="396" y="216" font-size="10" fill="var(--muted)">ReplacingMergeTree · ORDER BY(project_id, date, id)</text>
   <line x1="340" y1="135" x2="380" y2="135" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
   <text x="360" y="258" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">同一把 project_id 贯穿两侧：左边定义它，右边用它分区 + 排序</text>

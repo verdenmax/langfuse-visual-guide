@@ -369,7 +369,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>两种裁判：确定的代码 vs 概率的 LLM</h2>
-<p>第 29、31 课其实是<strong>同一个 score 的两种生产方式</strong>。它们都接在<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>那条调度流水线后面——区别只在「执行」那一步：LLM-as-judge 调一个模型，代码 eval 跑一段函数。选哪种，取决于你要评的东西是<strong>主观</strong>还是<strong>客观</strong>：</p>
+<p>第 <a class="xref" href="29-llm-as-a-judge.html">29</a>、31 课其实是<strong>同一个 score 的两种生产方式</strong>。它们都接在<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>那条调度流水线后面——区别只在「执行」那一步：LLM-as-judge 调一个模型，代码 eval 跑一段函数。选哪种，取决于你要评的东西是<strong>主观</strong>还是<strong>客观</strong>：</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 210" role="img" aria-label="同一条 trace 可走两条评判路径：LLM-as-judge 调用一个模型做主观、语义的判断；代码 eval 在沙箱里跑一段确定性函数做客观、规则的判断；两条路最终都产出 source=EVAL 的 score 落进同一张 scores 表">

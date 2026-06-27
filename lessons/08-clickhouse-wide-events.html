@@ -392,7 +392,7 @@ ORDER BY (project_id, <span class="kw">type</span>, <span class="fn">toDate</spa
 </div>
 
 <p>关键就在 <code>ReplacingMergeTree(event_ts, is_deleted)</code> 这一句。它的语义是：<strong>排序键完全相同的多行，会被「替换」成最新的一行</strong>——
-谁的 <code>event_ts</code>（版本时间戳）更大，就保留谁；<code>is_deleted=1</code> 则表示这行被软删除。这正好<strong>完美契合第 5、6 课的合并模型</strong>：
+谁的 <code>event_ts</code>（版本时间戳）更大，就保留谁；<code>is_deleted=1</code> 则表示这行被软删除。这正好<strong>完美契合第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="06-instrumenting-an-llm-app.html">6</a> 课的合并模型</strong>：
 一个 observation 先 create、后 update，会产生<strong>两次写入</strong>（相同 id、不同 event_ts），ClickHouse 在后台合并时<strong>自动用 update 那条盖掉 create 那条</strong>。
 你不需要先查出旧行、改完再写回——<strong>只管追加，覆盖交给引擎</strong>。这就是<a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>「不可变 / 追加式事件」能成立的存储基础。</p>
 
@@ -469,7 +469,7 @@ ORDER BY (project_id, <span class="kw">type</span>, <span class="fn">toDate</spa
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>引擎 = ReplacingMergeTree(event_ts, is_deleted)</strong>：相同排序键，后写（event_ts 更大）覆盖先写，<code>is_deleted</code> 软删除——完美承接第 5、6 课 create+update 的合并模型。</li>
+    <li><strong>引擎 = ReplacingMergeTree(event_ts, is_deleted)</strong>：相同排序键，后写（event_ts 更大）覆盖先写，<code>is_deleted</code> 软删除——完美承接第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="06-instrumenting-an-llm-app.html">6</a> 课 create+update 的合并模型。</li>
     <li><strong>分区 = 按月</strong>（<code>toYYYYMM</code>），查时间窗口可整块裁剪；<strong>排序键 = project_id 打头</strong>，多租户查询只扫连续一段。</li>
     <li>「<strong>少扫</strong>」靠分区裁剪 + 排序键定位 + 列存只读所需列这三者合力，是海量数据下保持高效的关键。</li>
     <li><strong>列存 + ZSTD 压缩 + Map 列 + bloom_filter 索引</strong>，让又宽又大的行也能查得快、存得省，不为不相关的大字段买单。</li>

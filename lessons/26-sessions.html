@@ -356,7 +356,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="25-trace-detail-tree.html">第25课</a> 的 trace 详情，本课讲多条 trace 聚成的 session 视图。</div><div class="lang-en">Read <a class="xref" href="25-trace-detail-tree.html">Lesson 25</a> on trace detail; this lesson covers the session view that groups multiple traces.</div></div>
   <div class="lang-zh">
 <p class="lead">
-第 24、25 课讲的是单条 trace 的列表与详情。可真实的对话往往是<strong>多轮</strong>的——用户问一句、AI 答一句，来回十几轮，每一轮是一条 trace。把它们<strong>串成一段完整对话</strong>的，就是
+第 <a class="xref" href="24-lists-and-tables.html">24</a>、<a class="xref" href="25-trace-detail-tree.html">25</a> 课讲的是单条 trace 的列表与详情。可真实的对话往往是<strong>多轮</strong>的——用户问一句、AI 答一句，来回十几轮，每一轮是一条 trace。把它们<strong>串成一段完整对话</strong>的，就是
 <strong>session（会话）</strong>。这一课的关键洞察出奇地简洁：<strong>会话的全部「指标与列表」都不单独存储，而是 traces 按 <code>session_id</code> 的一次「分组聚合」现算出来</strong>
 （仅有一个极轻的元数据存根落库，下面会讲）。更妙的是，会话表<strong>几乎原样复用了<a class="xref" href="24-lists-and-tables.html">第 24 课</a>那套表格机制</strong>——说白了，<strong>它就是 trace 表，分了个组</strong>。
 </p>

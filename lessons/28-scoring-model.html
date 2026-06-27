@@ -356,7 +356,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 的 score 维度，本课深入评分模型的数据结构。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> on the score dimensions; this lesson dives into the scoring model's data structures.</div></div>
   <div class="lang-zh">
 <p class="lead">
-前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 打分。而一切的原子单位，是 <strong>score（评分）</strong>。
+前四部分让你能<strong>看清</strong>每一次 LLM 调用发生了什么。但「发生了什么」不等于「<strong>做得好不好</strong>」。这一部分讲<strong>评估</strong>——怎么给 trace 评分。而一切的原子单位，是 <strong>score（评分）</strong>。
 这一课先把 score 的<strong>数据模型</strong>讲透：一个 score 长什么样、有哪<strong>三种数据类型</strong>（数值/分类/布尔）、<strong>score config</strong> 这个「评分的 schema」管什么，以及一个 score 可能来自哪<strong>三种来源</strong>。
 理解了这套模型，后面五课（LLM 评判、代码 eval、人工标注、监控）就都只是「<strong>用不同方式生产 score</strong>」而已。
 </p>
@@ -433,9 +433,9 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 </div>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 6、12 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 <a class="xref" href="06-instrumenting-an-llm-app.html">6</a>、<a class="xref" href="12-ingestion-api.html">12</a> 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（<a class="xref" href="29-llm-as-a-judge.html">第 29 课</a>）或代码 eval（<a class="xref" href="31-code-based-evaluation.html">第 31 课</a>）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（<a class="xref" href="32-human-annotation.html">第 32 课</a>）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（<a class="xref" href="32-human-annotation.html">第 32 课</a>）按 config 给 trace 评分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
 </div>
 
 <h2>一个 score 对象到底有哪些字段</h2>
@@ -446,7 +446,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   <div class="col"><h4>谁打的 · 带什么</h4><p><code>source</code> API / EVAL / ANNOTATION；<code>authorUserId</code> 人工标注者（可空）；<code>comment</code> 备注（可空）；<code>configId</code> 按哪份 config 校验；<code>queueId</code> 来自哪个标注队列。</p></div>
   <div class="col"><h4>挂在哪（四选一）</h4><p><code>traceId</code> 整条 trace；<code>observationId</code> trace 里某一步；<code>sessionId</code> 整个会话；<code>datasetRunId</code> 某次数据集运行——<strong>必须恰有一个非空</strong>。</p></div>
 </div>
-<p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
+<p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 <a class="xref" href="34-datasets-and-items.html">34</a>、<a class="xref" href="35-dataset-runs.html">35</a> 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
 
 <svg viewBox="0 0 720 230" role="img" aria-label="一条 score 有四个引用字段 traceId、observationId、sessionId、datasetRunId，必须恰好一个非空：本例 traceId 指向整条 trace，其余三者为空但同样可挂到某一步 observation、整个 session 或一次数据集运行，同一 score 模型覆盖从单步到整批实验的所有评估粒度">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
@@ -474,7 +474,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么要专门搞一个 score config，而不是让大家随手打分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
+  <strong>为什么要专门搞一个 score config，而不是让大家随手评分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
   那这些分数<strong>放在一起毫无意义</strong>——求平均是错的、画趋势是错的、做对比更是错的。score config 把「某个名字 = 某种刻度」<strong>固定下来、强制校验</strong>，于是同名分数永远可比，
   你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「provided vs computed」、<a class="xref" href="16-token-counting-cost.html">第 16 课</a>「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
   下游的一切分析才有坚实地基</strong>。而把三种来源统一到同一张 scores 表、同一套 config，则让「AI 评的」「人审的」「API 报的」分数活在一个空间里——<strong>这正是 Part 5 后续每一课的共同终点：生产可比的 score</strong>。
@@ -511,7 +511,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
     <li>自动生成分数</li>
     <li>可比性：config 是某个 name 的 schema，把「这个名字=这种刻度」固定并强制校验，于是同名分数永远同一把尺——求平均、画趋势、做对比才有意义</li>
     <li>减少数据库存储</li>
-    <li>让打分速度更快</li>
+    <li>让评分速度更快</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>

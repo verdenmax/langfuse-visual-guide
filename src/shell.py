@@ -594,6 +594,20 @@ _XREF_PATTERNS = (
     re.compile(r"Lesson\s+(\d{1,2})\b"),
     re.compile(r"\bL(\d{2})\b"),
 )
+# Compact Chinese list, e.g. 「第 5、15 课」/「第 7、8、10 课」 — the single-ref
+# pattern above can't see the inner numbers, so each one is linked individually.
+_ZH_LIST = re.compile(r"第\s*\d{1,2}(?:\s*[、,，]\s*\d{1,2})+\s*课")
+
+
+def _link_zh_list(seg, self_num, order):
+    def repl(m):
+        def lk(nm):
+            n = int(nm.group(0))
+            if n == self_num or not (1 <= n <= len(order)):
+                return nm.group(0)
+            return f'<a class="xref" href="{order[n - 1]}">{nm.group(0)}</a>'
+        return re.sub(r"\d{1,2}", lk, m.group(0))
+    return _ZH_LIST.sub(repl, seg)
 
 
 def autolink(html, self_num, order):
@@ -602,7 +616,7 @@ def autolink(html, self_num, order):
     (1-based) so self-references stay plain."""
     parts = _PROTECT.split(html)
     for i in range(0, len(parts), 2):  # even indices = unprotected text
-        seg = parts[i]
+        seg = _link_zh_list(parts[i], self_num, order)
         for pat in _XREF_PATTERNS:
             def repl(m):
                 n = int(m.group(1))
@@ -805,7 +819,7 @@ SUBTITLES = {
      "route factory unifies auth/rate-limit/validation; Redis + negative caching; folder versions v1/v2/v3; Fern generates SDKs"),
     "28-scoring-model.html": ("score=评估原子单位 · 三种刻度 数值/分类/布尔 · config 是某 name 的 schema · 三来源同写 scores 表",
      "score = the atomic unit; three scales numeric/categorical/boolean; config is a name's schema; three sources, one table"),
-    "29-llm-as-a-judge.html": ("一个 LLM 给另一个打分 · 模板/评估器/执行 · 变量映射填占位符 · source=EVAL 回流摄取链路",
+    "29-llm-as-a-judge.html": ("一个 LLM 给另一个评分 · 模板/评估器/执行 · 变量映射填占位符 · source=EVAL 回流摄取链路",
      "one LLM scores another; template/evaluator/execution; variable mapping fills placeholders; source=EVAL flows back"),
     "30-eval-execution-pipeline.html": ("createEvalJobs 扇出到 ACTIVE 评估器 · 两级队列 · 三道闸 去重/采样/延迟 · 前缀防无限循环",
      "createEvalJobs fans out to ACTIVE evaluators; two-stage queues; three gates dedup/sampling/delay; prefix guards loops"),
@@ -938,7 +952,7 @@ PREREQS = {
         "先读 第3课 的 score 维度，本课深入评分模型的数据结构。",
         "Read Lesson 3 on the score dimensions; this lesson dives into the scoring model's data structures."),
     "29-llm-as-a-judge.html": (
-        "先读 第28课 的评分模型，本课讲用 LLM 当裁判自动打分。",
+        "先读 第28课 的评分模型，本课讲用 LLM 当裁判自动评分。",
         "Read Lesson 28 on the scoring model; this lesson covers using an LLM as a judge to score automatically."),
     "30-eval-execution-pipeline.html": (
         "先读 第29课 的 LLM 裁判与 第14课 的队列，本课讲 eval 执行流水线。",
@@ -1175,7 +1189,7 @@ GLOSSARY = [
     ("session", "session", "traces 按 session_id 分组的派生视图，非新实体、永远一致", "a derived view of traces grouped by session_id, not a new entity, always consistent", "26-sessions.html"),
     ("dataType", "dataType", "score 的刻度：NUMERIC / CATEGORICAL / BOOLEAN(锁死的特殊分类)", "a score's scale: NUMERIC / CATEGORICAL / BOOLEAN (a locked special category)", "28-scoring-model.html"),
     ("score config", "score config", "某 name 的 schema：声明刻度与约束、强制校验以保证可比", "a name's schema: declares scale & constraints, enforced for comparability", "28-scoring-model.html"),
-    ("LLM-as-a-judge", "LLM-as-a-judge", "用一个 LLM 给另一个的输出打分，结构化输出 {score,reasoning}", "use one LLM to score another's output, with structured output {score,reasoning}", "29-llm-as-a-judge.html"),
+    ("LLM-as-a-judge", "LLM-as-a-judge", "用一个 LLM 给另一个的输出评分，结构化输出 {score,reasoning}", "use one LLM to score another's output, with structured output {score,reasoning}", "29-llm-as-a-judge.html"),
     ("JobExecution", "JobExecution", "eval 工单的状态机 PENDING→COMPLETED/ERROR/CANCELLED/DELAYED", "the eval ticket's state machine PENDING→COMPLETED/ERROR/CANCELLED/DELAYED", "30-eval-execution-pipeline.html"),
     ("沙箱", "sandbox", "跑用户评估器代码的隔离环境：禁网络、限大小、限时", "the isolated environment running user eval code: no network, size caps, timeout", "31-code-based-evaluation.html"),
     ("标注队列", "annotation queue", "绑一组 scoreConfigIds 的人工评审任务，含待评 item 与 5 分钟软锁", "a human-review task binding scoreConfigIds, with items to review + a 5-minute soft lock", "32-human-annotation.html"),

@@ -385,7 +385,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="262" text-anchor="middle" font-size="9" fill="var(--faint)">每个基础设施都有自己的 named volume 做持久化（pg / clickhouse data+logs / redis / minio）</text>
   <text x="360" y="282" text-anchor="middle" font-size="9" fill="var(--faint)">web 偏读 PG+CH；worker 偏写 CH/S3、消费 Redis 队列（连线为示意）</text>
 </svg>
-<div class="figcap"><b>自托管装箱清单</b>：两个应用容器 <b>langfuse-web</b>（langfuse/langfuse:3）与 <b>langfuse-worker</b>（langfuse/langfuse-worker:3），加四个基础设施 <b>postgres:17 · clickhouse-server · redis:7 · minio</b>（S3 兼容）。每个基础设施配一个 named volume 持久化。这正是第 5、7 课架构图的「实体版」。</div>
+<div class="figcap"><b>自托管装箱清单</b>：两个应用容器 <b>langfuse-web</b>（langfuse/langfuse:3）与 <b>langfuse-worker</b>（langfuse/langfuse-worker:3），加四个基础设施 <b>postgres:17 · clickhouse-server · redis:7 · minio</b>（S3 兼容）。每个基础设施配一个 named volume 持久化。这正是第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="07-dual-store-architecture.html">7</a> 课架构图的「实体版」。</div>
 </div>
 
 <h2>最小自托管栈：2 应用 + 4 基础设施</h2>
@@ -528,7 +528,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。docker-compose.yml 列出两个应用容器（web/worker）加四个基础设施（postgres:17、clickhouse-server、redis:7、minio）。这正是第 5、7 课架构图的实体版。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。docker-compose.yml 列出两个应用容器（web/worker）加四个基础设施（postgres:17、clickhouse-server、redis:7、minio）。这正是第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="07-dual-store-architecture.html">7</a> 课架构图的实体版。</div></div></div>
   </details>
 </div>
 <div class="quiz">

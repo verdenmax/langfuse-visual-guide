@@ -693,7 +693,7 @@ _ZH39.append(r"""
   <thead><tr><th>消费者</th><th>它把什么交给引擎</th><th>典型用途</th></tr></thead>
   <tbody>
     <tr><td><b>Playground</b>（本课）</td><td>你界面上敲的 messages + 选的模型 + tools/schema</td><td>交互试 prompt，发布前手动验证</td></tr>
-    <tr><td><b>LLM 裁判</b>（第29课）</td><td>编译后的评分 prompt + 结构化输出 schema</td><td>自动给 trace 打分（source=EVAL）</td></tr>
+    <tr><td><b>LLM 裁判</b>（第29课）</td><td>编译后的评分 prompt + 结构化输出 schema</td><td>自动给 trace 评分（source=EVAL）</td></tr>
     <tr><td><b>prompt 实验</b>（第36课）</td><td>填好变量的 prompt + 被考的 provider/model</td><td>逐题跑出一场 run 供对比</td></tr>
   </tbody>
 </table>

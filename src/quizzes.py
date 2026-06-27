@@ -1967,7 +1967,7 @@ QUIZZES = {
                         "zh": "可比性：config 是某个 name 的 schema，把「这个名字=这种刻度」固定并强制校验，于是同名分数永远同一把尺——求平均、画趋势、做对比才有意义",
                         "en": "comparability: a config is the schema of a name, fixing and enforcing 'this name = this scale', so same-named scores always use one ruler — only then are averaging, trending, and comparison meaningful",
                     },
-                    {"zh": "让打分速度更快", "en": "makes scoring faster"},
+                    {"zh": "让评分速度更快", "en": "makes scoring faster"},
                     {"zh": "减少数据库存储", "en": "reduces database storage"},
                     {"zh": "自动生成分数", "en": "auto-generates scores"},
                 ],
@@ -2264,7 +2264,7 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "它是这个队列的「统一评分表」：规定所有评审员要按同一组 score config 打分（同名同刻度），分数才可比、才能聚合——直接复用第 28 课的 config",
+                        "zh": "它是这个队列的「统一评分表」：规定所有评审员要按同一组 score config 评分（同名同刻度），分数才可比、才能聚合——直接复用第 28 课的 config",
                         "en": "it's the queue's 'uniform scoring sheet': all reviewers must score by the same set of score configs (same name, same scale) so scores are comparable and aggregatable — directly reusing Lesson 28's configs",
                     },
                     {"zh": "决定队列指派给哪些评审员", "en": "decides which reviewers the queue is assigned to"},
@@ -2350,7 +2350,7 @@ QUIZZES = {
         ],
         "open": [
             {
-                "zh": "Part 5 到此完整：score 模型（28）→ 四种生产 score 的方式（29–32）→ 主动监控告警（33）。回顾整个第五部分，Langfuse 让「评估」从一个静态的「能打分、能查」系统，变成一个动态的「能自动评、能主动告警、还能用人工分校准 AI」的闭环。如果让你为自己的 LLM 应用设计一套评估体系，你会怎么组合这五种能力（人工/LLM裁判/代码/监控）？哪些质量信号你会持续监控并告警，为什么？",
+                "zh": "Part 5 到此完整：score 模型（28）→ 四种生产 score 的方式（29–32）→ 主动监控告警（33）。回顾整个第五部分，Langfuse 让「评估」从一个静态的「能评分、能查」系统，变成一个动态的「能自动评、能主动告警、还能用人工分校准 AI」的闭环。如果让你为自己的 LLM 应用设计一套评估体系，你会怎么组合这五种能力（人工/LLM裁判/代码/监控）？哪些质量信号你会持续监控并告警，为什么？",
                 "en": "Part 5 is now complete: the score model (28) → four ways to produce scores (29–32) → active monitoring and alerting (33). Reviewing the whole part, Langfuse turns 'evaluation' from a static 'can score, can query' system into a dynamic closed loop that 'auto-evaluates, alerts actively, and calibrates AI with human scores'. If you designed an evaluation system for your own LLM app, how would you combine these five capabilities (human/LLM-judge/code/monitoring)? Which quality signals would you continuously monitor and alert on, and why?",
             },
         ],
@@ -2477,7 +2477,7 @@ QUIZZES = {
                         "zh": "创建 run item 会发出 dataset-run-item-upsert 事件，触发第30课的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-run-items.ts JOIN scores 按名求平均(agg_scores_avg)",
                         "en": "creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-run-items.ts JOINs scores and averages by name (agg_scores_avg)",
                     },
-                    {"zh": "前端每秒轮询打分", "en": "the frontend polls and scores every second"},
+                    {"zh": "前端每秒轮询评分", "en": "the frontend polls and scores every second"},
                     {"zh": "run 结束时手动点击评分", "en": "manually clicking score when the run finishes"},
                     {"zh": "ClickHouse 自动计算", "en": "ClickHouse computes it automatically"},
                 ],
@@ -2509,7 +2509,7 @@ QUIZZES = {
                     },
                     {"zh": "只把数据项复制到一张新表", "en": "just copies the item to a new table"},
                     {"zh": "在前端用 JavaScript 跑模型", "en": "runs the model in the frontend via JavaScript"},
-                    {"zh": "直接给数据项打分，不调 LLM", "en": "scores the item directly without calling an LLM"},
+                    {"zh": "直接给数据项评分，不调 LLM", "en": "scores the item directly without calling an LLM"},
                 ],
                 "answer": 0,
                 "why": {
@@ -2544,7 +2544,7 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "从「能给质量打分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环",
+                        "zh": "从「能给质量评分」升级成「能用分数做决策」：改 prompt/换模型前先在固定测试集上验证，用数据而非感觉判断改动好坏——LLM 工程里最接近科学方法的一环",
                         "en": "from 'can score quality' into 'can make decisions with scores': verify on a fixed test set before changing a prompt/model, judging by data not feeling—the closest thing to the scientific method in LLM engineering",
                     },
                     {"zh": "升级成自动写 prompt", "en": "into auto-writing prompts"},
@@ -2553,7 +2553,7 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "第5部分让你「能看见、能打分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。",
+                    "zh": "第5部分让你「能看见、能评分」；Part 6 让你「能据此决策」。数据集是固定考卷、实验是一次对照试验、对比是带增量的成绩单——于是「这个改动到底好不好」从拍脑袋变成有数据。回路还自我强化：上线遇新难 case 再提拔成题，飞轮越转应用越稳。被反复考的 prompt 正是下一部分主角。",
                     "en": "Part 5 lets you 'see and score'; Part 6 lets you 'decide on that basis'. The dataset is a fixed exam, an experiment is a controlled trial, comparison is a report card with deltas—so 'is this change good' goes from gut feeling to data. The loop self-reinforces: post-ship hard cases get promoted into questions, the flywheel steadies the app. The repeatedly-tested prompt is the next part's protagonist.",
                 },
             },
