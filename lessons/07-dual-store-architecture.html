@@ -386,6 +386,22 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>四种存储的分工</b>：<b>Postgres</b>=配置/元数据（事务、强一致、量小）；<b>ClickHouse</b>=宽事件（列存、海量、聚合快）；<b>Redis</b>=队列+缓存（内存、极快、临时）；<b>S3</b>=事件底稿/媒体/导出（对象存储、大、便宜）。web 偏读、worker 偏写，但都按数据性质选对应的库。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="四存储 2x2 象限：横轴 OLTP 事务/控制面到 OLAP 分析/数据面，纵轴结构化行到批量对象。左上 Postgres 控制面元数据，右上 ClickHouse 宽事件，左下 Redis 队列与缓存，右下 S3 负载与媒体。依据 prisma schema、CH 迁移、server/queues.ts 与媒体服务">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">四存储各就各位：按「性质」选库</text>
+  <text x="360" y="33" text-anchor="middle" font-size="7.5" fill="var(--faint)">纵轴：结构化行（上）↔ 批量对象（下）</text>
+  <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="1.2"/>
+  <line x1="375" y1="40" x2="375" y2="226" stroke="var(--line)" stroke-width="1.2"/>
+  <text x="66" y="240" font-size="8" fill="var(--muted)">← OLTP · 事务/控制面（小而一致）</text>
+  <text x="688" y="240" text-anchor="end" font-size="8" fill="var(--muted)">OLAP · 分析/数据面（海量） →</text>
+  <rect x="74" y="46" width="286" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="86" y="66" font-size="10" font-weight="700" fill="var(--blue)">Postgres · 控制面</text><text x="86" y="83" font-size="8" fill="var(--ink)">org/project/user · apiKey · prompt</text><text x="86" y="98" font-size="8" fill="var(--ink)">dataset/eval 配置 · 定价 · 集成</text><text x="86" y="114" font-size="7.5" fill="var(--muted)">事务、强一致、量小、改得频</text>
+  <rect x="390" y="46" width="300" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="402" y="66" font-size="10" font-weight="700" fill="var(--accent-ink)">ClickHouse · 数据面</text><text x="402" y="83" font-size="8" fill="var(--ink)">traces / observations / scores 三宽表</text><text x="402" y="98" font-size="8" fill="var(--ink)">列存、海量、聚合飞快</text><text x="402" y="114" font-size="7.5" fill="var(--muted)">ReplacingMergeTree、按 project_id 排序</text>
+  <rect x="74" y="138" width="286" height="78" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="86" y="158" font-size="10" font-weight="700" fill="var(--red)">Redis · 队列 + 缓存</text><text x="86" y="175" font-size="8" fill="var(--ink)">摄取队列（BullMQ）· prompt 缓存</text><text x="86" y="190" font-size="8" fill="var(--ink)">内存、极快、临时</text><text x="86" y="206" font-size="7.5" fill="var(--muted)">削峰解耦：写路径塞进去就返回</text>
+  <rect x="390" y="138" width="300" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="402" y="158" font-size="10" font-weight="700" fill="var(--amber)">S3 · 负载 + 媒体</text><text x="402" y="175" font-size="8" fill="var(--ink)">事件原文 &lt;eventId&gt;.json · 媒体 · 导出</text><text x="402" y="190" font-size="8" fill="var(--ink)">对象存储、便宜、能装大块</text><text x="402" y="206" font-size="7.5" fill="var(--muted)">「真账本」：任务丢了也能从这里重建</text>
+</svg>
+<div class="figcap"><b>不是「主从」，是「分工」</b>（依据 <code>prisma/schema.prisma</code>、CH 迁移、<code>server/queues.ts</code>、媒体服务）：横轴是事务↔分析，纵轴是结构化行↔批量对象。<b>Postgres</b> 管「怎么配置」、<b>ClickHouse</b> 管「发生了什么」、<b>Redis</b> 削峰、<b>S3</b> 兜底原件——每条数据按它的性质落到对应象限。</div>
+</div>
+
 <h2>为什么不能只用一个</h2>
 <p>核心原因一句话：<strong>事务型负载（OLTP）和分析型负载（OLAP）是两种相反的优化目标</strong>，没有哪个库能同时把两头都做到极致。</p>
 <ul>
@@ -598,6 +614,22 @@ Understand the division of labor and you understand the <strong>foundation</stro
   <text x="360" y="262" text-anchor="middle" font-size="9.5" fill="var(--faint)">web mostly reads PG(config)+CH(analytics); worker mostly writes CH/S3, uses the Redis queue</text>
 </svg>
 <div class="figcap"><b>The four stores' division of labor</b>: <b>Postgres</b>=config/metadata (txn, consistent, small); <b>ClickHouse</b>=wide events (columnar, huge, fast aggregation); <b>Redis</b>=queue+cache (in-memory, fast, temporary); <b>S3</b>=event manuscript/media/exports (object store, big, cheap). web leans read, worker leans write, but both pick the store that fits the data.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="Four stores in a 2x2: x-axis OLTP transactional/control plane to OLAP analytical/data plane, y-axis structured rows to bulk objects. Top-left Postgres control-plane metadata, top-right ClickHouse wide events, bottom-left Redis queue and cache, bottom-right S3 payloads and media. Per prisma schema, CH migrations, server/queues.ts and the media service">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Four stores, each in its place: pick by nature</text>
+  <text x="360" y="33" text-anchor="middle" font-size="7.5" fill="var(--faint)">y-axis: structured rows (top) ↔ bulk objects (bottom)</text>
+  <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="1.2"/>
+  <line x1="375" y1="40" x2="375" y2="226" stroke="var(--line)" stroke-width="1.2"/>
+  <text x="66" y="240" font-size="8" fill="var(--muted)">← OLTP · transactional/control (small, consistent)</text>
+  <text x="688" y="240" text-anchor="end" font-size="8" fill="var(--muted)">OLAP · analytical/data (huge) →</text>
+  <rect x="74" y="46" width="286" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="86" y="66" font-size="10" font-weight="700" fill="var(--blue)">Postgres · control plane</text><text x="86" y="83" font-size="8" fill="var(--ink)">org/project/user · apiKey · prompt</text><text x="86" y="98" font-size="8" fill="var(--ink)">dataset/eval config · pricing · integrations</text><text x="86" y="114" font-size="7.5" fill="var(--muted)">transactional, consistent, small, edited often</text>
+  <rect x="390" y="46" width="300" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="402" y="66" font-size="10" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane</text><text x="402" y="83" font-size="8" fill="var(--ink)">traces / observations / scores wide tables</text><text x="402" y="98" font-size="8" fill="var(--ink)">columnar, huge, fast aggregation</text><text x="402" y="114" font-size="7.5" fill="var(--muted)">ReplacingMergeTree, sorted by project_id</text>
+  <rect x="74" y="138" width="286" height="78" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="86" y="158" font-size="10" font-weight="700" fill="var(--red)">Redis · queue + cache</text><text x="86" y="175" font-size="8" fill="var(--ink)">ingestion queue (BullMQ) · prompt cache</text><text x="86" y="190" font-size="8" fill="var(--ink)">in-memory, very fast, ephemeral</text><text x="86" y="206" font-size="7.5" fill="var(--muted)">absorb spikes: write path pushes and returns</text>
+  <rect x="390" y="138" width="300" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="402" y="158" font-size="10" font-weight="700" fill="var(--amber)">S3 · payloads + media</text><text x="402" y="175" font-size="8" fill="var(--ink)">event source &lt;eventId&gt;.json · media · exports</text><text x="402" y="190" font-size="8" fill="var(--ink)">object store, cheap, holds big blobs</text><text x="402" y="206" font-size="7.5" fill="var(--muted)">the source of truth: rebuild if a job is lost</text>
+</svg>
+<div class="figcap"><b>Not "primary/replica", but division of labor</b> (per <code>prisma/schema.prisma</code>, CH migrations, <code>server/queues.ts</code>, the media service): the x-axis is transactional↔analytical, the y-axis structured rows↔bulk objects. <b>Postgres</b> governs "how it's configured", <b>ClickHouse</b> "what happened", <b>Redis</b> absorbs spikes, <b>S3</b> backstops the originals — each datum lands in the quadrant that fits its nature.</div>
 </div>
 
 <h2>Why not just one</h2>

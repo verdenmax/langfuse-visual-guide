@@ -386,6 +386,35 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>两个入口</b>：用 <b>Langfuse SDK</b> 发原生事件（<code>web/src/pages/api/public/ingestion.ts</code>），或用 <b>OpenTelemetry OTLP</b> 发标准 span（<code>web/src/pages/api/public/otel/v1/traces</code>，span 会被映射成 observation）。两条路最后汇入同一条服务端摄取链路（第三部分）。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="左：几行 SDK 代码用 @observe 标注一次 generation 并填 model/input/output；右：SDK 据此生成的事件信封 JSON，type 为 generation-create，body 里带 traceId/name/model/input/output。事件类型对齐摄取 API，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">几行 SDK 代码 → 一个事件信封</text>
+  <rect x="20" y="34" width="318" height="166" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">from langfuse import observe</text>
+  <text x="34" y="80" font-size="8.5" font-family="monospace" fill="var(--accent)">@observe(as_type=&quot;generation&quot;)</text>
+  <text x="34" y="96" font-size="8.5" font-family="monospace" fill="var(--code-ink)">def answer(q):</text>
+  <text x="50" y="112" font-size="8.5" font-family="monospace" fill="var(--code-ink)">resp = llm(q)</text>
+  <text x="50" y="128" font-size="8.5" font-family="monospace" fill="var(--code-ink)">langfuse.update_current_</text>
+  <text x="50" y="142" font-size="8.5" font-family="monospace" fill="var(--code-ink)">  generation(model=&quot;gpt-4o&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    input=q, output=resp,</text>
+  <text x="50" y="170" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    usage_details={…})</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># 仅埋点，业务逻辑不变</text>
+  <line x1="340" y1="117" x2="378" y2="117" stroke="var(--accent)" stroke-width="1.6"/><polygon points="378,117 369,112 369,122" fill="var(--accent)"/><text x="359" y="110" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">生成</text>
+  <rect x="382" y="34" width="318" height="166" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="396" y="52" font-size="8.5" font-family="monospace" fill="var(--muted)">{ <tspan fill="var(--ink)">// 事件信封</tspan></text>
+  <text x="396" y="68" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;id&quot;: &quot;evt_9f&quot;,</text>
+  <text x="396" y="84" font-size="8.5" font-family="monospace" fill="var(--accent-ink)">  &quot;type&quot;: &quot;generation-create&quot;,</text>
+  <text x="396" y="100" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;timestamp&quot;: &quot;2025-…Z&quot;,</text>
+  <text x="396" y="116" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;body&quot;: {</text>
+  <text x="396" y="132" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;traceId&quot;: &quot;chat_a1b2&quot;,</text>
+  <text x="396" y="148" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;name&quot;: &quot;answer&quot;, &quot;model&quot;: &quot;gpt-4o&quot;,</text>
+  <text x="396" y="164" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;input&quot;: {…}, &quot;output&quot;: &quot;…&quot;</text>
+  <text x="396" y="180" font-size="8.5" font-family="monospace" fill="var(--ink)">  } }</text>
+  <text x="396" y="194" font-size="7.5" fill="var(--faint)">→ HTTP 批量发往 /ingestion</text>
+</svg>
+<div class="figcap"><b>埋点 = 把调用翻译成事件</b>（事件类型 <code>generation-create</code> 等对齐摄取 API；<b>值为示例</b>）：你只在业务代码旁加几行 <code>@observe</code>/<code>update_current_generation</code>，SDK 就把这次调用打包成一个<b>事件信封</b>（<code>{id, type, timestamp, body}</code>），攒批后发往服务端——下游所有存储与查询都从这个信封开始。</div>
+</div>
+
 <h2>事件信封：你的应用发出的是什么</h2>
 <p>无论走哪条入口，应用发出的本质都是一批<strong>事件（event）</strong>。Langfuse 定义了一组事件类型（<code>packages/shared/src/server/ingestion/types.ts</code> 的 <code>eventTypes</code>），
 每个事件描述「<strong>对哪个对象做了什么</strong>」：</p>
@@ -614,6 +643,35 @@ sending "native events" via the Langfuse <strong>SDK</strong>, or sending standa
   <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK path: ingestion.ts　·　OTel path: otel/v1/traces (both join one ingestion path)</text>
 </svg>
 <div class="figcap"><b>Two entries</b>: send native events with the <b>Langfuse SDK</b> (<code>web/src/pages/api/public/ingestion.ts</code>), or standard spans via <b>OpenTelemetry OTLP</b> (<code>web/src/pages/api/public/otel/v1/traces</code>, spans mapped to observations). Both converge on the same server-side ingestion path (Part 3).</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Left: a few lines of SDK code annotate one generation with @observe and fill model/input/output; right: the event envelope JSON the SDK produces, type generation-create, body carrying traceId/name/model/input/output. Event types per the ingestion API, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">A few lines of SDK code → one event envelope</text>
+  <rect x="20" y="34" width="318" height="166" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">from langfuse import observe</text>
+  <text x="34" y="80" font-size="8.5" font-family="monospace" fill="var(--accent)">@observe(as_type=&quot;generation&quot;)</text>
+  <text x="34" y="96" font-size="8.5" font-family="monospace" fill="var(--code-ink)">def answer(q):</text>
+  <text x="50" y="112" font-size="8.5" font-family="monospace" fill="var(--code-ink)">resp = llm(q)</text>
+  <text x="50" y="128" font-size="8.5" font-family="monospace" fill="var(--code-ink)">langfuse.update_current_</text>
+  <text x="50" y="142" font-size="8.5" font-family="monospace" fill="var(--code-ink)">  generation(model=&quot;gpt-4o&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    input=q, output=resp,</text>
+  <text x="50" y="170" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    usage_details={…})</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># instrument only; logic unchanged</text>
+  <line x1="340" y1="117" x2="378" y2="117" stroke="var(--accent)" stroke-width="1.6"/><polygon points="378,117 369,112 369,122" fill="var(--accent)"/><text x="359" y="110" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">emits</text>
+  <rect x="382" y="34" width="318" height="166" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="396" y="52" font-size="8.5" font-family="monospace" fill="var(--muted)">{ <tspan fill="var(--ink)">// event envelope</tspan></text>
+  <text x="396" y="68" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;id&quot;: &quot;evt_9f&quot;,</text>
+  <text x="396" y="84" font-size="8.5" font-family="monospace" fill="var(--accent-ink)">  &quot;type&quot;: &quot;generation-create&quot;,</text>
+  <text x="396" y="100" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;timestamp&quot;: &quot;2025-…Z&quot;,</text>
+  <text x="396" y="116" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;body&quot;: {</text>
+  <text x="396" y="132" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;traceId&quot;: &quot;chat_a1b2&quot;,</text>
+  <text x="396" y="148" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;name&quot;: &quot;answer&quot;, &quot;model&quot;: &quot;gpt-4o&quot;,</text>
+  <text x="396" y="164" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;input&quot;: {…}, &quot;output&quot;: &quot;…&quot;</text>
+  <text x="396" y="180" font-size="8.5" font-family="monospace" fill="var(--ink)">  } }</text>
+  <text x="396" y="194" font-size="7.5" fill="var(--faint)">→ batched HTTP POST to /ingestion</text>
+</svg>
+<div class="figcap"><b>Instrumenting = translating calls into events</b> (event types like <code>generation-create</code> per the ingestion API; <b>values illustrative</b>): you add a few <code>@observe</code>/<code>update_current_generation</code> lines beside your business code, and the SDK packages the call into an <b>event envelope</b> (<code>{id, type, timestamp, body}</code>), batches it, and sends it server-side — every downstream store and query starts from this envelope.</div>
 </div>
 
 <h2>The event envelope: what your app emits</h2>

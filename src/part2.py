@@ -45,6 +45,35 @@ _ZH6.append(r"""
 <div class="figcap"><b>两个入口</b>：用 <b>Langfuse SDK</b> 发原生事件（<code>web/src/pages/api/public/ingestion.ts</code>），或用 <b>OpenTelemetry OTLP</b> 发标准 span（<code>web/src/pages/api/public/otel/v1/traces</code>，span 会被映射成 observation）。两条路最后汇入同一条服务端摄取链路（第三部分）。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="左：几行 SDK 代码用 @observe 标注一次 generation 并填 model/input/output；右：SDK 据此生成的事件信封 JSON，type 为 generation-create，body 里带 traceId/name/model/input/output。事件类型对齐摄取 API，值为示例">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">几行 SDK 代码 → 一个事件信封</text>
+  <rect x="20" y="34" width="318" height="166" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">from langfuse import observe</text>
+  <text x="34" y="80" font-size="8.5" font-family="monospace" fill="var(--accent)">@observe(as_type=&quot;generation&quot;)</text>
+  <text x="34" y="96" font-size="8.5" font-family="monospace" fill="var(--code-ink)">def answer(q):</text>
+  <text x="50" y="112" font-size="8.5" font-family="monospace" fill="var(--code-ink)">resp = llm(q)</text>
+  <text x="50" y="128" font-size="8.5" font-family="monospace" fill="var(--code-ink)">langfuse.update_current_</text>
+  <text x="50" y="142" font-size="8.5" font-family="monospace" fill="var(--code-ink)">  generation(model=&quot;gpt-4o&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    input=q, output=resp,</text>
+  <text x="50" y="170" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    usage_details={…})</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># 仅埋点，业务逻辑不变</text>
+  <line x1="340" y1="117" x2="378" y2="117" stroke="var(--accent)" stroke-width="1.6"/><polygon points="378,117 369,112 369,122" fill="var(--accent)"/><text x="359" y="110" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">生成</text>
+  <rect x="382" y="34" width="318" height="166" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="396" y="52" font-size="8.5" font-family="monospace" fill="var(--muted)">{ <tspan fill="var(--ink)">// 事件信封</tspan></text>
+  <text x="396" y="68" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;id&quot;: &quot;evt_9f&quot;,</text>
+  <text x="396" y="84" font-size="8.5" font-family="monospace" fill="var(--accent-ink)">  &quot;type&quot;: &quot;generation-create&quot;,</text>
+  <text x="396" y="100" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;timestamp&quot;: &quot;2025-…Z&quot;,</text>
+  <text x="396" y="116" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;body&quot;: {</text>
+  <text x="396" y="132" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;traceId&quot;: &quot;chat_a1b2&quot;,</text>
+  <text x="396" y="148" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;name&quot;: &quot;answer&quot;, &quot;model&quot;: &quot;gpt-4o&quot;,</text>
+  <text x="396" y="164" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;input&quot;: {…}, &quot;output&quot;: &quot;…&quot;</text>
+  <text x="396" y="180" font-size="8.5" font-family="monospace" fill="var(--ink)">  } }</text>
+  <text x="396" y="194" font-size="7.5" fill="var(--faint)">→ HTTP 批量发往 /ingestion</text>
+</svg>
+<div class="figcap"><b>埋点 = 把调用翻译成事件</b>（事件类型 <code>generation-create</code> 等对齐摄取 API；<b>值为示例</b>）：你只在业务代码旁加几行 <code>@observe</code>/<code>update_current_generation</code>，SDK 就把这次调用打包成一个<b>事件信封</b>（<code>{id, type, timestamp, body}</code>），攒批后发往服务端——下游所有存储与查询都从这个信封开始。</div>
+</div>
+
 <h2>事件信封：你的应用发出的是什么</h2>
 <p>无论走哪条入口，应用发出的本质都是一批<strong>事件（event）</strong>。Langfuse 定义了一组事件类型（<code>packages/shared/src/server/ingestion/types.ts</code> 的 <code>eventTypes</code>），
 每个事件描述「<strong>对哪个对象做了什么</strong>」：</p>
@@ -229,6 +258,35 @@ _EN6.append(r"""
   <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK path: ingestion.ts　·　OTel path: otel/v1/traces (both join one ingestion path)</text>
 </svg>
 <div class="figcap"><b>Two entries</b>: send native events with the <b>Langfuse SDK</b> (<code>web/src/pages/api/public/ingestion.ts</code>), or standard spans via <b>OpenTelemetry OTLP</b> (<code>web/src/pages/api/public/otel/v1/traces</code>, spans mapped to observations). Both converge on the same server-side ingestion path (Part 3).</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Left: a few lines of SDK code annotate one generation with @observe and fill model/input/output; right: the event envelope JSON the SDK produces, type generation-create, body carrying traceId/name/model/input/output. Event types per the ingestion API, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">A few lines of SDK code → one event envelope</text>
+  <rect x="20" y="34" width="318" height="166" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">from langfuse import observe</text>
+  <text x="34" y="80" font-size="8.5" font-family="monospace" fill="var(--accent)">@observe(as_type=&quot;generation&quot;)</text>
+  <text x="34" y="96" font-size="8.5" font-family="monospace" fill="var(--code-ink)">def answer(q):</text>
+  <text x="50" y="112" font-size="8.5" font-family="monospace" fill="var(--code-ink)">resp = llm(q)</text>
+  <text x="50" y="128" font-size="8.5" font-family="monospace" fill="var(--code-ink)">langfuse.update_current_</text>
+  <text x="50" y="142" font-size="8.5" font-family="monospace" fill="var(--code-ink)">  generation(model=&quot;gpt-4o&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    input=q, output=resp,</text>
+  <text x="50" y="170" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    usage_details={…})</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># instrument only; logic unchanged</text>
+  <line x1="340" y1="117" x2="378" y2="117" stroke="var(--accent)" stroke-width="1.6"/><polygon points="378,117 369,112 369,122" fill="var(--accent)"/><text x="359" y="110" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">emits</text>
+  <rect x="382" y="34" width="318" height="166" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="396" y="52" font-size="8.5" font-family="monospace" fill="var(--muted)">{ <tspan fill="var(--ink)">// event envelope</tspan></text>
+  <text x="396" y="68" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;id&quot;: &quot;evt_9f&quot;,</text>
+  <text x="396" y="84" font-size="8.5" font-family="monospace" fill="var(--accent-ink)">  &quot;type&quot;: &quot;generation-create&quot;,</text>
+  <text x="396" y="100" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;timestamp&quot;: &quot;2025-…Z&quot;,</text>
+  <text x="396" y="116" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;body&quot;: {</text>
+  <text x="396" y="132" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;traceId&quot;: &quot;chat_a1b2&quot;,</text>
+  <text x="396" y="148" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;name&quot;: &quot;answer&quot;, &quot;model&quot;: &quot;gpt-4o&quot;,</text>
+  <text x="396" y="164" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;input&quot;: {…}, &quot;output&quot;: &quot;…&quot;</text>
+  <text x="396" y="180" font-size="8.5" font-family="monospace" fill="var(--ink)">  } }</text>
+  <text x="396" y="194" font-size="7.5" fill="var(--faint)">→ batched HTTP POST to /ingestion</text>
+</svg>
+<div class="figcap"><b>Instrumenting = translating calls into events</b> (event types like <code>generation-create</code> per the ingestion API; <b>values illustrative</b>): you add a few <code>@observe</code>/<code>update_current_generation</code> lines beside your business code, and the SDK packages the call into an <b>event envelope</b> (<code>{id, type, timestamp, body}</code>), batches it, and sends it server-side — every downstream store and query starts from this envelope.</div>
 </div>
 
 <h2>The event envelope: what your app emits</h2>
@@ -436,6 +494,22 @@ _ZH7.append(r"""
 <div class="figcap"><b>四种存储的分工</b>：<b>Postgres</b>=配置/元数据（事务、强一致、量小）；<b>ClickHouse</b>=宽事件（列存、海量、聚合快）；<b>Redis</b>=队列+缓存（内存、极快、临时）；<b>S3</b>=事件底稿/媒体/导出（对象存储、大、便宜）。web 偏读、worker 偏写，但都按数据性质选对应的库。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="四存储 2x2 象限：横轴 OLTP 事务/控制面到 OLAP 分析/数据面，纵轴结构化行到批量对象。左上 Postgres 控制面元数据，右上 ClickHouse 宽事件，左下 Redis 队列与缓存，右下 S3 负载与媒体。依据 prisma schema、CH 迁移、server/queues.ts 与媒体服务">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">四存储各就各位：按「性质」选库</text>
+  <text x="360" y="33" text-anchor="middle" font-size="7.5" fill="var(--faint)">纵轴：结构化行（上）↔ 批量对象（下）</text>
+  <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="1.2"/>
+  <line x1="375" y1="40" x2="375" y2="226" stroke="var(--line)" stroke-width="1.2"/>
+  <text x="66" y="240" font-size="8" fill="var(--muted)">← OLTP · 事务/控制面（小而一致）</text>
+  <text x="688" y="240" text-anchor="end" font-size="8" fill="var(--muted)">OLAP · 分析/数据面（海量） →</text>
+  <rect x="74" y="46" width="286" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="86" y="66" font-size="10" font-weight="700" fill="var(--blue)">Postgres · 控制面</text><text x="86" y="83" font-size="8" fill="var(--ink)">org/project/user · apiKey · prompt</text><text x="86" y="98" font-size="8" fill="var(--ink)">dataset/eval 配置 · 定价 · 集成</text><text x="86" y="114" font-size="7.5" fill="var(--muted)">事务、强一致、量小、改得频</text>
+  <rect x="390" y="46" width="300" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="402" y="66" font-size="10" font-weight="700" fill="var(--accent-ink)">ClickHouse · 数据面</text><text x="402" y="83" font-size="8" fill="var(--ink)">traces / observations / scores 三宽表</text><text x="402" y="98" font-size="8" fill="var(--ink)">列存、海量、聚合飞快</text><text x="402" y="114" font-size="7.5" fill="var(--muted)">ReplacingMergeTree、按 project_id 排序</text>
+  <rect x="74" y="138" width="286" height="78" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="86" y="158" font-size="10" font-weight="700" fill="var(--red)">Redis · 队列 + 缓存</text><text x="86" y="175" font-size="8" fill="var(--ink)">摄取队列（BullMQ）· prompt 缓存</text><text x="86" y="190" font-size="8" fill="var(--ink)">内存、极快、临时</text><text x="86" y="206" font-size="7.5" fill="var(--muted)">削峰解耦：写路径塞进去就返回</text>
+  <rect x="390" y="138" width="300" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="402" y="158" font-size="10" font-weight="700" fill="var(--amber)">S3 · 负载 + 媒体</text><text x="402" y="175" font-size="8" fill="var(--ink)">事件原文 &lt;eventId&gt;.json · 媒体 · 导出</text><text x="402" y="190" font-size="8" fill="var(--ink)">对象存储、便宜、能装大块</text><text x="402" y="206" font-size="7.5" fill="var(--muted)">「真账本」：任务丢了也能从这里重建</text>
+</svg>
+<div class="figcap"><b>不是「主从」，是「分工」</b>（依据 <code>prisma/schema.prisma</code>、CH 迁移、<code>server/queues.ts</code>、媒体服务）：横轴是事务↔分析，纵轴是结构化行↔批量对象。<b>Postgres</b> 管「怎么配置」、<b>ClickHouse</b> 管「发生了什么」、<b>Redis</b> 削峰、<b>S3</b> 兜底原件——每条数据按它的性质落到对应象限。</div>
+</div>
+
 <h2>为什么不能只用一个</h2>
 <p>核心原因一句话：<strong>事务型负载（OLTP）和分析型负载（OLAP）是两种相反的优化目标</strong>，没有哪个库能同时把两头都做到极致。</p>
 <ul>
@@ -604,6 +678,22 @@ _EN7.append(r"""
   <text x="360" y="262" text-anchor="middle" font-size="9.5" fill="var(--faint)">web mostly reads PG(config)+CH(analytics); worker mostly writes CH/S3, uses the Redis queue</text>
 </svg>
 <div class="figcap"><b>The four stores' division of labor</b>: <b>Postgres</b>=config/metadata (txn, consistent, small); <b>ClickHouse</b>=wide events (columnar, huge, fast aggregation); <b>Redis</b>=queue+cache (in-memory, fast, temporary); <b>S3</b>=event manuscript/media/exports (object store, big, cheap). web leans read, worker leans write, but both pick the store that fits the data.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="Four stores in a 2x2: x-axis OLTP transactional/control plane to OLAP analytical/data plane, y-axis structured rows to bulk objects. Top-left Postgres control-plane metadata, top-right ClickHouse wide events, bottom-left Redis queue and cache, bottom-right S3 payloads and media. Per prisma schema, CH migrations, server/queues.ts and the media service">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Four stores, each in its place: pick by nature</text>
+  <text x="360" y="33" text-anchor="middle" font-size="7.5" fill="var(--faint)">y-axis: structured rows (top) ↔ bulk objects (bottom)</text>
+  <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="1.2"/>
+  <line x1="375" y1="40" x2="375" y2="226" stroke="var(--line)" stroke-width="1.2"/>
+  <text x="66" y="240" font-size="8" fill="var(--muted)">← OLTP · transactional/control (small, consistent)</text>
+  <text x="688" y="240" text-anchor="end" font-size="8" fill="var(--muted)">OLAP · analytical/data (huge) →</text>
+  <rect x="74" y="46" width="286" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="86" y="66" font-size="10" font-weight="700" fill="var(--blue)">Postgres · control plane</text><text x="86" y="83" font-size="8" fill="var(--ink)">org/project/user · apiKey · prompt</text><text x="86" y="98" font-size="8" fill="var(--ink)">dataset/eval config · pricing · integrations</text><text x="86" y="114" font-size="7.5" fill="var(--muted)">transactional, consistent, small, edited often</text>
+  <rect x="390" y="46" width="300" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="402" y="66" font-size="10" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane</text><text x="402" y="83" font-size="8" fill="var(--ink)">traces / observations / scores wide tables</text><text x="402" y="98" font-size="8" fill="var(--ink)">columnar, huge, fast aggregation</text><text x="402" y="114" font-size="7.5" fill="var(--muted)">ReplacingMergeTree, sorted by project_id</text>
+  <rect x="74" y="138" width="286" height="78" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="86" y="158" font-size="10" font-weight="700" fill="var(--red)">Redis · queue + cache</text><text x="86" y="175" font-size="8" fill="var(--ink)">ingestion queue (BullMQ) · prompt cache</text><text x="86" y="190" font-size="8" fill="var(--ink)">in-memory, very fast, ephemeral</text><text x="86" y="206" font-size="7.5" fill="var(--muted)">absorb spikes: write path pushes and returns</text>
+  <rect x="390" y="138" width="300" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="402" y="158" font-size="10" font-weight="700" fill="var(--amber)">S3 · payloads + media</text><text x="402" y="175" font-size="8" fill="var(--ink)">event source &lt;eventId&gt;.json · media · exports</text><text x="402" y="190" font-size="8" fill="var(--ink)">object store, cheap, holds big blobs</text><text x="402" y="206" font-size="7.5" fill="var(--muted)">the source of truth: rebuild if a job is lost</text>
+</svg>
+<div class="figcap"><b>Not "primary/replica", but division of labor</b> (per <code>prisma/schema.prisma</code>, CH migrations, <code>server/queues.ts</code>, the media service): the x-axis is transactional↔analytical, the y-axis structured rows↔bulk objects. <b>Postgres</b> governs "how it's configured", <b>ClickHouse</b> "what happened", <b>Redis</b> absorbs spikes, <b>S3</b> backstops the originals — each datum lands in the quadrant that fits its nature.</div>
 </div>
 
 <h2>Why not just one</h2>
@@ -785,6 +875,18 @@ _ZH8.append(r"""
 <div class="figcap"><b>一行宽事件的五类列</b>：标识/关联列（拼树、定位）、内联的富属性宽列（model、cost、prompt…）、半结构化的 <b>Map</b> 列（metadata、usage/cost 明细）、用 <b>ZSTD</b> 压缩的大字段（input/output）、以及版本控制列（<code>event_ts</code>、<code>is_deleted</code>）。一行就装下了第 3 课说的全部富属性。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 226" role="img" aria-label="一行 observations 表的解剖：同一行里按功能分四类列——关联列 project_id/trace_id/id/parent_observation_id 拼调用树与隔离；业务列 type/name/provided_model_name/input/output/metadata/level 可过滤分组；数字列 start_time/end_time/usage_details/cost_details/total_cost 可聚合；版本列 event_ts/is_deleted 供 ReplacingMergeTree 留最新。列名取自 0002_observations.up.sql，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一行 observations 的解剖：同一行，四类列</text>
+  <rect x="20" y="28" width="680" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">⟵ 同一行（一次 LLM 调用 = 一条 observation）⟶</text>
+  <rect x="20" y="50" width="168" height="158" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="28" y="66" font-size="8.5" font-weight="700" fill="var(--blue)">① 关联列</text><text x="28" y="80" font-size="7" fill="var(--ink)">project_id  proj_ab</text><text x="28" y="93" font-size="7" fill="var(--ink)">trace_id  chat_a1b2</text><text x="28" y="106" font-size="7" fill="var(--ink)">id  obs_7f</text><text x="28" y="119" font-size="7" fill="var(--ink)">parent_observation_id</text><text x="36" y="130" font-size="6.6" fill="var(--muted)">obs_3a（拼成调用树）</text><text x="28" y="198" font-size="7" font-weight="700" fill="var(--blue)">→ 拼调用树 · 租户隔离</text>
+  <rect x="196" y="50" width="186" height="158" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="204" y="66" font-size="8.5" font-weight="700" fill="var(--accent-ink)">② 业务列</text><text x="204" y="80" font-size="7" fill="var(--ink)">type  GENERATION</text><text x="204" y="93" font-size="7" fill="var(--ink)">name  answer</text><text x="204" y="106" font-size="7" fill="var(--ink)">provided_model_name  gpt-4o</text><text x="204" y="119" font-size="7" fill="var(--ink)">level  DEFAULT · input/output {…}</text><text x="204" y="132" font-size="7" fill="var(--ink)">metadata  {env: prod}</text><text x="204" y="198" font-size="7" font-weight="700" fill="var(--accent-ink)">→ 可过滤 · 可分组</text>
+  <rect x="390" y="50" width="172" height="158" rx="8" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="398" y="66" font-size="8.5" font-weight="700" fill="var(--amber)">③ 数字列</text><text x="398" y="80" font-size="7" fill="var(--ink)">start_time / end_time</text><text x="398" y="93" font-size="7" fill="var(--ink)">usage_details {in:512,</text><text x="406" y="104" font-size="7" fill="var(--ink)">out:88}</text><text x="398" y="117" font-size="7" fill="var(--ink)">cost_details {total:.0041}</text><text x="398" y="130" font-size="7" fill="var(--ink)">total_cost  0.0041</text><text x="398" y="198" font-size="7" font-weight="700" fill="var(--amber)">→ 可聚合（SUM/AVG）</text>
+  <rect x="570" y="50" width="130" height="158" rx="8" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="578" y="66" font-size="8.5" font-weight="700" fill="var(--teal)">④ 版本列</text><text x="578" y="80" font-size="7" fill="var(--ink)">event_ts  …T12:00</text><text x="578" y="93" font-size="7" fill="var(--ink)">is_deleted  0</text><text x="578" y="112" font-size="6.6" fill="var(--muted)">同 id 多次写入，</text><text x="578" y="123" font-size="6.6" fill="var(--muted)">查时取 event_ts 最新</text><text x="578" y="198" font-size="6.8" font-weight="700" fill="var(--teal)">→ ReplacingMergeTree</text>
+</svg>
+<div class="figcap"><b>一行宽事件 = 四类列各司其职</b>（列名取自 <code>clickhouse/migrations/.../0002_observations.up.sql</code>；<b>值为示例</b>）：<b>关联列</b>拼调用树并按 <code>project_id</code> 隔离；<b>业务列</b>供过滤/分组；<b>数字列</b>供聚合；<b>版本列</b> <code>event_ts/is_deleted</code> 让 ReplacingMergeTree 在「同 id 多次写入」时保留最新。第 3 课的三支柱，物理上就是这一行。</div>
+</div>
+
 <h2>ReplacingMergeTree：同 id 后写覆盖先写</h2>
 <p>三张表用的引擎都是 <code>ReplacingMergeTree</code>。它的建表声明长这样：</p>
 
@@ -914,6 +1016,18 @@ _EN8.append(r"""
   <rect x="462" y="180" width="238" height="40" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="472" y="196" font-size="10" font-weight="700" fill="var(--accent-ink)">versioning</text><text x="472" y="212" font-size="9" fill="var(--accent-ink)">event_ts · is_deleted</text>
 </svg>
 <div class="figcap"><b>Five kinds of columns in one wide-event row</b>: identity/linkage (tree, lookup), inlined rich wide columns (model, cost, prompt…), semi-structured <b>Map</b> columns (metadata, usage/cost details), <b>ZSTD</b>-compressed big fields (input/output), and version columns (<code>event_ts</code>, <code>is_deleted</code>). One row holds all of Lesson 3's rich attributes.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 226" role="img" aria-label="Anatomy of one observations row: the same row groups columns into four kinds — link columns project_id/trace_id/id/parent_observation_id build the call tree and isolation; business columns type/name/provided_model_name/input/output/metadata/level filter and group; numeric columns start_time/end_time/usage_details/cost_details/total_cost aggregate; version columns event_ts/is_deleted let ReplacingMergeTree keep the latest. Column names from 0002_observations.up.sql, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Anatomy of one observations row: same row, four kinds of column</text>
+  <rect x="20" y="28" width="680" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">⟵ one row (one LLM call = one observation) ⟶</text>
+  <rect x="20" y="50" width="168" height="158" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="28" y="66" font-size="8.5" font-weight="700" fill="var(--blue)">① link columns</text><text x="28" y="80" font-size="7" fill="var(--ink)">project_id  proj_ab</text><text x="28" y="93" font-size="7" fill="var(--ink)">trace_id  chat_a1b2</text><text x="28" y="106" font-size="7" fill="var(--ink)">id  obs_7f</text><text x="28" y="119" font-size="7" fill="var(--ink)">parent_observation_id</text><text x="36" y="130" font-size="6.6" fill="var(--muted)">obs_3a (builds the tree)</text><text x="28" y="198" font-size="7" font-weight="700" fill="var(--blue)">→ call tree · tenant isolation</text>
+  <rect x="196" y="50" width="186" height="158" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="204" y="66" font-size="8.5" font-weight="700" fill="var(--accent-ink)">② business columns</text><text x="204" y="80" font-size="7" fill="var(--ink)">type  GENERATION</text><text x="204" y="93" font-size="7" fill="var(--ink)">name  answer</text><text x="204" y="106" font-size="7" fill="var(--ink)">provided_model_name  gpt-4o</text><text x="204" y="119" font-size="7" fill="var(--ink)">level  DEFAULT · input/output {…}</text><text x="204" y="132" font-size="7" fill="var(--ink)">metadata  {env: prod}</text><text x="204" y="198" font-size="7" font-weight="700" fill="var(--accent-ink)">→ filter · group by</text>
+  <rect x="390" y="50" width="172" height="158" rx="8" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="398" y="66" font-size="8.5" font-weight="700" fill="var(--amber)">③ numeric columns</text><text x="398" y="80" font-size="7" fill="var(--ink)">start_time / end_time</text><text x="398" y="93" font-size="7" fill="var(--ink)">usage_details {in:512,</text><text x="406" y="104" font-size="7" fill="var(--ink)">out:88}</text><text x="398" y="117" font-size="7" fill="var(--ink)">cost_details {total:.0041}</text><text x="398" y="130" font-size="7" fill="var(--ink)">total_cost  0.0041</text><text x="398" y="198" font-size="7" font-weight="700" fill="var(--amber)">→ aggregate (SUM/AVG)</text>
+  <rect x="570" y="50" width="130" height="158" rx="8" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="578" y="66" font-size="8.5" font-weight="700" fill="var(--teal)">④ version columns</text><text x="578" y="80" font-size="7" fill="var(--ink)">event_ts  …T12:00</text><text x="578" y="93" font-size="7" fill="var(--ink)">is_deleted  0</text><text x="578" y="112" font-size="6.6" fill="var(--muted)">same id written N times,</text><text x="578" y="123" font-size="6.6" fill="var(--muted)">read keeps latest event_ts</text><text x="578" y="198" font-size="6.8" font-weight="700" fill="var(--teal)">→ ReplacingMergeTree</text>
+</svg>
+<div class="figcap"><b>One wide row = four kinds of column, each with a job</b> (column names from <code>clickhouse/migrations/.../0002_observations.up.sql</code>; <b>values illustrative</b>): <b>link</b> columns build the call tree and isolate by <code>project_id</code>; <b>business</b> columns filter/group; <b>numeric</b> columns aggregate; <b>version</b> columns <code>event_ts/is_deleted</code> let ReplacingMergeTree keep the latest when the same id is written more than once. Lesson 3's three pillars are physically this one row.</div>
 </div>
 
 <h2>ReplacingMergeTree: later write of the same id wins</h2>
@@ -1064,6 +1178,24 @@ _ZH9.append(r"""
   <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores（宽事件）</text>
 </svg>
 <div class="figcap"><b>两面分工</b>：<b>Postgres</b> 存「平台怎么配置」——组织/项目/用户、API key、prompt、eval/数据集配置、定价、集成、审计；<b>ClickHouse</b> 存「实际发生了什么」——三张宽事件表。这正是第 3 课「领域形状 vs 物理存储」的宏观版：一个管控制、一个管数据。</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Postgres 元数据 ER 图：Organization 一对多 Project，Project 一对多 ApiKey/Prompt/Dataset，User 通过 OrganizationMembership/ProjectMembership 与 Organization、Project 多对多。模型名取自 prisma/schema.prisma，列为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">元数据 schema：实体与关系（节选）</text>
+  <rect x="270" y="30" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="282" y="46" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Organization</text><text x="282" y="60" font-size="7.5" fill="var(--ink)">id · name · cloudConfig</text><text x="282" y="71" font-size="7" fill="var(--muted)">计费/成员的顶层</text>
+  <line x1="360" y1="74" x2="360" y2="98" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,98 355,88 365,88" fill="var(--accent)"/><text x="372" y="90" font-size="7.5" font-weight="700" fill="var(--accent-ink)">1 : N</text>
+  <rect x="270" y="100" width="180" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.8"/><text x="282" y="116" font-size="9.5" font-weight="700" fill="var(--blue)">Project</text><text x="282" y="130" font-size="7.5" fill="var(--ink)">id · orgId · name</text><text x="282" y="141" font-size="7" fill="var(--muted)">数据边界 · 一切都挂在它下</text>
+  <line x1="290" y1="146" x2="150" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="150,186 159,181 156,190" fill="var(--line)"/>
+  <line x1="360" y1="146" x2="360" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="360,186 355,177 365,177" fill="var(--line)"/>
+  <line x1="430" y1="146" x2="566" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="566,186 557,181 560,190" fill="var(--line)"/>
+  <rect x="40" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="50" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">ApiKey</text><text x="50" y="217" font-size="7" fill="var(--ink)">id · projectId · publicKey</text><text x="50" y="228" font-size="7" fill="var(--muted)">hashedSecretKey（只存哈希）</text>
+  <rect x="260" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="270" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Prompt</text><text x="270" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="270" y="228" font-size="7" fill="var(--muted)">version · labels（版本化）</text>
+  <rect x="480" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="490" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Dataset</text><text x="490" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="490" y="228" font-size="7" fill="var(--muted)">+ items / runs</text>
+  <rect x="490" y="30" width="190" height="56" rx="8" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="502" y="46" font-size="9.5" font-weight="700" fill="var(--purple)">User</text><text x="502" y="60" font-size="7.5" fill="var(--ink)">id · email · password</text><text x="502" y="74" font-size="7" fill="var(--muted)">经 *Membership 多对多入组/项目</text>
+  <line x1="490" y1="64" x2="452" y2="116" stroke="var(--purple)" stroke-width="1.2" stroke-dasharray="4 3"/><text x="430" y="92" text-anchor="end" font-size="7.5" font-weight="700" fill="var(--purple)">N : N（角色）</text>
+</svg>
+<div class="figcap"><b>一切挂在 Project 下</b>（模型名取自 <code>packages/shared/prisma/schema.prisma</code>；列为示例）：<code>Organization</code> 1─N <code>Project</code>，<code>Project</code> 1─N <code>ApiKey/Prompt/Dataset</code>；<code>User</code> 经 <code>OrganizationMembership/ProjectMembership</code> 与组织/项目多对多并带角色。因为「一切挂在 project 下」，鉴权只需回答「你属不属于这个 project」（第 10、21 课）。</div>
 </div>
 
 <h2>Postgres 里装的是「控制面」</h2>
@@ -1236,6 +1368,24 @@ _EN9.append(r"""
   <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores (wide events)</text>
 </svg>
 <div class="figcap"><b>Two halves</b>: <b>Postgres</b> stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, pricing, integrations, audit; <b>ClickHouse</b> stores "what actually happened" — three wide-event tables. This is the macro version of Lesson 3's "domain shape vs physical storage": one governs control, one governs data.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Postgres metadata ER diagram: Organization one-to-many Project, Project one-to-many ApiKey/Prompt/Dataset, User many-to-many to Organization and Project via OrganizationMembership/ProjectMembership. Model names from prisma/schema.prisma, columns illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The metadata schema: entities &amp; relations (excerpt)</text>
+  <rect x="270" y="30" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="282" y="46" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Organization</text><text x="282" y="60" font-size="7.5" fill="var(--ink)">id · name · cloudConfig</text><text x="282" y="71" font-size="7" fill="var(--muted)">top of billing/membership</text>
+  <line x1="360" y1="74" x2="360" y2="98" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,98 355,88 365,88" fill="var(--accent)"/><text x="372" y="90" font-size="7.5" font-weight="700" fill="var(--accent-ink)">1 : N</text>
+  <rect x="270" y="100" width="180" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.8"/><text x="282" y="116" font-size="9.5" font-weight="700" fill="var(--blue)">Project</text><text x="282" y="130" font-size="7.5" fill="var(--ink)">id · orgId · name</text><text x="282" y="141" font-size="7" fill="var(--muted)">data boundary · everything hangs here</text>
+  <line x1="290" y1="146" x2="150" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="150,186 159,181 156,190" fill="var(--line)"/>
+  <line x1="360" y1="146" x2="360" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="360,186 355,177 365,177" fill="var(--line)"/>
+  <line x1="430" y1="146" x2="566" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="566,186 557,181 560,190" fill="var(--line)"/>
+  <rect x="40" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="50" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">ApiKey</text><text x="50" y="217" font-size="7" fill="var(--ink)">id · projectId · publicKey</text><text x="50" y="228" font-size="7" fill="var(--muted)">hashedSecretKey (hash only)</text>
+  <rect x="260" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="270" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Prompt</text><text x="270" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="270" y="228" font-size="7" fill="var(--muted)">version · labels (versioned)</text>
+  <rect x="480" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="490" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Dataset</text><text x="490" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="490" y="228" font-size="7" fill="var(--muted)">+ items / runs</text>
+  <rect x="490" y="30" width="190" height="56" rx="8" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="502" y="46" font-size="9.5" font-weight="700" fill="var(--purple)">User</text><text x="502" y="60" font-size="7.5" fill="var(--ink)">id · email · password</text><text x="502" y="74" font-size="7" fill="var(--muted)">joins org/project via *Membership</text>
+  <line x1="490" y1="64" x2="452" y2="116" stroke="var(--purple)" stroke-width="1.2" stroke-dasharray="4 3"/><text x="430" y="92" text-anchor="end" font-size="7.5" font-weight="700" fill="var(--purple)">N : N (role)</text>
+</svg>
+<div class="figcap"><b>Everything hangs under Project</b> (model names from <code>packages/shared/prisma/schema.prisma</code>; columns illustrative): <code>Organization</code> 1─N <code>Project</code>, <code>Project</code> 1─N <code>ApiKey/Prompt/Dataset</code>; <code>User</code> is many-to-many to org/project via <code>OrganizationMembership/ProjectMembership</code> with a role. Because "everything hangs under project", auth only needs to answer "do you belong to this project" (Lessons 10, 21).</div>
 </div>
 
 <h2>Postgres holds the "control plane"</h2>
@@ -1425,6 +1575,21 @@ _ZH10.append(r"""
 <div class="figcap"><b>三层嵌套</b>：一个 <b>organization</b> 下有多个 <b>project</b>，每个 project 内可再分多个 <b>environment</b>（如 production / staging / development，默认 <code>default</code>）。组织管计费与成员，<b>project 是硬数据边界</b>，environment 是项目内的软切片。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="多租户的嵌套容器：Organization 套 Project，Project 内再分 environment（production/staging）。Project 是硬数据边界，project_id 被焊进 ClickHouse 排序键前缀做结构隔离；environment 只是普通过滤列做软切片。实体取自 prisma schema，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">org ⊃ project ⊃ environment：一层套一层</text>
+  <rect x="30" y="32" width="470" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="44" y="52" font-size="10" font-weight="700" fill="var(--accent-ink)">Organization · org_xY7</text><text x="44" y="66" font-size="7.5" fill="var(--muted)">计费 + 成员的顶层</text>
+  <rect x="56" y="74" width="418" height="112" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="70" y="94" font-size="10" font-weight="700" fill="var(--blue)">Project · proj_ab3（硬数据边界）</text><text x="70" y="108" font-size="7.5" fill="var(--muted)">trace/observation/score 全挂在它下</text>
+  <rect x="80" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="92" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="92" y="152" font-size="8" fill="var(--blue)">production</text><text x="92" y="165" font-size="7" fill="var(--muted)">软切片：普通过滤列</text>
+  <rect x="278" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="290" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="290" y="152" font-size="8" fill="var(--muted)">staging</text><text x="290" y="165" font-size="7" fill="var(--muted)">加 WHERE 才分，不加就合</text>
+  <rect x="520" y="48" width="172" height="150" rx="10" fill="var(--panel-2)" stroke="var(--line)"/><text x="534" y="68" font-size="9" font-weight="700" fill="var(--accent-ink)">隔离强度</text>
+  <text x="534" y="92" font-size="8" font-weight="700" fill="var(--blue)">project_id</text><text x="534" y="105" font-size="7.5" fill="var(--ink)">焊进 CH 排序键<b>前缀</b></text><text x="534" y="117" font-size="7.5" fill="var(--ink)">→ 结构性硬隔离</text><text x="534" y="129" font-size="7" fill="var(--muted)">跨 project 绝不可见</text>
+  <line x1="534" y1="138" x2="678" y2="138" stroke="var(--line)" stroke-dasharray="3 2"/>
+  <text x="534" y="154" font-size="8" font-weight="700" fill="var(--muted)">environment</text><text x="534" y="167" font-size="7.5" fill="var(--ink)">普通 LowCardinality 列</text><text x="534" y="179" font-size="7.5" fill="var(--ink)">→ 软切片（可选）</text>
+</svg>
+<div class="figcap"><b>两种隔离强度</b>（实体取自 <code>prisma/schema.prisma</code>；值为示例）：<code>Organization</code> 套 <code>Project</code> 套 <code>environment</code>。但二者强度不同——<code>project_id</code> 被<b>焊进 ClickHouse 排序键前缀</b>（结构性硬隔离，跨 project 绝不可见，呼应第 10 课 warn 卡）；<code>environment</code> 只是普通过滤列，是<b>软切片</b>，查询加 <code>WHERE</code> 才分。</div>
+</div>
+
 <h2>三层各管什么</h2>
 <table class="t">
   <tr><th>层级</th><th>管什么</th><th>隔离强度</th></tr>
@@ -1588,6 +1753,21 @@ _EN10.append(r"""
   <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B sees none of Project A's data</text>
 </svg>
 <div class="figcap"><b>Three nesting levels</b>: one <b>organization</b> holds multiple <b>projects</b>, each project may split into multiple <b>environments</b> (e.g. production / staging / development, default <code>default</code>). The org manages billing and members, the <b>project is the hard data boundary</b>, and the environment is a soft slice within a project.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Multi-tenancy as nested containers: Organization wraps Project, Project splits into environments (production/staging). Project is the hard data boundary with project_id welded into the ClickHouse sort-key prefix for structural isolation; environment is just a filter column for soft slicing. Entities from prisma schema, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">org ⊃ project ⊃ environment: nested boundaries</text>
+  <rect x="30" y="32" width="470" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="44" y="52" font-size="10" font-weight="700" fill="var(--accent-ink)">Organization · org_xY7</text><text x="44" y="66" font-size="7.5" fill="var(--muted)">top of billing + membership</text>
+  <rect x="56" y="74" width="418" height="112" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="70" y="94" font-size="10" font-weight="700" fill="var(--blue)">Project · proj_ab3 (hard data boundary)</text><text x="70" y="108" font-size="7.5" fill="var(--muted)">all trace/observation/score hang under it</text>
+  <rect x="80" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="92" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="92" y="152" font-size="8" fill="var(--blue)">production</text><text x="92" y="165" font-size="7" fill="var(--muted)">soft slice: plain filter column</text>
+  <rect x="278" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="290" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="290" y="152" font-size="8" fill="var(--muted)">staging</text><text x="290" y="165" font-size="7" fill="var(--muted)">split only if you add WHERE</text>
+  <rect x="520" y="48" width="172" height="150" rx="10" fill="var(--panel-2)" stroke="var(--line)"/><text x="534" y="68" font-size="9" font-weight="700" fill="var(--accent-ink)">isolation strength</text>
+  <text x="534" y="92" font-size="8" font-weight="700" fill="var(--blue)">project_id</text><text x="534" y="105" font-size="7.5" fill="var(--ink)">welded into CH sort-key <b>prefix</b></text><text x="534" y="117" font-size="7.5" fill="var(--ink)">→ structural hard isolation</text><text x="534" y="129" font-size="7" fill="var(--muted)">never visible across projects</text>
+  <line x1="534" y1="138" x2="678" y2="138" stroke="var(--line)" stroke-dasharray="3 2"/>
+  <text x="534" y="154" font-size="8" font-weight="700" fill="var(--muted)">environment</text><text x="534" y="167" font-size="7.5" fill="var(--ink)">plain LowCardinality column</text><text x="534" y="179" font-size="7.5" fill="var(--ink)">→ soft slice (optional)</text>
+</svg>
+<div class="figcap"><b>Two strengths of isolation</b> (entities from <code>prisma/schema.prisma</code>; values illustrative): <code>Organization</code> wraps <code>Project</code> wraps <code>environment</code>. But their strength differs — <code>project_id</code> is <b>welded into the ClickHouse sort-key prefix</b> (structural hard isolation, never visible across projects, echoing the Lesson 10 warn card); <code>environment</code> is just a filter column, a <b>soft slice</b> split only when a query adds <code>WHERE</code>.</div>
 </div>
 
 <h2>What each level governs</h2>
@@ -1774,6 +1954,26 @@ _ZH11.append(r"""
 <div class="figcap"><b>自托管装箱清单</b>：两个应用容器 <b>langfuse-web</b>（langfuse/langfuse:3）与 <b>langfuse-worker</b>（langfuse/langfuse-worker:3），加四个基础设施 <b>postgres:17 · clickhouse-server · redis:7 · minio</b>（S3 兼容）。每个基础设施配一个 named volume 持久化。这正是第 5、7 课架构图的「实体版」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="部署拓扑分层栈：最上是负载均衡/入口；中间是可水平扩展的应用层 web(Next.js) 多副本与 worker 多副本（消费队列）；最下是后端服务 Postgres、ClickHouse、Redis、S3。web 与 worker 都连四存储，按负载各自扩缩。依据 docker-compose/helm 与 server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">部署拓扑：三层栈，按层扩缩</text>
+  <rect x="40" y="30" width="640" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="51" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">① 边缘 · 负载均衡 / 入口（TLS、路由）</text>
+  <line x1="360" y1="64" x2="360" y2="78" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="40" y="78" width="640" height="74" rx="9" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="5 3"/><text x="52" y="94" font-size="8.5" font-weight="700" fill="var(--blue)">② 应用层（无状态 · 可水平扩展）</text>
+  <rect x="70" y="100" width="120" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">web ×N</text><text x="130" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">Next.js · UI+API+tRPC</text>
+  <rect x="200" y="100" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" opacity="0.55"/><text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--blue)">…副本</text>
+  <rect x="420" y="100" width="120" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="480" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">worker ×M</text><text x="480" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">消费 BullMQ 队列</text>
+  <rect x="550" y="100" width="100" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)" opacity="0.55"/><text x="600" y="124" text-anchor="middle" font-size="8" fill="var(--purple)">…副本</text>
+  <line x1="160" y1="152" x2="160" y2="166" stroke="var(--line)"/><line x1="480" y1="152" x2="480" y2="166" stroke="var(--line)"/>
+  <rect x="40" y="166" width="640" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="52" y="182" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ 后端服务（有状态）</text>
+  <rect x="60" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="131" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Postgres</text>
+  <rect x="212" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="283" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text>
+  <rect x="364" y="190" width="142" height="28" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">Redis</text>
+  <rect x="516" y="190" width="142" height="28" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="587" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3</text>
+</svg>
+<div class="figcap"><b>三层、按层扩缩</b>（依据 docker-compose/helm 与 <code>server/queues.ts</code>）：无状态的 <b>web</b> 和 <b>worker</b> 各自多副本、按负载独立扩缩（web 顶用户流量，worker 顶队列积压）；有状态的 <b>Postgres/ClickHouse/Redis/S3</b> 在底层被两者共享。这正是第 5、7 课「读写分离、四存储分工」落到容器上的样子。</div>
+</div>
+
 <h2>最小自托管栈：2 应用 + 4 基础设施</h2>
 <table class="t">
   <tr><th>服务</th><th>镜像</th><th>角色</th></tr>
@@ -1941,6 +2141,26 @@ _EN11.append(r"""
   <text x="360" y="282" text-anchor="middle" font-size="9" fill="var(--faint)">web leans read PG+CH; worker leans write CH/S3, consumes the Redis queue (lines are illustrative)</text>
 </svg>
 <div class="figcap"><b>The self-host packing list</b>: two app containers <b>langfuse-web</b> (langfuse/langfuse:3) and <b>langfuse-worker</b> (langfuse/langfuse-worker:3), plus four infra <b>postgres:17 · clickhouse-server · redis:7 · minio</b> (S3-compatible). Each infra gets a named volume for persistence. This is the "physical version" of the architecture in Lessons 5 and 7.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Deployment topology as a layered stack: top is the load balancer/ingress; middle is the horizontally-scalable app tier with web(Next.js) replicas and worker replicas (consuming the queue); bottom is the backing services Postgres, ClickHouse, Redis, S3. web and worker both connect to the four stores and scale independently. Per docker-compose/helm and server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Deployment topology: a three-tier stack, scaled per tier</text>
+  <rect x="40" y="30" width="640" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="51" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">① edge · load balancer / ingress (TLS, routing)</text>
+  <line x1="360" y1="64" x2="360" y2="78" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="40" y="78" width="640" height="74" rx="9" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="5 3"/><text x="52" y="94" font-size="8.5" font-weight="700" fill="var(--blue)">② app tier (stateless · horizontally scalable)</text>
+  <rect x="70" y="100" width="120" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">web ×N</text><text x="130" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">Next.js · UI+API+tRPC</text>
+  <rect x="200" y="100" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" opacity="0.55"/><text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--blue)">…replicas</text>
+  <rect x="420" y="100" width="120" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="480" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">worker ×M</text><text x="480" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">consume BullMQ queues</text>
+  <rect x="550" y="100" width="100" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)" opacity="0.55"/><text x="600" y="124" text-anchor="middle" font-size="8" fill="var(--purple)">…replicas</text>
+  <line x1="160" y1="152" x2="160" y2="166" stroke="var(--line)"/><line x1="480" y1="152" x2="480" y2="166" stroke="var(--line)"/>
+  <rect x="40" y="166" width="640" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="52" y="182" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ backing services (stateful)</text>
+  <rect x="60" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="131" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Postgres</text>
+  <rect x="212" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="283" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text>
+  <rect x="364" y="190" width="142" height="28" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">Redis</text>
+  <rect x="516" y="190" width="142" height="28" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="587" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3</text>
+</svg>
+<div class="figcap"><b>Three tiers, scaled per tier</b> (per docker-compose/helm and <code>server/queues.ts</code>): stateless <b>web</b> and <b>worker</b> each run multiple replicas and scale independently (web for user traffic, worker for queue backlog); stateful <b>Postgres/ClickHouse/Redis/S3</b> sit underneath, shared by both. This is Lessons 5 and 7's "read/write split, four-store division of labor" landed on containers.</div>
 </div>
 
 <h2>The minimal self-host stack: 2 apps + 4 infra</h2>

@@ -388,6 +388,26 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>自托管装箱清单</b>：两个应用容器 <b>langfuse-web</b>（langfuse/langfuse:3）与 <b>langfuse-worker</b>（langfuse/langfuse-worker:3），加四个基础设施 <b>postgres:17 · clickhouse-server · redis:7 · minio</b>（S3 兼容）。每个基础设施配一个 named volume 持久化。这正是第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="07-dual-store-architecture.html">7</a> 课架构图的「实体版」。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="部署拓扑分层栈：最上是负载均衡/入口；中间是可水平扩展的应用层 web(Next.js) 多副本与 worker 多副本（消费队列）；最下是后端服务 Postgres、ClickHouse、Redis、S3。web 与 worker 都连四存储，按负载各自扩缩。依据 docker-compose/helm 与 server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">部署拓扑：三层栈，按层扩缩</text>
+  <rect x="40" y="30" width="640" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="51" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">① 边缘 · 负载均衡 / 入口（TLS、路由）</text>
+  <line x1="360" y1="64" x2="360" y2="78" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="40" y="78" width="640" height="74" rx="9" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="5 3"/><text x="52" y="94" font-size="8.5" font-weight="700" fill="var(--blue)">② 应用层（无状态 · 可水平扩展）</text>
+  <rect x="70" y="100" width="120" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">web ×N</text><text x="130" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">Next.js · UI+API+tRPC</text>
+  <rect x="200" y="100" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" opacity="0.55"/><text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--blue)">…副本</text>
+  <rect x="420" y="100" width="120" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="480" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">worker ×M</text><text x="480" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">消费 BullMQ 队列</text>
+  <rect x="550" y="100" width="100" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)" opacity="0.55"/><text x="600" y="124" text-anchor="middle" font-size="8" fill="var(--purple)">…副本</text>
+  <line x1="160" y1="152" x2="160" y2="166" stroke="var(--line)"/><line x1="480" y1="152" x2="480" y2="166" stroke="var(--line)"/>
+  <rect x="40" y="166" width="640" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="52" y="182" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ 后端服务（有状态）</text>
+  <rect x="60" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="131" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Postgres</text>
+  <rect x="212" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="283" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text>
+  <rect x="364" y="190" width="142" height="28" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">Redis</text>
+  <rect x="516" y="190" width="142" height="28" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="587" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3</text>
+</svg>
+<div class="figcap"><b>三层、按层扩缩</b>（依据 docker-compose/helm 与 <code>server/queues.ts</code>）：无状态的 <b>web</b> 和 <b>worker</b> 各自多副本、按负载独立扩缩（web 顶用户流量，worker 顶队列积压）；有状态的 <b>Postgres/ClickHouse/Redis/S3</b> 在底层被两者共享。这正是第 <a class="xref" href="05-life-of-a-trace.html">5</a>、<a class="xref" href="07-dual-store-architecture.html">7</a> 课「读写分离、四存储分工」落到容器上的样子。</div>
+</div>
+
 <h2>最小自托管栈：2 应用 + 4 基础设施</h2>
 <table class="t">
   <tr><th>服务</th><th>镜像</th><th>角色</th></tr>
@@ -599,6 +619,26 @@ concrete "packing list" and your mental model of Langfuse's "shape" is complete.
   <text x="360" y="282" text-anchor="middle" font-size="9" fill="var(--faint)">web leans read PG+CH; worker leans write CH/S3, consumes the Redis queue (lines are illustrative)</text>
 </svg>
 <div class="figcap"><b>The self-host packing list</b>: two app containers <b>langfuse-web</b> (langfuse/langfuse:3) and <b>langfuse-worker</b> (langfuse/langfuse-worker:3), plus four infra <b>postgres:17 · clickhouse-server · redis:7 · minio</b> (S3-compatible). Each infra gets a named volume for persistence. This is the "physical version" of the architecture in Lessons 5 and 7.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Deployment topology as a layered stack: top is the load balancer/ingress; middle is the horizontally-scalable app tier with web(Next.js) replicas and worker replicas (consuming the queue); bottom is the backing services Postgres, ClickHouse, Redis, S3. web and worker both connect to the four stores and scale independently. Per docker-compose/helm and server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Deployment topology: a three-tier stack, scaled per tier</text>
+  <rect x="40" y="30" width="640" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="51" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">① edge · load balancer / ingress (TLS, routing)</text>
+  <line x1="360" y1="64" x2="360" y2="78" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="40" y="78" width="640" height="74" rx="9" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="5 3"/><text x="52" y="94" font-size="8.5" font-weight="700" fill="var(--blue)">② app tier (stateless · horizontally scalable)</text>
+  <rect x="70" y="100" width="120" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">web ×N</text><text x="130" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">Next.js · UI+API+tRPC</text>
+  <rect x="200" y="100" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" opacity="0.55"/><text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--blue)">…replicas</text>
+  <rect x="420" y="100" width="120" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="480" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">worker ×M</text><text x="480" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">consume BullMQ queues</text>
+  <rect x="550" y="100" width="100" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)" opacity="0.55"/><text x="600" y="124" text-anchor="middle" font-size="8" fill="var(--purple)">…replicas</text>
+  <line x1="160" y1="152" x2="160" y2="166" stroke="var(--line)"/><line x1="480" y1="152" x2="480" y2="166" stroke="var(--line)"/>
+  <rect x="40" y="166" width="640" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="52" y="182" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ backing services (stateful)</text>
+  <rect x="60" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="131" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Postgres</text>
+  <rect x="212" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="283" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text>
+  <rect x="364" y="190" width="142" height="28" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">Redis</text>
+  <rect x="516" y="190" width="142" height="28" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="587" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3</text>
+</svg>
+<div class="figcap"><b>Three tiers, scaled per tier</b> (per docker-compose/helm and <code>server/queues.ts</code>): stateless <b>web</b> and <b>worker</b> each run multiple replicas and scale independently (web for user traffic, worker for queue backlog); stateful <b>Postgres/ClickHouse/Redis/S3</b> sit underneath, shared by both. This is Lessons 5 and 7's "read/write split, four-store division of labor" landed on containers.</div>
 </div>
 
 <h2>The minimal self-host stack: 2 apps + 4 infra</h2>

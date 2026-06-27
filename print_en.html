@@ -525,6 +525,35 @@ same-named ClickHouse tables (<code>packages/shared/clickhouse/migrations/unclus
 <div class="figcap"><b>Containment</b>: a <b>trace</b> wraps all steps of one interaction; each step is an <b>observation</b> (which can nest); a <b>score</b> rates the trace or one observation. Note the architectural stance — <b>the observation is the primary analytical unit</b>; the trace is more of a "correlation handle" stringing them together.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 292" role="img" aria-label="Example trace chat-support with three observations: SPAN retrieve-docs, GENERATION answer (model gpt-4o with usageDetails/costDetails/latency), EVENT cache-write; a NUMERIC score helpfulness=0.9 hangs off the trace; fields per domain/observations.ts and scores.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: what a trace actually looks like</text>
+  <rect x="20" y="38" width="680" height="240" rx="13" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="38" y="60" font-size="11" font-weight="700" fill="var(--accent-ink)">trace · id=chat-support_a1b2 · userId=u_42</text>
+  <text x="682" y="60" text-anchor="end" font-size="8.5" fill="var(--muted)">totalCost≈$0.0042 · latency 1.93s</text>
+  <rect x="40" y="74" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"/>
+  <rect x="50" y="84" width="70" height="20" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="85" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">SPAN</text>
+  <text x="130" y="90" font-size="10" font-weight="700" fill="var(--ink)">retrieve-docs</text>
+  <text x="130" y="106" font-size="8" fill="var(--muted)">latency 120ms · input {query} · output {3 docs}</text>
+  <text x="670" y="98" text-anchor="end" font-size="8" fill="var(--faint)">startTime +0ms</text>
+  <rect x="40" y="122" width="640" height="66" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/>
+  <rect x="50" y="132" width="98" height="20" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="99" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">GENERATION</text>
+  <text x="158" y="138" font-size="10" font-weight="700" fill="var(--ink)">answer</text>
+  <text x="158" y="153" font-size="8" fill="var(--muted)">model gpt-4o · modelParameters {temperature: 0.2}</text>
+  <text x="158" y="167" font-size="8" fill="var(--muted)">usageDetails {input: 512, output: 88} · costDetails {total: 0.0041}</text>
+  <text x="158" y="181" font-size="8" fill="var(--faint)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="670" y="146" text-anchor="end" font-size="8" fill="var(--faint)">latency 1.8s</text>
+  <rect x="40" y="196" width="640" height="40" rx="8" fill="var(--bg)" stroke="var(--purple)"/>
+  <rect x="50" y="206" width="70" height="20" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="85" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">EVENT</text>
+  <text x="130" y="212" font-size="10" font-weight="700" fill="var(--ink)">cache-write</text>
+  <text x="130" y="228" font-size="8" fill="var(--muted)">latency 4ms · metadata {key: q:hash}</text>
+  <text x="670" y="220" text-anchor="end" font-size="8" fill="var(--faint)">startTime +1.92s</text>
+  <rect x="40" y="248" width="380" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="52" y="263" font-size="9" font-weight="700" fill="var(--teal)">score</text><text x="92" y="263" font-size="8.5" fill="var(--ink)">name=helpfulness · value=0.9 · dataType=NUMERIC</text>
+  <text x="670" y="263" text-anchor="end" font-size="8" fill="var(--faint)">source=EVAL</text>
+</svg>
+<div class="figcap"><b>Example trace</b> (fields per <code>domain/observations.ts</code> and <code>scores.ts</code>; <b>values illustrative</b>): one trace strings three observations — <code>SPAN</code> retrieve → <code>GENERATION</code> answer (with real fields <code>model/usageDetails/costDetails/latency</code>) → <code>EVENT</code> cache-write; a <code>score</code> attaches to the trace as <code>NUMERIC</code>. A concrete instance of the three pillars above.</div>
+</div>
+
 <div class="cols">
   <div class="col">
     <h4>🧵 trace · correlation handle</h4>
@@ -840,6 +869,31 @@ fifty-odd later lessons build on.
 <div class="figcap"><b>1.0 vs 2.0</b>: the classic three pillars <b>fragment</b> information, forcing manual reassembly before any cross-dimension question; a wide event puts the numbers, structure and business fields of one step <b>on a single row</b>, so "drill down" and "aggregate" are just different queries over one wide table. This is exactly what <code>ARCHITECTURE_PRINCIPLES.md</code> means by "<b>prefer wide, richly attributed events over fragmented metrics, logs, and trace records that require later reconstruction</b>".</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Left: Observability 1.0 splits one step into three scattered records — metric(latency=820ms), log(INFO answered), trace span — stitched later by traceId; right: Observability 2.0 puts input/output/model/usageDetails/latency/userId/metadata on one wide observation row; fields per domain/observations.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">One step: split into three vs put on one row</text>
+  <text x="24" y="44" font-size="9.5" font-weight="700" fill="var(--red)">① Observability 1.0: three systems, three records</text>
+  <rect x="24" y="52" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="68" font-size="8.5" font-weight="700" fill="var(--ink)">metric · gen.latency = 820ms</text><text x="34" y="84" font-size="7.5" fill="var(--muted)">Prometheus · numbers only, no context</text>
+  <rect x="24" y="98" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="114" font-size="8.5" font-weight="700" fill="var(--ink)">log · INFO answered q_88</text><text x="34" y="130" font-size="7.5" fill="var(--muted)">Loki · text only, hard to aggregate</text>
+  <rect x="24" y="144" width="300" height="40" rx="7" fill="var(--bg)" stroke="var(--faint)"/><text x="34" y="160" font-size="8.5" font-weight="700" fill="var(--ink)">trace span · id=sp_3</text><text x="34" y="176" font-size="7.5" fill="var(--muted)">Jaeger · call tree only, no numbers</text>
+  <path d="M24 192 q150 18 300 0" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="174" y="214" text-anchor="middle" font-size="8" fill="var(--red)">stitch by traceId after the fact — cross-cutting Qs are hard</text>
+  <text x="360" y="120" text-anchor="middle" font-size="13" font-weight="700" fill="var(--faint)">vs</text>
+  <text x="384" y="44" font-size="9.5" font-weight="700" fill="var(--accent-ink)">② Observability 2.0: one wide observation</text>
+  <rect x="384" y="52" width="316" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="396" y="70" font-size="9" font-weight="700" fill="var(--accent-ink)">observation (all on one row)</text>
+  <text x="396" y="88" font-size="8" fill="var(--ink)">input {messages:[…]} · output 「Here is how…」</text>
+  <text x="396" y="104" font-size="8" fill="var(--ink)">model gpt-4o · latency 820ms</text>
+  <text x="396" y="120" font-size="8" fill="var(--ink)">usageDetails {input: 512, output: 88}</text>
+  <text x="396" y="136" font-size="8" fill="var(--ink)">costDetails {total: 0.0041}</text>
+  <text x="396" y="152" font-size="8" fill="var(--ink)">userId u_42 · metadata {env: prod} · tags [v3]</text>
+  <line x1="396" y1="164" x2="688" y2="164" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="396" y="182" font-size="8" font-weight="700" fill="var(--accent-ink)">→ drill down / aggregate / filter</text>
+  <text x="396" y="198" font-size="7.8" fill="var(--muted)">all just column queries over this one wide table, no JOIN</text>
+</svg>
+<div class="figcap"><b>Split vs one row</b> (fields per <code>domain/observations.ts</code>; <b>values illustrative</b>): on the left, 1.0 scatters one step's numbers, text and call tree across three systems — answering "how much did this user spend this hour" means stitching three places by <code>traceId</code>; on the right, 2.0 welds them onto <b>one wide observation row</b>, and the same question is one column query.</div>
+</div>
+
 <h2>The trouble with Observability 1.0</h2>
 <p>The classic "metrics + logs + traces" combo (often called <strong>Observability 1.0</strong>) is fine piece by piece; the
 problem is that the <strong>three are separate</strong>:</p>
@@ -1112,6 +1166,23 @@ feature</strong>, because evaluation, datasets, dashboards… all ultimately ope
   <text x="250" y="150" font-size="9" fill="var(--faint)">parentObservationId →</text>
 </svg>
 <div class="figcap"><b>The tree is "pointed" into existence</b>: the observations table has no "children" field; each observation stores one <code>parentObservationId</code> pointing at its parent, and the UI <b>reconstructs</b> the call tree from that (L25). The root's parent is null. Storing only a parent pointer lets observations be <b>independent and arrive out of order</b> at write time — ideal for async ingestion.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="Example observation call tree: under trace agent_7, SPAN agent-run is the root (parentObservationId=null), nesting GENERATION plan and SPAN tool:search, the latter nesting GENERATION summarize; each row has a type badge and latency bar, a NUMERIC score hangs at the end; fields per domain/observations.ts, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">observations nest into a call tree via parentObservationId</text>
+  <rect x="20" y="34" width="680" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="32" y="50" font-size="9.5" font-weight="700" fill="var(--accent-ink)">trace · id=agent_7 (the shell, not an observation itself)</text>
+  <line x1="40" y1="58" x2="40" y2="80" stroke="var(--line)" stroke-width="1.2"/><line x1="40" y1="80" x2="50" y2="80" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="50" y="66" width="630" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="58" y="72" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="84" y="84" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="118" y="84" font-size="9" font-weight="700" fill="var(--ink)">agent-run</text><text x="290" y="84" font-size="7.5" fill="var(--faint)">parent = null (root)</text><rect x="556" y="74" width="116" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="83" text-anchor="end" font-size="7" fill="var(--muted)">2.4s</text>
+  <line x1="70" y1="94" x2="70" y2="112" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="112" x2="80" y2="112" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="98" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="88" y="104" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="131" y="116" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="182" y="116" font-size="9" font-weight="700" fill="var(--ink)">plan · gpt-4o</text><text x="320" y="116" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="592" y="106" width="40" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="115" text-anchor="end" font-size="7" fill="var(--muted)">0.6s</text>
+  <line x1="70" y1="126" x2="70" y2="144" stroke="var(--line)" stroke-width="1.2"/><line x1="70" y1="144" x2="80" y2="144" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="80" y="130" width="600" height="28" rx="6" fill="var(--bg)" stroke="var(--blue)"/><rect x="88" y="136" width="52" height="16" rx="4" fill="var(--blue-soft)"/><text x="114" y="148" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--blue)">SPAN</text><text x="148" y="148" font-size="9" font-weight="700" fill="var(--ink)">tool: search</text><text x="320" y="148" font-size="7.5" fill="var(--faint)">parent = agent-run</text><rect x="600" y="138" width="32" height="9" rx="3" fill="var(--blue)" opacity="0.45"/><text x="676" y="147" text-anchor="end" font-size="7" fill="var(--muted)">0.5s</text>
+  <line x1="100" y1="158" x2="100" y2="176" stroke="var(--line)" stroke-width="1.2"/><line x1="100" y1="176" x2="110" y2="176" stroke="var(--line)" stroke-width="1.2"/>
+  <rect x="110" y="162" width="570" height="28" rx="6" fill="var(--bg)" stroke="var(--accent)"/><rect x="118" y="168" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="161" y="180" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">GENERATION</text><text x="212" y="180" font-size="9" font-weight="700" fill="var(--ink)">summarize</text><text x="340" y="180" font-size="7.5" fill="var(--faint)">parent = tool: search</text><rect x="616" y="170" width="16" height="9" rx="3" fill="var(--accent)" opacity="0.45"/><text x="676" y="179" text-anchor="end" font-size="7" fill="var(--muted)">0.3s</text>
+  <rect x="50" y="200" width="372" height="22" rx="6" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="62" y="215" font-size="8.5" font-weight="700" fill="var(--teal)">score</text><text x="100" y="215" font-size="8" fill="var(--ink)">name=relevance · value=0.85 · dataType=NUMERIC</text>
+</svg>
+<div class="figcap"><b>Nesting = a tree</b> (fields per <code>domain/observations.ts</code>; <b>values illustrative</b>): each observation points at its parent via <code>parentObservationId</code>, the root being <code>null</code>; so "who called whom, taking how long" is just this tree's shape plus each row's <code>latency</code>. A <code>score</code> can attach to the trace or any observation.</div>
 </div>
 
 <h2>trace: the thin correlation handle</h2>
@@ -1433,6 +1504,39 @@ internally into a few purpose-built "workspaces". Hold this map in mind and when
 <div class="figcap"><b>Just a few top-level blocks</b>: <b>web</b> (storefront) and <b>worker</b> (workshop) are two runtime containers, both depending up on <b>packages/shared</b> (central warehouse / narrow waist); <b>ee</b> holds enterprise features used by web; <b>fern</b> defines the public API contract and generates the <b>generated</b> clients. Remember this and every "where is file X" question has a coordinate system.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Dependency-direction matrix of the four workspaces: a row may import a column. web may import @langfuse/shared and @langfuse/ee; worker may import @langfuse/shared; @langfuse/ee may import @langfuse/shared; @langfuse/shared imports no business package (the narrow waist). Diagonal is self. Per the repo .agents/AGENTS.md dependency rule">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Who may import whom: the narrow-waist matrix</text>
+  <text x="360" y="38" text-anchor="middle" font-size="8.5" fill="var(--muted)">rule: row (importer) → column (imported package); ✓ = allowed</text>
+  <text x="166" y="64" text-anchor="end" font-size="8" fill="var(--faint)">imports →</text>
+  <rect x="170" y="48" width="128" height="26" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="234" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">web</text>
+  <rect x="302" y="48" width="128" height="26" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="366" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="434" y="48" width="128" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="566" y="48" width="120" height="26" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="626" y="65" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="30" y="80" width="136" height="34" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="42" y="101" font-size="8.5" font-weight="700" fill="var(--blue)">web (Next.js)</text>
+  <rect x="170" y="80" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="234" y="101" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="302" y="80" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="80" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="80" width="120" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="626" y="102" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="30" y="118" width="136" height="34" rx="5" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="42" y="139" font-size="8.5" font-weight="700" fill="var(--purple)">worker (consumers)</text>
+  <rect x="170" y="118" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="118" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="366" y="139" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="434" y="118" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="118" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="156" width="136" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="42" y="177" font-size="8" font-weight="700" fill="var(--accent-ink)">@langfuse/shared</text>
+  <rect x="170" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="156" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="156" width="128" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="498" y="177" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+  <rect x="566" y="156" width="120" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="30" y="194" width="136" height="34" rx="5" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="42" y="215" font-size="8.5" font-weight="700" fill="var(--amber)">@langfuse/ee</text>
+  <rect x="170" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="302" y="194" width="128" height="34" rx="5" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="434" y="194" width="128" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="498" y="216" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="566" y="194" width="120" height="34" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="626" y="215" text-anchor="middle" font-size="11" fill="var(--faint)">—</text>
+</svg>
+<div class="figcap"><b>The narrow-waist matrix</b> (per the repo <code>.agents/AGENTS.md</code> dependency rule): arrows always point toward the <code>@langfuse/shared</code> "narrow waist" — <code>web</code>, <code>worker</code> and <code>@langfuse/ee</code> all depend on it, while it depends back on <b>no</b> business package. Blank cell = not allowed; diagonal = self. This turns "who may use whom" from a verbal convention into a structure you can check at a glance.</div>
+</div>
+
 <p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does
 three things: render the <strong>UI</strong>, serve that UI a type-safe internal API (<strong>tRPC</strong>, L21), and serve external
 SDKs a <strong>public REST API</strong> (<code>web/src/pages/api/public</code>, L27) — the ingestion entry point lives here.
@@ -1718,6 +1822,36 @@ lesson by lesson won't lose the forest for the trees.
 <div class="figcap"><b>A trace's full journey</b>: the top half is the <b>write path</b> (SDK→API→Redis→worker→ClickHouse, with S3 alongside), each leg tagged with its lesson (L12–19); the bottom half is the <b>read path</b> (ClickHouse→repository→tRPC→UI, L20–27). The two paths "meet" at the ClickHouse wide table: writes put data in, reads take it out.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 250" role="img" aria-label="Write-path sequence diagram: SDK POSTs a batch of events to web /ingestion; web enqueues to Redis then immediately returns 207 Multi-Status (early return, with per-event successes/errors); across the async boundary the worker dequeues, merges and writes to ClickHouse and S3, then acks. Between the 207 and the persisted write is an eventual-consistency window. Per api/public/ingestion and server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Write-path sequence: early return + async persist</text>
+  <rect x="40" y="32" width="92" height="26" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="86" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">SDK</text>
+  <rect x="186" y="32" width="98" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">web /ingestion</text>
+  <rect x="330" y="32" width="92" height="26" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="376" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">Redis queue</text>
+  <rect x="466" y="32" width="90" height="26" rx="6" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="511" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">worker</text>
+  <rect x="600" y="32" width="100" height="26" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="650" y="49" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">ClickHouse+S3</text>
+  <line x1="86" y1="58" x2="86" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="235" y1="58" x2="235" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="376" y1="58" x2="376" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="511" y1="58" x2="511" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <line x1="650" y1="58" x2="650" y2="240" stroke="var(--line)" stroke-dasharray="3 3"/>
+  <text x="160" y="76" text-anchor="middle" font-size="7.5" fill="var(--muted)">① POST /ingestion {batch:[…]}</text>
+  <line x1="86" y1="80" x2="233" y2="80" stroke="var(--blue)" stroke-width="1.4"/><polygon points="233,80 224,76 224,84" fill="var(--blue)"/>
+  <text x="305" y="98" text-anchor="middle" font-size="7.5" fill="var(--muted)">② validate + enqueue</text>
+  <line x1="235" y1="102" x2="374" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="374,102 365,98 365,106" fill="var(--accent)"/>
+  <text x="160" y="120" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">③ 207 Multi-Status (early return)</text>
+  <line x1="233" y1="124" x2="88" y2="124" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="88,124 97,120 97,128" fill="var(--accent)"/>
+  <rect x="40" y="134" width="660" height="20" rx="5" fill="var(--amber-soft)" opacity="0.5"/><text x="360" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">⟵ async boundary: eventual-consistency window (tens of ms ~ seconds) ⟶</text>
+  <text x="443" y="172" text-anchor="middle" font-size="7.5" fill="var(--muted)">④ dequeue</text>
+  <line x1="376" y1="176" x2="509" y2="176" stroke="var(--purple)" stroke-width="1.4"/><polygon points="509,176 500,172 500,180" fill="var(--purple)"/>
+  <text x="580" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑤ merge + batch write</text>
+  <line x1="511" y1="200" x2="648" y2="200" stroke="var(--amber)" stroke-width="1.4"/><polygon points="648,200 639,196 639,204" fill="var(--amber)"/>
+  <text x="580" y="220" text-anchor="middle" font-size="7.5" fill="var(--muted)">⑥ ack</text>
+  <line x1="648" y1="224" x2="513" y2="224" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="5 3"/><polygon points="513,224 522,220 522,228" fill="var(--amber)"/>
+</svg>
+<div class="figcap"><b>The write path is one async handshake</b> (per <code>api/public/ingestion</code> and <code>packages/shared/src/server/queues.ts</code>): SDK sends a batch → web validates and enqueues to Redis → <b>returns 207 Multi-Status immediately</b> (with per-event successes/errors, not waiting for persistence); only across the async boundary does the worker dequeue, merge and write ClickHouse+S3. So between "written" and "queryable" there is an <b>eventual-consistency window</b> — exactly why a just-sent trace is sometimes not visible yet.</div>
+</div>
+
 <h2>Top half · write: SDK to ClickHouse</h2>
 <p>First the parcel's "shipped to shelved" journey. It's deliberately <strong>async</strong> — the API only accepts and enqueues
 fast, leaving the heavy lifting to the worker:</p>
@@ -1931,6 +2065,35 @@ sending "native events" via the Langfuse <strong>SDK</strong>, or sending standa
   <text x="360" y="228" text-anchor="middle" font-size="9.5" fill="var(--faint)">SDK path: ingestion.ts　·　OTel path: otel/v1/traces (both join one ingestion path)</text>
 </svg>
 <div class="figcap"><b>Two entries</b>: send native events with the <b>Langfuse SDK</b> (<code>web/src/pages/api/public/ingestion.ts</code>), or standard spans via <b>OpenTelemetry OTLP</b> (<code>web/src/pages/api/public/otel/v1/traces</code>, spans mapped to observations). Both converge on the same server-side ingestion path (Part 3).</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Left: a few lines of SDK code annotate one generation with @observe and fill model/input/output; right: the event envelope JSON the SDK produces, type generation-create, body carrying traceId/name/model/input/output. Event types per the ingestion API, values illustrative">
+  <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">A few lines of SDK code → one event envelope</text>
+  <rect x="20" y="34" width="318" height="166" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">from langfuse import observe</text>
+  <text x="34" y="80" font-size="8.5" font-family="monospace" fill="var(--accent)">@observe(as_type=&quot;generation&quot;)</text>
+  <text x="34" y="96" font-size="8.5" font-family="monospace" fill="var(--code-ink)">def answer(q):</text>
+  <text x="50" y="112" font-size="8.5" font-family="monospace" fill="var(--code-ink)">resp = llm(q)</text>
+  <text x="50" y="128" font-size="8.5" font-family="monospace" fill="var(--code-ink)">langfuse.update_current_</text>
+  <text x="50" y="142" font-size="8.5" font-family="monospace" fill="var(--code-ink)">  generation(model=&quot;gpt-4o&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    input=q, output=resp,</text>
+  <text x="50" y="170" font-size="8.5" font-family="monospace" fill="var(--code-ink)">    usage_details={…})</text>
+  <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># instrument only; logic unchanged</text>
+  <line x1="340" y1="117" x2="378" y2="117" stroke="var(--accent)" stroke-width="1.6"/><polygon points="378,117 369,112 369,122" fill="var(--accent)"/><text x="359" y="110" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">emits</text>
+  <rect x="382" y="34" width="318" height="166" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="396" y="52" font-size="8.5" font-family="monospace" fill="var(--muted)">{ <tspan fill="var(--ink)">// event envelope</tspan></text>
+  <text x="396" y="68" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;id&quot;: &quot;evt_9f&quot;,</text>
+  <text x="396" y="84" font-size="8.5" font-family="monospace" fill="var(--accent-ink)">  &quot;type&quot;: &quot;generation-create&quot;,</text>
+  <text x="396" y="100" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;timestamp&quot;: &quot;2025-…Z&quot;,</text>
+  <text x="396" y="116" font-size="8.5" font-family="monospace" fill="var(--ink)">  &quot;body&quot;: {</text>
+  <text x="396" y="132" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;traceId&quot;: &quot;chat_a1b2&quot;,</text>
+  <text x="396" y="148" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;name&quot;: &quot;answer&quot;, &quot;model&quot;: &quot;gpt-4o&quot;,</text>
+  <text x="396" y="164" font-size="8.5" font-family="monospace" fill="var(--ink)">    &quot;input&quot;: {…}, &quot;output&quot;: &quot;…&quot;</text>
+  <text x="396" y="180" font-size="8.5" font-family="monospace" fill="var(--ink)">  } }</text>
+  <text x="396" y="194" font-size="7.5" fill="var(--faint)">→ batched HTTP POST to /ingestion</text>
+</svg>
+<div class="figcap"><b>Instrumenting = translating calls into events</b> (event types like <code>generation-create</code> per the ingestion API; <b>values illustrative</b>): you add a few <code>@observe</code>/<code>update_current_generation</code> lines beside your business code, and the SDK packages the call into an <b>event envelope</b> (<code>{id, type, timestamp, body}</code>), batches it, and sends it server-side — every downstream store and query starts from this envelope.</div>
 </div>
 
 <h2>The event envelope: what your app emits</h2>
@@ -2181,6 +2344,22 @@ Understand the division of labor and you understand the <strong>foundation</stro
 <div class="figcap"><b>The four stores' division of labor</b>: <b>Postgres</b>=config/metadata (txn, consistent, small); <b>ClickHouse</b>=wide events (columnar, huge, fast aggregation); <b>Redis</b>=queue+cache (in-memory, fast, temporary); <b>S3</b>=event manuscript/media/exports (object store, big, cheap). web leans read, worker leans write, but both pick the store that fits the data.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 252" role="img" aria-label="Four stores in a 2x2: x-axis OLTP transactional/control plane to OLAP analytical/data plane, y-axis structured rows to bulk objects. Top-left Postgres control-plane metadata, top-right ClickHouse wide events, bottom-left Redis queue and cache, bottom-right S3 payloads and media. Per prisma schema, CH migrations, server/queues.ts and the media service">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Four stores, each in its place: pick by nature</text>
+  <text x="360" y="33" text-anchor="middle" font-size="7.5" fill="var(--faint)">y-axis: structured rows (top) ↔ bulk objects (bottom)</text>
+  <line x1="60" y1="130" x2="690" y2="130" stroke="var(--line)" stroke-width="1.2"/>
+  <line x1="375" y1="40" x2="375" y2="226" stroke="var(--line)" stroke-width="1.2"/>
+  <text x="66" y="240" font-size="8" fill="var(--muted)">← OLTP · transactional/control (small, consistent)</text>
+  <text x="688" y="240" text-anchor="end" font-size="8" fill="var(--muted)">OLAP · analytical/data (huge) →</text>
+  <rect x="74" y="46" width="286" height="76" rx="9" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="86" y="66" font-size="10" font-weight="700" fill="var(--blue)">Postgres · control plane</text><text x="86" y="83" font-size="8" fill="var(--ink)">org/project/user · apiKey · prompt</text><text x="86" y="98" font-size="8" fill="var(--ink)">dataset/eval config · pricing · integrations</text><text x="86" y="114" font-size="7.5" fill="var(--muted)">transactional, consistent, small, edited often</text>
+  <rect x="390" y="46" width="300" height="76" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="402" y="66" font-size="10" font-weight="700" fill="var(--accent-ink)">ClickHouse · data plane</text><text x="402" y="83" font-size="8" fill="var(--ink)">traces / observations / scores wide tables</text><text x="402" y="98" font-size="8" fill="var(--ink)">columnar, huge, fast aggregation</text><text x="402" y="114" font-size="7.5" fill="var(--muted)">ReplacingMergeTree, sorted by project_id</text>
+  <rect x="74" y="138" width="286" height="78" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="86" y="158" font-size="10" font-weight="700" fill="var(--red)">Redis · queue + cache</text><text x="86" y="175" font-size="8" fill="var(--ink)">ingestion queue (BullMQ) · prompt cache</text><text x="86" y="190" font-size="8" fill="var(--ink)">in-memory, very fast, ephemeral</text><text x="86" y="206" font-size="7.5" fill="var(--muted)">absorb spikes: write path pushes and returns</text>
+  <rect x="390" y="138" width="300" height="78" rx="9" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="402" y="158" font-size="10" font-weight="700" fill="var(--amber)">S3 · payloads + media</text><text x="402" y="175" font-size="8" fill="var(--ink)">event source &lt;eventId&gt;.json · media · exports</text><text x="402" y="190" font-size="8" fill="var(--ink)">object store, cheap, holds big blobs</text><text x="402" y="206" font-size="7.5" fill="var(--muted)">the source of truth: rebuild if a job is lost</text>
+</svg>
+<div class="figcap"><b>Not "primary/replica", but division of labor</b> (per <code>prisma/schema.prisma</code>, CH migrations, <code>server/queues.ts</code>, the media service): the x-axis is transactional↔analytical, the y-axis structured rows↔bulk objects. <b>Postgres</b> governs "how it's configured", <b>ClickHouse</b> "what happened", <b>Redis</b> absorbs spikes, <b>S3</b> backstops the originals — each datum lands in the quadrant that fits its nature.</div>
+</div>
+
 <h2>Why not just one</h2>
 <p>The core reason in one line: <strong>transactional (OLTP) and analytical (OLAP) workloads are opposite optimization targets</strong>,
 and no single store nails both extremes.</p>
@@ -2405,6 +2584,18 @@ be queried while being written") all fall into place. We use the <code>observati
 <div class="figcap"><b>Five kinds of columns in one wide-event row</b>: identity/linkage (tree, lookup), inlined rich wide columns (model, cost, prompt…), semi-structured <b>Map</b> columns (metadata, usage/cost details), <b>ZSTD</b>-compressed big fields (input/output), and version columns (<code>event_ts</code>, <code>is_deleted</code>). One row holds all of Lesson 3's rich attributes.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 226" role="img" aria-label="Anatomy of one observations row: the same row groups columns into four kinds — link columns project_id/trace_id/id/parent_observation_id build the call tree and isolation; business columns type/name/provided_model_name/input/output/metadata/level filter and group; numeric columns start_time/end_time/usage_details/cost_details/total_cost aggregate; version columns event_ts/is_deleted let ReplacingMergeTree keep the latest. Column names from 0002_observations.up.sql, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Anatomy of one observations row: same row, four kinds of column</text>
+  <rect x="20" y="28" width="680" height="16" rx="4" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">⟵ one row (one LLM call = one observation) ⟶</text>
+  <rect x="20" y="50" width="168" height="158" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="28" y="66" font-size="8.5" font-weight="700" fill="var(--blue)">① link columns</text><text x="28" y="80" font-size="7" fill="var(--ink)">project_id  proj_ab</text><text x="28" y="93" font-size="7" fill="var(--ink)">trace_id  chat_a1b2</text><text x="28" y="106" font-size="7" fill="var(--ink)">id  obs_7f</text><text x="28" y="119" font-size="7" fill="var(--ink)">parent_observation_id</text><text x="36" y="130" font-size="6.6" fill="var(--muted)">obs_3a (builds the tree)</text><text x="28" y="198" font-size="7" font-weight="700" fill="var(--blue)">→ call tree · tenant isolation</text>
+  <rect x="196" y="50" width="186" height="158" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="204" y="66" font-size="8.5" font-weight="700" fill="var(--accent-ink)">② business columns</text><text x="204" y="80" font-size="7" fill="var(--ink)">type  GENERATION</text><text x="204" y="93" font-size="7" fill="var(--ink)">name  answer</text><text x="204" y="106" font-size="7" fill="var(--ink)">provided_model_name  gpt-4o</text><text x="204" y="119" font-size="7" fill="var(--ink)">level  DEFAULT · input/output {…}</text><text x="204" y="132" font-size="7" fill="var(--ink)">metadata  {env: prod}</text><text x="204" y="198" font-size="7" font-weight="700" fill="var(--accent-ink)">→ filter · group by</text>
+  <rect x="390" y="50" width="172" height="158" rx="8" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="398" y="66" font-size="8.5" font-weight="700" fill="var(--amber)">③ numeric columns</text><text x="398" y="80" font-size="7" fill="var(--ink)">start_time / end_time</text><text x="398" y="93" font-size="7" fill="var(--ink)">usage_details {in:512,</text><text x="406" y="104" font-size="7" fill="var(--ink)">out:88}</text><text x="398" y="117" font-size="7" fill="var(--ink)">cost_details {total:.0041}</text><text x="398" y="130" font-size="7" fill="var(--ink)">total_cost  0.0041</text><text x="398" y="198" font-size="7" font-weight="700" fill="var(--amber)">→ aggregate (SUM/AVG)</text>
+  <rect x="570" y="50" width="130" height="158" rx="8" fill="var(--teal-soft)" stroke="var(--teal)"/><text x="578" y="66" font-size="8.5" font-weight="700" fill="var(--teal)">④ version columns</text><text x="578" y="80" font-size="7" fill="var(--ink)">event_ts  …T12:00</text><text x="578" y="93" font-size="7" fill="var(--ink)">is_deleted  0</text><text x="578" y="112" font-size="6.6" fill="var(--muted)">same id written N times,</text><text x="578" y="123" font-size="6.6" fill="var(--muted)">read keeps latest event_ts</text><text x="578" y="198" font-size="6.8" font-weight="700" fill="var(--teal)">→ ReplacingMergeTree</text>
+</svg>
+<div class="figcap"><b>One wide row = four kinds of column, each with a job</b> (column names from <code>clickhouse/migrations/.../0002_observations.up.sql</code>; <b>values illustrative</b>): <b>link</b> columns build the call tree and isolate by <code>project_id</code>; <b>business</b> columns filter/group; <b>numeric</b> columns aggregate; <b>version</b> columns <code>event_ts/is_deleted</code> let ReplacingMergeTree keep the latest when the same id is written more than once. Lesson 3's three pillars are physically this one row.</div>
+</div>
+
 <h2>ReplacingMergeTree: later write of the same id wins</h2>
 <p>All three tables use the <code>ReplacingMergeTree</code> engine. The declaration looks like:</p>
 
@@ -2595,6 +2786,24 @@ priced. This side is the <strong>control plane</strong> — small in volume yet 
   <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores (wide events)</text>
 </svg>
 <div class="figcap"><b>Two halves</b>: <b>Postgres</b> stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, pricing, integrations, audit; <b>ClickHouse</b> stores "what actually happened" — three wide-event tables. This is the macro version of Lesson 3's "domain shape vs physical storage": one governs control, one governs data.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Postgres metadata ER diagram: Organization one-to-many Project, Project one-to-many ApiKey/Prompt/Dataset, User many-to-many to Organization and Project via OrganizationMembership/ProjectMembership. Model names from prisma/schema.prisma, columns illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The metadata schema: entities &amp; relations (excerpt)</text>
+  <rect x="270" y="30" width="180" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="282" y="46" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Organization</text><text x="282" y="60" font-size="7.5" fill="var(--ink)">id · name · cloudConfig</text><text x="282" y="71" font-size="7" fill="var(--muted)">top of billing/membership</text>
+  <line x1="360" y1="74" x2="360" y2="98" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,98 355,88 365,88" fill="var(--accent)"/><text x="372" y="90" font-size="7.5" font-weight="700" fill="var(--accent-ink)">1 : N</text>
+  <rect x="270" y="100" width="180" height="46" rx="8" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.8"/><text x="282" y="116" font-size="9.5" font-weight="700" fill="var(--blue)">Project</text><text x="282" y="130" font-size="7.5" fill="var(--ink)">id · orgId · name</text><text x="282" y="141" font-size="7" fill="var(--muted)">data boundary · everything hangs here</text>
+  <line x1="290" y1="146" x2="150" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="150,186 159,181 156,190" fill="var(--line)"/>
+  <line x1="360" y1="146" x2="360" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="360,186 355,177 365,177" fill="var(--line)"/>
+  <line x1="430" y1="146" x2="566" y2="186" stroke="var(--line)" stroke-width="1.2"/><polygon points="566,186 557,181 560,190" fill="var(--line)"/>
+  <rect x="40" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="50" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">ApiKey</text><text x="50" y="217" font-size="7" fill="var(--ink)">id · projectId · publicKey</text><text x="50" y="228" font-size="7" fill="var(--muted)">hashedSecretKey (hash only)</text>
+  <rect x="260" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="270" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Prompt</text><text x="270" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="270" y="228" font-size="7" fill="var(--muted)">version · labels (versioned)</text>
+  <rect x="480" y="188" width="200" height="44" rx="7" fill="var(--bg)" stroke="var(--blue)"/><text x="490" y="204" font-size="8.5" font-weight="700" fill="var(--blue)">Dataset</text><text x="490" y="217" font-size="7" fill="var(--ink)">id · projectId · name</text><text x="490" y="228" font-size="7" fill="var(--muted)">+ items / runs</text>
+  <rect x="490" y="30" width="190" height="56" rx="8" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="502" y="46" font-size="9.5" font-weight="700" fill="var(--purple)">User</text><text x="502" y="60" font-size="7.5" fill="var(--ink)">id · email · password</text><text x="502" y="74" font-size="7" fill="var(--muted)">joins org/project via *Membership</text>
+  <line x1="490" y1="64" x2="452" y2="116" stroke="var(--purple)" stroke-width="1.2" stroke-dasharray="4 3"/><text x="430" y="92" text-anchor="end" font-size="7.5" font-weight="700" fill="var(--purple)">N : N (role)</text>
+</svg>
+<div class="figcap"><b>Everything hangs under Project</b> (model names from <code>packages/shared/prisma/schema.prisma</code>; columns illustrative): <code>Organization</code> 1─N <code>Project</code>, <code>Project</code> 1─N <code>ApiKey/Prompt/Dataset</code>; <code>User</code> is many-to-many to org/project via <code>OrganizationMembership/ProjectMembership</code> with a role. Because "everything hangs under project", auth only needs to answer "do you belong to this project" (Lessons 10, 21).</div>
 </div>
 
 <h2>Postgres holds the "control plane"</h2>
@@ -2826,6 +3035,21 @@ Last lesson called <code>project</code> the hub and the "data boundary". This le
 <div class="figcap"><b>Three nesting levels</b>: one <b>organization</b> holds multiple <b>projects</b>, each project may split into multiple <b>environments</b> (e.g. production / staging / development, default <code>default</code>). The org manages billing and members, the <b>project is the hard data boundary</b>, and the environment is a soft slice within a project.</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Multi-tenancy as nested containers: Organization wraps Project, Project splits into environments (production/staging). Project is the hard data boundary with project_id welded into the ClickHouse sort-key prefix for structural isolation; environment is just a filter column for soft slicing. Entities from prisma schema, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">org ⊃ project ⊃ environment: nested boundaries</text>
+  <rect x="30" y="32" width="470" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="44" y="52" font-size="10" font-weight="700" fill="var(--accent-ink)">Organization · org_xY7</text><text x="44" y="66" font-size="7.5" fill="var(--muted)">top of billing + membership</text>
+  <rect x="56" y="74" width="418" height="112" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="70" y="94" font-size="10" font-weight="700" fill="var(--blue)">Project · proj_ab3 (hard data boundary)</text><text x="70" y="108" font-size="7.5" fill="var(--muted)">all trace/observation/score hang under it</text>
+  <rect x="80" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="92" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="92" y="152" font-size="8" fill="var(--blue)">production</text><text x="92" y="165" font-size="7" fill="var(--muted)">soft slice: plain filter column</text>
+  <rect x="278" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="290" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="290" y="152" font-size="8" fill="var(--muted)">staging</text><text x="290" y="165" font-size="7" fill="var(--muted)">split only if you add WHERE</text>
+  <rect x="520" y="48" width="172" height="150" rx="10" fill="var(--panel-2)" stroke="var(--line)"/><text x="534" y="68" font-size="9" font-weight="700" fill="var(--accent-ink)">isolation strength</text>
+  <text x="534" y="92" font-size="8" font-weight="700" fill="var(--blue)">project_id</text><text x="534" y="105" font-size="7.5" fill="var(--ink)">welded into CH sort-key <b>prefix</b></text><text x="534" y="117" font-size="7.5" fill="var(--ink)">→ structural hard isolation</text><text x="534" y="129" font-size="7" fill="var(--muted)">never visible across projects</text>
+  <line x1="534" y1="138" x2="678" y2="138" stroke="var(--line)" stroke-dasharray="3 2"/>
+  <text x="534" y="154" font-size="8" font-weight="700" fill="var(--muted)">environment</text><text x="534" y="167" font-size="7.5" fill="var(--ink)">plain LowCardinality column</text><text x="534" y="179" font-size="7.5" fill="var(--ink)">→ soft slice (optional)</text>
+</svg>
+<div class="figcap"><b>Two strengths of isolation</b> (entities from <code>prisma/schema.prisma</code>; values illustrative): <code>Organization</code> wraps <code>Project</code> wraps <code>environment</code>. But their strength differs — <code>project_id</code> is <b>welded into the ClickHouse sort-key prefix</b> (structural hard isolation, never visible across projects, echoing the Lesson 10 warn card); <code>environment</code> is just a filter column, a <b>soft slice</b> split only when a query adds <code>WHERE</code>.</div>
+</div>
+
 <h2>What each level governs</h2>
 <table class="t">
   <tr><th>Level</th><th>Governs</th><th>Isolation strength</th></tr>
@@ -3050,6 +3274,26 @@ concrete "packing list" and your mental model of Langfuse's "shape" is complete.
   <text x="360" y="282" text-anchor="middle" font-size="9" fill="var(--faint)">web leans read PG+CH; worker leans write CH/S3, consumes the Redis queue (lines are illustrative)</text>
 </svg>
 <div class="figcap"><b>The self-host packing list</b>: two app containers <b>langfuse-web</b> (langfuse/langfuse:3) and <b>langfuse-worker</b> (langfuse/langfuse-worker:3), plus four infra <b>postgres:17 · clickhouse-server · redis:7 · minio</b> (S3-compatible). Each infra gets a named volume for persistence. This is the "physical version" of the architecture in Lessons 5 and 7.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Deployment topology as a layered stack: top is the load balancer/ingress; middle is the horizontally-scalable app tier with web(Next.js) replicas and worker replicas (consuming the queue); bottom is the backing services Postgres, ClickHouse, Redis, S3. web and worker both connect to the four stores and scale independently. Per docker-compose/helm and server/queues.ts">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Deployment topology: a three-tier stack, scaled per tier</text>
+  <rect x="40" y="30" width="640" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="360" y="51" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">① edge · load balancer / ingress (TLS, routing)</text>
+  <line x1="360" y1="64" x2="360" y2="78" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="40" y="78" width="640" height="74" rx="9" fill="var(--bg)" stroke="var(--blue)" stroke-dasharray="5 3"/><text x="52" y="94" font-size="8.5" font-weight="700" fill="var(--blue)">② app tier (stateless · horizontally scalable)</text>
+  <rect x="70" y="100" width="120" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">web ×N</text><text x="130" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">Next.js · UI+API+tRPC</text>
+  <rect x="200" y="100" width="100" height="44" rx="7" fill="var(--blue-soft)" stroke="var(--blue)" opacity="0.55"/><text x="250" y="124" text-anchor="middle" font-size="8" fill="var(--blue)">…replicas</text>
+  <rect x="420" y="100" width="120" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="480" y="118" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">worker ×M</text><text x="480" y="132" text-anchor="middle" font-size="7" fill="var(--muted)">consume BullMQ queues</text>
+  <rect x="550" y="100" width="100" height="44" rx="7" fill="var(--purple-soft)" stroke="var(--purple)" opacity="0.55"/><text x="600" y="124" text-anchor="middle" font-size="8" fill="var(--purple)">…replicas</text>
+  <line x1="160" y1="152" x2="160" y2="166" stroke="var(--line)"/><line x1="480" y1="152" x2="480" y2="166" stroke="var(--line)"/>
+  <rect x="40" y="166" width="640" height="58" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="52" y="182" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ backing services (stateful)</text>
+  <rect x="60" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="131" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Postgres</text>
+  <rect x="212" y="190" width="142" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="283" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text>
+  <rect x="364" y="190" width="142" height="28" rx="6" fill="var(--red-soft)" stroke="var(--red)"/><text x="435" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">Redis</text>
+  <rect x="516" y="190" width="142" height="28" rx="6" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="587" y="208" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">S3</text>
+</svg>
+<div class="figcap"><b>Three tiers, scaled per tier</b> (per docker-compose/helm and <code>server/queues.ts</code>): stateless <b>web</b> and <b>worker</b> each run multiple replicas and scale independently (web for user traffic, worker for queue backlog); stateful <b>Postgres/ClickHouse/Redis/S3</b> sit underneath, shared by both. This is Lessons 5 and 7's "read/write split, four-store division of labor" landed on containers.</div>
 </div>
 
 <h2>The minimal self-host stack: 2 apps + 4 infra</h2>

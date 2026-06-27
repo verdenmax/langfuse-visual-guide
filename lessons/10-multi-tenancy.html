@@ -390,6 +390,21 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="figcap"><b>三层嵌套</b>：一个 <b>organization</b> 下有多个 <b>project</b>，每个 project 内可再分多个 <b>environment</b>（如 production / staging / development，默认 <code>default</code>）。组织管计费与成员，<b>project 是硬数据边界</b>，environment 是项目内的软切片。</div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="多租户的嵌套容器：Organization 套 Project，Project 内再分 environment（production/staging）。Project 是硬数据边界，project_id 被焊进 ClickHouse 排序键前缀做结构隔离；environment 只是普通过滤列做软切片。实体取自 prisma schema，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">org ⊃ project ⊃ environment：一层套一层</text>
+  <rect x="30" y="32" width="470" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="44" y="52" font-size="10" font-weight="700" fill="var(--accent-ink)">Organization · org_xY7</text><text x="44" y="66" font-size="7.5" fill="var(--muted)">计费 + 成员的顶层</text>
+  <rect x="56" y="74" width="418" height="112" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="70" y="94" font-size="10" font-weight="700" fill="var(--blue)">Project · proj_ab3（硬数据边界）</text><text x="70" y="108" font-size="7.5" fill="var(--muted)">trace/observation/score 全挂在它下</text>
+  <rect x="80" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="92" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="92" y="152" font-size="8" fill="var(--blue)">production</text><text x="92" y="165" font-size="7" fill="var(--muted)">软切片：普通过滤列</text>
+  <rect x="278" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="290" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="290" y="152" font-size="8" fill="var(--muted)">staging</text><text x="290" y="165" font-size="7" fill="var(--muted)">加 WHERE 才分，不加就合</text>
+  <rect x="520" y="48" width="172" height="150" rx="10" fill="var(--panel-2)" stroke="var(--line)"/><text x="534" y="68" font-size="9" font-weight="700" fill="var(--accent-ink)">隔离强度</text>
+  <text x="534" y="92" font-size="8" font-weight="700" fill="var(--blue)">project_id</text><text x="534" y="105" font-size="7.5" fill="var(--ink)">焊进 CH 排序键<b>前缀</b></text><text x="534" y="117" font-size="7.5" fill="var(--ink)">→ 结构性硬隔离</text><text x="534" y="129" font-size="7" fill="var(--muted)">跨 project 绝不可见</text>
+  <line x1="534" y1="138" x2="678" y2="138" stroke="var(--line)" stroke-dasharray="3 2"/>
+  <text x="534" y="154" font-size="8" font-weight="700" fill="var(--muted)">environment</text><text x="534" y="167" font-size="7.5" fill="var(--ink)">普通 LowCardinality 列</text><text x="534" y="179" font-size="7.5" fill="var(--ink)">→ 软切片（可选）</text>
+</svg>
+<div class="figcap"><b>两种隔离强度</b>（实体取自 <code>prisma/schema.prisma</code>；值为示例）：<code>Organization</code> 套 <code>Project</code> 套 <code>environment</code>。但二者强度不同——<code>project_id</code> 被<b>焊进 ClickHouse 排序键前缀</b>（结构性硬隔离，跨 project 绝不可见，呼应第 10 课 warn 卡）；<code>environment</code> 只是普通过滤列，是<b>软切片</b>，查询加 <code>WHERE</code> 才分。</div>
+</div>
+
 <h2>三层各管什么</h2>
 <table class="t">
   <tr><th>层级</th><th>管什么</th><th>隔离强度</th></tr>
@@ -597,6 +612,21 @@ Last lesson called <code>project</code> the hub and the "data boundary". This le
   <text x="522" y="212" text-anchor="middle" font-size="9" fill="var(--muted)">Project B sees none of Project A's data</text>
 </svg>
 <div class="figcap"><b>Three nesting levels</b>: one <b>organization</b> holds multiple <b>projects</b>, each project may split into multiple <b>environments</b> (e.g. production / staging / development, default <code>default</code>). The org manages billing and members, the <b>project is the hard data boundary</b>, and the environment is a soft slice within a project.</div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 214" role="img" aria-label="Multi-tenancy as nested containers: Organization wraps Project, Project splits into environments (production/staging). Project is the hard data boundary with project_id welded into the ClickHouse sort-key prefix for structural isolation; environment is just a filter column for soft slicing. Entities from prisma schema, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">org ⊃ project ⊃ environment: nested boundaries</text>
+  <rect x="30" y="32" width="470" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="44" y="52" font-size="10" font-weight="700" fill="var(--accent-ink)">Organization · org_xY7</text><text x="44" y="66" font-size="7.5" fill="var(--muted)">top of billing + membership</text>
+  <rect x="56" y="74" width="418" height="112" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="70" y="94" font-size="10" font-weight="700" fill="var(--blue)">Project · proj_ab3 (hard data boundary)</text><text x="70" y="108" font-size="7.5" fill="var(--muted)">all trace/observation/score hang under it</text>
+  <rect x="80" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="92" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="92" y="152" font-size="8" fill="var(--blue)">production</text><text x="92" y="165" font-size="7" fill="var(--muted)">soft slice: plain filter column</text>
+  <rect x="278" y="120" width="180" height="52" rx="8" fill="var(--bg)" stroke="var(--faint)"/><text x="290" y="138" font-size="8.5" font-weight="700" fill="var(--ink)">environment</text><text x="290" y="152" font-size="8" fill="var(--muted)">staging</text><text x="290" y="165" font-size="7" fill="var(--muted)">split only if you add WHERE</text>
+  <rect x="520" y="48" width="172" height="150" rx="10" fill="var(--panel-2)" stroke="var(--line)"/><text x="534" y="68" font-size="9" font-weight="700" fill="var(--accent-ink)">isolation strength</text>
+  <text x="534" y="92" font-size="8" font-weight="700" fill="var(--blue)">project_id</text><text x="534" y="105" font-size="7.5" fill="var(--ink)">welded into CH sort-key <b>prefix</b></text><text x="534" y="117" font-size="7.5" fill="var(--ink)">→ structural hard isolation</text><text x="534" y="129" font-size="7" fill="var(--muted)">never visible across projects</text>
+  <line x1="534" y1="138" x2="678" y2="138" stroke="var(--line)" stroke-dasharray="3 2"/>
+  <text x="534" y="154" font-size="8" font-weight="700" fill="var(--muted)">environment</text><text x="534" y="167" font-size="7.5" fill="var(--ink)">plain LowCardinality column</text><text x="534" y="179" font-size="7.5" fill="var(--ink)">→ soft slice (optional)</text>
+</svg>
+<div class="figcap"><b>Two strengths of isolation</b> (entities from <code>prisma/schema.prisma</code>; values illustrative): <code>Organization</code> wraps <code>Project</code> wraps <code>environment</code>. But their strength differs — <code>project_id</code> is <b>welded into the ClickHouse sort-key prefix</b> (structural hard isolation, never visible across projects, echoing the Lesson 10 warn card); <code>environment</code> is just a filter column, a <b>soft slice</b> split only when a query adds <code>WHERE</code>.</div>
 </div>
 
 <h2>What each level governs</h2>
