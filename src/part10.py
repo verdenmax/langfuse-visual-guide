@@ -61,6 +61,37 @@ _ZH48.append(r"""
 <h2>密码登录的一圈安全护栏</h2>
 <p>别小看「邮箱密码」这条最朴素的路——它的 <code>authorize</code> 函数里藏着一圈值得细品的安全设计。<strong>先是三道 SSO 强制闸</strong>：实例级禁用密码登录（<code>AUTH_DISABLE_USERNAME_PASSWORD</code>）、域名级黑名单（某些公司域名必须走 SSO）、EE 多租户强制（某域名配了专属 SSO 就不许用密码）。<strong>再是一处教科书级的时序攻击防护</strong>：万一用户不存在，代码<strong>照样跑一遍密码哈希</strong>再报错——这样「用户不存在」和「密码错」两条失败路径耗时相近，攻击者就<strong>没法靠响应快慢来探测某个邮箱是否注册过</strong>。<strong>还有一处</strong>：若用户的 <code>password</code> 字段是 null，说明 ta 是用 SSO 注册的，明确提示「请用你绑定的 IdP 登录」。全过了才用 <strong>bcrypt</strong> 比对密码。</p>
 
+<svg viewBox="0 0 720 212" role="img" aria-label="密码登录 authorize 的四道安全护栏：① SSO 强制三连查（实例禁密码、域名黑名单、EE 专属 SSO，命中即拒并提示走 SSO），② 查用户加时序防护（查不到也照跑一遍 hashPassword 防靠响应快慢枚举注册邮箱），③ SSO 用户拦截（password 为 null 则引导用 IdP 登录），④ bcrypt 比对（compare，存储时 hash 12 轮加盐），全过才由 NextAuth 发会话">
+  <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">authorize() 的一圈安全护栏：四道全过才放行</text>
+  <rect x="12" y="70" width="104" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="64" y="96" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">邮箱+密码</text>
+  <text x="64" y="113" font-size="8.5" text-anchor="middle" fill="var(--muted)">登录尝试</text>
+  <rect x="128" y="44" width="132" height="92" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① SSO 强制三连</text>
+  <text x="194" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">实例 / 域名 / EE</text>
+  <text x="194" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">命中 → 拒,提示 SSO</text>
+  <rect x="272" y="44" width="132" height="92" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="338" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 查用户+时序防护</text>
+  <text x="338" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">查不到也照跑</text>
+  <text x="338" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">hashPassword（防枚举）</text>
+  <rect x="416" y="44" width="132" height="92" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="482" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ SSO 用户拦截</text>
+  <text x="482" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">password === null</text>
+  <text x="482" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">→ 引导用 IdP</text>
+  <rect x="560" y="44" width="132" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="626" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ bcrypt 比对</text>
+  <text x="626" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">compare(pw, hash)</text>
+  <text x="626" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">hash 12 轮加盐</text>
+  <line x1="116" y1="100" x2="128" y2="92" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="260" y1="90" x2="272" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="404" y1="90" x2="416" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="548" y1="90" x2="560" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="266" y="160" width="188" height="42" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="186" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">全过 → NextAuth 发会话(JWT)</text>
+  <line x1="626" y1="136" x2="440" y2="160" stroke="var(--teal)" stroke-width="1.5"></line>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>SSO 强制三连查</h4><p>实例禁密码？域名在 SSO 黑名单？该域名配了 EE 专属 SSO？——命中任一条，直接拒绝并提示走 SSO。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>查用户 + 时序防护</h4><p>按邮箱查 User。<strong>查不到也照算一遍 <code>hashPassword</code></strong> 再报「Invalid credentials」——让失败耗时恒定，堵住「靠响应快慢枚举注册邮箱」的旁路。</p></div></div>
@@ -187,6 +218,37 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
 _EN48.append(r"""
 <h2>A ring of security guardrails around password login</h2>
 <p>Don't underestimate the plainest path, "email-password" — its <code>authorize</code> function hides a ring of security design worth savoring. <strong>First, three SSO-enforcement gates</strong>: instance-level disabling of password login (<code>AUTH_DISABLE_USERNAME_PASSWORD</code>), a domain-level blocklist (certain company domains must use SSO), and EE multi-tenant enforcement (a domain configured with a dedicated SSO can't use passwords). <strong>Then a textbook timing-attack defense</strong>: if the user doesn't exist, the code <strong>still runs the password hash</strong> before erroring — so "user doesn't exist" and "wrong password" take similar time, and an attacker <strong>can't probe whether an email is registered by response speed</strong>. <strong>And one more</strong>: if the user's <code>password</code> field is null, they signed up via SSO, so explicitly prompt "please sign in with your linked IdP." Only after all that does it <strong>bcrypt</strong>-compare the password.</p>
+
+<svg viewBox="0 0 720 212" role="img" aria-label="the four security guardrails of password authorize: 1 three SSO-enforcement gates (instance disable, domain blocklist, EE dedicated SSO — match means reject and prompt SSO), 2 user lookup plus timing defense (run hashPassword even when not found to stop email enumeration by response speed), 3 SSO-user interception (password null prompts using the IdP), 4 bcrypt compare (stored as hash with 12 salted rounds); only if all pass does NextAuth issue a session">
+  <rect x="0" y="0" width="720" height="212" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11" font-weight="700" fill="var(--accent-ink)">authorize()'s ring of guardrails: pass all four to be let in</text>
+  <rect x="12" y="70" width="104" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="64" y="96" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">email+pw</text>
+  <text x="64" y="113" font-size="8.5" text-anchor="middle" fill="var(--muted)">login attempt</text>
+  <rect x="128" y="44" width="132" height="92" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 SSO gates ×3</text>
+  <text x="194" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">instance / domain / EE</text>
+  <text x="194" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">match → reject, use SSO</text>
+  <rect x="272" y="44" width="132" height="92" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="338" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 lookup + timing</text>
+  <text x="338" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">hash even if not found</text>
+  <text x="338" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">(stops enumeration)</text>
+  <rect x="416" y="44" width="132" height="92" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="482" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 SSO-user block</text>
+  <text x="482" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">password === null</text>
+  <text x="482" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">→ use your IdP</text>
+  <rect x="560" y="44" width="132" height="92" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="626" y="64" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 bcrypt compare</text>
+  <text x="626" y="84" font-size="8" text-anchor="middle" fill="var(--muted)">compare(pw, hash)</text>
+  <text x="626" y="100" font-size="8" text-anchor="middle" fill="var(--muted)">hash, 12 salted rounds</text>
+  <line x1="116" y1="100" x2="128" y2="92" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="260" y1="90" x2="272" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="404" y1="90" x2="416" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="548" y1="90" x2="560" y2="90" stroke="var(--accent)" stroke-width="2"></line>
+  <rect x="266" y="160" width="188" height="42" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="186" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">all pass → NextAuth issues a session (JWT)</text>
+  <line x1="626" y1="136" x2="440" y2="160" stroke="var(--teal)" stroke-width="1.5"></line>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>Triple SSO-enforcement check</h4><p>Instance disables passwords? Domain on the SSO blocklist? Domain configured with a dedicated EE SSO? — hit any one, reject immediately and prompt for SSO.</p></div></div>
@@ -395,6 +457,30 @@ _ZH49.append(r"""
 <h2>SCIM：让企业身份系统自动开通用户</h2>
 <p>大企业有几千名员工，进出职频繁。靠管理员手动在 Langfuse 里一个个加人、离职再删人，既慢又容易漏（漏删 = 离职员工还能访问，是安全隐患）。<strong>SCIM（System for Cross-domain Identity Management，跨域身份管理系统）</strong>是一套标准协议，让企业的身份中枢（如 Okta、Azure AD）能<strong>自动</strong>把「谁该有账号」同步过来：入职自动开通、离职自动注销。Langfuse 在 <code>web/src/pages/api/public/scim/*</code> 实现了 SCIM 的标准端点——<code>Users</code>（增删查用户）、<code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code>（向 IdP 自描述「我支持哪些 SCIM 能力」）。这属于企业级（EE）能力，正好引出下一课的「开源核与权益」。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="SCIM 自动开通流程：企业身份中枢 Okta 或 Azure AD 通过 SCIM 标准端点把谁该有账号推送给 Langfuse，Users 端点增删查用户，ServiceProviderConfig、ResourceTypes、Schemas 向 IdP 自描述能力；于是员工入职自动开通账号、离职自动注销，堵住漏删导致离职员工仍可访问的安全隐患">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SCIM：IdP 自动同步「谁该有账号」</text>
+  <rect x="16" y="74" width="160" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="96" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">企业身份中枢</text>
+  <text x="96" y="118" font-size="9.5" text-anchor="middle" fill="var(--muted)">Okta / Azure AD</text>
+  <rect x="224" y="40" width="232" height="134" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="60" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">SCIM 标准端点（scim/*）</text>
+  <rect x="236" y="70" width="208" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="88" font-size="9.5" text-anchor="middle" fill="var(--ink)">Users（增删查用户）</text>
+  <rect x="236" y="104" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="121" font-size="9" text-anchor="middle" fill="var(--muted)">ServiceProviderConfig</text>
+  <rect x="236" y="134" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="151" font-size="9" text-anchor="middle" fill="var(--muted)">ResourceTypes / Schemas（自描述）</text>
+  <rect x="504" y="56" width="200" height="110" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="604" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse 用户生命周期</text>
+  <text x="604" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">入职 → 自动开通 provision</text>
+  <text x="604" y="124" font-size="9.5" text-anchor="middle" fill="var(--ink)">离职 → 自动注销 deprovision</text>
+  <text x="604" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">漏删=隐患，自动注销堵住</text>
+  <line x1="176" y1="105" x2="224" y2="107" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="200" y="98" font-size="8.5" text-anchor="middle" fill="var(--muted)">推送</text>
+  <line x1="456" y1="100" x2="504" y2="100" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>授权对象</th><th>机制</th><th>怎么判</th><th>关键设计</th></tr></thead>
   <tbody>
@@ -531,6 +617,30 @@ _EN49.append(r"""
 _EN49.append(r"""
 <h2>SCIM: letting the enterprise identity system auto-provision users</h2>
 <p>A large enterprise has thousands of employees, joining and leaving constantly. Relying on an admin to manually add people one by one in Langfuse and delete them on departure is slow and error-prone (a missed deletion = a departed employee still has access, a security hazard). <strong>SCIM (System for Cross-domain Identity Management)</strong> is a standard protocol letting an enterprise's identity hub (Okta, Azure AD) <strong>automatically</strong> sync "who should have an account": auto-provision on joining, auto-deprovision on leaving. Langfuse implements the standard SCIM endpoints in <code>web/src/pages/api/public/scim/*</code> — <code>Users</code> (create/delete/list users), <code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code> (self-describe to the IdP "which SCIM capabilities I support"). This is an enterprise (EE) capability, neatly leading into the next lesson's "open-core & entitlements."</p>
+
+<svg viewBox="0 0 720 210" role="img" aria-label="SCIM auto-provisioning flow: an enterprise identity hub Okta or Azure AD pushes who should have an account to Langfuse through standard SCIM endpoints; the Users endpoint creates/deletes/lists users, while ServiceProviderConfig, ResourceTypes and Schemas self-describe capabilities to the IdP; so employees are auto-provisioned on joining and auto-deprovisioned on leaving, closing the security hazard of a missed deletion leaving a departed employee with access">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SCIM: the IdP auto-syncs "who should have an account"</text>
+  <rect x="16" y="74" width="160" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="96" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">identity hub</text>
+  <text x="96" y="118" font-size="9.5" text-anchor="middle" fill="var(--muted)">Okta / Azure AD</text>
+  <rect x="224" y="40" width="232" height="134" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="60" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">SCIM standard endpoints (scim/*)</text>
+  <rect x="236" y="70" width="208" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="88" font-size="9.5" text-anchor="middle" fill="var(--ink)">Users (create/delete/list)</text>
+  <rect x="236" y="104" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="121" font-size="9" text-anchor="middle" fill="var(--muted)">ServiceProviderConfig</text>
+  <rect x="236" y="134" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="151" font-size="9" text-anchor="middle" fill="var(--muted)">ResourceTypes / Schemas (self-describe)</text>
+  <rect x="504" y="56" width="200" height="110" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="604" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse user lifecycle</text>
+  <text x="604" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">join → auto-provision</text>
+  <text x="604" y="124" font-size="9.5" text-anchor="middle" fill="var(--ink)">leave → auto-deprovision</text>
+  <text x="604" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">missed deletion = hazard, closed</text>
+  <line x1="176" y1="105" x2="224" y2="107" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="200" y="98" font-size="8.5" text-anchor="middle" fill="var(--muted)">push</text>
+  <line x1="456" y1="100" x2="504" y2="100" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>Subject</th><th>Mechanism</th><th>How it's judged</th><th>Key design</th></tr></thead>
@@ -678,6 +788,29 @@ _ZH50.append(r"""
 <h2>自托管的解锁钥匙：EE 许可证</h2>
 <p>云上版本由 Langfuse 托管，plan 写在数据库里。但<strong>自己部署</strong>的版本怎么证明「我买了企业版」？靠一把<strong>许可证密钥</strong>。<code>isEnterpriseLicenseAvailable()</code> 的判断很干脆：<strong>① 是 Langfuse Cloud（任何区域）→ 直接有企业功能</strong>；<strong>② 自托管 → 看环境变量 <code>LANGFUSE_EE_LICENSE_KEY</code> 是否以 <code>langfuse_ee_</code> 开头</strong>。注意一个细节：<code>langfuse_pro_</code> 开头的 Pro 许可证<strong>不算</strong>企业级——前缀本身就编码了授权层级。这把钥匙插对了，自托管实例才解锁那些企业 entitlement。</p>
 
+<svg viewBox="0 0 720 215" role="img" aria-label="isEnterpriseLicenseAvailable 的判断：① 是 Langfuse Cloud 任意区域则直接有企业功能；② 自托管则看环境变量 LANGFUSE_EE_LICENSE_KEY 的前缀，langfuse_ee_ 开头解锁企业 entitlement，langfuse_pro_ 开头是 Pro 不算企业，无或其它前缀兜底到 oss 免费；前缀本身编码了授权层级">
+  <rect x="0" y="0" width="720" height="215" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">isEnterpriseLicenseAvailable()：前缀编码授权层级</text>
+  <rect x="14" y="84" width="104" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="106" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">实例</text>
+  <text x="66" y="123" font-size="8.5" text-anchor="middle" fill="var(--muted)">部署形态？</text>
+  <rect x="140" y="46" width="250" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="265" y="71" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① Cloud（任意区域）→ 有企业功能</text>
+  <rect x="140" y="104" width="250" height="42" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="265" y="129" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 自托管 → 看 EE_LICENSE_KEY 前缀</text>
+  <line x1="118" y1="100" x2="140" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="118" y1="116" x2="140" y2="125" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="430" y="92" width="274" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="444" y="113" font-size="9.5" fill="var(--accent-ink)">langfuse_ee_ → ✓ 企业 entitlement</text>
+  <rect x="430" y="130" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="151" font-size="9.5" fill="var(--ink)">langfuse_pro_ → Pro（不算企业）</text>
+  <rect x="430" y="168" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="189" font-size="9.5" fill="var(--muted)">无 / 其它 → oss 兜底免费</text>
+  <line x1="390" y1="125" x2="430" y2="109" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="390" y1="125" x2="430" y2="147" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="390" y1="125" x2="430" y2="185" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>问题</th><th>open-core 的答案</th></tr></thead>
   <tbody>
@@ -806,6 +939,29 @@ _EN50.append(r"""
 _EN50.append(r"""
 <h2>The self-hosted unlock key: the EE license</h2>
 <p>The cloud version is hosted by Langfuse, with the plan written in the database. But how does a <strong>self-deployed</strong> version prove "I bought enterprise"? Via a <strong>license key</strong>. <code>isEnterpriseLicenseAvailable()</code>'s decision is crisp: <strong>① is it Langfuse Cloud (any region) → enterprise features directly</strong>; <strong>② self-hosted → check whether the env var <code>LANGFUSE_EE_LICENSE_KEY</code> starts with <code>langfuse_ee_</code></strong>. Note one detail: a Pro license starting with <code>langfuse_pro_</code> does <strong>not</strong> count as enterprise — the prefix itself encodes the authorization tier. With this key plugged in correctly, a self-hosted instance unlocks those enterprise entitlements.</p>
+
+<svg viewBox="0 0 720 215" role="img" aria-label="isEnterpriseLicenseAvailable's decision: 1 if it is Langfuse Cloud (any region) you directly get enterprise features; 2 if self-hosted, check the LANGFUSE_EE_LICENSE_KEY prefix — langfuse_ee_ unlocks enterprise entitlements, langfuse_pro_ is Pro and does not count as enterprise, and none or other prefixes fall back to free oss; the prefix itself encodes the authorization tier">
+  <rect x="0" y="0" width="720" height="215" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">isEnterpriseLicenseAvailable(): the prefix encodes the tier</text>
+  <rect x="14" y="84" width="104" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="106" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">instance</text>
+  <text x="66" y="123" font-size="8.5" text-anchor="middle" fill="var(--muted)">deployment?</text>
+  <rect x="140" y="46" width="250" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="265" y="71" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 Cloud (any region) → enterprise</text>
+  <rect x="140" y="104" width="250" height="42" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="265" y="129" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 self-host → check key prefix</text>
+  <line x1="118" y1="100" x2="140" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="118" y1="116" x2="140" y2="125" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="430" y="92" width="274" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="444" y="113" font-size="9.5" fill="var(--accent-ink)">langfuse_ee_ → ✓ enterprise entitlement</text>
+  <rect x="430" y="130" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="151" font-size="9.5" fill="var(--ink)">langfuse_pro_ → Pro (not enterprise)</text>
+  <rect x="430" y="168" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="189" font-size="9.5" fill="var(--muted)">none / other → oss free fallback</text>
+  <line x1="390" y1="125" x2="430" y2="109" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="390" y1="125" x2="430" y2="147" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="390" y1="125" x2="430" y2="185" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>Question</th><th>Open-core's answer</th></tr></thead>
@@ -955,6 +1111,28 @@ _ZH51.append(r"""
 
 <p>这带来两个硬好处：① <strong>fail-fast（快速失败）</strong>——配置不合法，<strong>启动那一刻就当场报清晰的错</strong>（「DATABASE_URL 不是合法 URL」），而不是带病运行、半夜崩给你看。② <strong>server/client 边界</strong>——<code>createEnv</code> 强制区分「只能在服务端用的密钥」和「能打进前端包的公开配置」，<strong>从机制上防止你手滑把数据库密码泄露进浏览器</strong>。配置不再是「一堆 <code>process.env.XXX</code> 散落各处、类型全靠猜」，而是一份<strong>声明式、类型安全、边界清晰</strong>的契约。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="配置即校验：原始 env（process.env，类型都是 string 或 undefined）先过 Zod 校验（共享层 EnvSchema = z.object，web 层 createEnv 分 server 与 client），得到三个硬好处：不合法则 fail-fast 启动当场报清晰错、合法则 z.coerce 转数字 z.enum 限取值类型安全、server 密钥与 client NEXT_PUBLIC 公开配置强制隔离防泄露">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">配置即校验：启动时过 Zod，错配当场暴露</text>
+  <rect x="14" y="82" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="104" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">原始 env</text>
+  <text x="89" y="121" font-size="8.5" text-anchor="middle" fill="var(--muted)">process.env · string|undefined</text>
+  <rect x="200" y="70" width="200" height="80" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="300" y="98" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Zod 校验</text>
+  <text x="300" y="118" font-size="8.5" text-anchor="middle" fill="var(--muted)">EnvSchema = z.object</text>
+  <text x="300" y="134" font-size="8.5" text-anchor="middle" fill="var(--muted)">+ createEnv(server/client)</text>
+  <rect x="438" y="60" width="266" height="38" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="452" y="84" font-size="9.5" fill="var(--accent-ink)">✗ 不合法 → fail-fast 启动报错</text>
+  <rect x="438" y="104" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="452" y="128" font-size="9.5" fill="var(--ink)">✓ 类型安全 z.coerce / z.enum</text>
+  <rect x="438" y="148" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="452" y="172" font-size="9.5" fill="var(--ink)">server | client 边界（防密钥泄露）</text>
+  <line x1="164" y1="110" x2="200" y2="110" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="400" y1="98" x2="438" y2="79" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="400" y1="110" x2="438" y2="123" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="400" y1="124" x2="438" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>没有校验（裸 process.env）</th><th>Langfuse 的 Zod 校验</th></tr></thead>
   <tbody>
@@ -1085,6 +1263,28 @@ _EN51.append(r"""
 
 <p>This brings two hard wins: ① <strong>fail-fast</strong> — invalid config <strong>errors clearly the moment of startup</strong> ("DATABASE_URL is not a valid URL"), rather than running impaired and crashing on you at midnight. ② <strong>server/client boundary</strong> — <code>createEnv</code> forces a distinction between "secrets usable only server-side" and "public config that can ship in the front-end bundle," <strong>mechanically preventing you from fat-fingering a DB password into the browser</strong>. Config is no longer "a pile of <code>process.env.XXX</code> scattered everywhere, types all guesswork" but a <strong>declarative, type-safe, boundary-clear</strong> contract.</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="config as validation: raw env (process.env, all string or undefined) first passes Zod validation (shared EnvSchema = z.object, web createEnv splitting server and client), yielding three hard wins — invalid config fails fast with a clear boot error, valid config is type-safe via z.coerce and z.enum, and server secrets are mechanically isolated from client NEXT_PUBLIC config to prevent leaks">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">config as validation: pass Zod at boot, surface misconfig on the spot</text>
+  <rect x="14" y="82" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="104" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">raw env</text>
+  <text x="89" y="121" font-size="8.5" text-anchor="middle" fill="var(--muted)">process.env · string|undefined</text>
+  <rect x="200" y="70" width="200" height="80" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="300" y="98" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Zod validation</text>
+  <text x="300" y="118" font-size="8.5" text-anchor="middle" fill="var(--muted)">EnvSchema = z.object</text>
+  <text x="300" y="134" font-size="8.5" text-anchor="middle" fill="var(--muted)">+ createEnv(server/client)</text>
+  <rect x="438" y="60" width="266" height="38" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="452" y="84" font-size="9.5" fill="var(--accent-ink)">✗ invalid → fail-fast boot error</text>
+  <rect x="438" y="104" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="452" y="128" font-size="9.5" fill="var(--ink)">✓ type-safe z.coerce / z.enum</text>
+  <rect x="438" y="148" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="452" y="172" font-size="9.5" fill="var(--ink)">server | client boundary (no leaks)</text>
+  <line x1="164" y1="110" x2="200" y2="110" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="400" y1="98" x2="438" y2="79" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="400" y1="110" x2="438" y2="123" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="400" y1="124" x2="438" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>No validation (raw process.env)</th><th>Langfuse's Zod validation</th></tr></thead>
   <tbody>
@@ -1174,6 +1374,30 @@ _ZH52.append(r"""
 _ZH52.append(r"""
 <h2>三种删除：按期清、按需删、级联删</h2>
 <p>Langfuse 有三类删除，场景不同但都要跨存储：<strong>① 数据保留（data retention）</strong>——自动、周期性、按年龄清旧数据。它是 EE 功能（第 50 课的 entitlement），每个项目可设 <code>retentionDays</code>；调度走<strong>和第 46 课一模一样的两级 fan-out</strong>：<code>dataRetentionProcessor</code> 找出设了保留期的项目、给每个派一个处理任务，<code>dataRetentionProcessingProcessor</code> 算出 <code>cutoffDate = 今天 − retentionDays</code>，删掉比它更老的 CH 数据与 S3 媒体。<strong>② trace 删除</strong>——按需删指定 trace（第 47 课批量操作的 <code>trace-delete</code> 就走它，<code>traceDeleteProcessor</code>）。<strong>③ 项目删除</strong>——级联删整个项目的所有数据（上一节的 <code>projectDeleteProcessor</code>）。</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="三类删除场景不同但都要跨存储：① 数据保留是 EE 功能，自动周期触发，按龄 cutoff 等于今天减 retentionDays，走和 L46 一样的两级 fan-out 清 ClickHouse 与 S3 老数据；② trace 删除按需触发（L47 批量），按指定 traceIds 走 traceDeleteProcessor 清 CH 与 S3；③ 项目删除级联整个项目所有数据，走 projectDeleteProcessor 先清 CH 与 S3 再删 Postgres，PG 留到最后">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">三类删除，场景不同，但都要跨存储</text>
+  <rect x="16" y="42" width="218" height="140" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="125" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 数据保留（EE）</text>
+  <text x="30" y="90" font-size="8.5" fill="var(--ink)">自动 · 周期触发</text>
+  <text x="30" y="112" font-size="8.5" fill="var(--ink)">按龄 cutoff = now − retentionDays</text>
+  <text x="30" y="134" font-size="8.5" fill="var(--muted)">两级 fan-out（同 L46）</text>
+  <text x="30" y="156" font-size="8.5" fill="var(--muted)">清 CH + S3 老数据</text>
+  <rect x="242" y="42" width="218" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="351" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② trace 删除</text>
+  <text x="256" y="90" font-size="8.5" fill="var(--ink)">按需触发（L47 批量）</text>
+  <text x="256" y="112" font-size="8.5" fill="var(--ink)">指定 traceIds</text>
+  <text x="256" y="134" font-size="8.5" fill="var(--muted)">traceDeleteProcessor</text>
+  <text x="256" y="156" font-size="8.5" fill="var(--muted)">清 CH + S3</text>
+  <rect x="468" y="42" width="218" height="140" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="577" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 项目删除</text>
+  <text x="482" y="90" font-size="8.5" fill="var(--ink)">级联触发</text>
+  <text x="482" y="112" font-size="8.5" fill="var(--ink)">整个项目所有数据</text>
+  <text x="482" y="134" font-size="8.5" fill="var(--muted)">projectDeleteProcessor</text>
+  <text x="482" y="156" font-size="8.5" fill="var(--muted)">清 CH+S3 → PG 最后</text>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--muted)">共同点：都跨 ClickHouse + S3（项目删除还含 Postgres，且 PG 留到最后）</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>数据保留：调度 fan-out（EE）</h4><p><code>dataRetentionProcessor</code> 周期触发，查出设了 <code>retentionDays</code> 的项目，给每个项目派一个处理任务——和第 46 课分析集成<strong>同一套两级 fan-out</strong>骨架。</p></div></div>
@@ -1298,6 +1522,30 @@ _EN52.append(r"""
 _EN52.append(r"""
 <h2>Three deletions: clean by period, delete on demand, cascade-delete</h2>
 <p>Langfuse has three kinds of deletion, different scenarios but all cross-store: <strong>① data retention</strong> — auto, periodic, age-based cleaning of old data. It's an EE feature (Lesson 50's entitlement); each project can set <code>retentionDays</code>; scheduling uses <strong>exactly the same two-level fan-out as Lesson 46</strong>: <code>dataRetentionProcessor</code> finds projects with a retention period set and dispatches a processing job per project, <code>dataRetentionProcessingProcessor</code> computes <code>cutoffDate = today − retentionDays</code> and deletes CH data and S3 media older than it. <strong>② trace deletion</strong> — on-demand deletion of specific traces (Lesson 47's batch-action <code>trace-delete</code> uses it, <code>traceDeleteProcessor</code>). <strong>③ project deletion</strong> — cascading deletion of all of a project's data (the previous section's <code>projectDeleteProcessor</code>).</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="three kinds of deletion, different scenarios but all cross-store: 1 data retention is an EE feature, auto and periodic, age-based with cutoff = today minus retentionDays, using the same two-level fan-out as L46 to clean old ClickHouse and S3 data; 2 trace deletion is on-demand (L47 batch), by specific traceIds via traceDeleteProcessor cleaning CH and S3; 3 project deletion cascades all of a project's data via projectDeleteProcessor, cleaning CH and S3 first then Postgres last">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">three kinds of deletion, different scenarios, all cross-store</text>
+  <rect x="16" y="42" width="218" height="140" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="125" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 data retention (EE)</text>
+  <text x="30" y="90" font-size="8.5" fill="var(--ink)">auto · periodic</text>
+  <text x="30" y="112" font-size="8.5" fill="var(--ink)">age: cutoff = now − retentionDays</text>
+  <text x="30" y="134" font-size="8.5" fill="var(--muted)">two-level fan-out (like L46)</text>
+  <text x="30" y="156" font-size="8.5" fill="var(--muted)">clean old CH + S3</text>
+  <rect x="242" y="42" width="218" height="140" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="351" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 trace deletion</text>
+  <text x="256" y="90" font-size="8.5" fill="var(--ink)">on-demand (L47 batch)</text>
+  <text x="256" y="112" font-size="8.5" fill="var(--ink)">specific traceIds</text>
+  <text x="256" y="134" font-size="8.5" fill="var(--muted)">traceDeleteProcessor</text>
+  <text x="256" y="156" font-size="8.5" fill="var(--muted)">clean CH + S3</text>
+  <rect x="468" y="42" width="218" height="140" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="577" y="64" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 project deletion</text>
+  <text x="482" y="90" font-size="8.5" fill="var(--ink)">cascade</text>
+  <text x="482" y="112" font-size="8.5" fill="var(--ink)">all of a project's data</text>
+  <text x="482" y="134" font-size="8.5" fill="var(--muted)">projectDeleteProcessor</text>
+  <text x="482" y="156" font-size="8.5" fill="var(--muted)">clean CH+S3 → PG last</text>
+  <text x="360" y="204" font-size="10" text-anchor="middle" fill="var(--muted)">in common: all cross ClickHouse + S3 (project deletion also Postgres, kept last)</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>Data retention: scheduling fan-out (EE)</h4><p><code>dataRetentionProcessor</code> fires periodically, finds projects with <code>retentionDays</code> set, dispatches a processing job per project — the <strong>same two-level fan-out</strong> skeleton as Lesson 46's analytics integrations.</p></div></div>
@@ -1494,6 +1742,37 @@ _ZH53.append(r"""
 <h2>一键开发流：从空环境到能跑，一步到位</h2>
 <p>一个新人 clone 下代码，要跑起来得做多少事？装依赖、起数据库/Redis/ClickHouse、建表、灌测试数据、再启动……手动来十几步，错一步就卡半天。Langfuse 把这一长串<strong>压成一条命令</strong> <code>dx</code>（developer experience）：<code>pnpm i</code> 装依赖 → <code>infra:dev:up</code> 用 docker compose 拉起本地基础设施 → 重置 PG/ClickHouse → <code>db:seed:examples</code> 灌示例数据 → <code>dev</code> 跑起来。还有 <code>dx-f</code>（强制重置）、<code>dx:skip-infra</code>（跳过基础设施）等变体应对不同场景。所有命令都走 <code>turbo run</code> 或 <code>pnpm --filter</code>，<strong>--filter 能把操作精确缩到单个包</strong>（<code>dev:web</code> = <code>turbo run dev --filter=web</code>）。</p>
 
+<svg viewBox="0 0 720 190" role="img" aria-label="一条命令 pnpm dx 从空环境到能跑：① clone 空环境 → ② pnpm i 装依赖 → ③ infra:dev:up 用 docker 起 PG/Redis/ClickHouse → ④ 重置 PG 与 ClickHouse → ⑤ db:seed:examples 灌示例数据 → ⑥ dev 跑起来；变体有 dx-f 强制重置、dx:skip-infra 跳过基础设施，--filter 缩到单包">
+  <rect x="0" y="0" width="720" height="190" fill="var(--bg)"></rect>
+  <rect x="12" y="38" width="688" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="356" y="56" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一条命令 pnpm dx：从空环境到能跑，一步到位</text>
+  <rect x="12" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① clone</text>
+  <text x="66" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">空环境</text>
+  <rect x="128" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="182" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② pnpm i</text>
+  <text x="182" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">装依赖</text>
+  <rect x="244" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="298" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ infra:dev:up</text>
+  <text x="298" y="116" font-size="7" text-anchor="middle" fill="var(--muted)">docker 起</text>
+  <text x="298" y="130" font-size="7" text-anchor="middle" fill="var(--muted)">PG/Redis/CH</text>
+  <rect x="360" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="414" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 重置库</text>
+  <text x="414" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">PG / ClickHouse</text>
+  <rect x="476" y="76" width="108" height="72" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ db:seed</text>
+  <text x="530" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">灌示例数据</text>
+  <rect x="592" y="76" width="108" height="72" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="646" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑥ dev</text>
+  <text x="646" y="118" font-size="7.5" text-anchor="middle" fill="var(--accent-ink)">✓ 跑起来</text>
+  <line x1="120" y1="112" x2="128" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="236" y1="112" x2="244" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="352" y1="112" x2="360" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="468" y1="112" x2="476" y2="112" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="584" y1="112" x2="592" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="356" y="176" font-size="9.5" text-anchor="middle" fill="var(--muted)">变体：dx-f 强制重置 · dx:skip-infra 跳过基础设施 · --filter 缩到单个包</text>
+</svg>
+
 <p>测试数据则交给 <strong>seed CLI</strong>（<code>packages/shared/scripts/seeder/</code>）：它能按<strong>场景（scenario）</strong>生成逼真的 trace/observation/score、长会话、大批量数据——用来本地调试、压列表性能、复现 bug。这比手写 SQL insert 或往 ClickHouse 里硬塞数据靠谱得多，也是「让 bug 可廉价复现」的关键工具。</p>
 
 <table class="t">
@@ -1627,6 +1906,37 @@ _EN53.append(r"""
 _EN53.append(r"""
 <h2>One-command dev: from empty environment to running, in one step</h2>
 <p>How much must a newcomer do after cloning the code to get it running? Install deps, start DB/Redis/ClickHouse, create tables, seed test data, then launch… a dozen manual steps, one slip and you're stuck for hours. Langfuse compresses this long chain into one command, <code>dx</code> (developer experience): <code>pnpm i</code> installs deps → <code>infra:dev:up</code> brings up local infra via docker compose → resets PG/ClickHouse → <code>db:seed:examples</code> seeds example data → <code>dev</code> runs it. There are also <code>dx-f</code> (force reset), <code>dx:skip-infra</code> (skip infra), and other variants for different scenarios. All commands go through <code>turbo run</code> or <code>pnpm --filter</code>, and <strong>--filter scopes an operation precisely to a single package</strong> (<code>dev:web</code> = <code>turbo run dev --filter=web</code>).</p>
+
+<svg viewBox="0 0 720 190" role="img" aria-label="one command pnpm dx from empty environment to running: 1 clone empty env → 2 pnpm i install deps → 3 infra:dev:up brings up PG/Redis/ClickHouse via docker → 4 reset PG and ClickHouse → 5 db:seed:examples seeds example data → 6 dev runs it; variants include dx-f force reset and dx:skip-infra skip infra, and --filter scopes to a single package">
+  <rect x="0" y="0" width="720" height="190" fill="var(--bg)"></rect>
+  <rect x="12" y="38" width="688" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="356" y="56" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one command pnpm dx: from empty environment to running, in one step</text>
+  <rect x="12" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 clone</text>
+  <text x="66" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">empty env</text>
+  <rect x="128" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="182" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 pnpm i</text>
+  <text x="182" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">install deps</text>
+  <rect x="244" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="298" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 infra:dev:up</text>
+  <text x="298" y="116" font-size="7" text-anchor="middle" fill="var(--muted)">docker brings up</text>
+  <text x="298" y="130" font-size="7" text-anchor="middle" fill="var(--muted)">PG/Redis/CH</text>
+  <rect x="360" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="414" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 reset DBs</text>
+  <text x="414" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">PG / ClickHouse</text>
+  <rect x="476" y="76" width="108" height="72" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 db:seed</text>
+  <text x="530" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">example data</text>
+  <rect x="592" y="76" width="108" height="72" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="646" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">6 dev</text>
+  <text x="646" y="118" font-size="7.5" text-anchor="middle" fill="var(--accent-ink)">✓ running</text>
+  <line x1="120" y1="112" x2="128" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="236" y1="112" x2="244" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="352" y1="112" x2="360" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="468" y1="112" x2="476" y2="112" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="584" y1="112" x2="592" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="356" y="176" font-size="9.5" text-anchor="middle" fill="var(--muted)">variants: dx-f force reset · dx:skip-infra skip infra · --filter scopes to a single package</text>
+</svg>
 
 <p>Test data is handled by the <strong>seed CLI</strong> (<code>packages/shared/scripts/seeder/</code>): it generates realistic trace/observation/score, long sessions, bulk data by <strong>scenario</strong> — for local debugging, stress-testing list performance, reproducing bugs. This is far more reliable than hand-writing SQL inserts or force-stuffing ClickHouse, and is a key tool for "making bugs cheaply reproducible."</p>
 

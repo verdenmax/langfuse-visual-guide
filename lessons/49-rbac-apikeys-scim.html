@@ -447,6 +447,30 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>SCIM：让企业身份系统自动开通用户</h2>
 <p>大企业有几千名员工，进出职频繁。靠管理员手动在 Langfuse 里一个个加人、离职再删人，既慢又容易漏（漏删 = 离职员工还能访问，是安全隐患）。<strong>SCIM（System for Cross-domain Identity Management，跨域身份管理系统）</strong>是一套标准协议，让企业的身份中枢（如 Okta、Azure AD）能<strong>自动</strong>把「谁该有账号」同步过来：入职自动开通、离职自动注销。Langfuse 在 <code>web/src/pages/api/public/scim/*</code> 实现了 SCIM 的标准端点——<code>Users</code>（增删查用户）、<code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code>（向 IdP 自描述「我支持哪些 SCIM 能力」）。这属于企业级（EE）能力，正好引出下一课的「开源核与权益」。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="SCIM 自动开通流程：企业身份中枢 Okta 或 Azure AD 通过 SCIM 标准端点把谁该有账号推送给 Langfuse，Users 端点增删查用户，ServiceProviderConfig、ResourceTypes、Schemas 向 IdP 自描述能力；于是员工入职自动开通账号、离职自动注销，堵住漏删导致离职员工仍可访问的安全隐患">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SCIM：IdP 自动同步「谁该有账号」</text>
+  <rect x="16" y="74" width="160" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="96" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">企业身份中枢</text>
+  <text x="96" y="118" font-size="9.5" text-anchor="middle" fill="var(--muted)">Okta / Azure AD</text>
+  <rect x="224" y="40" width="232" height="134" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="60" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">SCIM 标准端点（scim/*）</text>
+  <rect x="236" y="70" width="208" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="88" font-size="9.5" text-anchor="middle" fill="var(--ink)">Users（增删查用户）</text>
+  <rect x="236" y="104" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="121" font-size="9" text-anchor="middle" fill="var(--muted)">ServiceProviderConfig</text>
+  <rect x="236" y="134" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="151" font-size="9" text-anchor="middle" fill="var(--muted)">ResourceTypes / Schemas（自描述）</text>
+  <rect x="504" y="56" width="200" height="110" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="604" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse 用户生命周期</text>
+  <text x="604" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">入职 → 自动开通 provision</text>
+  <text x="604" y="124" font-size="9.5" text-anchor="middle" fill="var(--ink)">离职 → 自动注销 deprovision</text>
+  <text x="604" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">漏删=隐患，自动注销堵住</text>
+  <line x1="176" y1="105" x2="224" y2="107" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="200" y="98" font-size="8.5" text-anchor="middle" fill="var(--muted)">推送</text>
+  <line x1="456" y1="100" x2="504" y2="100" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>授权对象</th><th>机制</th><th>怎么判</th><th>关键设计</th></tr></thead>
   <tbody>
@@ -626,6 +650,30 @@ You'll repeatedly see two security creeds here: <strong>least privilege</strong>
 
 <h2>SCIM: letting the enterprise identity system auto-provision users</h2>
 <p>A large enterprise has thousands of employees, joining and leaving constantly. Relying on an admin to manually add people one by one in Langfuse and delete them on departure is slow and error-prone (a missed deletion = a departed employee still has access, a security hazard). <strong>SCIM (System for Cross-domain Identity Management)</strong> is a standard protocol letting an enterprise's identity hub (Okta, Azure AD) <strong>automatically</strong> sync "who should have an account": auto-provision on joining, auto-deprovision on leaving. Langfuse implements the standard SCIM endpoints in <code>web/src/pages/api/public/scim/*</code> — <code>Users</code> (create/delete/list users), <code>ServiceProviderConfig</code>/<code>ResourceTypes</code>/<code>Schemas</code> (self-describe to the IdP "which SCIM capabilities I support"). This is an enterprise (EE) capability, neatly leading into the next lesson's "open-core & entitlements."</p>
+
+<svg viewBox="0 0 720 210" role="img" aria-label="SCIM auto-provisioning flow: an enterprise identity hub Okta or Azure AD pushes who should have an account to Langfuse through standard SCIM endpoints; the Users endpoint creates/deletes/lists users, while ServiceProviderConfig, ResourceTypes and Schemas self-describe capabilities to the IdP; so employees are auto-provisioned on joining and auto-deprovisioned on leaving, closing the security hazard of a missed deletion leaving a departed employee with access">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SCIM: the IdP auto-syncs "who should have an account"</text>
+  <rect x="16" y="74" width="160" height="62" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="96" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">identity hub</text>
+  <text x="96" y="118" font-size="9.5" text-anchor="middle" fill="var(--muted)">Okta / Azure AD</text>
+  <rect x="224" y="40" width="232" height="134" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="60" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">SCIM standard endpoints (scim/*)</text>
+  <rect x="236" y="70" width="208" height="28" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="88" font-size="9.5" text-anchor="middle" fill="var(--ink)">Users (create/delete/list)</text>
+  <rect x="236" y="104" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="121" font-size="9" text-anchor="middle" fill="var(--muted)">ServiceProviderConfig</text>
+  <rect x="236" y="134" width="208" height="26" rx="5" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="340" y="151" font-size="9" text-anchor="middle" fill="var(--muted)">ResourceTypes / Schemas (self-describe)</text>
+  <rect x="504" y="56" width="200" height="110" rx="10" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="604" y="78" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Langfuse user lifecycle</text>
+  <text x="604" y="102" font-size="9.5" text-anchor="middle" fill="var(--ink)">join → auto-provision</text>
+  <text x="604" y="124" font-size="9.5" text-anchor="middle" fill="var(--ink)">leave → auto-deprovision</text>
+  <text x="604" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">missed deletion = hazard, closed</text>
+  <line x1="176" y1="105" x2="224" y2="107" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="200" y="98" font-size="8.5" text-anchor="middle" fill="var(--muted)">push</text>
+  <line x1="456" y1="100" x2="504" y2="100" stroke="var(--teal)" stroke-width="2"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>Subject</th><th>Mechanism</th><th>How it's judged</th><th>Key design</th></tr></thead>

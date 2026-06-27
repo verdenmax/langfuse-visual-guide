@@ -439,6 +439,37 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>一键开发流：从空环境到能跑，一步到位</h2>
 <p>一个新人 clone 下代码，要跑起来得做多少事？装依赖、起数据库/Redis/ClickHouse、建表、灌测试数据、再启动……手动来十几步，错一步就卡半天。Langfuse 把这一长串<strong>压成一条命令</strong> <code>dx</code>（developer experience）：<code>pnpm i</code> 装依赖 → <code>infra:dev:up</code> 用 docker compose 拉起本地基础设施 → 重置 PG/ClickHouse → <code>db:seed:examples</code> 灌示例数据 → <code>dev</code> 跑起来。还有 <code>dx-f</code>（强制重置）、<code>dx:skip-infra</code>（跳过基础设施）等变体应对不同场景。所有命令都走 <code>turbo run</code> 或 <code>pnpm --filter</code>，<strong>--filter 能把操作精确缩到单个包</strong>（<code>dev:web</code> = <code>turbo run dev --filter=web</code>）。</p>
 
+<svg viewBox="0 0 720 190" role="img" aria-label="一条命令 pnpm dx 从空环境到能跑：① clone 空环境 → ② pnpm i 装依赖 → ③ infra:dev:up 用 docker 起 PG/Redis/ClickHouse → ④ 重置 PG 与 ClickHouse → ⑤ db:seed:examples 灌示例数据 → ⑥ dev 跑起来；变体有 dx-f 强制重置、dx:skip-infra 跳过基础设施，--filter 缩到单包">
+  <rect x="0" y="0" width="720" height="190" fill="var(--bg)"></rect>
+  <rect x="12" y="38" width="688" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="356" y="56" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一条命令 pnpm dx：从空环境到能跑，一步到位</text>
+  <rect x="12" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① clone</text>
+  <text x="66" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">空环境</text>
+  <rect x="128" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="182" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② pnpm i</text>
+  <text x="182" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">装依赖</text>
+  <rect x="244" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="298" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ infra:dev:up</text>
+  <text x="298" y="116" font-size="7" text-anchor="middle" fill="var(--muted)">docker 起</text>
+  <text x="298" y="130" font-size="7" text-anchor="middle" fill="var(--muted)">PG/Redis/CH</text>
+  <rect x="360" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="414" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 重置库</text>
+  <text x="414" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">PG / ClickHouse</text>
+  <rect x="476" y="76" width="108" height="72" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ db:seed</text>
+  <text x="530" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">灌示例数据</text>
+  <rect x="592" y="76" width="108" height="72" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="646" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑥ dev</text>
+  <text x="646" y="118" font-size="7.5" text-anchor="middle" fill="var(--accent-ink)">✓ 跑起来</text>
+  <line x1="120" y1="112" x2="128" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="236" y1="112" x2="244" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="352" y1="112" x2="360" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="468" y1="112" x2="476" y2="112" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="584" y1="112" x2="592" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="356" y="176" font-size="9.5" text-anchor="middle" fill="var(--muted)">变体：dx-f 强制重置 · dx:skip-infra 跳过基础设施 · --filter 缩到单个包</text>
+</svg>
+
 <p>测试数据则交给 <strong>seed CLI</strong>（<code>packages/shared/scripts/seeder/</code>）：它能按<strong>场景（scenario）</strong>生成逼真的 trace/observation/score、长会话、大批量数据——用来本地调试、压列表性能、复现 bug。这比手写 SQL insert 或往 ClickHouse 里硬塞数据靠谱得多，也是「让 bug 可廉价复现」的关键工具。</p>
 
 <table class="t">
@@ -614,6 +645,37 @@ As the close of Part 10 (Platform & Operations), this lesson is about the <stron
 
 <h2>One-command dev: from empty environment to running, in one step</h2>
 <p>How much must a newcomer do after cloning the code to get it running? Install deps, start DB/Redis/ClickHouse, create tables, seed test data, then launch… a dozen manual steps, one slip and you're stuck for hours. Langfuse compresses this long chain into one command, <code>dx</code> (developer experience): <code>pnpm i</code> installs deps → <code>infra:dev:up</code> brings up local infra via docker compose → resets PG/ClickHouse → <code>db:seed:examples</code> seeds example data → <code>dev</code> runs it. There are also <code>dx-f</code> (force reset), <code>dx:skip-infra</code> (skip infra), and other variants for different scenarios. All commands go through <code>turbo run</code> or <code>pnpm --filter</code>, and <strong>--filter scopes an operation precisely to a single package</strong> (<code>dev:web</code> = <code>turbo run dev --filter=web</code>).</p>
+
+<svg viewBox="0 0 720 190" role="img" aria-label="one command pnpm dx from empty environment to running: 1 clone empty env → 2 pnpm i install deps → 3 infra:dev:up brings up PG/Redis/ClickHouse via docker → 4 reset PG and ClickHouse → 5 db:seed:examples seeds example data → 6 dev runs it; variants include dx-f force reset and dx:skip-infra skip infra, and --filter scopes to a single package">
+  <rect x="0" y="0" width="720" height="190" fill="var(--bg)"></rect>
+  <rect x="12" y="38" width="688" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="356" y="56" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one command pnpm dx: from empty environment to running, in one step</text>
+  <rect x="12" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 clone</text>
+  <text x="66" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">empty env</text>
+  <rect x="128" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="182" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 pnpm i</text>
+  <text x="182" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">install deps</text>
+  <rect x="244" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="298" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 infra:dev:up</text>
+  <text x="298" y="116" font-size="7" text-anchor="middle" fill="var(--muted)">docker brings up</text>
+  <text x="298" y="130" font-size="7" text-anchor="middle" fill="var(--muted)">PG/Redis/CH</text>
+  <rect x="360" y="76" width="108" height="72" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="414" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 reset DBs</text>
+  <text x="414" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">PG / ClickHouse</text>
+  <rect x="476" y="76" width="108" height="72" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 db:seed</text>
+  <text x="530" y="118" font-size="7.5" text-anchor="middle" fill="var(--muted)">example data</text>
+  <rect x="592" y="76" width="108" height="72" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="646" y="100" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">6 dev</text>
+  <text x="646" y="118" font-size="7.5" text-anchor="middle" fill="var(--accent-ink)">✓ running</text>
+  <line x1="120" y1="112" x2="128" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="236" y1="112" x2="244" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="352" y1="112" x2="360" y2="112" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="468" y1="112" x2="476" y2="112" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="584" y1="112" x2="592" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="356" y="176" font-size="9.5" text-anchor="middle" fill="var(--muted)">variants: dx-f force reset · dx:skip-infra skip infra · --filter scopes to a single package</text>
+</svg>
 
 <p>Test data is handled by the <strong>seed CLI</strong> (<code>packages/shared/scripts/seeder/</code>): it generates realistic trace/observation/score, long sessions, bulk data by <strong>scenario</strong> — for local debugging, stress-testing list performance, reproducing bugs. This is far more reliable than hand-writing SQL inserts or force-stuffing ClickHouse, and is a key tool for "making bugs cheaply reproducible."</p>
 

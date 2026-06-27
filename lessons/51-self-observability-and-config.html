@@ -438,6 +438,28 @@ Langfuse 是一个<strong>帮你观测 LLM 应用</strong>的工具。那它自�
 
 <p>这带来两个硬好处：① <strong>fail-fast（快速失败）</strong>——配置不合法，<strong>启动那一刻就当场报清晰的错</strong>（「DATABASE_URL 不是合法 URL」），而不是带病运行、半夜崩给你看。② <strong>server/client 边界</strong>——<code>createEnv</code> 强制区分「只能在服务端用的密钥」和「能打进前端包的公开配置」，<strong>从机制上防止你手滑把数据库密码泄露进浏览器</strong>。配置不再是「一堆 <code>process.env.XXX</code> 散落各处、类型全靠猜」，而是一份<strong>声明式、类型安全、边界清晰</strong>的契约。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="配置即校验：原始 env（process.env，类型都是 string 或 undefined）先过 Zod 校验（共享层 EnvSchema = z.object，web 层 createEnv 分 server 与 client），得到三个硬好处：不合法则 fail-fast 启动当场报清晰错、合法则 z.coerce 转数字 z.enum 限取值类型安全、server 密钥与 client NEXT_PUBLIC 公开配置强制隔离防泄露">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">配置即校验：启动时过 Zod，错配当场暴露</text>
+  <rect x="14" y="82" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="104" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">原始 env</text>
+  <text x="89" y="121" font-size="8.5" text-anchor="middle" fill="var(--muted)">process.env · string|undefined</text>
+  <rect x="200" y="70" width="200" height="80" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="300" y="98" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Zod 校验</text>
+  <text x="300" y="118" font-size="8.5" text-anchor="middle" fill="var(--muted)">EnvSchema = z.object</text>
+  <text x="300" y="134" font-size="8.5" text-anchor="middle" fill="var(--muted)">+ createEnv(server/client)</text>
+  <rect x="438" y="60" width="266" height="38" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="452" y="84" font-size="9.5" fill="var(--accent-ink)">✗ 不合法 → fail-fast 启动报错</text>
+  <rect x="438" y="104" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="452" y="128" font-size="9.5" fill="var(--ink)">✓ 类型安全 z.coerce / z.enum</text>
+  <rect x="438" y="148" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="452" y="172" font-size="9.5" fill="var(--ink)">server | client 边界（防密钥泄露）</text>
+  <line x1="164" y1="110" x2="200" y2="110" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="400" y1="98" x2="438" y2="79" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="400" y1="110" x2="438" y2="123" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="400" y1="124" x2="438" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>没有校验（裸 process.env）</th><th>Langfuse 的 Zod 校验</th></tr></thead>
   <tbody>
@@ -609,6 +631,28 @@ In a sentence: a mature platform is not only observable but <strong>eats its own
 <p>A platform has dozens to hundreds of environment variables (DB address, Redis, secrets, various toggles). If one is wrong or missing, the worst case is the <strong>program starts anyway and crashes mysteriously mid-run</strong> — and the reported error is often light-years from the true root cause. Langfuse's countermeasure is to <strong>run all env through Zod validation</strong>: the shared layer uses <code>EnvSchema = z.object({...})</code> to declare each variable's type and constraints (e.g. <code>REDIS_PORT</code> uses <code>z.coerce.number()</code> to turn a string into a number, <code>REDIS_TLS_ENABLED</code> can only be <code>"true"|"false"</code>); the web layer uses <code>@t3-oss/env-nextjs</code>'s <code>createEnv</code> to split env into <strong>server</strong> (server-only, like <code>DATABASE_URL</code>) and <strong>client</strong> (may reach the browser, must have a <code>NEXT_PUBLIC_</code> prefix).</p>
 
 <p>This brings two hard wins: ① <strong>fail-fast</strong> — invalid config <strong>errors clearly the moment of startup</strong> ("DATABASE_URL is not a valid URL"), rather than running impaired and crashing on you at midnight. ② <strong>server/client boundary</strong> — <code>createEnv</code> forces a distinction between "secrets usable only server-side" and "public config that can ship in the front-end bundle," <strong>mechanically preventing you from fat-fingering a DB password into the browser</strong>. Config is no longer "a pile of <code>process.env.XXX</code> scattered everywhere, types all guesswork" but a <strong>declarative, type-safe, boundary-clear</strong> contract.</p>
+
+<svg viewBox="0 0 720 210" role="img" aria-label="config as validation: raw env (process.env, all string or undefined) first passes Zod validation (shared EnvSchema = z.object, web createEnv splitting server and client), yielding three hard wins — invalid config fails fast with a clear boot error, valid config is type-safe via z.coerce and z.enum, and server secrets are mechanically isolated from client NEXT_PUBLIC config to prevent leaks">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">config as validation: pass Zod at boot, surface misconfig on the spot</text>
+  <rect x="14" y="82" width="150" height="56" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="104" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">raw env</text>
+  <text x="89" y="121" font-size="8.5" text-anchor="middle" fill="var(--muted)">process.env · string|undefined</text>
+  <rect x="200" y="70" width="200" height="80" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="300" y="98" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Zod validation</text>
+  <text x="300" y="118" font-size="8.5" text-anchor="middle" fill="var(--muted)">EnvSchema = z.object</text>
+  <text x="300" y="134" font-size="8.5" text-anchor="middle" fill="var(--muted)">+ createEnv(server/client)</text>
+  <rect x="438" y="60" width="266" height="38" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="452" y="84" font-size="9.5" fill="var(--accent-ink)">✗ invalid → fail-fast boot error</text>
+  <rect x="438" y="104" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="452" y="128" font-size="9.5" fill="var(--ink)">✓ type-safe z.coerce / z.enum</text>
+  <rect x="438" y="148" width="266" height="38" rx="7" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="452" y="172" font-size="9.5" fill="var(--ink)">server | client boundary (no leaks)</text>
+  <line x1="164" y1="110" x2="200" y2="110" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="400" y1="98" x2="438" y2="79" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="400" y1="110" x2="438" y2="123" stroke="var(--teal)" stroke-width="2"></line>
+  <line x1="400" y1="124" x2="438" y2="167" stroke="var(--blue)" stroke-width="2"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>No validation (raw process.env)</th><th>Langfuse's Zod validation</th></tr></thead>

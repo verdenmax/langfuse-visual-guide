@@ -438,6 +438,29 @@ Langfuse 是<strong>开源</strong>的——你现在读的这套源码，从摄
 <h2>自托管的解锁钥匙：EE 许可证</h2>
 <p>云上版本由 Langfuse 托管，plan 写在数据库里。但<strong>自己部署</strong>的版本怎么证明「我买了企业版」？靠一把<strong>许可证密钥</strong>。<code>isEnterpriseLicenseAvailable()</code> 的判断很干脆：<strong>① 是 Langfuse Cloud（任何区域）→ 直接有企业功能</strong>；<strong>② 自托管 → 看环境变量 <code>LANGFUSE_EE_LICENSE_KEY</code> 是否以 <code>langfuse_ee_</code> 开头</strong>。注意一个细节：<code>langfuse_pro_</code> 开头的 Pro 许可证<strong>不算</strong>企业级——前缀本身就编码了授权层级。这把钥匙插对了，自托管实例才解锁那些企业 entitlement。</p>
 
+<svg viewBox="0 0 720 215" role="img" aria-label="isEnterpriseLicenseAvailable 的判断：① 是 Langfuse Cloud 任意区域则直接有企业功能；② 自托管则看环境变量 LANGFUSE_EE_LICENSE_KEY 的前缀，langfuse_ee_ 开头解锁企业 entitlement，langfuse_pro_ 开头是 Pro 不算企业，无或其它前缀兜底到 oss 免费；前缀本身编码了授权层级">
+  <rect x="0" y="0" width="720" height="215" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">isEnterpriseLicenseAvailable()：前缀编码授权层级</text>
+  <rect x="14" y="84" width="104" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="106" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">实例</text>
+  <text x="66" y="123" font-size="8.5" text-anchor="middle" fill="var(--muted)">部署形态？</text>
+  <rect x="140" y="46" width="250" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="265" y="71" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① Cloud（任意区域）→ 有企业功能</text>
+  <rect x="140" y="104" width="250" height="42" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="265" y="129" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 自托管 → 看 EE_LICENSE_KEY 前缀</text>
+  <line x1="118" y1="100" x2="140" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="118" y1="116" x2="140" y2="125" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="430" y="92" width="274" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="444" y="113" font-size="9.5" fill="var(--accent-ink)">langfuse_ee_ → ✓ 企业 entitlement</text>
+  <rect x="430" y="130" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="151" font-size="9.5" fill="var(--ink)">langfuse_pro_ → Pro（不算企业）</text>
+  <rect x="430" y="168" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="189" font-size="9.5" fill="var(--muted)">无 / 其它 → oss 兜底免费</text>
+  <line x1="390" y1="125" x2="430" y2="109" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="390" y1="125" x2="430" y2="147" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="390" y1="125" x2="430" y2="185" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
+
 <table class="t">
   <thead><tr><th>问题</th><th>open-core 的答案</th></tr></thead>
   <tbody>
@@ -609,6 +632,29 @@ This lesson shows how that "ticket system" is implemented with very little code:
 
 <h2>The self-hosted unlock key: the EE license</h2>
 <p>The cloud version is hosted by Langfuse, with the plan written in the database. But how does a <strong>self-deployed</strong> version prove "I bought enterprise"? Via a <strong>license key</strong>. <code>isEnterpriseLicenseAvailable()</code>'s decision is crisp: <strong>① is it Langfuse Cloud (any region) → enterprise features directly</strong>; <strong>② self-hosted → check whether the env var <code>LANGFUSE_EE_LICENSE_KEY</code> starts with <code>langfuse_ee_</code></strong>. Note one detail: a Pro license starting with <code>langfuse_pro_</code> does <strong>not</strong> count as enterprise — the prefix itself encodes the authorization tier. With this key plugged in correctly, a self-hosted instance unlocks those enterprise entitlements.</p>
+
+<svg viewBox="0 0 720 215" role="img" aria-label="isEnterpriseLicenseAvailable's decision: 1 if it is Langfuse Cloud (any region) you directly get enterprise features; 2 if self-hosted, check the LANGFUSE_EE_LICENSE_KEY prefix — langfuse_ee_ unlocks enterprise entitlements, langfuse_pro_ is Pro and does not count as enterprise, and none or other prefixes fall back to free oss; the prefix itself encodes the authorization tier">
+  <rect x="0" y="0" width="720" height="215" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">isEnterpriseLicenseAvailable(): the prefix encodes the tier</text>
+  <rect x="14" y="84" width="104" height="52" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="66" y="106" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">instance</text>
+  <text x="66" y="123" font-size="8.5" text-anchor="middle" fill="var(--muted)">deployment?</text>
+  <rect x="140" y="46" width="250" height="42" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="265" y="71" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 Cloud (any region) → enterprise</text>
+  <rect x="140" y="104" width="250" height="42" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="265" y="129" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 self-host → check key prefix</text>
+  <line x1="118" y1="100" x2="140" y2="67" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="118" y1="116" x2="140" y2="125" stroke="var(--blue)" stroke-width="2"></line>
+  <rect x="430" y="92" width="274" height="34" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="444" y="113" font-size="9.5" fill="var(--accent-ink)">langfuse_ee_ → ✓ enterprise entitlement</text>
+  <rect x="430" y="130" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="151" font-size="9.5" fill="var(--ink)">langfuse_pro_ → Pro (not enterprise)</text>
+  <rect x="430" y="168" width="274" height="34" rx="7" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="444" y="189" font-size="9.5" fill="var(--muted)">none / other → oss free fallback</text>
+  <line x1="390" y1="125" x2="430" y2="109" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="390" y1="125" x2="430" y2="147" stroke="var(--faint)" stroke-width="1.3"></line>
+  <line x1="390" y1="125" x2="430" y2="185" stroke="var(--faint)" stroke-width="1.3"></line>
+</svg>
 
 <table class="t">
   <thead><tr><th>Question</th><th>Open-core's answer</th></tr></thead>
