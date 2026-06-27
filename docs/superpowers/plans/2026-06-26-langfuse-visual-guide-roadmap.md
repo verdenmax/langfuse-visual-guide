@@ -20,7 +20,7 @@ source-fidelity + dual review) → fix → commit**. See spec §6 for the audit 
 | M6 | Parts 6+7 · 数据集/实验 + Prompt/Playground | L34–L39 | ☑ done |
 | M7 | Parts 8+9 · 仪表盘/成本 + 自动化/集成 | L40–L47 | ☑ done |
 | M8 | Part 10 · 平台与运维 | L48–L53 | ☑ done |
-| M9 | Part 11 · 设计专题与终章 + 全局打磨 | L54–L55 | ☐ todo |
+| M9 | Part 11 · 设计专题与终章 + 全局打磨 | L54–L55 | ☑ done |
 
 Legend: ☐ todo · ◐ in progress · ☑ done (built + audited + committed).
 
