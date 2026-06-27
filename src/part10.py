@@ -1118,3 +1118,264 @@ _EN51.append(r"""
 """)
 
 LESSON_51 = {"zh": "\n".join(_ZH51), "en": "\n".join(_EN51)}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# L52 · 数据生命周期与删除 / Data lifecycle & deletion
+# ══════════════════════════════════════════════════════════════════════
+_ZH52 = []
+_EN52 = []
+
+# (L52 sections below)
+
+_ZH52.append(r"""
+<p class="lead">
+数据有<strong>一生</strong>：被摄取写入（出生）、被查询分析（活着）、最终被删除（落幕）。前面的课讲足了「写」和「读」，这一课讲<strong>「删」</strong>——以及一个容易被忽略却很关键的事实：在 Langfuse 里，<strong>一条 trace 不是一行数据，而是散在三个存储里的三份</strong>：元数据在 <strong>Postgres</strong>、海量事件在 <strong>ClickHouse</strong>、大块输入输出/媒体在 <strong>对象存储（S3）</strong>。所以「删一条 trace / 删一个项目 / 按保留期清旧数据」都不是删一行那么简单，而是要<strong>跨三个存储协调一致地删干净</strong>——漏删任何一处，都是数据残留（合规与隐私的隐患）。
+这一课讲三种删除（按保留期自动清理、按需删 trace、级联删项目）怎么跨存储删、为什么删除有讲究的<strong>顺序</strong>；最后看<strong>后台迁移</strong>——怎么在不停机的前提下，给亿万行的表「在线做手术」。
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 生活类比</div>
+  把一条 trace 想成一份<strong>跨三个档案室存放的卷宗</strong>：<strong>登记处（Postgres）</strong>有它的索引卡（谁、何时、属于哪个项目），<strong>主库房（ClickHouse）</strong>有它海量的明细记录，<strong>大件仓库（S3）</strong>放着它体积过大的附件（完整输入输出、上传的图片）。
+  现在要「<strong>销毁</strong>」这份卷宗——只撕掉登记处那张索引卡，可远远不够：主库房的明细、大件仓库的附件<strong>还在</strong>，这就是数据残留。真正的销毁必须<strong>三个档案室一处不漏地清</strong>。而且销毁<strong>有讲究的次序</strong>：要<strong>先清主库房和大件仓库、最后才撕登记处的卡</strong>——因为那张索引卡是「这份卷宗还没销毁完」的唯一凭据，万一中途断电，靠它才能知道「还得回来接着销毁」；要是先撕了卡，剩下的明细和附件就成了<strong>没人认领的孤儿</strong>，再也对不上是谁的了。
+</div>
+""")
+
+# (L52 sec1 below)
+
+_ZH52.append(r"""
+<h2>一条 trace 散在三处：删除要跨存储</h2>
+<p>回顾全书的存储分工：<strong>Postgres</strong> 存配置与元数据（项目、用户、API key、各种设置）；<strong>ClickHouse</strong> 存海量、可分析的事件（trace/observation/score，第3-4部分的主角）；<strong>对象存储 S3</strong> 存体积大的原始负载（完整的输入输出、上传的媒体）。这套分工让读写各得其所，但也意味着：<strong>删除必须同时清三处</strong>。以「删整个项目」为例，<code>projectDeleteProcessor</code> 的顺序很讲究——<strong>先并行清 ClickHouse 与 S3</strong>（traces/observations/scores/events + blob 引用），<strong>清完才删 Postgres</strong>。这个「PG 最后删」不是随意的：Postgres 里的项目记录是<strong>「这个项目还没删完」的锚点</strong>，留到最后，万一中途崩了还能靠它重试；若先删 PG，剩下的 CH/S3 数据就成了无主孤儿，再难清理。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="一条trace散在三个存储：Postgres存元数据、ClickHouse存海量事件、S3存大块负载；删项目时projectDelete先并行清ClickHouse(traces/observations/scores/events)和S3(blob引用)，清完才删Postgres——PG记录是重试锚点留到最后，先删PG会让CH/S3数据成孤儿">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一条 trace = 三个存储里的三份，删除要清干净</text>
+  <rect x="40" y="44" width="180" height="58" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres</text><text x="130" y="80" text-anchor="middle" font-size="6.4" fill="var(--muted)">元数据：项目/用户/key/设置</text><text x="130" y="93" text-anchor="middle" font-size="6.0" fill="var(--faint)">「源真相」+ 重试锚点</text>
+  <rect x="40" y="112" width="180" height="54" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="132" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="130" y="148" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">海量事件 trace/obs/score/event</text><text x="130" y="160" text-anchor="middle" font-size="6.0" fill="var(--faint)">可分析的明细</text>
+  <rect x="40" y="176" width="180" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="130" y="196" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">对象存储 S3</text><text x="130" y="212" text-anchor="middle" font-size="6.4" fill="var(--muted)">大块负载：完整输入输出/媒体</text>
+  <rect x="290" y="92" width="180" height="92" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="380" y="112" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">projectDelete 顺序</text><text x="380" y="130" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① 并行清 CH + S3</text><text x="380" y="143" text-anchor="middle" font-size="6.2" fill="var(--muted)">Promise.all(traces,obs,scores,</text><text x="380" y="154" text-anchor="middle" font-size="6.2" fill="var(--muted)">events, blob 引用)</text><text x="380" y="170" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">② 最后才删 Postgres</text>
+  <rect x="520" y="70" width="175" height="60" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="607" y="90" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">为何 PG 留到最后？</text><text x="607" y="106" text-anchor="middle" font-size="6.0" fill="var(--muted)">它是「还没删完」的锚点</text><text x="607" y="118" text-anchor="middle" font-size="6.0" fill="var(--muted)">崩了能靠它重试</text>
+  <rect x="520" y="142" width="175" height="56" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="607" y="162" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">若先删 PG？</text><text x="607" y="178" text-anchor="middle" font-size="6.0" fill="var(--muted)">CH/S3 数据成无主孤儿</text><text x="607" y="190" text-anchor="middle" font-size="6.0" fill="var(--muted)">再难对上、难清理</text>
+  <line x1="220" y1="73" x2="288" y2="120" stroke="var(--accent)" stroke-width="1.2"/><line x1="220" y1="139" x2="288" y2="138" stroke="var(--accent)" stroke-width="1.2"/><line x1="220" y1="200" x2="288" y2="156" stroke="var(--accent)" stroke-width="1.2"/>
+  <line x1="470" y1="120" x2="518" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="470" y1="160" x2="518" y2="165" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>跨存储删除</b>：<code>projectDelete.ts:22 projectDeleteProcessor</code>——<code>Promise.all</code> 先清 ClickHouse（<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4 的 <code>deleteEventsByProjectId</code>）与 S3（<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>），再删 dataset run items，<strong>最后删 Postgres</strong>。注释明确「Delete project data from ClickHouse first」。</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">元数据</span><span class="name">Postgres（最后删）</span></div><div class="ld">项目、用户、API key、各种配置——结构化、强一致、量不大。它是整个系统的「源真相」，删除流程里<strong>留到最后</strong>：作为「这条删除还没完成」的锚点，保证崩溃后能安全重试。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">事件</span><span class="name">ClickHouse（先删）</span></div><div class="ld">trace/observation/score 这些海量、可分析的明细（第 3–4 部分讲过它为何用列存）。删除量可能巨大，用按 projectId / 按时间的批量删除，和 S3 并行清理。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">负载</span><span class="name">对象存储 S3（先删）</span></div><div class="ld">完整的输入输出、上传的媒体等大块二进制。删 CH 行的同时，也要把它在 S3 的对象和引用清掉——否则就是「指针没了、数据还占着空间」的泄漏。</div></div>
+</div>
+""")
+
+# (L52 sec2 below)
+
+_ZH52.append(r"""
+<h2>三种删除：按期清、按需删、级联删</h2>
+<p>Langfuse 有三类删除，场景不同但都要跨存储：<strong>① 数据保留（data retention）</strong>——自动、周期性、按年龄清旧数据。它是 EE 功能（第 50 课的 entitlement），每个项目可设 <code>retentionDays</code>；调度走<strong>和第 46 课一模一样的两级 fan-out</strong>：<code>dataRetentionProcessor</code> 找出设了保留期的项目、给每个派一个处理任务，<code>dataRetentionProcessingProcessor</code> 算出 <code>cutoffDate = 今天 − retentionDays</code>，删掉比它更老的 CH 数据与 S3 媒体。<strong>② trace 删除</strong>——按需删指定 trace（第 47 课批量操作的 <code>trace-delete</code> 就走它，<code>traceDeleteProcessor</code>）。<strong>③ 项目删除</strong>——级联删整个项目的所有数据（上一节的 <code>projectDeleteProcessor</code>）。</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>数据保留：调度 fan-out（EE）</h4><p><code>dataRetentionProcessor</code> 周期触发，查出设了 <code>retentionDays</code> 的项目，给每个项目派一个处理任务——和第 46 课分析集成<strong>同一套两级 fan-out</strong>骨架。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>数据保留：逐项目按龄清理</h4><p>每任务算 <code>cutoffDate = now − retentionDays</code>，<code>deleteTracesOlderThanDays</code> 等并行清 CH 的 traces/observations/scores/events，并清 S3 媒体——只删过期的，不动新数据。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>trace 删除：按需</h4><p>用户或第 47 课批量操作要删指定 trace，<code>traceDeleteProcessor</code> 按 traceIds 跨存储删（同样 CH + S3 一起清）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>项目删除：级联</h4><p>删整个项目时 <code>projectDeleteProcessor</code> 先并行清 CH + S3、再删 dataset run items、最后删 PG（上一节的「PG 留到最后」）。</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/dataRetention/handleDataRetentionProcessingJob.ts</span><span class="ln">按龄跨存储清理</span></div>
+  <pre class="code"><span class="cm">// 数据保留是 EE 功能：每个项目可设 retentionDays（第50课 entitlement）</span>
+<span class="kw">const</span> { retentionDays } = <span class="kw">await</span> prisma.project.<span class="fn">findUnique</span>({ where: { id: projectId },
+                                                       select: { retentionDays: <span class="kw">true</span> } });
+<span class="kw">if</span> (!retentionDays) <span class="kw">return</span>;                          <span class="cm">// 没设保留期 → 不清理</span>
+
+<span class="kw">const</span> cutoffDate = <span class="kw">new</span> Date(now − retentionDays * <span class="st">86400_000</span>);   <span class="cm">// 今天往前推 N 天</span>
+
+<span class="cm">// 跨存储并行清理「比 cutoff 更老」的数据：先 S3 媒体 + ClickHouse</span>
+<span class="kw">await</span> Promise.all([
+  <span class="fn">removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</span>(projectId, cutoffDate),
+  <span class="fn">deleteTracesOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteObservationsOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteScoresOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteEventsOlderThanDays</span>(projectId, cutoffDate),
+]);   <span class="cm">// 只删过期的，新数据原封不动</span></pre>
+</div>
+""")
+
+# (L52 sec3 below)
+
+_ZH52.append(r"""
+<h2>后台迁移：给亿万行的表「在线做手术」</h2>
+<p>数据生命周期还有一面：<strong>schema 演进</strong>。普通的数据库迁移（加个列、改个约束）能在部署时几秒内跑完。但 Langfuse 的 ClickHouse 里动辄<strong>几十亿行</strong>，要给它们<strong>回填一个新字段、或重组数据布局</strong>，可能要跑几小时——你不可能为此<strong>停机几小时</strong>。<code>BackgroundMigration</code> 就是为这种「大手术」设计的：把迁移做成一个<strong>能后台慢慢跑、能断点续传、全程不停机</strong>的长任务。</p>
+
+<p>它的模型（<code>schema.prisma:284</code>）藏着三个关键字段：<strong><code>state</code>（Json）</strong>——存「跑到哪了」的进度，崩溃重启后<strong>从这里接着跑</strong>（和第 46 课 <code>lastSyncAt</code> 水位线同一种「可恢复」智慧）；<strong><code>lockedAt</code>/<code>workerId</code></strong>——分布式锁，保证<strong>同一迁移只有一个 worker 在跑</strong>（多 worker 部署下不重复、不打架）；<strong><code>finishedAt</code>/<code>failedReason</code></strong>——记结果。<code>BackgroundMigrationManager</code> 用一个带<strong>心跳（heartbeat）</strong>的循环驱动它：持锁、跑一批、更新 state、续约心跳，直到完成。整个过程应用照常服务，用户无感。</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="后台迁移在线演进：BackgroundMigration模型有state(进度,崩溃从此续跑)、lockedAt/workerId(分布式锁,同一迁移只一个worker跑)、finishedAt/failedReason(结果)；Manager带心跳循环：持锁→跑一批→更新state→续心跳，直到完成，全程不停机应用照常服务">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">不停机给亿万行的表做手术：慢跑 + 续传 + 单跑</text>
+  <rect x="30" y="44" width="190" height="150" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="125" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">BackgroundMigration 模型</text>
+  <rect x="44" y="74" width="162" height="32" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="125" y="88" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">state (Json)</text><text x="125" y="100" text-anchor="middle" font-size="5.8" fill="var(--muted)">进度 → 崩溃从此续跑</text>
+  <rect x="44" y="112" width="162" height="32" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="125" y="126" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--ink)">lockedAt / workerId</text><text x="125" y="138" text-anchor="middle" font-size="5.8" fill="var(--muted)">分布式锁 → 只一个 worker 跑</text>
+  <rect x="44" y="150" width="162" height="32" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="125" y="164" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">finishedAt / failedReason</text><text x="125" y="176" text-anchor="middle" font-size="5.8" fill="var(--muted)">结果留痕</text>
+  <rect x="270" y="64" width="200" height="110" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="370" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Manager 心跳循环</text><text x="370" y="102" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">① 抢锁(lockedAt)</text><text x="370" y="116" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">② 跑一批</text><text x="370" y="130" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">③ 更新 state</text><text x="370" y="144" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">④ 续心跳 heartBeat</text><text x="370" y="160" text-anchor="middle" font-size="6.0" fill="var(--faint)">循环直到 finishedAt</text>
+  <rect x="520" y="78" width="175" height="82" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="607" y="98" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">不停机</text><text x="607" y="115" text-anchor="middle" font-size="6.2" fill="var(--muted)">应用照常服务</text><text x="607" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">用户无感</text><text x="607" y="144" text-anchor="middle" font-size="6.0" fill="var(--faint)">几小时的大手术</text><text x="607" y="154" text-anchor="middle" font-size="6.0" fill="var(--faint)">在后台慢慢完成</text>
+  <line x1="220" y1="119" x2="268" y2="119" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,119 259,115 259,123" fill="var(--accent)"/>
+  <line x1="470" y1="119" x2="518" y2="119" stroke="var(--teal)" stroke-width="1.4"/><polygon points="518,119 509,115 509,123" fill="var(--teal)"/>
+  <path d="M 440 150 q 30 24 -50 18" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><text x="408" y="184" text-anchor="middle" font-size="6" fill="var(--faint)">每批回写 state，可中断可续</text>
+</svg>
+<div class="figcap"><b>在线 schema 演进</b>：<code>schema.prisma:284 BackgroundMigration</code>（name 唯一、script、args、<code>state</code> Json 可恢复、finishedAt/failedAt/failedReason、<code>workerId</code>/<code>lockedAt</code> 锁）；<code>backgroundMigrationManager.ts:6</code> <code>BackgroundMigrationManager.run</code>（<code>:17 heartBeat</code> 心跳、<code>:42</code> while 循环、持锁跑批、<code>:127 migration.run(args)</code>），被 <code>instrumentAsync</code> 包裹。接口 <code>IBackgroundMigration</code>（validate/run/abort）。</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>挑战</th><th>普通迁移</th><th>后台迁移 BackgroundMigration</th></tr></thead>
+  <tbody>
+    <tr><td>给亿万行回填字段</td><td>部署时跑、可能要停机几小时</td><td><b>后台慢慢跑、不停机</b>，应用照常服务</td></tr>
+    <tr><td>中途崩了</td><td>要么回滚、要么从头再来</td><td><code>state</code> 记进度，<b>从断点续跑</b>（同第46课水位）</td></tr>
+    <tr><td>多 worker 部署</td><td>—</td><td><code>lockedAt</code>/<code>workerId</code> 锁，<b>同一迁移只一个在跑</b></td></tr>
+    <tr><td>跑到哪了 / 失败原因</td><td>看部署日志</td><td><code>finishedAt</code>/<code>failedReason</code> <b>落库可查</b></td></tr>
+  </tbody>
+</table>
+""")
+
+_ZH52.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 设计取舍</div>
+  <strong>删除为什么要讲究「先删 ClickHouse/S3，最后才删 Postgres」这个顺序？反过来不行吗？</strong> 这是一个<strong>「保留重试锚点」</strong>的经典考量，和第 47 课「幂等」「快照边界」是同一类清醒。一次跨三存储的删除不是原子的——它由多步组成，任何一步都可能因崩溃、超时、网络抖动而中断。关键问题是：<strong>中断后，系统还知不知道「这件事没做完、得回来接着做」？</strong> Postgres 里的项目记录，恰好就是这个「待办凭据」：只要它还在，删除任务重试时就知道「这个项目还没清干净」，继续把 CH/S3 的残留扫掉。可一旦你<strong>先</strong>删了 PG，这个凭据就没了——此时若 CH/S3 还有残留，系统<strong>再也无从知道它们的存在</strong>，它们就成了永久占着空间、却没人认领的<strong>孤儿数据</strong>。所以「源真相 / 锚点最后删」是分布式删除的通用纪律：<strong>先清外围、后清锚点，让「未完成」始终可被发现、可被重试。</strong><br><br>
+  <strong>明明可以写个一次性脚本跑迁移，为什么要专门做一套带 state、锁、心跳的 BackgroundMigration 框架？</strong> 因为「给生产环境亿万行的表做变更」这件事，同时撞上三个硬约束：<strong>① 不能停机</strong>——业务要持续服务，不可能锁表几小时；<strong>② 会中断</strong>——跑几小时的任务，期间一定会遇到部署、重启、崩溃，必须能<strong>从断点续跑</strong>而非从头再来（这就需要把进度持久化进 <code>state</code>，和第 46 课增量同步的 <code>lastSyncAt</code> 是同一招）；<strong>③ 多实例</strong>——生产有多个 worker，必须保证<strong>同一迁移只被一个 worker 执行</strong>，否则重复跑会把数据改乱（这就需要 <code>lockedAt</code> 分布式锁 + 心跳续约）。一次性脚本三条全占不住。把这些共性沉淀成一个框架后，每个具体迁移只需实现 <code>validate/run/abort</code>，复杂的「续传、加锁、留痕」由框架统一保证——<strong>把「安全地在线演进数据」这件难事，做成一个可复用、可信赖的底座。</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 本课要点</div>
+  <ul>
+    <li><strong>一条 trace 散在三处</strong>：元数据在 Postgres、海量事件在 ClickHouse、大块负载在对象存储 S3。所以删除必须<strong>跨三个存储一处不漏地清</strong>，漏删即数据残留（合规/隐私隐患）。</li>
+    <li><strong>删除有顺序</strong>：<code>projectDelete</code> 先并行清 CH + S3、最后才删 Postgres。PG 记录是「这条删除没完成」的<strong>重试锚点</strong>，留到最后保证崩溃可重试；先删 PG 会让 CH/S3 数据成无主孤儿。</li>
+    <li><strong>三种删除</strong>：① 数据保留（EE，按 <code>retentionDays</code> 自动清旧，走第46课同款两级 fan-out，<code>cutoffDate</code> 只删过期）；② trace 删除（按需，第47课批量操作走它）；③ 项目删除（级联清整个项目）。</li>
+    <li><strong>后台迁移在线演进 schema</strong>：给亿万行的表回填/重组，几小时的大手术不能停机。<code>BackgroundMigration</code>：<code>state</code> 记进度可断点续传（同第46课水位）、<code>lockedAt</code>/<code>workerId</code> 锁保证单 worker 执行、心跳续约、结果落库。</li>
+    <li><strong>一脉相承</strong>：删除顺序＝保留重试锚点（同第47课幂等）、后台迁移 state＝可恢复（同第46课增量）、单 worker 锁（同第43课计量互斥）。分布式系统里「安全地做有副作用的大事」，反复用同一套智慧。</li>
+  </ul>
+</div>
+""")
+
+_EN52.append(r"""
+<p class="lead">
+Data has a <strong>lifetime</strong>: ingested and written (born), queried and analyzed (alive), finally deleted (curtain call). Earlier lessons covered "write" and "read" thoroughly; this one covers <strong>"delete"</strong> — and an easily-overlooked but crucial fact: in Langfuse, <strong>one trace isn't one row but three copies scattered across three stores</strong>: metadata in <strong>Postgres</strong>, massive events in <strong>ClickHouse</strong>, bulky inputs/outputs/media in <strong>object storage (S3)</strong>. So "delete a trace / delete a project / clean old data by retention period" is never as simple as deleting one row — it requires <strong>coordinated, consistent deletion across all three stores</strong>; missing any one leaves data residue (a compliance and privacy hazard).
+This lesson covers three deletions (auto-clean by retention period, on-demand trace delete, cascading project delete), how they delete across stores, why deletion has a deliberate <strong>order</strong>; and finally <strong>background migrations</strong> — how to "operate online" on a table with billions of rows without downtime.
+</p>
+
+<div class="card analogy">
+  <div class="tag">📋 Analogy</div>
+  Think of a trace as a <strong>dossier stored across three archive rooms</strong>: the <strong>registry (Postgres)</strong> has its index card (who, when, which project), the <strong>main vault (ClickHouse)</strong> has its massive detailed records, the <strong>oversized-item warehouse (S3)</strong> holds its bulky attachments (full inputs/outputs, uploaded images).
+  Now to "<strong>destroy</strong>" this dossier — just tearing up the registry's index card is far from enough: the vault's details and the warehouse's attachments are <strong>still there</strong>, which is data residue. True destruction must <strong>clean all three archive rooms, missing none</strong>. And destruction has a <strong>deliberate order</strong>: <strong>clean the main vault and warehouse first, tear up the registry card last</strong> — because that index card is the only proof that "this dossier isn't fully destroyed yet"; if the power cuts mid-way, it's how you know to "come back and finish destroying." Tear up the card first and the remaining details and attachments become <strong>unclaimed orphans</strong>, no longer matchable to anyone.
+</div>
+""")
+
+_EN52.append(r"""
+<h2>One trace scattered across three: deletion spans stores</h2>
+<p>Recall the book-wide storage division: <strong>Postgres</strong> stores config and metadata (projects, users, API keys, various settings); <strong>ClickHouse</strong> stores massive analyzable events (trace/observation/score, the stars of Parts 3-4); <strong>object storage S3</strong> stores bulky raw payloads (full inputs/outputs, uploaded media). This division serves reads and writes well, but also means: <strong>deletion must clean all three at once</strong>. Take "delete a whole project": <code>projectDeleteProcessor</code>'s order is deliberate — <strong>first clean ClickHouse and S3 in parallel</strong> (traces/observations/scores/events + blob refs), <strong>only then delete Postgres</strong>. This "delete PG last" isn't arbitrary: the project record in Postgres is the <strong>anchor for "this project isn't fully deleted yet"</strong>; kept to the end, it allows a retry if a crash happens mid-way; delete PG first and the remaining CH/S3 data becomes ownerless orphans, hard to clean up.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="One trace scattered across three stores: Postgres stores metadata, ClickHouse stores massive events, S3 stores bulky payloads; on project delete projectDelete first cleans ClickHouse (traces/observations/scores/events) and S3 (blob refs) in parallel, only then deletes Postgres — the PG record is the retry anchor kept last; deleting PG first orphans CH/S3 data">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One trace = three copies across three stores; clean them all</text>
+  <rect x="40" y="44" width="180" height="58" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="130" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">Postgres</text><text x="130" y="80" text-anchor="middle" font-size="6.4" fill="var(--muted)">metadata: project/user/key/settings</text><text x="130" y="93" text-anchor="middle" font-size="6.0" fill="var(--faint)">"source of truth" + retry anchor</text>
+  <rect x="40" y="112" width="180" height="54" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="130" y="132" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="130" y="148" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">massive events trace/obs/score/event</text><text x="130" y="160" text-anchor="middle" font-size="6.0" fill="var(--faint)">analyzable detail</text>
+  <rect x="40" y="176" width="180" height="50" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="130" y="196" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">object storage S3</text><text x="130" y="212" text-anchor="middle" font-size="6.4" fill="var(--muted)">bulky payloads: full I/O / media</text>
+  <rect x="290" y="92" width="180" height="92" rx="10" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="380" y="112" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">projectDelete order</text><text x="380" y="130" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">① clean CH + S3 in parallel</text><text x="380" y="143" text-anchor="middle" font-size="6.2" fill="var(--muted)">Promise.all(traces,obs,scores,</text><text x="380" y="154" text-anchor="middle" font-size="6.2" fill="var(--muted)">events, blob refs)</text><text x="380" y="170" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">② delete Postgres last</text>
+  <rect x="520" y="70" width="175" height="60" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="607" y="90" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">Why PG last?</text><text x="607" y="106" text-anchor="middle" font-size="6.0" fill="var(--muted)">it's the "not done yet" anchor</text><text x="607" y="118" text-anchor="middle" font-size="6.0" fill="var(--muted)">a crash can retry from it</text>
+  <rect x="520" y="142" width="175" height="56" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="607" y="162" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">If PG deleted first?</text><text x="607" y="178" text-anchor="middle" font-size="6.0" fill="var(--muted)">CH/S3 data become orphans</text><text x="607" y="190" text-anchor="middle" font-size="6.0" fill="var(--muted)">hard to match, hard to clean</text>
+  <line x1="220" y1="73" x2="288" y2="120" stroke="var(--accent)" stroke-width="1.2"/><line x1="220" y1="139" x2="288" y2="138" stroke="var(--accent)" stroke-width="1.2"/><line x1="220" y1="200" x2="288" y2="156" stroke="var(--accent)" stroke-width="1.2"/>
+  <line x1="470" y1="120" x2="518" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="470" y1="160" x2="518" y2="165" stroke="var(--faint)" stroke-width="1"/>
+</svg>
+<div class="figcap"><b>Cross-store deletion</b>: <code>projectDelete.ts:22 projectDeleteProcessor</code> — <code>Promise.all</code> first cleans ClickHouse (<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4's <code>deleteEventsByProjectId</code>) and S3 (<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>), then deletes dataset run items, <strong>finally deletes Postgres</strong>. The comment is explicit: "Delete project data from ClickHouse first."</div>
+</div>
+
+<div class="layers">
+  <div class="layer l-main"><div class="lh"><span class="badge">metadata</span><span class="name">Postgres (deleted last)</span></div><div class="ld">Projects, users, API keys, various config — structured, strongly consistent, small in volume. It's the whole system's "source of truth," kept <strong>last</strong> in deletion: serving as the anchor for "this deletion isn't done yet," ensuring a safe retry after a crash.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">events</span><span class="name">ClickHouse (deleted first)</span></div><div class="ld">trace/observation/score — massive analyzable detail (Parts 3-4 explained why it uses columnar storage). The delete volume can be huge, using batched deletion by projectId / by time, cleaned in parallel with S3.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">payload</span><span class="name">object storage S3 (deleted first)</span></div><div class="ld">Full inputs/outputs, uploaded media, and other bulky binaries. Deleting CH rows must also clear their S3 objects and references — otherwise it's a "pointer gone, data still taking space" leak.</div></div>
+</div>
+""")
+
+_EN52.append(r"""
+<h2>Three deletions: clean by period, delete on demand, cascade-delete</h2>
+<p>Langfuse has three kinds of deletion, different scenarios but all cross-store: <strong>① data retention</strong> — auto, periodic, age-based cleaning of old data. It's an EE feature (Lesson 50's entitlement); each project can set <code>retentionDays</code>; scheduling uses <strong>exactly the same two-level fan-out as Lesson 46</strong>: <code>dataRetentionProcessor</code> finds projects with a retention period set and dispatches a processing job per project, <code>dataRetentionProcessingProcessor</code> computes <code>cutoffDate = today − retentionDays</code> and deletes CH data and S3 media older than it. <strong>② trace deletion</strong> — on-demand deletion of specific traces (Lesson 47's batch-action <code>trace-delete</code> uses it, <code>traceDeleteProcessor</code>). <strong>③ project deletion</strong> — cascading deletion of all of a project's data (the previous section's <code>projectDeleteProcessor</code>).</p>
+
+<div class="vflow">
+  <div class="step"><div class="num">1</div><div class="sc"><h4>Data retention: scheduling fan-out (EE)</h4><p><code>dataRetentionProcessor</code> fires periodically, finds projects with <code>retentionDays</code> set, dispatches a processing job per project — the <strong>same two-level fan-out</strong> skeleton as Lesson 46's analytics integrations.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Data retention: per-project age cleaning</h4><p>Each job computes <code>cutoffDate = now − retentionDays</code>, <code>deleteTracesOlderThanDays</code> etc. clean CH's traces/observations/scores/events in parallel and clean S3 media — deleting only the expired, untouching new data.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Trace deletion: on-demand</h4><p>A user or Lesson 47's batch action wants to delete specific traces; <code>traceDeleteProcessor</code> deletes by traceIds across stores (likewise cleaning CH + S3 together).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Project deletion: cascade</h4><p>To delete a whole project, <code>projectDeleteProcessor</code> first cleans CH + S3 in parallel, then dataset run items, finally deletes PG (the previous section's "PG kept last").</p></div></div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/dataRetention/handleDataRetentionProcessingJob.ts</span><span class="ln">age-based cross-store cleaning</span></div>
+  <pre class="code"><span class="cm">// data retention is an EE feature: each project can set retentionDays (Lesson 50 entitlement)</span>
+<span class="kw">const</span> { retentionDays } = <span class="kw">await</span> prisma.project.<span class="fn">findUnique</span>({ where: { id: projectId },
+                                                       select: { retentionDays: <span class="kw">true</span> } });
+<span class="kw">if</span> (!retentionDays) <span class="kw">return</span>;                          <span class="cm">// no retention period → don't clean</span>
+
+<span class="kw">const</span> cutoffDate = <span class="kw">new</span> Date(now − retentionDays * <span class="st">86400_000</span>);   <span class="cm">// roll back N days from today</span>
+
+<span class="cm">// clean data "older than cutoff" across stores in parallel: S3 media + ClickHouse first</span>
+<span class="kw">await</span> Promise.all([
+  <span class="fn">removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</span>(projectId, cutoffDate),
+  <span class="fn">deleteTracesOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteObservationsOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteScoresOlderThanDays</span>(projectId, cutoffDate),
+  <span class="fn">deleteEventsOlderThanDays</span>(projectId, cutoffDate),
+]);   <span class="cm">// delete only the expired, new data untouched</span></pre>
+</div>
+""")
+
+_EN52.append(r"""
+<h2>Background migrations: "operating online" on billion-row tables</h2>
+<p>The data lifecycle has another facet: <strong>schema evolution</strong>. An ordinary DB migration (add a column, change a constraint) runs in seconds at deploy time. But Langfuse's ClickHouse often holds <strong>billions of rows</strong>, and to <strong>backfill a new field or reorganize data layout</strong> across them may run for hours — you can't take <strong>hours of downtime</strong> for it. <code>BackgroundMigration</code> is designed for such "big surgery": making the migration a long task that <strong>runs slowly in the background, resumes from a checkpoint, and never takes downtime</strong>.</p>
+
+<p>Its model (<code>schema.prisma:284</code>) hides three key fields: <strong><code>state</code> (Json)</strong> — stores "how far it got" as progress, resuming <strong>from here</strong> after a crash-restart (the same "resumable" wisdom as Lesson 46's <code>lastSyncAt</code> watermark); <strong><code>lockedAt</code>/<code>workerId</code></strong> — a distributed lock ensuring <strong>only one worker runs a given migration</strong> (no duplication or conflict under multi-worker deployments); <strong><code>finishedAt</code>/<code>failedReason</code></strong> — records the result. <code>BackgroundMigrationManager</code> drives it with a <strong>heartbeat</strong> loop: hold the lock, run a batch, update state, renew the heartbeat, until done. Throughout, the app keeps serving and users are none the wiser.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 210" role="img" aria-label="Background migration online evolution: the BackgroundMigration model has state (progress, resume from here on crash), lockedAt/workerId (distributed lock, only one worker runs a given migration), finishedAt/failedReason (result); the Manager has a heartbeat loop: hold lock→run a batch→update state→renew heartbeat until done, no downtime, app keeps serving">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Operate on billion-row tables without downtime: slow run + resume + single-run</text>
+  <rect x="30" y="44" width="190" height="150" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="125" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">BackgroundMigration model</text>
+  <rect x="44" y="74" width="162" height="32" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="125" y="88" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">state (Json)</text><text x="125" y="100" text-anchor="middle" font-size="5.8" fill="var(--muted)">progress → resume on crash</text>
+  <rect x="44" y="112" width="162" height="32" rx="5" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="125" y="126" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--ink)">lockedAt / workerId</text><text x="125" y="138" text-anchor="middle" font-size="5.8" fill="var(--muted)">distributed lock → one worker runs</text>
+  <rect x="44" y="150" width="162" height="32" rx="5" fill="var(--bg)" stroke="var(--faint)"/><text x="125" y="164" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent-ink)">finishedAt / failedReason</text><text x="125" y="176" text-anchor="middle" font-size="5.8" fill="var(--muted)">result kept</text>
+  <rect x="270" y="64" width="200" height="110" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="370" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Manager heartbeat loop</text><text x="370" y="102" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">① grab lock (lockedAt)</text><text x="370" y="116" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">② run a batch</text><text x="370" y="130" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">③ update state</text><text x="370" y="144" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">④ renew heartBeat</text><text x="370" y="160" text-anchor="middle" font-size="6.0" fill="var(--faint)">loop until finishedAt</text>
+  <rect x="520" y="78" width="175" height="82" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="607" y="98" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">no downtime</text><text x="607" y="115" text-anchor="middle" font-size="6.2" fill="var(--muted)">app keeps serving</text><text x="607" y="128" text-anchor="middle" font-size="6.2" fill="var(--muted)">users none the wiser</text><text x="607" y="144" text-anchor="middle" font-size="6.0" fill="var(--faint)">hours-long big surgery</text><text x="607" y="154" text-anchor="middle" font-size="6.0" fill="var(--faint)">completes slowly in the background</text>
+  <line x1="220" y1="119" x2="268" y2="119" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,119 259,115 259,123" fill="var(--accent)"/>
+  <line x1="470" y1="119" x2="518" y2="119" stroke="var(--teal)" stroke-width="1.4"/><polygon points="518,119 509,115 509,123" fill="var(--teal)"/>
+  <path d="M 440 150 q 30 24 -50 18" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><text x="408" y="184" text-anchor="middle" font-size="6" fill="var(--faint)">write state back each batch, interruptible & resumable</text>
+</svg>
+<div class="figcap"><b>Online schema evolution</b>: <code>schema.prisma:284 BackgroundMigration</code> (name unique, script, args, <code>state</code> Json resumable, finishedAt/failedAt/failedReason, <code>workerId</code>/<code>lockedAt</code> lock); <code>backgroundMigrationManager.ts:6</code> <code>BackgroundMigrationManager.run</code> (<code>:17 heartBeat</code>, <code>:42</code> while loop, hold-lock run-batch, <code>:127 migration.run(args)</code>), wrapped in <code>instrumentAsync</code>. Interface <code>IBackgroundMigration</code> (validate/run/abort).</div>
+</div>
+
+<table class="t">
+  <thead><tr><th>Challenge</th><th>Ordinary migration</th><th>BackgroundMigration</th></tr></thead>
+  <tbody>
+    <tr><td>Backfill a field across billions of rows</td><td>run at deploy, may need hours of downtime</td><td><b>run slowly in background, no downtime</b>, app keeps serving</td></tr>
+    <tr><td>Crashed mid-way</td><td>either roll back or start over</td><td><code>state</code> records progress, <b>resume from checkpoint</b> (like Lesson 46's watermark)</td></tr>
+    <tr><td>Multi-worker deployment</td><td>—</td><td><code>lockedAt</code>/<code>workerId</code> lock, <b>only one runs a given migration</b></td></tr>
+    <tr><td>How far / failure reason</td><td>check deploy logs</td><td><code>finishedAt</code>/<code>failedReason</code> <b>persisted and queryable</b></td></tr>
+  </tbody>
+</table>
+""")
+
+_EN52.append(r"""
+<div class="card spark">
+  <div class="tag">🎯 Design trade-off</div>
+  <strong>Why does deletion insist on the order "delete ClickHouse/S3 first, Postgres last"? Won't the reverse do?</strong> This is a classic <strong>"keep the retry anchor"</strong> consideration, the same clarity as Lesson 47's "idempotency" and "snapshot boundary." A deletion across three stores isn't atomic — it's multiple steps, any of which may be interrupted by a crash, timeout, or network blip. The key question: <strong>after an interruption, does the system still know "this isn't done, come back and finish"?</strong> The project record in Postgres is exactly that "to-do proof": as long as it exists, a deletion retry knows "this project isn't fully cleaned" and continues sweeping the CH/S3 residue. But delete PG <strong>first</strong> and that proof is gone — if CH/S3 still have residue, the system <strong>can no longer know they exist</strong>, and they become <strong>orphan data</strong> permanently taking space with no claimant. So "delete the source-of-truth / anchor last" is the universal discipline of distributed deletion: <strong>clean the periphery first, the anchor last, so "unfinished" remains discoverable and retryable.</strong><br><br>
+  <strong>You could write a one-off script to run a migration — why build a whole BackgroundMigration framework with state, locks, and heartbeats?</strong> Because "changing a billion-row production table" simultaneously hits three hard constraints: <strong>① no downtime</strong> — the business must keep serving, you can't lock the table for hours; <strong>② will be interrupted</strong> — a multi-hour task will surely meet a deploy, restart, or crash, so it must <strong>resume from a checkpoint</strong> rather than start over (which needs persisting progress into <code>state</code>, the same trick as Lesson 46's incremental <code>lastSyncAt</code>); <strong>③ multi-instance</strong> — production has many workers, so a given migration must run on <strong>only one worker</strong>, else duplicate runs corrupt data (which needs the <code>lockedAt</code> distributed lock + heartbeat renewal). A one-off script meets none of the three. Distilling these commonalities into a framework lets each concrete migration just implement <code>validate/run/abort</code>, while the complex "resume, lock, audit" is uniformly guaranteed by the framework — <strong>turning the hard thing of "safely evolving data online" into a reusable, trustworthy foundation.</strong>
+</div>
+
+<div class="card key">
+  <div class="tag">🎯 Key points</div>
+  <ul>
+    <li><strong>One trace scattered across three</strong>: metadata in Postgres, massive events in ClickHouse, bulky payloads in object storage S3. So deletion must <strong>clean all three, missing none</strong>; a miss is data residue (compliance/privacy hazard).</li>
+    <li><strong>Deletion has an order</strong>: <code>projectDelete</code> cleans CH + S3 in parallel first, deletes Postgres last. The PG record is the <strong>retry anchor</strong> for "this deletion isn't done," kept last to ensure crash-retryability; deleting PG first orphans CH/S3 data.</li>
+    <li><strong>Three deletions</strong>: ① data retention (EE, auto-cleans old data by <code>retentionDays</code>, same two-level fan-out as Lesson 46, <code>cutoffDate</code> deletes only the expired); ② trace deletion (on-demand, Lesson 47's batch action uses it); ③ project deletion (cascade-cleans a whole project).</li>
+    <li><strong>Background migrations evolve schema online</strong>: backfill/reorganize billion-row tables, hours of big surgery without downtime. <code>BackgroundMigration</code>: <code>state</code> records progress for checkpoint resume (like Lesson 46's watermark), <code>lockedAt</code>/<code>workerId</code> lock ensures single-worker execution, heartbeat renewal, result persisted.</li>
+    <li><strong>One lineage</strong>: deletion order = keep the retry anchor (like Lesson 47's idempotency), background-migration state = resumable (like Lesson 46's incremental), single-worker lock (like Lesson 43's metering mutex). "Safely doing big side-effectful things" in a distributed system reuses the same wisdom over and over.</li>
+  </ul>
+</div>
+""")
+
+LESSON_52 = {"zh": "\n".join(_ZH52), "en": "\n".join(_EN52)}

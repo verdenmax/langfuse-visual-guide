@@ -3615,6 +3615,76 @@ QUIZZES = {
             },
         ],
     },
+    "52-data-lifecycle-and-deletion.html": {
+        "mcq": [
+            {
+                "q": {
+                    "zh": "Langfuse 删除一个项目时，projectDelete 的顺序是「先并行清 ClickHouse 和 S3，最后才删 Postgres」。为什么 Postgres 要留到最后删？",
+                    "en": "When Langfuse deletes a project, projectDelete's order is 'clean ClickHouse and S3 in parallel first, delete Postgres last'. Why is Postgres kept for last?",
+                },
+                "opts": [
+                    {
+                        "zh": "PG里的项目记录是「这次删除还没完成」的重试锚点：跨存储删除不是原子的，中途可能崩。只要PG记录还在，重试就知道「还得继续清CH/S3残留」；若先删PG，剩下的CH/S3数据就成了没人认领、再也对不上的孤儿，永久占空间",
+                        "en": "the project record in PG is the retry anchor for 'this deletion isn't done': cross-store deletion isn't atomic and may crash mid-way; as long as the PG record exists, a retry knows 'keep cleaning the CH/S3 residue'; delete PG first and the remaining CH/S3 data becomes unclaimed, unmatchable orphans permanently taking space",
+                    },
+                    {"zh": "Postgres 删除最慢，放最后省时间", "en": "Postgres deletion is slowest, last saves time"},
+                    {"zh": "ClickHouse 必须在 Postgres 之前初始化", "en": "ClickHouse must be initialized before Postgres"},
+                    {"zh": "这只是代码书写的习惯，没有实际意义", "en": "it's just a coding habit with no real meaning"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "一次删除要跨 Postgres + ClickHouse + S3 三个存储，这不是一个原子事务——它是多步操作，任何一步都可能因崩溃/超时/网络抖动中断。核心问题是：中断之后，系统还知不知道「这事没做完、得回来接着做」？PG 里的项目记录恰好是这个「待办凭据」：留着它，删除任务重试时就知道该项目还没清干净，继续扫 CH/S3 残留；而一旦先删了 PG，这个凭据没了，若 CH/S3 还有残留，系统再也无从知道它们的存在，它们就成了永久孤儿。所以「锚点/源真相最后删」是分布式删除的通用纪律——先清外围、后清锚点，让「未完成」始终可发现、可重试。这与第47课「快照边界/幂等」一脉相承。",
+                    "en": "A deletion spans three stores—Postgres + ClickHouse + S3—and this isn't an atomic transaction; it's multi-step, any step interruptible by crash/timeout/network blip. The key question: after interruption, does the system still know 'this isn't done, come back and finish'? The PG project record is exactly that 'to-do proof': keep it and a retry knows the project isn't fully cleaned, continuing to sweep CH/S3 residue; delete PG first and that proof is gone—if CH/S3 still have residue, the system can no longer know it exists, and it becomes a permanent orphan. So 'delete the anchor/source-of-truth last' is the universal discipline of distributed deletion—clean the periphery first, the anchor last, so 'unfinished' stays discoverable and retryable. Of one lineage with Lesson 47's 'snapshot boundary/idempotency'.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "在 Langfuse 里，删除一条 trace 不是「删一行数据库记录」那么简单。最根本的原因是？",
+                    "en": "In Langfuse, deleting a trace isn't as simple as 'delete one database row'. The most fundamental reason is?",
+                },
+                "opts": [
+                    {
+                        "zh": "一条trace的数据散在三个存储里：元数据在Postgres、海量事件明细在ClickHouse、大块输入输出/媒体在对象存储S3。要真正删干净必须跨三处协调一致地删，漏删任何一处都是数据残留——既占空间，更是合规与隐私隐患(如GDPR的被遗忘权)",
+                        "en": "a trace's data is scattered across three stores: metadata in Postgres, massive event detail in ClickHouse, bulky inputs/outputs/media in object storage S3. To truly delete it you must delete consistently across all three; missing any one is data residue—wasting space and, worse, a compliance and privacy hazard (e.g. GDPR's right to be forgotten)",
+                    },
+                    {"zh": "因为 trace 数据是加密的，删除前要先解密", "en": "because trace data is encrypted and must be decrypted before deletion"},
+                    {"zh": "因为删除需要管理员审批", "en": "because deletion needs admin approval"},
+                    {"zh": "因为 trace 太大，一次删不完", "en": "because a trace is too big to delete at once"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "这是 Langfuse 存储架构的直接后果。为了让读写各得其所，一条 trace 被拆成三份存：Postgres 放结构化元数据、ClickHouse 放海量可分析的事件明细（列存，第3-4部分讲过）、S3 放体积过大的原始负载（完整输入输出、媒体）。这套分工对性能很好，但对删除提出了要求：必须三处同时清。只删 PG 那行「索引」，CH 的明细和 S3 的附件还在，就是数据残留——不仅白占存储，在隐私合规上更要命：用户行使「删除我的数据」的权利时，残留意味着没真正删除。所以 Langfuse 的每种删除（保留期清理、trace 删除、项目删除）都是跨存储操作。",
+                    "en": "This is a direct consequence of Langfuse's storage architecture. To serve reads and writes well, a trace is split into three: Postgres for structured metadata, ClickHouse for massive analyzable event detail (columnar, Parts 3-4), S3 for oversized raw payloads (full I/O, media). This division is great for performance but demands of deletion: clean all three at once. Delete only the PG 'index' row and the CH detail and S3 attachments remain—data residue—not just wasted storage but, worse, a privacy-compliance problem: when a user exercises 'delete my data', residue means it wasn't truly deleted. So each Langfuse deletion (retention cleaning, trace delete, project delete) is a cross-store operation.",
+                },
+            },
+            {
+                "q": {
+                    "zh": "Langfuse 的 BackgroundMigration（后台迁移）模型有 state、lockedAt/workerId、心跳等机制。它要解决的核心问题是？",
+                    "en": "Langfuse's BackgroundMigration model has state, lockedAt/workerId, heartbeat mechanisms. What core problem does it solve?",
+                },
+                "opts": [
+                    {
+                        "zh": "给生产环境亿万行的表做变更(回填新字段/重组布局)，同时撞上不能停机、会被部署/崩溃中断、有多个worker三个约束：state记进度可断点续传(同第46课水位)、lockedAt/workerId锁保证同一迁移只一个worker跑、心跳续约——让几小时的大手术在后台不停机完成",
+                        "en": "changing a billion-row production table (backfill a field/reorganize layout) hits three constraints at once—no downtime, interruptible by deploy/crash, multiple workers: state records progress for checkpoint resume (like Lesson 46's watermark), lockedAt/workerId lock ensures only one worker runs a given migration, heartbeat renewal—letting hours-long big surgery complete in the background without downtime",
+                    },
+                    {"zh": "让数据库迁移跑得更快", "en": "makes database migrations run faster"},
+                    {"zh": "自动生成迁移脚本", "en": "auto-generates migration scripts"},
+                    {"zh": "压缩迁移后的数据", "en": "compresses data after migration"},
+                ],
+                "answer": 0,
+                "why": {
+                    "zh": "普通迁移（加列、改约束）部署时几秒跑完即可，不需要这套重型机制。但当你要给 ClickHouse 里几十亿行回填一个新字段、或重组数据布局，任务可能跑几小时，这就同时撞上三个硬约束：① 不能停机——业务得持续服务，不可能锁表几小时；② 会中断——几小时里必然遇到部署、重启、崩溃，必须能从断点续跑而非从头来（靠把进度存进 state，和第46课增量同步的 lastSyncAt 同一招）；③ 多 worker——生产多实例，必须保证同一迁移只被一个 worker 执行，否则重复跑改乱数据（靠 lockedAt 分布式锁 + 心跳续约）。一次性脚本三条都占不住。BackgroundMigration 把这些共性沉淀成框架，每个迁移只实现 validate/run/abort，复杂的续传/加锁/留痕由框架统一保证。",
+                    "en": "An ordinary migration (add column, change constraint) runs in seconds at deploy and needs none of this heavy machinery. But backfilling a new field across billions of ClickHouse rows or reorganizing layout may run for hours, hitting three hard constraints at once: ① no downtime—the business must keep serving, can't lock the table for hours; ② will be interrupted—over hours you'll surely meet a deploy, restart, crash, so it must resume from a checkpoint not start over (by persisting progress into state, the same trick as Lesson 46's incremental lastSyncAt); ③ multi-worker—production has many instances, so a given migration must run on only one worker, else duplicate runs corrupt data (via the lockedAt distributed lock + heartbeat renewal). A one-off script meets none of the three. BackgroundMigration distills these commonalities into a framework; each migration just implements validate/run/abort, while resume/lock/audit is guaranteed by the framework.",
+                },
+            },
+        ],
+        "open": [
+            {
+                "zh": "这一课反复出现一个主题：在分布式系统里「安全地做有副作用的大事」要靠几招——删除留重试锚点、迁移用 state 可恢复、用锁保证单 worker 执行。请结合你的经验谈谈：你做过的「跨多个系统/存储的批量删除或数据迁移」遇到过哪些坑（中途失败、孤儿数据、重复执行）？你是怎么保证「不重不漏、可恢复」的？如果数据还涉及合规删除（如 GDPR 被遗忘权），又会带来哪些额外要求？",
+                "en": "This lesson recurs on a theme: in distributed systems, 'safely doing big side-effectful things' relies on a few moves — deletion keeps a retry anchor, migrations use state for resumability, locks ensure single-worker execution. Drawing on your experience: what pitfalls have you hit in 'bulk deletion or data migration across multiple systems/stores' (mid-way failure, orphan data, duplicate execution)? How did you ensure 'no-dup-no-miss, resumable'? And if the data also involves compliant deletion (e.g. GDPR right to be forgotten), what additional requirements arise?",
+            },
+        ],
+    },
 }
 
 
