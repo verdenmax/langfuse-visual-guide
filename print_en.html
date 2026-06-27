@@ -551,6 +551,26 @@ traces/observations.</p>
   <code>cost_details</code>, <code>prompt_id</code> and more as columns and Maps on a single row — exactly what a
   "wide event" looks like (next section).
 </div>
+<p>Grounding the three pillars in real types — all are Zod schemas in <code>packages/shared/src/domain/</code>:</p>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/{traces,observations,scores}.ts</span><span class="ln">three pillars</span></div>
+  <pre class="code"><span class="cm">// (1) trace = the "root" of one full call (traces.ts)</span>
+<span class="kw">export const</span> <span class="fn">TraceDomain</span> = z.object({
+  id: z.string(),  name: z.string().nullable(),  timestamp: z.date(),
+  input: jsonSchema.nullable(),   output: jsonSchema.nullable(),
+  sessionId: z.string().nullable(),  userId: z.string().nullable(),
+  projectId: z.string(),                 <span class="cm">// every row carries projectId: the isolation key</span>
+});
+
+<span class="cm">// (2) observation = each step inside a trace, 10 types (observations.ts)</span>
+<span class="kw">export const</span> <span class="fn">ObservationType</span> = {
+  SPAN, EVENT, GENERATION, AGENT, TOOL,
+  CHAIN, RETRIEVER, EVALUATOR, EMBEDDING, GUARDRAIL,
+} <span class="kw">as const</span>;
+
+<span class="cm">// (3) score = a grade attached to a trace/observation (scores.ts)</span>
+<span class="cm">//   NUMERIC(value) · CATEGORICAL/BOOLEAN(stringValue) · CORRECTION</span></pre>
+</div>
 
 <h2>You can only fix what you can see: a debugging scene</h2>
 <p>An abstract definition is weaker than a concrete scene. Say you built a <strong>customer-support bot</strong> and
@@ -11010,6 +11030,18 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <div class="layer l-core"><div class="lh"><span class="badge">theme 3</span><span class="name">async (queue + worker)</span></div><div class="ld">The request path only receives, no heavy work; heavy work enters BullMQ for the worker to process in the background. Peak-shaving, decoupling, retryability. Its derived disciplines — fan-out, idempotency, watermark, lock — recur in eval/metering/integration/migration, variations of one theme.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">theme 4</span><span class="name">dual (tri) storage (each goes home)</span></div><div class="ld">Postgres handles OLTP metadata, ClickHouse OLAP massive events (columnar), S3 bulky payloads. With careful denormalization, compact lists / big-field detail. <strong>Letting differently-shaped data land in the most-fitting engine</strong> is the root of performance and cost.</div></div>
 </div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/redis/ingestionQueue.ts</span><span class="ln">async · sharded queue</span></div>
+  <pre class="code"><span class="cm">// The async theme in code: the ingestion queue fans out across "shards", consumed by the worker</span>
+<span class="kw">export class</span> <span class="fn">IngestionQueue</span> {
+  <span class="kw">public static</span> <span class="fn">getShardNames</span>() {
+    <span class="kw">return</span> Array.from(
+      { length: env.LANGFUSE_INGESTION_QUEUE_SHARD_COUNT },
+      (_, i) =&gt; `${QueueName.IngestionQueue}${i &gt; 0 ? `-${i}` : ""}`,
+    );   <span class="cm">// → IngestionQueue, IngestionQueue-1, IngestionQueue-2 …</span>
+  }
+}</pre>
+</div>
 
 
 <h2>Themes 5 & 6: multi-tenancy + cost (who data belongs to, what's worth doing)</h2>
@@ -11135,6 +11167,19 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
   <div class="step"><div class="num">1</div><div class="sc"><h4>Born: SDK packages on the spot (L12)</h4><p>The app calls an LLM, the SDK creates trace + observations, records input/output/model/usage, batches and async-POSTs — the main flow barely notices.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>Ingested: receive fast + process async (L13-19, L49)</h4><p>The API authenticates by API-key two-tier hash, lands the raw event in S3, pushes to a Redis queue and returns; the worker pulls, validates/parses, upserts into ClickHouse.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>Stored: split into three to settle (L13)</h4><p>Event detail→ClickHouse (immutable, merge at query), bulky payloads→S3, metadata→Postgres. The "dual (tri) storage + async + immutability" themes first play in concert.</p></div></div>
+</div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/queues/ingestionQueue.ts</span><span class="ln">the moment it's stored</span></div>
+  <pre class="code"><span class="cm">// What "stored" really is: the worker pops the job, then merges this entity's events and writes them</span>
+<span class="kw">await new</span> <span class="fn">IngestionService</span>(redis, prisma, clickhouseWriter, clickhouseClient())
+  .<span class="fn">mergeAndWrite</span>(
+    getClickhouseEntityType(events[0].type),        <span class="cm">// trace / observation / score</span>
+    job.data.payload.authCheck.scope.projectId,     <span class="cm">// the multi-tenant isolation key</span>
+    canonicalEntityId,
+    firstS3WriteTime,
+    events,                                          <span class="cm">// the multiple events for one id</span>
+    forwardToEventsTable,
+  );</pre>
 </div>
 
 

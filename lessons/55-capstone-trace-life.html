@@ -381,6 +381,19 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="step"><div class="num">2</div><div class="sc"><h4>摄取：快接收 + 异步处理（L13-19, L49）</h4><p>API 用 API key 两层哈希认证、原始事件落 S3、塞 Redis 队列即返回；worker 取出做校验解析、upsert 进 ClickHouse。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>落库：散成三份安家（L13）</h4><p>事件明细→ClickHouse(不可变,查时合并)、大块负载→S3、元数据→Postgres。「双(三)存储 + 异步 + 不可变」三主题首次合奏。</p></div></div>
 </div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/queues/ingestionQueue.ts</span><span class="ln">落库这一刻</span></div>
+  <pre class="code"><span class="cm">// 「落库」的真相：worker 取出队列消息后，把这条实体的多条事件 merge 后写入</span>
+<span class="kw">await new</span> <span class="fn">IngestionService</span>(redis, prisma, clickhouseWriter, clickhouseClient())
+  .<span class="fn">mergeAndWrite</span>(
+    getClickhouseEntityType(events[0].type),        <span class="cm">// trace / observation / score</span>
+    job.data.payload.authCheck.scope.projectId,     <span class="cm">// 多租户隔离键</span>
+    canonicalEntityId,
+    firstS3WriteTime,
+    events,                                          <span class="cm">// 同一 id 的多条事件</span>
+    forwardToEventsTable,
+  );</pre>
+</div>
 
 
 <h2>第二程：被读 → 被评估</h2>
@@ -527,6 +540,19 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
   <div class="step"><div class="num">1</div><div class="sc"><h4>Born: SDK packages on the spot (L12)</h4><p>The app calls an LLM, the SDK creates trace + observations, records input/output/model/usage, batches and async-POSTs — the main flow barely notices.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>Ingested: receive fast + process async (L13-19, L49)</h4><p>The API authenticates by API-key two-tier hash, lands the raw event in S3, pushes to a Redis queue and returns; the worker pulls, validates/parses, upserts into ClickHouse.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>Stored: split into three to settle (L13)</h4><p>Event detail→ClickHouse (immutable, merge at query), bulky payloads→S3, metadata→Postgres. The "dual (tri) storage + async + immutability" themes first play in concert.</p></div></div>
+</div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/queues/ingestionQueue.ts</span><span class="ln">the moment it's stored</span></div>
+  <pre class="code"><span class="cm">// What "stored" really is: the worker pops the job, then merges this entity's events and writes them</span>
+<span class="kw">await new</span> <span class="fn">IngestionService</span>(redis, prisma, clickhouseWriter, clickhouseClient())
+  .<span class="fn">mergeAndWrite</span>(
+    getClickhouseEntityType(events[0].type),        <span class="cm">// trace / observation / score</span>
+    job.data.payload.authCheck.scope.projectId,     <span class="cm">// the multi-tenant isolation key</span>
+    canonicalEntityId,
+    firstS3WriteTime,
+    events,                                          <span class="cm">// the multiple events for one id</span>
+    forwardToEventsTable,
+  );</pre>
 </div>
 
 

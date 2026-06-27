@@ -261,6 +261,26 @@ _ZH.append(r"""
   <code>provided_usage_details</code>、<code>cost_details</code>、<code>prompt_id</code> 等都<strong>内联</strong>成一行的列与 Map——
   这正是「宽事件」的样子（下一节展开）。
 </div>
+<p>把三大支柱落到真实类型上——它们都是 Zod schema，定义在 <code>packages/shared/src/domain/</code>：</p>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/{traces,observations,scores}.ts</span><span class="ln">三大支柱</span></div>
+  <pre class="code"><span class="cm">// ① trace = 一次完整调用的「根」（traces.ts）</span>
+<span class="kw">export const</span> <span class="fn">TraceDomain</span> = z.object({
+  id: z.string(),  name: z.string().nullable(),  timestamp: z.date(),
+  input: jsonSchema.nullable(),   output: jsonSchema.nullable(),
+  sessionId: z.string().nullable(),  userId: z.string().nullable(),
+  projectId: z.string(),                 <span class="cm">// 每条都带 projectId：硬隔离键</span>
+});
+
+<span class="cm">// ② observation = trace 里的每一步，10 种类型（observations.ts）</span>
+<span class="kw">export const</span> <span class="fn">ObservationType</span> = {
+  SPAN, EVENT, GENERATION, AGENT, TOOL,
+  CHAIN, RETRIEVER, EVALUATOR, EMBEDDING, GUARDRAIL,
+} <span class="kw">as const</span>;
+
+<span class="cm">// ③ score = 挂在 trace/observation 上的评分（scores.ts）</span>
+<span class="cm">//   NUMERIC(value) · CATEGORICAL/BOOLEAN(stringValue) · CORRECTION</span></pre>
+</div>
 
 <h2>看得见，才改得动：一个排错场景</h2>
 <p>抽象的定义不如一个具体场景。假设你做了个<strong>客服问答机器人</strong>，用户反馈「<strong>它偶尔会答非所问</strong>」。
@@ -345,6 +365,26 @@ traces/observations.</p>
   <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
   <code>cost_details</code>, <code>prompt_id</code> and more as columns and Maps on a single row — exactly what a
   "wide event" looks like (next section).
+</div>
+<p>Grounding the three pillars in real types — all are Zod schemas in <code>packages/shared/src/domain/</code>:</p>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/{traces,observations,scores}.ts</span><span class="ln">three pillars</span></div>
+  <pre class="code"><span class="cm">// (1) trace = the "root" of one full call (traces.ts)</span>
+<span class="kw">export const</span> <span class="fn">TraceDomain</span> = z.object({
+  id: z.string(),  name: z.string().nullable(),  timestamp: z.date(),
+  input: jsonSchema.nullable(),   output: jsonSchema.nullable(),
+  sessionId: z.string().nullable(),  userId: z.string().nullable(),
+  projectId: z.string(),                 <span class="cm">// every row carries projectId: the isolation key</span>
+});
+
+<span class="cm">// (2) observation = each step inside a trace, 10 types (observations.ts)</span>
+<span class="kw">export const</span> <span class="fn">ObservationType</span> = {
+  SPAN, EVENT, GENERATION, AGENT, TOOL,
+  CHAIN, RETRIEVER, EVALUATOR, EMBEDDING, GUARDRAIL,
+} <span class="kw">as const</span>;
+
+<span class="cm">// (3) score = a grade attached to a trace/observation (scores.ts)</span>
+<span class="cm">//   NUMERIC(value) · CATEGORICAL/BOOLEAN(stringValue) · CORRECTION</span></pre>
 </div>
 
 <h2>You can only fix what you can see: a debugging scene</h2>

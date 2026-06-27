@@ -86,6 +86,18 @@ _ZH54.append(r"""
   <div class="layer l-core"><div class="lh"><span class="badge">主题三</span><span class="name">异步（队列 + worker）</span></div><div class="ld">请求路径只接收、不干重活；重活进 BullMQ 由 worker 后台处理。削峰、解耦、可重试。其衍生纪律——fan-out、幂等、水位、锁——在 eval/计量/集成/迁移里反复出现，是同一主题的不同变奏。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">主题四</span><span class="name">双(三)存储（各归各家）</span></div><div class="ld">Postgres 扛 OLTP 元数据、ClickHouse 扛 OLAP 海量事件（列存）、S3 放大块负载。配套谨慎反范式、列表紧凑/详情取大字段。<strong>让不同形状的数据落进最合适的引擎</strong>，是性能与成本的根。</div></div>
 </div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/redis/ingestionQueue.ts</span><span class="ln">异步·分片队列</span></div>
+  <pre class="code"><span class="cm">// 异步主题落到代码：摄取队列按「分片」fan-out，由 worker 后台消费</span>
+<span class="kw">export class</span> <span class="fn">IngestionQueue</span> {
+  <span class="kw">public static</span> <span class="fn">getShardNames</span>() {
+    <span class="kw">return</span> Array.from(
+      { length: env.LANGFUSE_INGESTION_QUEUE_SHARD_COUNT },
+      (_, i) =&gt; `${QueueName.IngestionQueue}${i &gt; 0 ? `-${i}` : ""}`,
+    );   <span class="cm">// → IngestionQueue, IngestionQueue-1, IngestionQueue-2 …</span>
+  }
+}</pre>
+</div>
 """)
 
 # (L54 sec3 below)
@@ -197,6 +209,18 @@ _EN54.append(r"""
   <div class="layer l-core"><div class="lh"><span class="badge">theme 3</span><span class="name">async (queue + worker)</span></div><div class="ld">The request path only receives, no heavy work; heavy work enters BullMQ for the worker to process in the background. Peak-shaving, decoupling, retryability. Its derived disciplines — fan-out, idempotency, watermark, lock — recur in eval/metering/integration/migration, variations of one theme.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">theme 4</span><span class="name">dual (tri) storage (each goes home)</span></div><div class="ld">Postgres handles OLTP metadata, ClickHouse OLAP massive events (columnar), S3 bulky payloads. With careful denormalization, compact lists / big-field detail. <strong>Letting differently-shaped data land in the most-fitting engine</strong> is the root of performance and cost.</div></div>
 </div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/redis/ingestionQueue.ts</span><span class="ln">async · sharded queue</span></div>
+  <pre class="code"><span class="cm">// The async theme in code: the ingestion queue fans out across "shards", consumed by the worker</span>
+<span class="kw">export class</span> <span class="fn">IngestionQueue</span> {
+  <span class="kw">public static</span> <span class="fn">getShardNames</span>() {
+    <span class="kw">return</span> Array.from(
+      { length: env.LANGFUSE_INGESTION_QUEUE_SHARD_COUNT },
+      (_, i) =&gt; `${QueueName.IngestionQueue}${i &gt; 0 ? `-${i}` : ""}`,
+    );   <span class="cm">// → IngestionQueue, IngestionQueue-1, IngestionQueue-2 …</span>
+  }
+}</pre>
+</div>
 """)
 
 _EN54.append(r"""
@@ -288,6 +312,19 @@ _ZH55.append(r"""
   <div class="step"><div class="num">1</div><div class="sc"><h4>出生：SDK 就地打包（L12）</h4><p>应用调 LLM，SDK 创建 trace + observation，记下输入/输出/模型/用量，攒批异步 POST——主流程几乎无感。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>摄取：快接收 + 异步处理（L13-19, L49）</h4><p>API 用 API key 两层哈希认证、原始事件落 S3、塞 Redis 队列即返回；worker 取出做校验解析、upsert 进 ClickHouse。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>落库：散成三份安家（L13）</h4><p>事件明细→ClickHouse(不可变,查时合并)、大块负载→S3、元数据→Postgres。「双(三)存储 + 异步 + 不可变」三主题首次合奏。</p></div></div>
+</div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/queues/ingestionQueue.ts</span><span class="ln">落库这一刻</span></div>
+  <pre class="code"><span class="cm">// 「落库」的真相：worker 取出队列消息后，把这条实体的多条事件 merge 后写入</span>
+<span class="kw">await new</span> <span class="fn">IngestionService</span>(redis, prisma, clickhouseWriter, clickhouseClient())
+  .<span class="fn">mergeAndWrite</span>(
+    getClickhouseEntityType(events[0].type),        <span class="cm">// trace / observation / score</span>
+    job.data.payload.authCheck.scope.projectId,     <span class="cm">// 多租户隔离键</span>
+    canonicalEntityId,
+    firstS3WriteTime,
+    events,                                          <span class="cm">// 同一 id 的多条事件</span>
+    forwardToEventsTable,
+  );</pre>
 </div>
 """)
 
@@ -397,6 +434,19 @@ _EN55.append(r"""
   <div class="step"><div class="num">1</div><div class="sc"><h4>Born: SDK packages on the spot (L12)</h4><p>The app calls an LLM, the SDK creates trace + observations, records input/output/model/usage, batches and async-POSTs — the main flow barely notices.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>Ingested: receive fast + process async (L13-19, L49)</h4><p>The API authenticates by API-key two-tier hash, lands the raw event in S3, pushes to a Redis queue and returns; the worker pulls, validates/parses, upserts into ClickHouse.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>Stored: split into three to settle (L13)</h4><p>Event detail→ClickHouse (immutable, merge at query), bulky payloads→S3, metadata→Postgres. The "dual (tri) storage + async + immutability" themes first play in concert.</p></div></div>
+</div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">worker/src/queues/ingestionQueue.ts</span><span class="ln">the moment it's stored</span></div>
+  <pre class="code"><span class="cm">// What "stored" really is: the worker pops the job, then merges this entity's events and writes them</span>
+<span class="kw">await new</span> <span class="fn">IngestionService</span>(redis, prisma, clickhouseWriter, clickhouseClient())
+  .<span class="fn">mergeAndWrite</span>(
+    getClickhouseEntityType(events[0].type),        <span class="cm">// trace / observation / score</span>
+    job.data.payload.authCheck.scope.projectId,     <span class="cm">// the multi-tenant isolation key</span>
+    canonicalEntityId,
+    firstS3WriteTime,
+    events,                                          <span class="cm">// the multiple events for one id</span>
+    forwardToEventsTable,
+  );</pre>
 </div>
 """)
 

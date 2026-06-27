@@ -410,6 +410,18 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="layer l-core"><div class="lh"><span class="badge">主题三</span><span class="name">异步（队列 + worker）</span></div><div class="ld">请求路径只接收、不干重活；重活进 BullMQ 由 worker 后台处理。削峰、解耦、可重试。其衍生纪律——fan-out、幂等、水位、锁——在 eval/计量/集成/迁移里反复出现，是同一主题的不同变奏。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">主题四</span><span class="name">双(三)存储（各归各家）</span></div><div class="ld">Postgres 扛 OLTP 元数据、ClickHouse 扛 OLAP 海量事件（列存）、S3 放大块负载。配套谨慎反范式、列表紧凑/详情取大字段。<strong>让不同形状的数据落进最合适的引擎</strong>，是性能与成本的根。</div></div>
 </div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/redis/ingestionQueue.ts</span><span class="ln">异步·分片队列</span></div>
+  <pre class="code"><span class="cm">// 异步主题落到代码：摄取队列按「分片」fan-out，由 worker 后台消费</span>
+<span class="kw">export class</span> <span class="fn">IngestionQueue</span> {
+  <span class="kw">public static</span> <span class="fn">getShardNames</span>() {
+    <span class="kw">return</span> Array.from(
+      { length: env.LANGFUSE_INGESTION_QUEUE_SHARD_COUNT },
+      (_, i) =&gt; `${QueueName.IngestionQueue}${i &gt; 0 ? `-${i}` : ""}`,
+    );   <span class="cm">// → IngestionQueue, IngestionQueue-1, IngestionQueue-2 …</span>
+  }
+}</pre>
+</div>
 
 
 <h2>主题五·六：多租户 + 成本（数据归谁、什么值得做）</h2>
@@ -560,6 +572,18 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">theme 3</span><span class="name">async (queue + worker)</span></div><div class="ld">The request path only receives, no heavy work; heavy work enters BullMQ for the worker to process in the background. Peak-shaving, decoupling, retryability. Its derived disciplines — fan-out, idempotency, watermark, lock — recur in eval/metering/integration/migration, variations of one theme.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">theme 4</span><span class="name">dual (tri) storage (each goes home)</span></div><div class="ld">Postgres handles OLTP metadata, ClickHouse OLAP massive events (columnar), S3 bulky payloads. With careful denormalization, compact lists / big-field detail. <strong>Letting differently-shaped data land in the most-fitting engine</strong> is the root of performance and cost.</div></div>
+</div>
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/redis/ingestionQueue.ts</span><span class="ln">async · sharded queue</span></div>
+  <pre class="code"><span class="cm">// The async theme in code: the ingestion queue fans out across "shards", consumed by the worker</span>
+<span class="kw">export class</span> <span class="fn">IngestionQueue</span> {
+  <span class="kw">public static</span> <span class="fn">getShardNames</span>() {
+    <span class="kw">return</span> Array.from(
+      { length: env.LANGFUSE_INGESTION_QUEUE_SHARD_COUNT },
+      (_, i) =&gt; `${QueueName.IngestionQueue}${i &gt; 0 ? `-${i}` : ""}`,
+    );   <span class="cm">// → IngestionQueue, IngestionQueue-1, IngestionQueue-2 …</span>
+  }
+}</pre>
 </div>
 
 
