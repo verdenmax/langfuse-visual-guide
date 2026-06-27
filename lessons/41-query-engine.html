@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -351,13 +354,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 上一课的 widget 声明了 <code>view + dimensions + metrics + filters</code>。但 ClickHouse 只懂 <strong>SQL</strong>，根本不认识这些声明。中间那座桥，就是<strong>查询引擎（query engine）</strong>——它把这套声明<strong>编译成 SQL</strong>，跑出数据。这一课拆开它，看清两个核心部件：一个<strong>语义层</strong>（data model，把「成本」「按模型」这样的友好逻辑名，映射到真实的 ClickHouse 列与表达式），和一个<strong>编译器</strong>（<code>QueryBuilder.build()</code>，把声明拼装成<strong>参数化</strong>的 SQL）。
-理解了它，你就明白第 40 课仪表盘、第 33 课监控、第 35 课实验聚合<strong>为何能共用一份查询形状</strong>——因为它们背后都是这同一台编译器；也会再次见到第 23 课「参数化防注入」的纪律，在聚合查询里如何贯彻。
+理解了它，你就明白<a class="xref" href="40-dashboards-and-widgets.html">第 40 课</a>仪表盘、<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控、<a class="xref" href="35-dataset-runs.html">第 35 课</a>实验聚合<strong>为何能共用一份查询形状</strong>——因为它们背后都是这同一台编译器；也会再次见到<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>「参数化防注入」的纪律，在聚合查询里如何贯彻。
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   查询引擎像餐厅里的<strong>「翻译官 + 一本菜单」</strong>。你（widget）用<strong>人话点菜</strong>：「按模型分组、统计总成本，只看 production 的」。翻译官（<code>QueryBuilder</code>）翻开一本<strong>菜单</strong>（data model）——菜单上每道「逻辑菜名」都标注着<strong>后厨用的真实食材和做法</strong>（「总成本」=后厨表里的 <code>sum(total_cost)</code> 列、「按模型」=按 <code>provided_model_name</code> 分组）。
-  翻译官照着菜单，把你的人话<strong>精确翻译成后厨（ClickHouse）能执行的工单</strong>（SQL）。妙处有二：其一，你<strong>永远不用知道</strong>后厨的食材叫什么、放在哪个冷柜——菜单这层把你和后厨的<strong>物理细节</strong>隔开了，后厨改了食材摆放（换列名、改表结构），只要菜单跟着更新，你的点法<strong>一字不用改</strong>。其二，凡是你填的「具体值」（如 <code>production</code>），翻译官都<strong>另用一张小纸条夹着递进去</strong>（参数化），绝不直接写进工单正文——这样哪怕你写个奇怪的店名，也绝<strong>串改不了工单本身</strong>（防 SQL 注入，第 23 课）。
+  翻译官照着菜单，把你的人话<strong>精确翻译成后厨（ClickHouse）能执行的工单</strong>（SQL）。妙处有二：其一，你<strong>永远不用知道</strong>后厨的食材叫什么、放在哪个冷柜——菜单这层把你和后厨的<strong>物理细节</strong>隔开了，后厨改了食材摆放（换列名、改表结构），只要菜单跟着更新，你的点法<strong>一字不用改</strong>。其二，凡是你填的「具体值」（如 <code>production</code>），翻译官都<strong>另用一张小纸条夹着递进去</strong>（参数化），绝不直接写进工单正文——这样哪怕你写个奇怪的店名，也绝<strong>串改不了工单本身</strong>（防 SQL 注入，<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>）。
 </div>
 
 
@@ -421,7 +424,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">关键：用户填的具体值（production）永远走 parameters，不拼进 SQL 正文——参数化防注入（第23课）</text>
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">SQL 与值分离：模板可缓存/可审计，值随调用绑定，恶意输入串改不了结构</text>
 </svg>
-<div class="figcap"><b>编译器对照字典逐项翻译</b>：<code>queryBuilder.ts</code> 的 <code>build()</code> 串起 <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858)。过滤用 FilterList 的 <code>apply()</code> 产出 <b>SQL+参数</b>——用户值绑成参数，绝不拼进正文（第 23 课同款防注入）。</div>
+<div class="figcap"><b>编译器对照字典逐项翻译</b>：<code>queryBuilder.ts</code> 的 <code>build()</code> 串起 <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858)。过滤用 FilterList 的 <code>apply()</code> 产出 <b>SQL+参数</b>——用户值绑成参数，绝不拼进正文（<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>同款防注入）。</div>
 </div>
 
 <div class="codefile">
@@ -482,28 +485,28 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <thead><tr><th>设计</th><th>解决什么</th><th>呼应</th></tr></thead>
   <tbody>
     <tr><td><b>语义层</b>（逻辑名↔SQL）</td><td>物理列改名/换表，只改字典，所有查询不动；用户也无需懂物理 schema</td><td>解耦「想要什么」与「怎么存」</td></tr>
-    <tr><td><b>参数化</b>（值走 parameters）</td><td>用户值绝不拼进 SQL 正文，根除 SQL 注入</td><td>第 23 课 FilterState 同款</td></tr>
+    <tr><td><b>参数化</b>（值走 parameters）</td><td>用户值绝不拼进 SQL 正文，根除 SQL 注入</td><td><a class="xref" href="23-filtering-search-bar.html">第 23 课</a> FilterState 同款</td></tr>
     <tr><td><b>视图版本化</b>（v1/v2）</td><td>物理 schema 演进时，老查询仍按老视图编译，不破坏历史</td><td>第 34/37 课「不可变 + 演进」</td></tr>
-    <tr><td><b>一引擎多消费</b></td><td>仪表盘/监控/实验聚合共用，指标口径全局一致</td><td>第 40 课「一份查询形状三处复用」</td></tr>
+    <tr><td><b>一引擎多消费</b></td><td>仪表盘/监控/实验聚合共用，指标口径全局一致</td><td><a class="xref" href="40-dashboards-and-widgets.html">第 40 课</a>「一份查询形状三处复用」</td></tr>
   </tbody>
 </table>
 
-<p>把这四点连起来看，查询引擎其实是一个<strong>小型「指标语言 + 编译器」</strong>：上层用一种<strong>声明式、与物理无关、注入安全</strong>的小语言描述「我要什么指标」，引擎负责把它<strong>正确、一致、安全</strong>地落成 ClickHouse 能跑的 SQL。这和第 23 课把 FilterState 编译成过滤 SQL 是同一种思路，只是从「过滤」升级到了完整的「聚合查询」。<strong>声明在上、编译在下，物理细节被牢牢封在引擎里</strong>——这正是 Langfuse 能让仪表盘、监控、API 对同一指标永远算出同一个数的底层原因。</p>
+<p>把这四点连起来看，查询引擎其实是一个<strong>小型「指标语言 + 编译器」</strong>：上层用一种<strong>声明式、与物理无关、注入安全</strong>的小语言描述「我要什么指标」，引擎负责把它<strong>正确、一致、安全</strong>地落成 ClickHouse 能跑的 SQL。这和<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>把 FilterState 编译成过滤 SQL 是同一种思路，只是从「过滤」升级到了完整的「聚合查询」。<strong>声明在上、编译在下，物理细节被牢牢封在引擎里</strong>——这正是 Langfuse 能让仪表盘、监控、API 对同一指标永远算出同一个数的底层原因。</p>
 
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么要造一个语义层，而不让 widget 直接写 SQL？</strong> 直接写 SQL 看似省事，实则埋三颗雷。其一是<strong>耦合</strong>：每个 widget 都硬编码物理列名，哪天 ClickHouse 改了表结构、换了列名，成百上千张 widget 一起崩，得逐个改。语义层把「逻辑名→物理 SQL」收进一本字典，物理一变只改字典，上层岿然不动。其二是<strong>安全</strong>：让每个 widget 自己拼 SQL，就等于把防注入的责任摊给每个写 widget 的人——总有人会忘、会拼错，一个口子就是一次数据泄露。统一引擎把参数化焊死在唯一出口，<strong>注入安全靠结构兜底</strong>，不靠自觉。其三是<strong>一致</strong>：散落各处的 SQL 迟早对同一指标算出不同数。把指标定义收进语义层，全公司一种算法。<strong>一台引擎，同时买下解耦、安全、一致三件大事</strong>——这就是为什么值得为它多写这几千行。<br><br>
-  <strong>为什么 view 要带 v1/v2 版本？</strong> 因为<strong>物理 schema 会演进，但历史查询不该因此失效</strong>。ClickHouse 表会重构、列会拆分合并、为性能引入新的物化视图——这些都是底层的正常演化。如果查询直接绑死当前物理结构，那每次底层一动，所有保存好的 widget、monitor、API 查询都可能算错或报错。给 view 引入版本，等于让「语义」也有了不可变的快照：一个 v1 的查询永远按 v1 的字典编译，哪怕底层早已迁到 v2 的新表。这和第 34 课数据项版本、第 37 课 prompt 版本是<strong>同一种信念在查询层的回响</strong>——<strong>底层可以大胆演进，因为上层被一层稳定的版本化语义保护着</strong>。
+  <strong>为什么 view 要带 v1/v2 版本？</strong> 因为<strong>物理 schema 会演进，但历史查询不该因此失效</strong>。ClickHouse 表会重构、列会拆分合并、为性能引入新的物化视图——这些都是底层的正常演化。如果查询直接绑死当前物理结构，那每次底层一动，所有保存好的 widget、monitor、API 查询都可能算错或报错。给 view 引入版本，等于让「语义」也有了不可变的快照：一个 v1 的查询永远按 v1 的字典编译，哪怕底层早已迁到 v2 的新表。这和<a class="xref" href="34-datasets-and-items.html">第 34 课</a>数据项版本、<a class="xref" href="37-prompt-management.html">第 37 课</a> prompt 版本是<strong>同一种信念在查询层的回响</strong>——<strong>底层可以大胆演进，因为上层被一层稳定的版本化语义保护着</strong>。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>查询引擎 = 声明式查询 → SQL 的编译器</strong>：widget 的 <code>view+dimensions+metrics+filters</code> 声明，由它编译成 ClickHouse SQL 并执行，是第 40 课仪表盘背后的发动机。</li>
+    <li><strong>查询引擎 = 声明式查询 → SQL 的编译器</strong>：widget 的 <code>view+dimensions+metrics+filters</code> 声明，由它编译成 ClickHouse SQL 并执行，是<a class="xref" href="40-dashboards-and-widgets.html">第 40 课</a>仪表盘背后的发动机。</li>
     <li><strong>语义层（data model）</strong>：为每个 view 声明 <code>dimensions</code>/<code>measures</code>，每项把逻辑名映射到真实 SQL（如 <code>name</code>→<code>traces.name</code>、时间→<code>formatDateTime(...)</code>）——上层永不直接碰物理列。</li>
     <li><strong>编译器（QueryBuilder.build）</strong>：对照字典把维度译成 GROUP BY、度量译成聚合、时间分桶、过滤译成 WHERE、必要时连表，产出 <strong>SQL + 参数</strong>。</li>
-    <li><strong>参数化防注入</strong>：用户填的值绑成 parameters、绝不拼进 SQL 正文——第 23 课 FilterState 的纪律在聚合查询里同样贯彻，注入安全靠结构兜底。</li>
+    <li><strong>参数化防注入</strong>：用户填的值绑成 parameters、绝不拼进 SQL 正文——<a class="xref" href="23-filtering-search-bar.html">第 23 课</a> FilterState 的纪律在聚合查询里同样贯彻，注入安全靠结构兜底。</li>
     <li><strong>一引擎四收益</strong>：语义层解耦物理、参数化保安全、视图 v1/v2 版本化护历史、一引擎多消费保口径一致——仪表盘/监控/实验对同一指标永远同一个数。</li>
   </ul>
 </div>
@@ -526,13 +529,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="qn">2. QueryBuilder.build() 把过滤条件编译进 SQL 时，用户填的具体值（如 environment="production"）是怎么处理的？</div>
   <ol class="opts">
     <li>存进 Redis 再引用</li>
-    <li>绑成 parameters、绝不拼进 SQL 正文（SQL 里只放 {占位符}，值随调用绑定）——和第23课 FilterState 同款，从结构上根除 SQL 注入</li>
+    <li>绑成 parameters、绝不拼进 SQL 正文（SQL 里只放 {占位符}，值随调用绑定）——和<a class="xref" href="23-filtering-search-bar.html">第23课</a> FilterState 同款，从结构上根除 SQL 注入</li>
     <li>直接字符串拼接进 SQL</li>
     <li>先做 HTML 转义再拼接</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。mapFilters/buildWhereClause 用 FilterList 的 apply() 产出 SQL+参数：SQL 模板里是 {占位符}，用户值放进 parameters 字典，由 ClickHouse 驱动安全绑定。SQL 与值分离，模板可缓存/审计，恶意输入串改不了结构。这正是第23课把 FilterState 编译成过滤 SQL 的同一种防注入纪律，在聚合查询里同样贯彻——注入安全靠结构兜底，不靠每个开发者自觉。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。mapFilters/buildWhereClause 用 FilterList 的 apply() 产出 SQL+参数：SQL 模板里是 {占位符}，用户值放进 parameters 字典，由 ClickHouse 驱动安全绑定。SQL 与值分离，模板可缓存/审计，恶意输入串改不了结构。这正是<a class="xref" href="23-filtering-search-bar.html">第23课</a>把 FilterState 编译成过滤 SQL 的同一种防注入纪律，在聚合查询里同样贯彻——注入安全靠结构兜底，不靠每个开发者自觉。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -545,7 +548,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。ClickHouse 表会重构、列会拆分合并、为性能加物化视图——底层正常演化。若查询绑死当前物理结构，每次底层一动，所有保存的 widget/monitor/API 查询都可能算错或报错。给 view 引入 v1/v2，等于给「语义」也加了不可变快照：v1 查询永远按 v1 编译。这和第34课数据项版本、第37课 prompt 版本同一信念——底层敢大胆演进，因为上层被稳定的版本化语义保护。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。ClickHouse 表会重构、列会拆分合并、为性能加物化视图——底层正常演化。若查询绑死当前物理结构，每次底层一动，所有保存的 widget/monitor/API 查询都可能算错或报错。给 view 引入 v1/v2，等于给「语义」也加了不可变快照：v1 查询永远按 v1 编译。这和<a class="xref" href="34-datasets-and-items.html">第34课</a>数据项版本、<a class="xref" href="37-prompt-management.html">第37课</a> prompt 版本同一信念——底层敢大胆演进，因为上层被稳定的版本化语义保护。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -558,13 +561,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-en">
 <p class="lead">
 The last lesson's widget declared <code>view + dimensions + metrics + filters</code>. But ClickHouse only understands <strong>SQL</strong>—it knows nothing of these declarations. The bridge between them is the <strong>query engine</strong>—it <strong>compiles</strong> that declaration <strong>into SQL</strong> and runs it. This lesson takes it apart, revealing two core parts: a <strong>semantic layer</strong> (the data model, mapping friendly logical names like "cost" and "by model" to real ClickHouse columns and expressions), and a <strong>compiler</strong> (<code>QueryBuilder.build()</code>, assembling the declaration into <strong>parameterized</strong> SQL).
-Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and Lesson 35's experiment aggregation <strong>can share one query shape</strong>—because they're all backed by this same compiler; you'll also see again how Lesson 23's "parameterized = injection-safe" discipline carries into aggregation queries.
+Understanding it explains why <a class="xref" href="40-dashboards-and-widgets.html">Lesson 40</a>'s dashboards, <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitors, and <a class="xref" href="35-dataset-runs.html">Lesson 35</a>'s experiment aggregation <strong>can share one query shape</strong>—because they're all backed by this same compiler; you'll also see again how <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s "parameterized = injection-safe" discipline carries into aggregation queries.
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   The query engine is like a restaurant's <strong>"interpreter + a menu"</strong>. You (the widget) <strong>order in plain words</strong>: "group by model, total the cost, only production". The interpreter (<code>QueryBuilder</code>) opens a <strong>menu</strong> (the data model)—where each "logical dish name" is annotated with <strong>the real ingredients and methods the kitchen uses</strong> ("total cost" = the kitchen table's <code>sum(total_cost)</code> column, "by model" = group by <code>provided_model_name</code>).
-  Following the menu, the interpreter <strong>precisely translates your plain words into a work ticket the kitchen (ClickHouse) can execute</strong> (SQL). Two beauties: one, you <strong>never need to know</strong> what the kitchen's ingredients are called or which fridge they're in—this menu layer isolates you from the kitchen's <strong>physical details</strong>; if the kitchen rearranges ingredients (renames columns, restructures tables), as long as the menu updates, your ordering style <strong>doesn't change one word</strong>. Two, any "concrete value" you fill in (like <code>production</code>) the interpreter <strong>passes in on a separate slip</strong> (parameterized), never written into the ticket body—so even a weird store name <strong>can't alter the ticket itself</strong> (SQL injection prevention, Lesson 23).
+  Following the menu, the interpreter <strong>precisely translates your plain words into a work ticket the kitchen (ClickHouse) can execute</strong> (SQL). Two beauties: one, you <strong>never need to know</strong> what the kitchen's ingredients are called or which fridge they're in—this menu layer isolates you from the kitchen's <strong>physical details</strong>; if the kitchen rearranges ingredients (renames columns, restructures tables), as long as the menu updates, your ordering style <strong>doesn't change one word</strong>. Two, any "concrete value" you fill in (like <code>production</code>) the interpreter <strong>passes in on a separate slip</strong> (parameterized), never written into the ticket body—so even a weird store name <strong>can't alter the ticket itself</strong> (SQL injection prevention, <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>).
 </div>
 
 
@@ -628,7 +631,7 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">key: user-filled concrete values (production) always go via parameters, never into the SQL body—parameterized = injection-safe (Lesson 23)</text>
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">SQL separate from values: the template is cacheable/auditable, values bound per call, malicious input can't alter the structure</text>
 </svg>
-<div class="figcap"><b>the compiler translates item by item via the dictionary</b>: <code>queryBuilder.ts</code>'s <code>build()</code> chains <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858). Filters use FilterList's <code>apply()</code> to produce <b>SQL+parameters</b>—user values are bound as parameters, never spliced into the body (same injection prevention as Lesson 23).</div>
+<div class="figcap"><b>the compiler translates item by item via the dictionary</b>: <code>queryBuilder.ts</code>'s <code>build()</code> chains <code>mapDimensions</code>(:270) / <code>mapMetrics</code>+<code>translateAggregation</code>(:290,137) / <code>applyBucketingDimension</code>(:182) / <code>mapFilters</code>+<code>buildWhereClause</code>(:490,858). Filters use FilterList's <code>apply()</code> to produce <b>SQL+parameters</b>—user values are bound as parameters, never spliced into the body (same injection prevention as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>).</div>
 </div>
 
 <div class="codefile">
@@ -689,27 +692,27 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   <thead><tr><th>design</th><th>what it solves</th><th>echoes</th></tr></thead>
   <tbody>
     <tr><td><b>semantic layer</b> (logical name↔SQL)</td><td>rename/restructure physical columns—only the dictionary changes, all queries untouched; users needn't know the physical schema</td><td>decouple "what you want" from "how it's stored"</td></tr>
-    <tr><td><b>parameterization</b> (values via parameters)</td><td>user values never spliced into the SQL body, rooting out SQL injection</td><td>same as Lesson 23's FilterState</td></tr>
+    <tr><td><b>parameterization</b> (values via parameters)</td><td>user values never spliced into the SQL body, rooting out SQL injection</td><td>same as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState</td></tr>
     <tr><td><b>view versioning</b> (v1/v2)</td><td>as the physical schema evolves, old queries still compile against the old view, not breaking history</td><td>Lessons 34/37 "immutable + evolving"</td></tr>
-    <tr><td><b>one engine, many consumers</b></td><td>dashboards/monitors/experiment-aggregation share it, keeping metric definitions globally consistent</td><td>Lesson 40 "one query shape, three reuses"</td></tr>
+    <tr><td><b>one engine, many consumers</b></td><td>dashboards/monitors/experiment-aggregation share it, keeping metric definitions globally consistent</td><td><a class="xref" href="40-dashboards-and-widgets.html">Lesson 40</a> "one query shape, three reuses"</td></tr>
   </tbody>
 </table>
 
-<p>Connect these four and the query engine is really a small <strong>"metrics language + compiler"</strong>: the upper layers describe "which metric I want" in a <strong>declarative, physical-agnostic, injection-safe</strong> little language, and the engine renders it <strong>correctly, consistently, safely</strong> into SQL ClickHouse can run. It's the same idea as Lesson 23 compiling FilterState into filter SQL, just upgraded from "filtering" to full "aggregation queries". <strong>Declaration on top, compilation below, physical details sealed firmly inside the engine</strong>—the underlying reason Langfuse can make dashboards, monitors, and the API always compute the same number for the same metric.</p>
+<p>Connect these four and the query engine is really a small <strong>"metrics language + compiler"</strong>: the upper layers describe "which metric I want" in a <strong>declarative, physical-agnostic, injection-safe</strong> little language, and the engine renders it <strong>correctly, consistently, safely</strong> into SQL ClickHouse can run. It's the same idea as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a> compiling FilterState into filter SQL, just upgraded from "filtering" to full "aggregation queries". <strong>Declaration on top, compilation below, physical details sealed firmly inside the engine</strong>—the underlying reason Langfuse can make dashboards, monitors, and the API always compute the same number for the same metric.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why build a semantic layer instead of letting widgets write SQL directly?</strong> Direct SQL seems easier but plants three landmines. One is <strong>coupling</strong>: every widget hardcodes physical column names, so the day ClickHouse restructures a table or renames a column, hundreds of widgets break together and must be fixed one by one. The semantic layer collects "logical name → physical SQL" into one dictionary, so a physical change touches only the dictionary, the upper layer unmoved. Two is <strong>safety</strong>: letting each widget assemble SQL spreads injection-prevention responsibility to everyone who writes a widget—someone will forget or get it wrong, and one hole is one data leak. A unified engine welds parameterization into its single exit, so <strong>injection safety is backstopped by structure</strong>, not diligence. Three is <strong>consistency</strong>: SQL scattered everywhere eventually computes different numbers for the same metric. Collecting metric definitions into the semantic layer gives one algorithm company-wide. <strong>One engine buys decoupling, safety, and consistency all at once</strong>—that's why it's worth the extra few thousand lines.<br><br>
-  <strong>Why do views carry v1/v2 versions?</strong> Because <strong>the physical schema evolves, but historical queries shouldn't break for it</strong>. ClickHouse tables get refactored, columns split and merge, new materialized views appear for performance—all normal evolution of the underlying. If a query binds tightly to the current physical structure, then every underlying move risks miscomputing or erroring every saved widget, monitor, and API query. Introducing versions to a view gives "semantics" an immutable snapshot too: a v1 query forever compiles against the v1 dictionary, even if the underlying has long migrated to v2's new tables. This is the <strong>same belief echoing at the query layer</strong> as Lesson 34's dataset-item versions and Lesson 37's prompt versions—<strong>the underlying can evolve boldly because the upper layer is protected by a stable layer of versioned semantics</strong>.
+  <strong>Why do views carry v1/v2 versions?</strong> Because <strong>the physical schema evolves, but historical queries shouldn't break for it</strong>. ClickHouse tables get refactored, columns split and merge, new materialized views appear for performance—all normal evolution of the underlying. If a query binds tightly to the current physical structure, then every underlying move risks miscomputing or erroring every saved widget, monitor, and API query. Introducing versions to a view gives "semantics" an immutable snapshot too: a v1 query forever compiles against the v1 dictionary, even if the underlying has long migrated to v2's new tables. This is the <strong>same belief echoing at the query layer</strong> as <a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s dataset-item versions and <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s prompt versions—<strong>the underlying can evolve boldly because the upper layer is protected by a stable layer of versioned semantics</strong>.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>The query engine = a declarative-query → SQL compiler</strong>: a widget's <code>view+dimensions+metrics+filters</code> declaration is compiled to ClickHouse SQL and executed by it—the engine behind Lesson 40's dashboards.</li>
+    <li><strong>The query engine = a declarative-query → SQL compiler</strong>: a widget's <code>view+dimensions+metrics+filters</code> declaration is compiled to ClickHouse SQL and executed by it—the engine behind <a class="xref" href="40-dashboards-and-widgets.html">Lesson 40</a>'s dashboards.</li>
     <li><strong>Semantic layer (data model)</strong>: declares <code>dimensions</code>/<code>measures</code> per view, each mapping a logical name to real SQL (e.g. <code>name</code>→<code>traces.name</code>, time→<code>formatDateTime(...)</code>)—the upper layer never touches physical columns.</li>
     <li><strong>Compiler (QueryBuilder.build)</strong>: consults the dictionary to translate dimensions into GROUP BY, measures into aggregations, time into buckets, filters into WHERE, joining tables when needed, producing <strong>SQL + parameters</strong>.</li>
-    <li><strong>Parameterized = injection-safe</strong>: user-filled values are bound as parameters, never spliced into the SQL body—Lesson 23's FilterState discipline carried into aggregation queries, injection safety backstopped by structure.</li>
+    <li><strong>Parameterized = injection-safe</strong>: user-filled values are bound as parameters, never spliced into the SQL body—<a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState discipline carried into aggregation queries, injection safety backstopped by structure.</li>
     <li><strong>One engine, four payoffs</strong>: the semantic layer decouples physical, parameterization ensures safety, view v1/v2 versioning protects history, one engine for many consumers keeps definitions consistent—dashboards/monitors/experiments always the same number for the same metric.</li>
   </ul>
 </div>
@@ -732,13 +735,13 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   <div class="qn">2. When QueryBuilder.build() compiles filter conditions into SQL, how are user-filled concrete values (e.g. environment="production") handled?</div>
   <ol class="opts">
     <li>stored in Redis then referenced</li>
-    <li>bound as parameters, never spliced into the SQL body (the SQL holds only {placeholders}, values bound per call)—same as Lesson 23's FilterState, rooting out SQL injection structurally</li>
+    <li>bound as parameters, never spliced into the SQL body (the SQL holds only {placeholders}, values bound per call)—same as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState, rooting out SQL injection structurally</li>
     <li>directly string-concatenated into the SQL</li>
     <li>HTML-escaped then concatenated</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. mapFilters/buildWhereClause use FilterList's apply() to produce SQL+parameters: the SQL template has {placeholders}, user values go into a parameters dict, safely bound by the ClickHouse driver. SQL separate from values, the template cacheable/auditable, malicious input can't alter the structure. This is the same injection-prevention discipline as Lesson 23 compiling FilterState into filter SQL, carried into aggregation—injection safety backstopped by structure, not each developer's diligence.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. mapFilters/buildWhereClause use FilterList's apply() to produce SQL+parameters: the SQL template has {placeholders}, user values go into a parameters dict, safely bound by the ClickHouse driver. SQL separate from values, the template cacheable/auditable, malicious input can't alter the structure. This is the same injection-prevention discipline as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a> compiling FilterState into filter SQL, carried into aggregation—injection safety backstopped by structure, not each developer's diligence.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -751,7 +754,7 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. ClickHouse tables get refactored, columns split/merge, materialized views added for performance—normal underlying evolution. If a query binds to the current physical structure, every underlying move risks miscomputing/erroring every saved widget/monitor/API query. Versioning a view gives semantics an immutable snapshot: a v1 query forever compiles against v1. Same belief as Lesson 34's dataset-item versions and Lesson 37's prompt versions—the underlying evolves boldly because the upper layer is protected by stable versioned semantics.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. ClickHouse tables get refactored, columns split/merge, materialized views added for performance—normal underlying evolution. If a query binds to the current physical structure, every underlying move risks miscomputing/erroring every saved widget/monitor/API query. Versioning a view gives semantics an immutable snapshot: a v1 query forever compiles against v1. Same belief as <a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s dataset-item versions and <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s prompt versions—the underlying evolves boldly because the upper layer is protected by stable versioned semantics.</div></div></div>
   </details>
 </div>
 <div class="card spark">

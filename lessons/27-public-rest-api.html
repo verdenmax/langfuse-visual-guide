@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,9 +353,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 21 课开的是给自家 UI 的「员工通道」（tRPC）。这一课开<strong>第三道门也是最后一道</strong>——给外部 SDK 的<strong>公共 REST API</strong>。它的优先级和 tRPC 截然不同：对内求<strong>类型安全、改得快</strong>，
+<a class="xref" href="21-trpc-backbone.html">第 21 课</a>开的是给自家 UI 的「员工通道」（tRPC）。这一课开<strong>第三道门也是最后一道</strong>——给外部 SDK 的<strong>公共 REST API</strong>。它的优先级和 tRPC 截然不同：对内求<strong>类型安全、改得快</strong>，
 对外求<strong>契约稳定、扛得住量</strong>。这一课看四件事：一个<strong>路由工厂</strong>怎么统一所有端点的鉴权/限流/校验，鉴权怎么<strong>用 Redis 缓存</strong>扛住海量请求，
-版本怎么<strong>靠文件夹</strong>管理，以及一份 <strong>Fern 契约</strong>怎么生成多语言 SDK。看完这一课，第 20 课「三道门」就全开齐了。
+版本怎么<strong>靠文件夹</strong>管理，以及一份 <strong>Fern 契约</strong>怎么生成多语言 SDK。看完这一课，<a class="xref" href="20-web-app-architecture.html">第 20 课</a>「三道门」就全开齐了。
 </p>
 
 <div class="card analogy">
@@ -364,7 +367,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>一个路由工厂，统一所有端点</h2>
-<p>就像 tRPC 用 procedure 构建器把鉴权收敛到一处（第 21 课），公共 REST 用一个<strong>路由工厂</strong> <code>createAuthedProjectAPIRoute</code> 把所有端点的「规定动作」收敛到一处。
+<p>就像 tRPC 用 procedure 构建器把鉴权收敛到一处（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>），公共 REST 用一个<strong>路由工厂</strong> <code>createAuthedProjectAPIRoute</code> 把所有端点的「规定动作」收敛到一处。
 每个端点只需声明自己的 query/body/response schema 和限流资源，工厂就<strong>统一</strong>把这几关跑完：</p>
 
 <div class="fig">
@@ -401,11 +404,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 });</pre>
 </div>
 
-<p>这正是第 21 课「安全靠结构」在 REST 侧的翻版：鉴权、限流、Zod 校验<strong>不靠每个端点作者自觉</strong>，而是工厂强制跑完。
+<p>这正是<a class="xref" href="21-trpc-backbone.html">第 21 课</a>「安全靠结构」在 REST 侧的翻版：鉴权、限流、Zod 校验<strong>不靠每个端点作者自觉</strong>，而是工厂强制跑完。
 区别在优先级——tRPC 那套是给内部的，REST 这套多了<strong>限流</strong>（防外部滥用）、<strong>响应校验</strong>（防对外契约漂移）、<strong>访问级别</strong>（如 Bearer 只读 score）这些<strong>面向公众</strong>才需要的关卡。</p>
 
 <table class="t">
-  <tr><th></th><th>tRPC（第 21 课 · 对内）</th><th>公共 REST（本课 · 对外）</th></tr>
+  <tr><th></th><th>tRPC（<a class="xref" href="21-trpc-backbone.html">第 21 课</a> · 对内）</th><th>公共 REST（本课 · 对外）</th></tr>
   <tr><td><b>给谁</b></td><td>自家 UI（同仓库、同团队）</td><td>外部 SDK / 用户脚本（海量、长期）</td></tr>
   <tr><td><b>首要价值</b></td><td>类型安全、<strong>改得快</strong></td><td>契约稳定、<strong>扛得住量</strong></td></tr>
   <tr><td><b>收敛方式</b></td><td>procedure 构建器（叠中间件）</td><td>路由工厂 <code>createAuthedProjectAPIRoute</code></td></tr>
@@ -475,17 +478,17 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="layer l-part"><div class="lh"><span class="badge">Fern 契约</span><span class="name">一份 YAML → 多语言 SDK</span></div><div class="ld">API 契约是手写的 Fern YAML（<code>fern/apis/{server,client}/…</code>），由它<strong>生成 Python 与 TypeScript SDK</strong>（<code>generated/</code>），还导出 OpenAPI。一处定义、处处一致。</div></div>
 </div>
 
-<p>这两招合起来，正是第 20 课说的「对外求契约稳定」的落地：<strong>版本化</strong>保证「旧的不破」，<strong>Fern 生成</strong>保证「多语言一致、契约即文档」。
+<p>这两招合起来，正是<a class="xref" href="20-web-app-architecture.html">第 20 课</a>说的「对外求契约稳定」的落地：<strong>版本化</strong>保证「旧的不破」，<strong>Fern 生成</strong>保证「多语言一致、契约即文档」。
 配合开发期的响应 schema 校验（防手写实现和 Fern 契约悄悄漂移），整条对外通道既稳又不会偷偷变样。</p>
 
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>同样是「把数据查出来」，为什么 UI 走 tRPC、SDK 却要这一整套 REST 工厂 + 缓存 + 版本 + Fern？</strong> 因为<strong>受众不同，约束就不同</strong>（呼应第 20 课）。
+  <strong>同样是「把数据查出来」，为什么 UI 走 tRPC、SDK 却要这一整套 REST 工厂 + 缓存 + 版本 + Fern？</strong> 因为<strong>受众不同，约束就不同</strong>（呼应<a class="xref" href="20-web-app-architecture.html">第 20 课</a>）。
   UI 是自家的、同仓库的，所以 tRPC 用<strong>类型贯穿</strong>换迭代速度，接口天天改也无妨。而 SDK 面向<strong>外部、海量、长期</strong>的用户：海量，所以鉴权必须<strong>能缓存</strong>（Redis + 负缓存），否则数据库被验 key 拖垮；
   长期，所以接口必须<strong>带版本</strong>（文件夹 + Fern），否则一改就破坏别人两年前写的集成。同一个「把横切关注收敛到一处」的工厂模式（第 21、22 课），
   在这里被赋予了<strong>面向公众</strong>的新内涵：限流防滥用、响应校验防契约漂移、缓存扛流量、版本保稳定。<strong>对内优化「改得快」，对外优化「不破坏」——这是同一套数据，两种工程价值观的分野。</strong>
-  至此，第 20 课的「三道门」全部走完：tRPC 给 UI、REST 给 SDK、App-Router 给流式/webhook，各按受众分而治之。
+  至此，<a class="xref" href="20-web-app-architecture.html">第 20 课</a>的「三道门」全部走完：tRPC 给 UI、REST 给 SDK、App-Router 给流式/webhook，各按受众分而治之。
 </div>
 
 <div class="card key">
@@ -495,13 +498,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>鉴权用 Redis 缓存</strong>扛海量请求：命中即返回、未命中回 Postgres 按 <code>fastHashedSecretKey</code> 查再回填；<strong>负缓存</strong>（<code>API_KEY_NON_EXISTENT</code>）挡住假 key 暴力打库。</li>
     <li><strong>版本靠文件夹</strong>：v1 在根、v2/v3 子文件夹；老路径永不改，新版可做减法（如 v3 scores 去掉需 JOIN 的过滤、改游标分页）。</li>
     <li><strong>契约靠 Fern</strong>：手写 Fern YAML → 生成 Python/TS SDK + OpenAPI；开发期响应校验防手写实现与契约漂移。</li>
-    <li>取舍：对内（tRPC）优化类型安全与速度，对外（REST）优化稳定与扛量——同一份数据、两种价值观。至此第 20 课「三道门」全开齐。</li>
+    <li>取舍：对内（tRPC）优化类型安全与速度，对外（REST）优化稳定与扛量——同一份数据、两种价值观。至此<a class="xref" href="20-web-app-architecture.html">第 20 课</a>「三道门」全开齐。</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 自测 · 想一想为什么这么设计</h2>
 <div class="quiz">
-  <div class="qn">1. 公共 REST API 用一个路由工厂 createAuthedProjectAPIRoute 统一所有端点。和第 21 课 tRPC 的 procedure 构建器相比，它额外多了哪些「面向公众」的关卡？</div>
+  <div class="qn">1. 公共 REST API 用一个路由工厂 createAuthedProjectAPIRoute 统一所有端点。和<a class="xref" href="21-trpc-backbone.html">第 21 课</a> tRPC 的 procedure 构建器相比，它额外多了哪些「面向公众」的关卡？</div>
   <ol class="opts">
     <li>更快的数据库连接</li>
     <li>去掉了鉴权</li>
@@ -536,7 +539,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。对外契约一旦发布就不能随意改，但需求总在变。文件夹版本让 v1 永不破、新能力进 v2/v3（甚至砍掉昂贵旧设计，如 v3 scores 去掉需 JOIN 的过滤、改游标分页）；Fern 用一份手写 YAML 生成 Python/TS SDK + OpenAPI，一处定义处处一致。这正是第 20 课「对外求契约稳定」的落地。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。对外契约一旦发布就不能随意改，但需求总在变。文件夹版本让 v1 永不破、新能力进 v2/v3（甚至砍掉昂贵旧设计，如 v3 scores 去掉需 JOIN 的过滤、改游标分页）；Fern 用一份手写 YAML 生成 Python/TS SDK + OpenAPI，一处定义处处一致。这正是<a class="xref" href="20-web-app-architecture.html">第 20 课</a>「对外求契约稳定」的落地。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -548,11 +551,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 21 opened the "staff entrance" for the in-house UI (tRPC). This lesson opens <strong>the third and last door</strong> — the <strong>public REST API</strong> for
+<a class="xref" href="21-trpc-backbone.html">Lesson 21</a> opened the "staff entrance" for the in-house UI (tRPC). This lesson opens <strong>the third and last door</strong> — the <strong>public REST API</strong> for
 external SDKs. Its priorities differ sharply from tRPC's: internally seek <strong>type-safety, fast to change</strong>; externally seek <strong>contract stability,
 holding up at scale</strong>. Four things to see: how a <strong>route factory</strong> unifies auth/rate-limit/validation across all endpoints, how auth <strong>uses a
 Redis cache</strong> to withstand massive traffic, how versions are managed <strong>by folder</strong>, and how a <strong>Fern contract</strong> generates multi-language
-SDKs. Finish this and Lesson 20's "three doors" are all open.
+SDKs. Finish this and <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>'s "three doors" are all open.
 </p>
 
 <div class="card analogy">
@@ -567,7 +570,7 @@ SDKs. Finish this and Lesson 20's "three doors" are all open.
 
 
 <h2>One route factory, unifying every endpoint</h2>
-<p>Just as tRPC converges auth into procedure builders (Lesson 21), the public REST converges every endpoint's "mandatory moves" into one <strong>route factory</strong>
+<p>Just as tRPC converges auth into procedure builders (<a class="xref" href="21-trpc-backbone.html">Lesson 21</a>), the public REST converges every endpoint's "mandatory moves" into one <strong>route factory</strong>
 <code>createAuthedProjectAPIRoute</code>. Each endpoint just declares its query/body/response schema and rate-limit resource, and the factory <strong>uniformly</strong>
 runs these gates:</p>
 
@@ -605,13 +608,13 @@ runs these gates:</p>
 });</pre>
 </div>
 
-<p>This is Lesson 21's "security by structure" on the REST side: auth, rate-limit, Zod validation <strong>don't rely on each endpoint author's diligence</strong> — the
+<p>This is <a class="xref" href="21-trpc-backbone.html">Lesson 21</a>'s "security by structure" on the REST side: auth, rate-limit, Zod validation <strong>don't rely on each endpoint author's diligence</strong> — the
 factory forces them all. The difference is priority — tRPC's set is internal; REST's adds <strong>rate limiting</strong> (against external abuse), <strong>response
 validation</strong> (against external contract drift), <strong>access levels</strong> (e.g. Bearer read-only scores) — gates only the <strong>public-facing</strong> side
 needs.</p>
 
 <table class="t">
-  <tr><th></th><th>tRPC (Lesson 21 · internal)</th><th>public REST (this lesson · external)</th></tr>
+  <tr><th></th><th>tRPC (<a class="xref" href="21-trpc-backbone.html">Lesson 21</a> · internal)</th><th>public REST (this lesson · external)</th></tr>
   <tr><td><b>for whom</b></td><td>own UI (same repo, same team)</td><td>external SDK / user scripts (massive, long-lived)</td></tr>
   <tr><td><b>top value</b></td><td>type-safety, <strong>fast to change</strong></td><td>contract stability, <strong>holds up at scale</strong></td></tr>
   <tr><td><b>convergence</b></td><td>procedure builders (stacked middleware)</td><td>route factory <code>createAuthedProjectAPIRoute</code></td></tr>
@@ -682,19 +685,19 @@ with Fern</strong>.</p>
   <div class="layer l-part"><div class="lh"><span class="badge">Fern contract</span><span class="name">one YAML → multi-language SDKs</span></div><div class="ld">The API contract is hand-written Fern YAML (<code>fern/apis/{server,client}/…</code>), which <strong>generates the Python and TypeScript SDKs</strong> (<code>generated/</code>) and exports OpenAPI. Define once, consistent everywhere.</div></div>
 </div>
 
-<p>Together these are Lesson 20's "externally seek contract stability" made real: <strong>versioning</strong> ensures "the old doesn't break", <strong>Fern
+<p>Together these are <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>'s "externally seek contract stability" made real: <strong>versioning</strong> ensures "the old doesn't break", <strong>Fern
 generation</strong> ensures "multi-language consistency, contract-as-docs". Paired with dev-time response-schema validation (against the hand-written implementation
 silently drifting from the Fern contract), the whole external channel stays stable and never quietly changes shape.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
   <strong>It's all "query the data out", so why does the UI use tRPC while the SDK needs this whole REST factory + cache + versions + Fern?</strong> Because
-  <strong>different audiences, different constraints</strong> (echoing Lesson 20). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
+  <strong>different audiences, different constraints</strong> (echoing <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>). The UI is in-house, same repo, so tRPC trades <strong>type threading</strong> for iteration
   speed, where daily changes are fine. The SDK faces <strong>external, massive, long-lived</strong> users: massive, so auth must be <strong>cacheable</strong> (Redis +
   negative cache), or the DB gets crushed by key checks; long-lived, so the API must be <strong>versioned</strong> (folders + Fern), or one change breaks someone's
   two-year-old integration. The same "converge cross-cutting concerns into one factory" pattern (Lessons 21, 22) takes on a <strong>public-facing</strong> new meaning
   here: rate-limit against abuse, response-validate against drift, cache to take traffic, version to stay stable. <strong>Internally optimize "fast to change",
-  externally optimize "don't break" — the same data, two engineering value systems parting ways.</strong> With that, Lesson 20's "three doors" are all walked through:
+  externally optimize "don't break" — the same data, two engineering value systems parting ways.</strong> With that, <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>'s "three doors" are all walked through:
   tRPC for the UI, REST for the SDK, App-Router for streaming/webhooks — each divided and conquered by audience.
 </div>
 
@@ -705,13 +708,13 @@ silently drifting from the Fern contract), the whole external channel stays stab
     <li><strong>Auth uses a Redis cache</strong> to scale: hit returns directly, miss falls back to Postgres by <code>fastHashedSecretKey</code> and re-caches; <strong>negative caching</strong> (<code>API_KEY_NON_EXISTENT</code>) blocks fake-key brute force.</li>
     <li><strong>Versioning by folder</strong>: v1 at root, v2/v3 subfolders; old paths never change, new versions can subtract (e.g. v3 scores drops JOIN-needing filters, uses cursor pagination).</li>
     <li><strong>Contract by Fern</strong>: hand-written Fern YAML → generated Python/TS SDKs + OpenAPI; dev-time response validation guards against the implementation drifting from the contract.</li>
-    <li>Tradeoff: internal (tRPC) optimizes type-safety and speed, external (REST) optimizes stability and scale — same data, two value systems. With this, Lesson 20's "three doors" are all open.</li>
+    <li>Tradeoff: internal (tRPC) optimizes type-safety and speed, external (REST) optimizes stability and scale — same data, two value systems. With this, <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>'s "three doors" are all open.</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. The public REST API unifies all endpoints with one route factory createAuthedProjectAPIRoute. Compared to Lesson 21's tRPC procedure builders, what 'public-facing' gates does it add?</div>
+  <div class="qn">1. The public REST API unifies all endpoints with one route factory createAuthedProjectAPIRoute. Compared to <a class="xref" href="21-trpc-backbone.html">Lesson 21</a>'s tRPC procedure builders, what 'public-facing' gates does it add?</div>
   <ol class="opts">
     <li>faster database connections</li>
     <li>it removes auth</li>
@@ -746,7 +749,7 @@ silently drifting from the Fern contract), the whole external channel stays stab
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. An external contract can't change freely once published, yet needs keep evolving. Folder versions keep v1 unbroken and put new capability in v2/v3 (even cutting costly old designs, e.g. v3 scores dropping JOIN-needing filters for cursor pagination); Fern generates Python/TS SDKs + OpenAPI from one hand-written YAML, define-once consistent everywhere. This realizes Lesson 20's 'externally seek contract stability'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. An external contract can't change freely once published, yet needs keep evolving. Folder versions keep v1 unbroken and put new capability in v2/v3 (even cutting costly old designs, e.g. v3 scores dropping JOIN-needing filters for cursor pagination); Fern generates Python/TS SDKs + OpenAPI from one hand-written YAML, define-once consistent everywhere. This realizes <a class="xref" href="20-web-app-architecture.html">Lesson 20</a>'s 'externally seek contract stability'.</div></div></div>
   </details>
 </div>
 <div class="card spark">

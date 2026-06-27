@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,9 +353,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第二部分把「数据长什么样、存在哪」讲完了。从这一课起，我们正式走<strong>摄取链路</strong>——也就是第 5 课那条「写入主干」的放大版。
+第二部分把「数据长什么样、存在哪」讲完了。从这一课起，我们正式走<strong>摄取链路</strong>——也就是<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>那条「写入主干」的放大版。
 第一站是<strong>公共摄取 API</strong>：你的应用发来一批事件，服务端这一头是怎么<strong>收下</strong>的。剧透一下它的性格——<strong>极快、极轻</strong>：
-它只做「鉴权 + 校验 + 入队」三件事，然后立刻返回，<strong>绝不</strong>在这里合并、算成本、写库（那些是 worker 的活）。这就是第 5 课说的「快路」。
+它只做「鉴权 + 校验 + 入队」三件事，然后立刻返回，<strong>绝不</strong>在这里合并、算成本、写库（那些是 worker 的活）。这就是<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>说的「快路」。
 </p>
 
 <div class="card analogy">
@@ -397,9 +400,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <p>注意一个设计细节：<code>processEventBatch</code> 是<strong>共享的</strong>——除了 <code>/ingestion</code>，连「单独提交 score」的接口也复用它。
-为什么？因为「收一批事件、校验、入队」这套逻辑<strong>到处都用得上</strong>，抽成一个函数就不必每个端点各写一遍、各错一遍（又是第 6 课「复杂度收敛到一处」的体现）。
+为什么？因为「收一批事件、校验、入队」这套逻辑<strong>到处都用得上</strong>，抽成一个函数就不必每个端点各写一遍、各错一遍（又是<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>「复杂度收敛到一处」的体现）。
 它支持的事件类型涵盖了 <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> / <code>SCORE_CREATE</code> 等
-（还包括 <code>SDK_LOG</code>、<code>DATASET_RUN_ITEM_CREATE</code>）——正是第 6 课说的那套事件信封。</p>
+（还包括 <code>SDK_LOG</code>、<code>DATASET_RUN_ITEM_CREATE</code>）——正是<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>说的那套事件信封。</p>
 
 <h2>为什么是「一批」，不是「一条」</h2>
 <p>SDK 不是每产生一个事件就发一次 HTTP，而是<strong>攒成一批</strong>再发。这个「批」的设计省了大事：</p>
@@ -416,7 +419,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="step"><div class="num">1</div><div class="sc"><h4>SDK 攒批 → POST /ingestion</h4><p>应用侧把一段时间内的事件打成一批，一次发出。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>handler 鉴权</h4><p>从 API key 解析 project、校验写入权限（失败整批拒）。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>Zod 校验每个事件</h4><p>结构不对的事件被拒；其余继续（可部分成功）。</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch 入队 + 落 S3</h4><p>合法事件进 Redis 队列、原件存 S3（第 14 课）。</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch 入队 + 落 S3</h4><p>合法事件进 Redis 队列、原件存 S3（<a class="xref" href="14-ingestion-queue.html">第 14 课</a>）。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>立即返回结果</h4><p>告诉调用方哪些收下、哪些被拒——全程毫秒级，不等 worker。</p></div></div>
 </div>
 
@@ -474,7 +477,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
   <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">鉴权决定「你是谁、能不能写」，校验决定「你发的东西干不干净」</text>
 </svg>
-<div class="figcap"><b>两道关</b>：<b>鉴权</b>从 API key 解析出 project（第 9 课 key 属于某 project）并确认有写入权限——这一步也<b>把租户钉死</b>（第 10 课 project_id 贯穿）；<b>Zod 校验</b>逐个事件检查结构，<b>坏数据在门口就被拒</b>，不会污染下游。两关都过，才允许入队。</div>
+<div class="figcap"><b>两道关</b>：<b>鉴权</b>从 API key 解析出 project（<a class="xref" href="09-postgres-metadata-schema.html">第 9 课</a> key 属于某 project）并确认有写入权限——这一步也<b>把租户钉死</b>（<a class="xref" href="10-multi-tenancy.html">第 10 课</a> project_id 贯穿）；<b>Zod 校验</b>逐个事件检查结构，<b>坏数据在门口就被拒</b>，不会污染下游。两关都过，才允许入队。</div>
 </div>
 
 <p>第二道关「Zod 校验」尤其重要：摄取系统每天吞下海量来自<strong>各种 SDK、各种版本</strong>的数据，难免有格式不对、字段缺失的「脏事件」。
@@ -498,7 +501,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <strong>为什么 API 只做「鉴权+校验+入队」，把一切重活都推给 worker？</strong> 因为摄取 API 是<strong>直面你应用的那一层</strong>，它的首要 KPI 是
   「<strong>永远快、永远不拖累调用方</strong>」。任何放在这里的额外工作——合并、查定价、写库——都会变成你每次埋点调用的延迟，还会因为下游抖动而失败。
   所以 Langfuse 把这条线<strong>切得极干净</strong>：API 端只保留「无论如何都必须当场做」的最小集合（鉴权防止越权写入、校验防止脏数据入库、入队完成交接），
-  剩下能异步的<strong>一律异步</strong>。代价是「最终一致」（第 5 课），但收益是一个几乎不可能慢、不可能拖垮你业务的摄取入口。<strong>入口越薄，越扛得住洪峰。</strong>
+  剩下能异步的<strong>一律异步</strong>。代价是「最终一致」（<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>），但收益是一个几乎不可能慢、不可能拖垮你业务的摄取入口。<strong>入口越薄，越扛得住洪峰。</strong>
 </div>
 
 <div class="card key">
@@ -523,20 +526,20 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。入口只保留“必须当场做”的最小集合（鉴权防越权、校验拦脏数据、入队完成交接），能异步的全交给 worker。入口越薄越扛洪峰、越不可能拖垮你的业务，代价是最终一致（第 5 课）。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。入口只保留“必须当场做”的最小集合（鉴权防越权、校验拦脏数据、入队完成交接），能异步的全交给 worker。入口越薄越扛洪峰、越不可能拖垮你的业务，代价是最终一致（<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>）。</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">2. ingestion.ts 的 handler 把真正的活交给一个叫 processEventBatch 的共享函数，连单独提交 score 的接口也复用它。这么做的好处是？</div>
   <ol class="opts">
     <li>为了让 score 接口更慢</li>
-    <li>“收一批、校验、入队”到处都用得上，抽成一处就不必每个端点各写一遍、各错一遍（复杂度收敛到一处，第 6 课）</li>
+    <li>“收一批、校验、入队”到处都用得上，抽成一处就不必每个端点各写一遍、各错一遍（复杂度收敛到一处，<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>）</li>
     <li>纯粹为了多写代码</li>
     <li>因为 score 不能走队列</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。多个端点共享同一套摄取逻辑，维护在一处、测试在一处，避免分散实现导致的不一致。这与第 6 课“把复杂度收敛到一个能严格测试的地方”一脉相承。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。多个端点共享同一套摄取逻辑，维护在一处、测试在一处，避免分散实现导致的不一致。这与<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>“把复杂度收敛到一个能严格测试的地方”一脉相承。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -562,10 +565,10 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-en">
 <p class="lead">
 Part 2 finished "what the data looks like and where it lives". From here we walk the <strong>ingestion path</strong> — the close-up of
-Lesson 5's "write trunk". First stop: the <strong>public ingestion API</strong> — how the server <strong>receives</strong> a batch of events
+<a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "write trunk". First stop: the <strong>public ingestion API</strong> — how the server <strong>receives</strong> a batch of events
 your app sends. Spoiler on its character: <strong>extremely fast and light</strong>. It does just three things — <strong>auth + validate +
 enqueue</strong> — then returns immediately, <strong>never</strong> merging, computing cost, or writing the DB here (those are the worker's
-job). This is Lesson 5's "fast lane".
+job). This is <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "fast lane".
 </p>
 
 <div class="card analogy">
@@ -594,7 +597,7 @@ job). This is Lesson 5's "fast lane".
   <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">merge, cost, ClickHouse writes are not here — that's the worker (L15–17)</text>
   <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
 </svg>
-<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, <a class="xref" href="09-postgres-metadata-schema.html">L09</a>·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
 </div>
 
 <h2>The life of one ingestion request</h2>
@@ -614,9 +617,9 @@ shared function called <code>processEventBatch</code>:</p>
 
 <p>One design detail: <code>processEventBatch</code> is <strong>shared</strong> — besides <code>/ingestion</code>, even the standalone "submit a
 score" endpoint reuses it. Why? Because "accept a batch, validate, enqueue" is <strong>needed everywhere</strong>; factoring it into one
-function avoids re-implementing (and re-bugging) it per endpoint (again Lesson 6's "converge complexity to one place"). The event types it
+function avoids re-implementing (and re-bugging) it per endpoint (again <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a>'s "converge complexity to one place"). The event types it
 supports cover <code>TRACE_CREATE</code> / <code>OBSERVATION_CREATE</code> / <code>SPAN_CREATE</code> / <code>GENERATION_CREATE</code> /
-<code>SCORE_CREATE</code> and more (including <code>SDK_LOG</code>, <code>DATASET_RUN_ITEM_CREATE</code>) — exactly Lesson 6's event
+<code>SCORE_CREATE</code> and more (including <code>SDK_LOG</code>, <code>DATASET_RUN_ITEM_CREATE</code>) — exactly <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a>'s event
 envelope.</p>
 
 <h2>Why a "batch", not "one"</h2>
@@ -635,7 +638,7 @@ rejects it ("payload too large"), another guard: don't let one request blow up t
   <div class="step"><div class="num">1</div><div class="sc"><h4>SDK batches → POST /ingestion</h4><p>the app packs a window of events into one batch and sends it.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>handler authenticates</h4><p>resolve the project from the API key and check write permission (fail → reject the whole batch).</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>Zod-validate each event</h4><p>ill-formed events are rejected; the rest continue (partial success possible).</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch enqueues + lands S3</h4><p>valid events enter the Redis queue; originals are stored in S3 (L14).</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>processEventBatch enqueues + lands S3</h4><p>valid events enter the Redis queue; originals are stored in S3 (<a class="xref" href="14-ingestion-queue.html">L14</a>).</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>return the result immediately</h4><p>tell the caller which were accepted, which rejected — all in milliseconds, not waiting for the worker.</p></div></div>
 </div>
 
@@ -694,7 +697,7 @@ robustness</strong>:</p>
   <line x1="450" y1="100" x2="508" y2="100" stroke="var(--faint)" stroke-width="1.8"/><polygon points="508,100 499,95 499,105" fill="var(--faint)"/>
   <text x="360" y="168" text-anchor="middle" font-size="9.5" fill="var(--faint)">auth decides "who you are and may you write", validation decides "is what you sent clean"</text>
 </svg>
-<div class="figcap"><b>Two gates</b>: <b>auth</b> resolves the project from the API key (L09: a key belongs to a project) and confirms write permission — this also <b>pins the tenant</b> (L10's project_id threading); <b>Zod validation</b> checks each event's shape, so <b>bad data is rejected at the door</b> and never pollutes downstream. Pass both, then enqueue.</div>
+<div class="figcap"><b>Two gates</b>: <b>auth</b> resolves the project from the API key (<a class="xref" href="09-postgres-metadata-schema.html">L09</a>: a key belongs to a project) and confirms write permission — this also <b>pins the tenant</b> (<a class="xref" href="10-multi-tenancy.html">L10</a>'s project_id threading); <b>Zod validation</b> checks each event's shape, so <b>bad data is rejected at the door</b> and never pollutes downstream. Pass both, then enqueue.</div>
 </div>
 
 <p>The second gate, Zod validation, especially matters: the ingestion system swallows a flood of data from <strong>many SDKs and
@@ -724,7 +727,7 @@ no full-batch retry.</p>
   here — merging, looking up pricing, writing the DB — becomes latency on every instrumentation call and can fail on downstream hiccups. So
   Langfuse <strong>cuts this line very cleanly</strong>: the API keeps only the minimum that <strong>must happen on the spot</strong> (auth to
   prevent unauthorized writes, validation to keep dirty data out, enqueue to hand off), and everything else that can be async <strong>is
-  async</strong>. The cost is "eventual consistency" (L05), but the gain is an ingestion entry that's almost impossible to slow or to drag
+  async</strong>. The cost is "eventual consistency" (<a class="xref" href="05-life-of-a-trace.html">L05</a>), but the gain is an ingestion entry that's almost impossible to slow or to drag
   your business down. <strong>The thinner the entry, the better it survives spikes.</strong>
 </div>
 
@@ -750,20 +753,20 @@ no full-batch retry.</p>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The entry keeps only the must-do-now minimum (auth prevents unauthorized writes, validation blocks dirty data, enqueue hands off), deferring everything async to the worker. The thinner the entry, the better it survives spikes and the less it drags your business — at the cost of eventual consistency (L05).</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The entry keeps only the must-do-now minimum (auth prevents unauthorized writes, validation blocks dirty data, enqueue hands off), deferring everything async to the worker. The thinner the entry, the better it survives spikes and the less it drags your business — at the cost of eventual consistency (<a class="xref" href="05-life-of-a-trace.html">L05</a>).</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">2. The ingestion.ts handler delegates the real work to a shared processEventBatch, reused even by the standalone score endpoint. The benefit?</div>
   <ol class="opts">
     <li>to make the score endpoint slower</li>
-    <li>'accept a batch, validate, enqueue' is needed everywhere; factoring it into one place avoids re-implementing (and re-bugging) it per endpoint (converge complexity, L06)</li>
+    <li>'accept a batch, validate, enqueue' is needed everywhere; factoring it into one place avoids re-implementing (and re-bugging) it per endpoint (converge complexity, <a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>)</li>
     <li>just to write more code</li>
     <li>because scores can't use the queue</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Multiple endpoints share one ingestion routine, maintained and tested in one place, avoiding inconsistency from scattered implementations — in line with L06's 'converge complexity to one strictly testable place'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Multiple endpoints share one ingestion routine, maintained and tested in one place, avoiding inconsistency from scattered implementations — in line with <a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>'s 'converge complexity to one strictly testable place'.</div></div></div>
   </details>
 </div>
 <div class="quiz">

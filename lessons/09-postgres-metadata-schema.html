@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -383,7 +386,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <rect x="410" y="140" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="161" text-anchor="middle" font-size="10" fill="var(--ink)">observations（宽事件）</text>
   <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores（宽事件）</text>
 </svg>
-<div class="figcap"><b>两面分工</b>：<b>Postgres</b> 存「平台怎么配置」——组织/项目/用户、API key、prompt、eval/数据集配置、定价、集成、审计；<b>ClickHouse</b> 存「实际发生了什么」——三张宽事件表。这正是第 3 课「领域形状 vs 物理存储」的宏观版：一个管控制、一个管数据。</div>
+<div class="figcap"><b>两面分工</b>：<b>Postgres</b> 存「平台怎么配置」——组织/项目/用户、API key、prompt、eval/数据集配置、定价、集成、审计；<b>ClickHouse</b> 存「实际发生了什么」——三张宽事件表。这正是<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>「领域形状 vs 物理存储」的宏观版：一个管控制、一个管数据。</div>
 </div>
 
 <h2>Postgres 里装的是「控制面」</h2>
@@ -394,7 +397,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <tr><td><b>身份与租户</b></td><td class="mono">Organization · Project · User · *Membership · Role · ApiKey</td><td>谁是组织/项目、谁有什么权限、用哪把 key</td></tr>
   <tr><td><b>Prompt</b></td><td class="mono">Prompt · PromptDependency · PromptProtectedLabels</td><td>prompt 的版本化定义与依赖</td></tr>
   <tr><td><b>数据集 / 评估</b></td><td class="mono">Dataset · DatasetItem · DatasetRuns · DatasetRunItems · ScoreConfig · EvalTemplate · JobConfiguration · JobExecution</td><td>测试集、评分配置、评估任务的<strong>定义与编排</strong></td></tr>
-  <tr><td><b>模型与计费</b></td><td class="mono">Model · Price · PricingTier</td><td>模型定价表（成本计算的依据，第 16 课）</td></tr>
+  <tr><td><b>模型与计费</b></td><td class="mono">Model · Price · PricingTier</td><td>模型定价表（成本计算的依据，<a class="xref" href="16-token-counting-cost.html">第 16 课</a>）</td></tr>
   <tr><td><b>集成与运维</b></td><td class="mono">*Integration · BatchExport · BatchAction · Media · AuditLog · BackgroundMigration</td><td>对外集成、导出、媒体、审计、后台迁移</td></tr>
 </table>
 
@@ -445,7 +448,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <p>「project 是枢纽」还带来两个很实在的后果。其一是<strong>级联</strong>：删掉一个 project，它名下的 key、prompt、数据集、配置会跟着被清理（schema 里很多关系标了 <code>onDelete: Cascade</code>），
 这让「删一个项目」变成一个干净的操作，而不是到处留下孤儿数据。其二是<strong>边界即权限</strong>：因为一切都挂在 project 下，鉴权只要回答「你属不属于这个 project」就够了——
-这也是下一课多租户、以及第 21 课 tRPC 中间件 <code>protectedProjectProcedure</code> 的工作基础。记住这张「以 project 为中心」的图，后面很多看似分散的功能，其实都挂在它上面。</p>
+这也是下一课多租户、以及<a class="xref" href="21-trpc-backbone.html">第 21 课</a> tRPC 中间件 <code>protectedProjectProcedure</code> 的工作基础。记住这张「以 project 为中心」的图，后面很多看似分散的功能，其实都挂在它上面。</p>
 
 <h2>为什么 Postgres 里还有 trace 表？</h2>
 <p>翻 <code>schema.prisma</code> 时你可能会困惑：怎么还有 <code>LegacyPrismaTrace</code>、<code>LegacyPrismaObservation</code>、<code>LegacyPrismaScore</code>？
@@ -509,7 +512,7 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
     <li><strong>Project 是枢纽</strong>：字段不多但挂着几十条关系，几乎一切都 1:N 属于某个 project——它是天然的<strong>数据边界</strong>（多租户基础）。</li>
     <li><strong>LegacyPrismaTrace/Observation/Score 是历史残留</strong>：分析数据早已迁到 ClickHouse，这些只为兼容/迁移而留。</li>
     <li><strong>API key 存哈希、不存明文</strong>；权限用 <code>Role</code>（OWNER/ADMIN/MEMBER/VIEWER/NONE）+ 组织/项目 membership（第 49、53 课）。</li>
-    <li>控制面 vs 数据面，是第 3 课「领域形状 vs 物理存储」的宏观版：<strong>按职责分库</strong>，各做擅长的事。</li>
+    <li>控制面 vs 数据面，是<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>「领域形状 vs 物理存储」的宏观版：<strong>按职责分库</strong>，各做擅长的事。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -524,7 +527,7 @@ scope                <span class="cm">// ApiKeyScope，默认 PROJECT</span></pr
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。配置是 OLTP：量小、要精确单条读写、要强一致、有外键关系。这正是 Postgres 的主场；ClickHouse 适合海量追加+聚合（OLAP）。按职责分库，各做擅长的事——这是第 7 课的延续。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。配置是 OLTP：量小、要精确单条读写、要强一致、有外键关系。这正是 Postgres 的主场；ClickHouse 适合海量追加+聚合（OLAP）。按职责分库，各做擅长的事——这是<a class="xref" href="07-dual-store-architecture.html">第 7 课</a>的延续。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -599,7 +602,7 @@ priced. This side is the <strong>control plane</strong> — small in volume yet 
   <rect x="410" y="140" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="161" text-anchor="middle" font-size="10" fill="var(--ink)">observations (wide events)</text>
   <rect x="410" y="180" width="260" height="34" rx="7" fill="var(--panel)" stroke="var(--line)"/><text x="540" y="201" text-anchor="middle" font-size="10" fill="var(--ink)">scores (wide events)</text>
 </svg>
-<div class="figcap"><b>Two halves</b>: <b>Postgres</b> stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, pricing, integrations, audit; <b>ClickHouse</b> stores "what actually happened" — three wide-event tables. This is the macro version of Lesson 3's "domain shape vs physical storage": one governs control, one governs data.</div>
+<div class="figcap"><b>Two halves</b>: <b>Postgres</b> stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, pricing, integrations, audit; <b>ClickHouse</b> stores "what actually happened" — three wide-event tables. This is the macro version of <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a>'s "domain shape vs physical storage": one governs control, one governs data.</div>
 </div>
 
 <h2>Postgres holds the "control plane"</h2>
@@ -611,7 +614,7 @@ priced. This side is the <strong>control plane</strong> — small in volume yet 
   <tr><td><b>Identity & tenancy</b></td><td class="mono">Organization · Project · User · *Membership · Role · ApiKey</td><td>who the org/project is, who has what permission, which key</td></tr>
   <tr><td><b>Prompt</b></td><td class="mono">Prompt · PromptDependency · PromptProtectedLabels</td><td>versioned prompt definitions and dependencies</td></tr>
   <tr><td><b>Datasets / eval</b></td><td class="mono">Dataset · DatasetItem · DatasetRuns · DatasetRunItems · ScoreConfig · EvalTemplate · JobConfiguration · JobExecution</td><td>the <strong>definition & orchestration</strong> of test sets, score configs, eval jobs</td></tr>
-  <tr><td><b>Models & billing</b></td><td class="mono">Model · Price · PricingTier</td><td>model pricing tables (basis for cost computation, L16)</td></tr>
+  <tr><td><b>Models & billing</b></td><td class="mono">Model · Price · PricingTier</td><td>model pricing tables (basis for cost computation, <a class="xref" href="16-token-counting-cost.html">L16</a>)</td></tr>
   <tr><td><b>Integrations & ops</b></td><td class="mono">*Integration · BatchExport · BatchAction · Media · AuditLog · BackgroundMigration</td><td>outbound integrations, exports, media, audit, background migrations</td></tr>
 </table>
 
@@ -665,7 +668,7 @@ to some project:</p>
 <p>"Project is the hub" has two very real consequences. One is <strong>cascade</strong>: delete a project and its keys, prompts, datasets and
 config are cleaned up with it (many relations are marked <code>onDelete: Cascade</code>), making "delete a project" a clean operation rather
 than leaving orphan data everywhere. The other is <strong>boundary equals permission</strong>: because everything hangs under a project,
-authorization only needs to answer "do you belong to this project" — the basis for the next lesson's multi-tenancy and for L21's tRPC
+authorization only needs to answer "do you belong to this project" — the basis for the next lesson's multi-tenancy and for <a class="xref" href="21-trpc-backbone.html">L21</a>'s tRPC
 middleware <code>protectedProjectProcedure</code>. Remember this "project-centric" picture and many seemingly-scattered features later turn
 out to hang off it.</p>
 
@@ -691,7 +694,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 
 <p>Note: <strong>the secret is never stored in plaintext</strong>, only hashed — so even a DB leak yields no usable key. Permissions use the
 <code>Role</code> enum: <code>OWNER / ADMIN / MEMBER / VIEWER / NONE</code>, combined with org-level and project-level memberships to decide
-"who can do what in which project". Auth and permissions get their own lessons (L49, L53); for now just register the impression:
+"who can do what in which project". Auth and permissions get their own lessons (<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>, <a class="xref" href="53-build-test-dev-workflow.html">L53</a>); for now just register the impression:
 <strong>the control plane stores not only "config" but "who may touch that config".</strong></p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="API key security: the plaintext key is shown to the user only once at creation; the Postgres model ApiKey stores only the plaintext publicKey plus hashes/masked fragments hashedSecretKey, fastHashedSecretKey, displaySecretKey, never the plaintext secret; on auth the incoming key is hashed and compared to fastHashedSecretKey, so even a DB leak yields no usable key">
@@ -736,8 +739,8 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
     <li><strong>Postgres = control plane</strong>: stores "how the platform is configured" — org/project/user, API keys, prompts, eval/dataset config, model pricing, integrations, audit. Defined in <code>schema.prisma</code>.</li>
     <li><strong>Project is the hub</strong>: few fields but dozens of relations; almost everything belongs 1:N to a project — the natural <strong>data boundary</strong> (multi-tenancy basis).</li>
     <li><strong>LegacyPrismaTrace/Observation/Score are historical remnants</strong>: analytical data long moved to ClickHouse; these remain only for compatibility/migration.</li>
-    <li><strong>API keys are stored hashed, never plaintext</strong>; permissions use <code>Role</code> (OWNER/ADMIN/MEMBER/VIEWER/NONE) + org/project memberships (L49, L53).</li>
-    <li>Control plane vs data plane is the macro version of Lesson 3's "domain shape vs physical storage": <strong>split by responsibility</strong>, each doing what it's best at.</li>
+    <li><strong>API keys are stored hashed, never plaintext</strong>; permissions use <code>Role</code> (OWNER/ADMIN/MEMBER/VIEWER/NONE) + org/project memberships (<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>, <a class="xref" href="53-build-test-dev-workflow.html">L53</a>).</li>
+    <li>Control plane vs data plane is the macro version of <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a>'s "domain shape vs physical storage": <strong>split by responsibility</strong>, each doing what it's best at.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -752,7 +755,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Config is OLTP: small, precise single-row, strongly consistent, with foreign keys — Postgres's turf; ClickHouse fits massive append + aggregation (OLAP). Split by responsibility, each at its best — a continuation of L07.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Config is OLTP: small, precise single-row, strongly consistent, with foreign keys — Postgres's turf; ClickHouse fits massive append + aggregation (OLAP). Split by responsibility, each at its best — a continuation of <a class="xref" href="07-dual-store-architecture.html">L07</a>.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -778,7 +781,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Legacy prefix = old way: telemetry long moved to ClickHouse (the reason for L07/L08); these remain for compat/migration. API keys store only hashedSecretKey etc., so a DB leak yields no usable key — a security detail expanded in L49/L53.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Legacy prefix = old way: telemetry long moved to ClickHouse (the reason for <a class="xref" href="07-dual-store-architecture.html">L07</a>/<a class="xref" href="08-clickhouse-wide-events.html">L08</a>); these remain for compat/migration. API keys store only hashedSecretKey etc., so a DB leak yields no usable key — a security detail expanded in <a class="xref" href="49-rbac-apikeys-scim.html">L49</a>/<a class="xref" href="53-build-test-dev-workflow.html">L53</a>.</div></div></div>
   </details>
 </div>
 <div class="card spark">

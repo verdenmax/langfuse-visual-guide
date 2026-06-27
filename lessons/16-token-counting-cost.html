@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,9 +353,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 15 课合并到第 6 步时一句带过：「算 token 与成本」。这一课就把那一步摊开。核心是一条贯穿 Langfuse 的原则——<strong>provided 压倒 computed</strong>：
+<a class="xref" href="15-ingestion-service.html">第 15 课</a>合并到第 6 步时一句带过：「算 token 与成本」。这一课就把那一步摊开。核心是一条贯穿 Langfuse 的原则——<strong>provided 压倒 computed</strong>：
 你（或 LLM 提供商）报上来的 usage / cost <strong>一律优先采信</strong>；只有你<strong>什么都没报</strong>时，Langfuse 才亲自动手：用<strong>分词器数 token</strong>、
-按<strong>价目表算钱</strong>。这正是第 3 课 <code>provided_*</code> 与 <code>usage_details</code> 两套字段的来历，也是第 8 课那些 <code>provided_*</code> Map 列存在的理由。
+按<strong>价目表算钱</strong>。这正是<a class="xref" href="03-three-pillars-deep.html">第 3 课</a> <code>provided_*</code> 与 <code>usage_details</code> 两套字段的来历，也是<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>那些 <code>provided_*</code> Map 列存在的理由。
 </p>
 
 <div class="card analogy">
@@ -477,7 +480,7 @@ Postgres 的 <code>models</code> 表上完成，靠的是一句正则匹配：</
 
 <p>匹配上的 model 记录里，除了价格，还有一个关键字段 <code>tokenizer_id</code>——它决定了 computed 时<strong>用哪种分词器</strong>数 token（不同模型家族分词规则不同）。
 分词本身在 <code>worker/src/features/tokenisation</code> 里，甚至放进<strong>独立 worker 线程</strong>跑（<code>tokenCountAsync</code>），免得大文本分词阻塞主流程；失败再退回同步 <code>tokenCount</code>。
-这又是第 8 课 <code>provided_*</code> 与计算列分离的写入侧来源：provided 进 <code>provided_usage_details</code>，算出来的进 <code>usage_details</code>，互不污染。</p>
+这又是<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a> <code>provided_*</code> 与计算列分离的写入侧来源：provided 进 <code>provided_usage_details</code>，算出来的进 <code>usage_details</code>，互不污染。</p>
 
 <p>看一条真实的内置规则（Langfuse 自带约 150+ 个模型价格）：<code>gpt-4o</code> 的 <code>match_pattern</code> 是 <code>(?i)^(openai/)?(gpt-4o)$</code>——
 大小写不敏感、可带可不带 <code>openai/</code> 前缀，精确匹配 <code>gpt-4o</code>。而带日期的版本（如 <code>gpt-4o-2024-05-13</code>）有<strong>各自独立的价格行</strong>，
@@ -499,7 +502,7 @@ Postgres 的 <code>models</code> 表上完成，靠的是一句正则匹配：</
     <li><strong>provided 压倒 computed</strong>：你上报了 usage/cost 就原样用；<strong>成本只要给了任一项就全用你的</strong>，绝不与估算混用。</li>
     <li>computed 有前提：<strong>匹配到模型 + level≠ERROR + 你没提供</strong>，才用 <code>tokenizerId</code> 对 input/output 分词计数。</li>
     <li><code>findModel</code>：Postgres <code>~ match_pattern</code> 正则匹配；<strong>项目模型盖过全局</strong>，<code>start_date</code> 最新者胜——历史按旧价、新数据按新价。</li>
-    <li>分词在 <code>worker/src/features/tokenisation</code>，可走独立线程（<code>tokenCountAsync</code>）；结果分别落第 8 课的 <code>provided_*</code> 与 <code>usage_details</code> 列，互不污染。</li>
+    <li>分词在 <code>worker/src/features/tokenisation</code>，可走独立线程（<code>tokenCountAsync</code>）；结果分别落<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的 <code>provided_*</code> 与 <code>usage_details</code> 列，互不污染。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -552,10 +555,10 @@ Postgres 的 <code>models</code> 表上完成，靠的是一句正则匹配：</
 </div></div>
   <div class="lang-en">
 <p class="lead">
-At step 6 of Lesson 15's merge we said in passing: "compute tokens & cost". This lesson unfolds that step. The core is a principle running through all
+At step 6 of <a class="xref" href="15-ingestion-service.html">Lesson 15</a>'s merge we said in passing: "compute tokens & cost". This lesson unfolds that step. The core is a principle running through all
 of Langfuse — <strong>provided beats computed</strong>: the usage / cost you (or the LLM provider) report are <strong>always trusted first</strong>; only
 when you report <strong>nothing</strong> does Langfuse roll up its sleeves: <strong>count tokens with a tokenizer</strong>, <strong>price it from a rate
-card</strong>. This is the origin of Lesson 3's two field sets <code>provided_*</code> and <code>usage_details</code>, and the reason Lesson 8's
+card</strong>. This is the origin of <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a>'s two field sets <code>provided_*</code> and <code>usage_details</code>, and the reason <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s
 <code>provided_*</code> Map columns exist.
 </p>
 
@@ -687,7 +690,7 @@ record</strong>. <code>findModel</code> does this on Postgres's <code>models</co
 <p>Beyond price, a matched model row has a key field <code>tokenizer_id</code> — it decides <strong>which tokenizer</strong> counts tokens when computing
 (different model families tokenize differently). Tokenization itself lives in <code>worker/src/features/tokenisation</code>, even running in a
 <strong>separate worker thread</strong> (<code>tokenCountAsync</code>) so large-text tokenization doesn't block the main flow; on failure it falls back to
-synchronous <code>tokenCount</code>. This too is the write-side origin of Lesson 8's split between <code>provided_*</code> and computed columns: provided
+synchronous <code>tokenCount</code>. This too is the write-side origin of <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s split between <code>provided_*</code> and computed columns: provided
 goes into <code>provided_usage_details</code>, the computed into <code>usage_details</code>, never polluting each other.</p>
 
 <p>Look at one real built-in rule (Langfuse ships ~150+ model prices): <code>gpt-4o</code>'s <code>match_pattern</code> is
@@ -715,7 +718,7 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
     <li><strong>Provided beats computed</strong>: report usage/cost and it's used as-is; for <strong>cost, any one provided point means all yours</strong>, never mixed with estimates.</li>
     <li>Computed has preconditions: <strong>model matched + level≠ERROR + you provided nothing</strong>, then tokenize-count input/output via <code>tokenizerId</code>.</li>
     <li><code>findModel</code>: Postgres <code>~ match_pattern</code> regex; <strong>project models override global</strong>, latest <code>start_date</code> wins — history at old price, new data at new.</li>
-    <li>Tokenization in <code>worker/src/features/tokenisation</code>, optionally on a separate thread (<code>tokenCountAsync</code>); results land in Lesson 8's <code>provided_*</code> vs <code>usage_details</code> columns, never polluting each other.</li>
+    <li>Tokenization in <code>worker/src/features/tokenisation</code>, optionally on a separate thread (<code>tokenCountAsync</code>); results land in <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s <code>provided_*</code> vs <code>usage_details</code> columns, never polluting each other.</li>
   </ul>
 </div>
 <div class="selftest">

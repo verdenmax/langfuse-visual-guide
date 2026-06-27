@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,9 +353,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 14 课 worker 取走任务、照 fileKey 把事件从 S3 读了回来。这一课是整条写入链路的<strong>心脏</strong>：那一堆事件，外加数据库里这条记录的<strong>当前状态</strong>，
+<a class="xref" href="14-ingestion-queue.html">第 14 课</a> worker 取走任务、照 fileKey 把事件从 S3 读了回来。这一课是整条写入链路的<strong>心脏</strong>：那一堆事件，外加数据库里这条记录的<strong>当前状态</strong>，
 究竟怎么被揉成<strong>一条最终记录</strong>？答案藏在 <code>IngestionService</code> 里——<code>mergeAndWrite</code> 按实体类型分流，
-<code>mergeRecords</code> 用一招「左折叠 + 后者覆盖」把多份输入合一，再盖上 <code>event_ts=now</code> 的版本戳。读懂它，第 8 课 ReplacingMergeTree 的「写入侧另一半」就补齐了。
+<code>mergeRecords</code> 用一招「左折叠 + 后者覆盖」把多份输入合一，再盖上 <code>event_ts=now</code> 的版本戳。读懂它，<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a> ReplacingMergeTree 的「写入侧另一半」就补齐了。
 </p>
 
 <div class="card analogy">
@@ -365,7 +368,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>mergeAndWrite：先按实体类型分流</h2>
-<p><code>mergeAndWrite</code> 本身只是个<strong>调度员</strong>。它拿到第 13 课算出的实体类型（trace / observation / score / dataset_run_item），
+<p><code>mergeAndWrite</code> 本身只是个<strong>调度员</strong>。它拿到<a class="xref" href="13-event-types-merge.html">第 13 课</a>算出的实体类型（trace / observation / score / dataset_run_item），
 用一个 <code>switch</code> 把活儿分给对应的 <code>process{Type}EventList</code>。每条线路的骨架一样——<strong>读旧、转换、合并、写回</strong>——只是字段细节随类型而异。</p>
 
 <div class="fig">
@@ -378,7 +381,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <rect x="534" y="130" width="162" height="56" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processDatasetRunItem</text><text x="615" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="615" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">仅 create，不合并</text>
   <line x1="320" y1="86" x2="120" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="345" y1="86" x2="280" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="375" y1="86" x2="430" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="400" y1="86" x2="595" y2="128" stroke="var(--faint)" stroke-width="1.4"/>
 </svg>
-<div class="figcap"><b>分流而非合流</b>：<code>mergeAndWrite</code> 按实体类型把任务交给四条专用处理线，各自写回第 8 课的对应表。observation 那条最复杂（要算 token/成本、补包装 trace）。源码：<code>worker/src/services/IngestionService/index.ts:149-195</code>。</div>
+<div class="figcap"><b>分流而非合流</b>：<code>mergeAndWrite</code> 按实体类型把任务交给四条专用处理线，各自写回<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的对应表。observation 那条最复杂（要算 token/成本、补包装 trace）。源码：<code>worker/src/services/IngestionService/index.ts:149-195</code>。</div>
 </div>
 
 <p>每条处理线，合并的输入其实有<strong>两个来源</strong>，缺一不可：</p>
@@ -388,7 +391,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="col"><h4>🗄️ ClickHouse：当前这条记录</h4><p>同时去 observations 表 <code>getClickhouseRecord</code> 把<strong>已存在的那一行</strong>读出来当<strong>底稿</strong>。它排在合并数组的最前面，作为 immutable 字段的基线。</p></div>
 </div>
 
-<p>为什么两个来源都要？看似冗余，其实各有不可替代的作用。S3 那份是<strong>事件的真账本</strong>（第 14 课），重读全部事件能保证合并出的记录<strong>完整无遗漏</strong>，
+<p>为什么两个来源都要？看似冗余，其实各有不可替代的作用。S3 那份是<strong>事件的真账本</strong>（<a class="xref" href="14-ingestion-queue.html">第 14 课</a>），重读全部事件能保证合并出的记录<strong>完整无遗漏</strong>，
 即便这次任务是个迟到的补传；ClickHouse 那份则提供 <strong>immutable 字段的权威基线</strong>（created_at、start_time 这些「第一次写定就锁死」的值），
 还兜住那些可能已经从 S3 滚动清理掉的早期事件。两者叠在一起，<strong>既不丢新、又不改旧</strong>——这就是「读旧底稿 + 叠新修订」的精髓。</p>
 
@@ -422,7 +425,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <span class="kw">let</span> result = { id: records[0].id, project_id: records[0].project_id };
 <span class="kw">for</span> (<span class="kw">const</span> record <span class="kw">of</span> records)
   result = <span class="fn">overwriteObject</span>(result, record, immutableEntityKeys);
-result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// 版本戳 → 交给第 8 课 ReplacingMergeTree</span>
+result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// 版本戳 → 交给<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a> ReplacingMergeTree</span>
 
 <span class="cm">// overwriteObject：用 lodash mergeWith，命中任一条就保留旧值 objValue</span>
 <span class="kw">if</span> (nonOverwritableKeys.<span class="fn">includes</span>(key)        <span class="cm">// ① immutable</span>
@@ -437,7 +440,7 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
 
 <p>合并过程中还藏着一个体贴的<strong>向后兼容</strong>细节：如果一个 observation 合并完发现<strong>没有 trace_id</strong>（很老的 SDK，&lt; 2.0 时代埋点不带 trace），
 <code>IngestionService</code> 会顺手<strong>造一条「包装 trace」</strong>——用 observation 自己的 id 当 trace id，补写进 traces 表，再把它挂上去。这样无论数据多老，
-每个 observation 都不会变成「孤儿」，第 5 课那棵 trace 树永远完整。一个小小的补偿逻辑，体现的是这套系统对<strong>历史数据与多版本 SDK</strong> 的尊重与照顾。</p>
+每个 observation 都不会变成「孤儿」，<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>那棵 trace 树永远完整。一个小小的补偿逻辑，体现的是这套系统对<strong>历史数据与多版本 SDK</strong> 的尊重与照顾。</p>
 
 <table class="t">
   <tr><th>字段类别</th><th>例子</th><th>合并规则</th></tr>
@@ -488,21 +491,21 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
 </svg>
 
 <div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>幂等跳过</h4><p>先查 Redis：这个 fileKey 最近几分钟处理过吗？处理过就<strong>直接跳过</strong>（配合第 13 课「事件 id 当文件名」，重复投递不重复算）。</p></div></div>
+  <div class="step"><div class="num">1</div><div class="sc"><h4>幂等跳过</h4><p>先查 Redis：这个 fileKey 最近几分钟处理过吗？处理过就<strong>直接跳过</strong>（配合<a class="xref" href="13-event-types-merge.html">第 13 课</a>「事件 id 当文件名」，重复投递不重复算）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>按时间排序</h4><p><code>toTimeSortedEventList</code> 把事件按 <code>timestamp</code> 排好；同一时刻 create 排在 update 前。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>读 ClickHouse 底稿</h4><p><code>getClickhouseRecord</code> 取出该 observation 已存在的行（带类型与 start_time 过滤），当合并基线。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>事件 → 记录 → 合并</h4><p>把事件映射成记录，<code>mergeRecords</code> 左折叠出 <code>mergedObservationRecord</code>。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>补 input/output</h4><p>从最新往回找第一条非空的 input / output（事件里没有就退回 ClickHouse 的值），并归一化 tool 数据。</p></div></div>
-  <div class="step"><div class="num">6</div><div class="sc"><h4>算 token 与成本</h4><p><code>getGenerationUsage</code> 做模型匹配、token 计数、成本计算（第 16 课详解），并进最终记录。</p></div></div>
-  <div class="step"><div class="num">7</div><div class="sc"><h4>入写库队列</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code>——<strong>不直接写库</strong>，交给第 17 课的批写器攒批落盘。</p></div></div>
+  <div class="step"><div class="num">6</div><div class="sc"><h4>算 token 与成本</h4><p><code>getGenerationUsage</code> 做模型匹配、token 计数、成本计算（<a class="xref" href="16-token-counting-cost.html">第 16 课</a>详解），并进最终记录。</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>入写库队列</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code>——<strong>不直接写库</strong>，交给<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>的批写器攒批落盘。</p></div></div>
 </div>
 
 <p>第 7 步要特别留意：<code>IngestionService</code> 自己<strong>从不直接写 ClickHouse</strong>，它只把合并好的记录塞进 <code>ClickhouseWriter</code> 的队列。
-为什么？因为<strong>逐条写 ClickHouse 是性能灾难</strong>（第 8 课说过它爱大批量）。把「合并」和「落盘」再切开，正是第 6 课「每层只干一件事」的又一次体现——合并归 IngestionService，攒批归 ClickhouseWriter。这种「先在内存里把记录算到位、再交给专门的批写器统一落盘」的两段式，让高频写入既保持正确，又不至于把列式存储压垮；第 17 课会看到批写器如何按表攒批、定时刷新。</p>
+为什么？因为<strong>逐条写 ClickHouse 是性能灾难</strong>（<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>说过它爱大批量）。把「合并」和「落盘」再切开，正是<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>「每层只干一件事」的又一次体现——合并归 IngestionService，攒批归 ClickhouseWriter。这种「先在内存里把记录算到位、再交给专门的批写器统一落盘」的两段式，让高频写入既保持正确，又不至于把列式存储压垮；<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>会看到批写器如何按表攒批、定时刷新。</p>
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>既然第 8 课的 ReplacingMergeTree 自己就会按 event_ts 去重，为什么写入侧还要再合并一遍？</strong> 因为两者解决的是<strong>不同时刻</strong>的问题。
+  <strong>既然<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的 ReplacingMergeTree 自己就会按 event_ts 去重，为什么写入侧还要再合并一遍？</strong> 因为两者解决的是<strong>不同时刻</strong>的问题。
   写入侧的预合并保证：<strong>每次写出的那一行，当下就是正确的完整状态</strong>——查询立刻就能读到对的数据，不必等后台合并。而 ReplacingMergeTree 的后台去重是<strong>最终</strong>发生的，
   用来收拾「同一条记录被并发处理、产生多行」这类竞态的尾巴。两层各管一段：<strong>写入侧求「即时正确」，存储侧求「最终唯一」</strong>。
   再加上 <code>event_ts=now</code> 这个版本戳把两层咬合起来——预合并产出的新行永远有更大的 event_ts，于是它一定能在存储层的去重里胜出。这是典型的<strong>纵深防御</strong>。
@@ -515,7 +518,7 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
     <li>合并有<strong>两个输入</strong>：S3 里本实体的<strong>全部事件</strong>（listFiles，按时间排序）+ ClickHouse 里<strong>当前那一行</strong>（当 immutable 基线）。</li>
     <li><code>mergeRecords</code> 把它们<strong>左折叠</strong>（<code>overwriteObject</code> 后者覆盖前者），并打 <code>event_ts=now</code> 版本戳。</li>
     <li><strong>三条不覆盖规则</strong>：immutable 键（id/start_time/created_at…first-wins）、<code>undefined</code>、空对象——所以 update 只带变化字段、不抹掉 create 的值。</li>
-    <li>合并完只 <code>addToQueue</code>，<strong>不直接写库</strong>（落盘归第 17 课）。写入侧预合并求「即时正确」，存储侧 ReplacingMergeTree 求「最终唯一」，靠 event_ts 咬合——纵深防御。</li>
+    <li>合并完只 <code>addToQueue</code>，<strong>不直接写库</strong>（落盘归<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>）。写入侧预合并求「即时正确」，存储侧 ReplacingMergeTree 求「最终唯一」，靠 event_ts 咬合——纵深防御。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -547,7 +550,7 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. 既然第 8 课的 ReplacingMergeTree 会按 event_ts 自动去重，为什么 IngestionService 在写入侧还要预合并一遍？</div>
+  <div class="qn">3. 既然<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的 ReplacingMergeTree 会按 event_ts 自动去重，为什么 IngestionService 在写入侧还要预合并一遍？</div>
   <ol class="opts">
     <li>为了把数据写两遍更安全</li>
     <li>纯粹是历史遗留代码</li>
@@ -568,10 +571,10 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 14's worker took the job and read the events back from S3 by fileKey. This lesson is the <strong>heart</strong> of the whole write path: how
+<a class="xref" href="14-ingestion-queue.html">Lesson 14</a>'s worker took the job and read the events back from S3 by fileKey. This lesson is the <strong>heart</strong> of the whole write path: how
 does that pile of events, plus the record's <strong>current state</strong> in the database, get kneaded into <strong>one final record</strong>? The answer
 lives in <code>IngestionService</code> — <code>mergeAndWrite</code> dispatches by entity type, <code>mergeRecords</code> folds many inputs into one with a
-single "left-fold + later-overwrites" move, then stamps a <code>event_ts=now</code> version. Get it, and Lesson 8's ReplacingMergeTree gains its
+single "left-fold + later-overwrites" move, then stamps a <code>event_ts=now</code> version. Get it, and <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ReplacingMergeTree gains its
 "other (write-side) half".
 </p>
 
@@ -587,7 +590,7 @@ single "left-fold + later-overwrites" move, then stamps a <code>event_ts=now</co
 
 
 <h2>mergeAndWrite: split by entity type first</h2>
-<p><code>mergeAndWrite</code> itself is just a <strong>dispatcher</strong>. It takes Lesson 13's computed entity type (trace / observation / score /
+<p><code>mergeAndWrite</code> itself is just a <strong>dispatcher</strong>. It takes <a class="xref" href="13-event-types-merge.html">Lesson 13</a>'s computed entity type (trace / observation / score /
 dataset_run_item) and a <code>switch</code> hands the work to the matching <code>process{Type}EventList</code>. Every line has the same skeleton —
 <strong>read old, transform, merge, write back</strong> — only the field details differ by type.</p>
 
@@ -601,7 +604,7 @@ dataset_run_item) and a <code>switch</code> hands the work to the matching <code
   <rect x="534" y="130" width="162" height="56" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="615" y="151" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">processDatasetRunItem</text><text x="615" y="165" text-anchor="middle" font-size="8" fill="var(--muted)">EventList</text><text x="615" y="178" text-anchor="middle" font-size="7.5" fill="var(--faint)">create only, no merge</text>
   <line x1="320" y1="86" x2="120" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="345" y1="86" x2="280" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="375" y1="86" x2="430" y2="128" stroke="var(--faint)" stroke-width="1.4"/><line x1="400" y1="86" x2="595" y2="128" stroke="var(--faint)" stroke-width="1.4"/>
 </svg>
-<div class="figcap"><b>Split, not converge</b>: <code>mergeAndWrite</code> hands the job by entity type to four dedicated lines, each writing back to Lesson 8's matching table. The observation line is the richest (token/cost, wrapper-trace backfill). Source: <code>worker/src/services/IngestionService/index.ts:149-195</code>.</div>
+<div class="figcap"><b>Split, not converge</b>: <code>mergeAndWrite</code> hands the job by entity type to four dedicated lines, each writing back to <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s matching table. The observation line is the richest (token/cost, wrapper-trace backfill). Source: <code>worker/src/services/IngestionService/index.ts:149-195</code>.</div>
 </div>
 
 <p>On each line, the merge actually has <strong>two sources</strong>, both indispensable:</p>
@@ -611,7 +614,7 @@ dataset_run_item) and a <code>switch</code> hands the work to the matching <code
   <div class="col"><h4>🗄️ ClickHouse: the current record</h4><p>Meanwhile it <code>getClickhouseRecord</code>s the <strong>existing row</strong> from observations as the <strong>base draft</strong>. It goes first in the merge array, the baseline for immutable fields.</p></div>
 </div>
 
-<p>Why need both? Seemingly redundant, but each is irreplaceable. The S3 one is the events' <strong>real ledger</strong> (Lesson 14); re-reading all
+<p>Why need both? Seemingly redundant, but each is irreplaceable. The S3 one is the events' <strong>real ledger</strong> (<a class="xref" href="14-ingestion-queue.html">Lesson 14</a>); re-reading all
 events guarantees the merged record is <strong>complete</strong>, even if this job is a late backfill. The ClickHouse one provides the <strong>authoritative
 baseline for immutable fields</strong> (created_at, start_time — those "locked once first written" values) and backstops early events that may have aged out
 of S3. Stacked together, they <strong>lose nothing new while changing nothing old</strong> — the essence of "read the old base + apply new revisions".</p>
@@ -647,7 +650,7 @@ overwrite" rules</strong>.</p>
 <span class="kw">let</span> result = { id: records[0].id, project_id: records[0].project_id };
 <span class="kw">for</span> (<span class="kw">const</span> record <span class="kw">of</span> records)
   result = <span class="fn">overwriteObject</span>(result, record, immutableEntityKeys);
-result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// version stamp → Lesson 8's ReplacingMergeTree</span>
+result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</span>();   <span class="cm">// version stamp → <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ReplacingMergeTree</span>
 
 <span class="cm">// overwriteObject: lodash mergeWith; hit any rule → keep old objValue</span>
 <span class="kw">if</span> (nonOverwritableKeys.<span class="fn">includes</span>(key)        <span class="cm">// ① immutable</span>
@@ -670,7 +673,7 @@ level, metadata…) follows last-write-wins.</p>
 <p>The merge also hides a thoughtful <strong>backward-compat</strong> detail: if a merged observation turns out to have <strong>no trace_id</strong> (a very
 old SDK from the pre-2.0 era that instrumented without a trace), <code>IngestionService</code> quietly <strong>creates a "wrapper trace"</strong> — using
 the observation's own id as the trace id, writing it into the traces table and attaching the observation to it. So no matter how old the data, no
-observation becomes an <strong>orphan</strong>, and Lesson 5's trace tree stays whole. A tiny compensating bit of logic that respects <strong>historical
+observation becomes an <strong>orphan</strong>, and <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s trace tree stays whole. A tiny compensating bit of logic that respects <strong>historical
 data and multi-version SDKs</strong>.</p>
 
 
@@ -716,24 +719,24 @@ data and multi-version SDKs</strong>.</p>
 </svg>
 
 <div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with Lesson 13's "event id as filename", redelivery never double-counts).</p></div></div>
+  <div class="step"><div class="num">1</div><div class="sc"><h4>idempotency skip</h4><p>Check Redis first: was this fileKey processed in the last few minutes? If so, <strong>skip outright</strong> (with <a class="xref" href="13-event-types-merge.html">Lesson 13</a>'s "event id as filename", redelivery never double-counts).</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>sort by time</h4><p><code>toTimeSortedEventList</code> orders events by <code>timestamp</code>; at the same instant, create comes before update.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>read ClickHouse base</h4><p><code>getClickhouseRecord</code> fetches the observation's existing row (filtered by type and start_time) as the merge baseline.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>events → records → merge</h4><p>Map events to records, <code>mergeRecords</code> left-folds into <code>mergedObservationRecord</code>.</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>fill input/output</h4><p>Find the first non-null input/output scanning from newest back (fallback to ClickHouse's), and normalize tool data.</p></div></div>
-  <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in Lesson 16), folded into the final record.</p></div></div>
-  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to Lesson 17's batch writer.</p></div></div>
+  <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>), folded into the final record.</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a>'s batch writer.</p></div></div>
 </div>
 
 <p>Note step 7: <code>IngestionService</code> <strong>never writes ClickHouse directly</strong> — it only pushes the merged record into
-<code>ClickhouseWriter</code>'s queue. Why? Because <strong>row-by-row ClickHouse writes are a performance disaster</strong> (Lesson 8 noted it loves big
-batches). Splitting "merge" from "persist" is again Lesson 6's "each layer does one thing" — merging to IngestionService, batching to ClickhouseWriter.
+<code>ClickhouseWriter</code>'s queue. Why? Because <strong>row-by-row ClickHouse writes are a performance disaster</strong> (<a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> noted it loves big
+batches). Splitting "merge" from "persist" is again <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a>'s "each layer does one thing" — merging to IngestionService, batching to ClickhouseWriter.
 This two-stage "compute the record fully in memory, then hand it to a dedicated batch writer" keeps high-frequency writes correct without crushing the
-columnar store; Lesson 17 shows how the writer batches per table and flushes on a timer.</p>
+columnar store; <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a> shows how the writer batches per table and flushes on a timer.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
-  <strong>If Lesson 8's ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
+  <strong>If <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ReplacingMergeTree already dedups by event_ts, why merge again on the write side?</strong> Because they solve problems at
   <strong>different moments</strong>. The write-side pre-merge guarantees: <strong>the very row written out is the correct, complete state right now</strong>
   — queries read correct data immediately, no waiting for background merges. ReplacingMergeTree's background dedup happens <strong>eventually</strong>,
   cleaning up the tail of races like "one record processed concurrently, producing multiple rows". Each layer owns a stretch: <strong>the write side seeks
@@ -748,7 +751,7 @@ columnar store; Lesson 17 shows how the writer batches per table and flushes on 
     <li>Merge has <strong>two inputs</strong>: <strong>all events</strong> of this entity from S3 (listFiles, time-sorted) + the <strong>current row</strong> from ClickHouse (the immutable baseline).</li>
     <li><code>mergeRecords</code> <strong>left-folds</strong> them (<code>overwriteObject</code>, later overwrites earlier) and stamps the <code>event_ts=now</code> version.</li>
     <li><strong>Three don't-overwrite rules</strong>: immutable keys (id/start_time/created_at… first-wins), <code>undefined</code>, empty objects — so update carries only changed fields without wiping create's values.</li>
-    <li>After merging it only <code>addToQueue</code>s, <strong>not a direct write</strong> (persist is Lesson 17). Write-side pre-merge for "immediate correctness", storage-side ReplacingMergeTree for "eventual uniqueness", meshed by event_ts — defense in depth.</li>
+    <li>After merging it only <code>addToQueue</code>s, <strong>not a direct write</strong> (persist is <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a>). Write-side pre-merge for "immediate correctness", storage-side ReplacingMergeTree for "eventual uniqueness", meshed by event_ts — defense in depth.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -780,7 +783,7 @@ columnar store; Lesson 17 shows how the writer batches per table and flushes on 
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. Since Lesson 8's ReplacingMergeTree auto-dedups by event_ts, why does IngestionService still pre-merge on the write side?</div>
+  <div class="qn">3. Since <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ReplacingMergeTree auto-dedups by event_ts, why does IngestionService still pre-merge on the write side?</div>
   <ol class="opts">
     <li>to write the data twice for safety</li>
     <li>purely legacy code</li>

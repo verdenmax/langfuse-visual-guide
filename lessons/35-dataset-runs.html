@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -351,7 +354,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 上一课造好了「考卷」（数据集）。这一课讲怎么「<strong>考一场试</strong>」——一次 <strong>dataset run（数据集运行）</strong>就是拿整套题把应用从头到尾考一遍。重点有两个：每道题考一次会产生<strong>一条真实 trace</strong>，而 <strong>dataset run item</strong> 正是把「哪场考试 × 哪道题 → 哪份答卷（trace）」三者钉在一起的那条记录；以及，这些 run item 会被<strong>镜像到 ClickHouse</strong>，连同题面一起<strong>快照</strong>下来，好让「按这场考试汇总所有题的分数」又快又可复现。
-理解了 run 与 run item，你就接上了第 30 课那条 <code>dataset-run-item-upsert</code> 评估触发器——<strong>跑一场实验，分数会自动评出来</strong>。
+理解了 run 与 run item，你就接上了<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>那条 <code>dataset-run-item-upsert</code> 评估触发器——<strong>跑一场实验，分数会自动评出来</strong>。
 </p>
 
 <div class="card analogy">
@@ -382,7 +385,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">一场考试</span><span class="name">DatasetRuns</span></div><div class="ld">一次 run 代表「用某套固定配置（模型/prompt/版本）把整个数据集跑一遍」。它有 name（如「gpt-4o-2025-baseline」）、description、metadata，归属一个 dataset。同一数据集下 run 名唯一，方便你按名字回溯每次实验。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">答题卡存根</span><span class="name">DatasetRunItems</span></div><div class="ld">连接器：<code>datasetRunId</code>（哪场）+ <code>datasetItemId</code>（哪题）→ <code>traceId</code>（哪份答卷）。它本身不存输入输出——那些都在它指向的 trace 里。它只负责把「实验 / 题目 / 执行记录」三者牢牢绑定，让你能从一场 run 顺藤摸到每道题的完整执行细节。</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">复用一切</span><span class="name">trace 就是普通 trace</span></div><div class="ld">妙在 run 产生的 trace 和生产 trace<strong>毫无二致</strong>——同样的观测树（第 13、25 课）、同样能挂 score（第 28 课）、同样走摄取链路（第 12 课）。实验不是另一套系统，而是「用数据集喂出来的一批普通 trace」，前 5 部分的能力全部复用。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">复用一切</span><span class="name">trace 就是普通 trace</span></div><div class="ld">妙在 run 产生的 trace 和生产 trace<strong>毫无二致</strong>——同样的观测树（第 13、25 课）、同样能挂 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）、同样走摄取链路（<a class="xref" href="12-ingestion-api.html">第 12 课</a>）。实验不是另一套系统，而是「用数据集喂出来的一批普通 trace」，前 5 部分的能力全部复用。</div></div>
 </div>
 
 
@@ -399,7 +402,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="490" y1="110" x2="558" y2="92" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,92 549,91 552,99" fill="var(--teal)"/>
   <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">快照题面的妙处：即便日后题被改新版（第34课），这条 run item 仍记着「当时考的到底是什么」——可复现再加一道保险</text>
 </svg>
-<div class="figcap"><b>反范式 = 用空间换聚合速度 + 记忆</b>：CH 表内联了不可变的 run 字段与 <b>item input/expectedOutput 快照</b>（注释原文「denormalized … but snapshots are relevant」）。即使题目日后升新版，这场 run 仍记得当时题面——第 34 课的「可复现」在这里再上一道保险。引擎 ReplacingMergeTree（第 17 课同款）。源码：<code>clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</code>。</div>
+<div class="figcap"><b>反范式 = 用空间换聚合速度 + 记忆</b>：CH 表内联了不可变的 run 字段与 <b>item input/expectedOutput 快照</b>（注释原文「denormalized … but snapshots are relevant」）。即使题目日后升新版，这场 run 仍记得当时题面——<a class="xref" href="34-datasets-and-items.html">第 34 课</a>的「可复现」在这里再上一道保险。引擎 ReplacingMergeTree（<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>同款）。源码：<code>clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</code>。</div>
 </div>
 
 <div class="codefile">
@@ -413,7 +416,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   dataset_item_input Nullable(String) CODEC(ZSTD(3)),
   dataset_item_expected_output Nullable(String) CODEC(ZSTD(3)),
   event_ts DateTime64(3), is_deleted UInt8
-) <span class="kw">ENGINE</span> = ReplicatedReplacingMergeTree(event_ts, is_deleted)   <span class="cm">-- 同 id 多次写，留最新（第17课）</span>
+) <span class="kw">ENGINE</span> = ReplicatedReplacingMergeTree(event_ts, is_deleted)   <span class="cm">-- 同 id 多次写，留最新（<a class="xref" href="17-clickhouse-writer.html">第17课</a>）</span>
 <span class="kw">ORDER BY</span> (project_id, dataset_id, dataset_run_id, id);   <span class="cm">-- 排序键贴合「按 run 聚合」</span></pre>
 </div>
 
@@ -426,11 +429,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <tr><td>擅长</td><td>精确读单条、外键约束</td><td>「按 run 分组求平均」扫一遍即得</td></tr>
   </tbody>
 </table>
-<p>这正是第 22 课「双存储」格局在实验域的复刻：<strong>Postgres 当权威、ClickHouse 当快照</strong>。两边不是竞争而是分工——一处保对、一处保快。</p>
+<p>这正是<a class="xref" href="22-repository-layer.html">第 22 课</a>「双存储」格局在实验域的复刻：<strong>Postgres 当权威、ClickHouse 当快照</strong>。两边不是竞争而是分工——一处保对、一处保快。</p>
 
 
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
-<p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
+<p>run item 指向 trace，trace 上挂着 score（<a class="xref" href="28-scoring-model.html">第 28 课</a>）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
 
 <svg viewBox="0 0 720 230" role="img" aria-label="跑一场实验的聚合链路：数据集 N 道题，run 逐题跑应用各产出一条 trace，自动评分（L29-32）给每条 trace 挂上 score，再按 run 聚合 JOIN scores 对每个 score 名求平均得到 agg_scores_avg，例如 helpfulness 0.82、toxicity 0.03，交给 L36 做实验对比">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
@@ -461,10 +464,10 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>建 run + 逐题执行</h4><p>新建一场 run（<code>createOrFetchDatasetRun</code>），对每道 item 用目标配置跑一次应用，产出一条 trace。</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>建 run item（钉住版本）</h4><p>记下 run×item→traceId，并钉住该 item 的 <code>validFrom</code>（第34课）。镜像进 CH，快照题面。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>自动触发评估</h4><p>run item 落库发出 <code>dataset-run-item-upsert</code> 事件 → 第30课 createEvalJobs 给这条 trace 排评估工单。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>建 run item（钉住版本）</h4><p>记下 run×item→traceId，并钉住该 item 的 <code>validFrom</code>（<a class="xref" href="34-datasets-and-items.html">第34课</a>）。镜像进 CH，快照题面。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>自动触发评估</h4><p>run item 落库发出 <code>dataset-run-item-upsert</code> 事件 → <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> createEvalJobs 给这条 trace 排评估工单。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>评分回流</h4><p>裁判 / 代码 / 人工（第29–32课）评出 score，经摄取链路挂回这条 trace。</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>按 run 聚合</h4><p><code>dataset-run-items.ts</code> JOIN scores、按名求平均（<code>agg_scores_avg</code>），得「这场 run 平均分」——交给第36课对比。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>按 run 聚合</h4><p><code>dataset-run-items.ts</code> JOIN scores、按名求平均（<code>agg_scores_avg</code>），得「这场 run 平均分」——交给<a class="xref" href="36-experiments-and-comparison.html">第36课</a>对比。</p></div></div>
 </div>
 
 <div class="codefile">
@@ -479,13 +482,13 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
 <span class="cm">// 于是「gpt-4o 场 vs claude 场」可以直接比 agg_scores_avg —— 下一课的实验对比</span></pre>
 </div>
 
-<p>至此，Part 6 的前两课拼出了完整的<strong>实验骨架</strong>：数据集（考卷，第34课）→ run（一场考试）→ run item（答题卡存根，把题与答卷钉一起）→ trace（答卷）→ 自动评分（第29–32课）→ 按 run 聚合（这场总评）。下一课只剩最后一步：把多场 run 的总评<strong>并排对比</strong>，挑出最优配置——这就是「实验」。</p>
+<p>至此，Part 6 的前两课拼出了完整的<strong>实验骨架</strong>：数据集（考卷，<a class="xref" href="34-datasets-and-items.html">第34课</a>）→ run（一场考试）→ run item（答题卡存根，把题与答卷钉一起）→ trace（答卷）→ 自动评分（第29–32课）→ 按 run 聚合（这场总评）。下一课只剩最后一步：把多场 run 的总评<strong>并排对比</strong>，挑出最优配置——这就是「实验」。</p>
 
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么要专门建一个 run item 表，而不是直接给 trace 打个「属于哪场实验」的标签？</strong> 因为这是个<strong>多对多</strong>的关系，而且要支撑高效聚合。一条 trace 概念上属于「某场 run 的某道题」，但「run」「item」「trace」各自都是独立演化的实体（题会改版、run 会重跑、trace 有完整生命周期）。用一张专门的连接表（run item）承载这个三元关系，既让三者解耦、各自独立，又给了你一个干净的聚合入口：要算「这场考了哪些题、平均分多少」，只需扫这张表 JOIN 一下 score，而不用在庞大的 trace 海里捞带特定标签的针。<strong>关系独立建模，是它能被高效查询和聚合的前提。</strong><br><br>
-  <strong>为什么 CH 镜像表要反范式地把 run 字段和题面「快照」进去？</strong> 两个理由叠加。其一是<strong>聚合速度</strong>（第 17、22 课的老主题）：把 run name、题面直接内联，算「按 run 分组的平均分」时省掉一次次回表 JOIN——OLAP 就吃这一套。其二更微妙，是<strong>记忆</strong>：题目会改版（第 34 课），但一场三月的实验，理应永远记得它三月考的是<strong>那时</strong>的题面。把 input/expectedOutput 在 run 时<strong>快照</strong>进 run item，等于给「可复现」再上一道保险——即便原题后来面目全非，这场实验的语境也分毫不失。<strong>快照不是冗余，而是把「当时的真相」固化下来。</strong>
+  <strong>为什么 CH 镜像表要反范式地把 run 字段和题面「快照」进去？</strong> 两个理由叠加。其一是<strong>聚合速度</strong>（第 17、22 课的老主题）：把 run name、题面直接内联，算「按 run 分组的平均分」时省掉一次次回表 JOIN——OLAP 就吃这一套。其二更微妙，是<strong>记忆</strong>：题目会改版（<a class="xref" href="34-datasets-and-items.html">第 34 课</a>），但一场三月的实验，理应永远记得它三月考的是<strong>那时</strong>的题面。把 input/expectedOutput 在 run 时<strong>快照</strong>进 run item，等于给「可复现」再上一道保险——即便原题后来面目全非，这场实验的语境也分毫不失。<strong>快照不是冗余，而是把「当时的真相」固化下来。</strong>
 </div>
 
 <div class="card key">
@@ -495,7 +498,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
     <li><strong>run item = 三元链接的载体</strong>：<code>DatasetRunItems</code> 把 <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code> 钉在一起，自己不存输入输出——答案在它指向的 trace 里。这让 run/item/trace 三者解耦又可聚合。</li>
     <li><strong>run 的 trace 就是普通 trace</strong>：同样的观测树、同样能挂 score、同样走摄取链路——实验复用前 5 部分的全部能力，不是另起一套系统。</li>
     <li><strong>镜像到 CH 并反范式快照</strong>：<code>dataset_run_items_rmt</code>（ReplacingMergeTree）内联 run 字段 + <strong>快照题面 input/expectedOutput</strong>——既加速「按 run 聚合」，又让实验永远记得当时考的是什么（可复现加保险）。</li>
-    <li><strong>跑一场实验分数自动评出</strong>：建 run item 发 <code>dataset-run-item-upsert</code> 事件 → 第30课自动排评估 → 评分回流 → <code>dataset-run-items.ts</code> JOIN scores 按名求平均（<code>agg_scores_avg</code>）得「这场总评」，交给第36课对比。</li>
+    <li><strong>跑一场实验分数自动评出</strong>：建 run item 发 <code>dataset-run-item-upsert</code> 事件 → <a class="xref" href="30-eval-execution-pipeline.html">第30课</a>自动排评估 → 评分回流 → <code>dataset-run-items.ts</code> JOIN scores 按名求平均（<code>agg_scores_avg</code>）得「这场总评」，交给<a class="xref" href="36-experiments-and-comparison.html">第36课</a>对比。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -517,26 +520,26 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <div class="qn">2. ClickHouse 的 dataset_run_items_rmt 镜像表里，除了 id/run/item/trace 的关系，还反范式地内联了 run 名、并把数据项的 input/expectedOutput「快照」了进去。快照题面解决了什么独特问题？</div>
   <ol class="opts">
     <li>防止题目被删除</li>
-    <li>记忆：题目会改版(第34课)，但快照让一场三月的实验永远记得当时考的是哪版题面——即便原题后来面目全非，实验语境分毫不失，给「可复现」再上一道保险</li>
+    <li>记忆：题目会改版(<a class="xref" href="34-datasets-and-items.html">第34课</a>)，但快照让一场三月的实验永远记得当时考的是哪版题面——即便原题后来面目全非，实验语境分毫不失，给「可复现」再上一道保险</li>
     <li>加密题面</li>
     <li>压缩存储空间</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。反范式有两重收益。聚合速度：内联 run 名/题面，省回表 JOIN（OLAP 老主题）。更微妙的是记忆：题会改版，但三月的实验理应永远记得三月那版题面。把 input/expectedOutput 在 run 时快照进 run item，即便原题后来变了，这场实验的语境也不失——第34课「可复现」的再加保险。快照不是冗余，是固化「当时的真相」。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。反范式有两重收益。聚合速度：内联 run 名/题面，省回表 JOIN（OLAP 老主题）。更微妙的是记忆：题会改版，但三月的实验理应永远记得三月那版题面。把 input/expectedOutput 在 run 时快照进 run item，即便原题后来变了，这场实验的语境也不失——<a class="xref" href="34-datasets-and-items.html">第34课</a>「可复现」的再加保险。快照不是冗余，是固化「当时的真相」。</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">3. 在 Langfuse 里「跑一场 dataset run，分数会自动评出来」。这个自动评分是怎么被触发的？</div>
   <ol class="opts">
-    <li>创建 run item 会发出 dataset-run-item-upsert 事件，触发第30课的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-run-items.ts JOIN scores 按名求平均(agg_scores_avg)</li>
+    <li>创建 run item 会发出 dataset-run-item-upsert 事件，触发<a class="xref" href="30-eval-execution-pipeline.html">第30课</a>的 createEvalJobs 给这条 run 的 trace 排评估工单；评分回流后 dataset-run-items.ts JOIN scores 按名求平均(agg_scores_avg)</li>
     <li>ClickHouse 自动计算</li>
     <li>前端每秒轮询打分</li>
     <li>run 结束时手动点击评分</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。回想第30课：createEvalJobs 有三个触发源，其一就是 dataset-run-item-upsert。建 run item 发此事件 → 评估器按 filter 匹配这条 run 的 trace → 排 JobExecution → 裁判/代码/人工评出 score 经摄取链路挂回 trace。最后 dataset-run-items.ts JOIN scores 按 score 名求平均得 agg_scores_avg（这场总评），交第36课对比。整条链全自动。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。回想<a class="xref" href="30-eval-execution-pipeline.html">第30课</a>：createEvalJobs 有三个触发源，其一就是 dataset-run-item-upsert。建 run item 发此事件 → 评估器按 filter 匹配这条 run 的 trace → 排 JobExecution → 裁判/代码/人工评出 score 经摄取链路挂回 trace。最后 dataset-run-items.ts JOIN scores 按 score 名求平均得 agg_scores_avg（这场总评），交<a class="xref" href="36-experiments-and-comparison.html">第36课</a>对比。整条链全自动。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -549,7 +552,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <div class="lang-en">
 <p class="lead">
 The last lesson built the "exam paper" (the dataset). This lesson is about how to "<strong>sit an exam</strong>"—a <strong>dataset run</strong> takes the whole set and quizzes the app end to end. Two focuses: each question, run once, produces <strong>a real trace</strong>, and a <strong>dataset run item</strong> is the record that pins "which exam × which question → which answer sheet (trace)" together; and these run items are <strong>mirrored to ClickHouse</strong>, <strong>snapshotting</strong> the question text along with them, so that "aggregate all questions' scores for this exam" is both fast and reproducible.
-Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-item-upsert</code> eval trigger—<strong>run an experiment and the scores get computed automatically</strong>.
+Once you grasp runs and run items, you connect to <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s <code>dataset-run-item-upsert</code> eval trigger—<strong>run an experiment and the scores get computed automatically</strong>.
 </p>
 
 <div class="card analogy">
@@ -580,7 +583,7 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">an exam</span><span class="name">DatasetRuns</span></div><div class="ld">A run means "with a fixed config (model/prompt/version), run the whole dataset once". It has a name (e.g. "gpt-4o-2025-baseline"), description, metadata, belongs to a dataset. Run names are unique per dataset, so you can trace each experiment by name.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">answer-card stub</span><span class="name">DatasetRunItems</span></div><div class="ld">The connector: <code>datasetRunId</code> (which exam) + <code>datasetItemId</code> (which question) → <code>traceId</code> (which sheet). It stores no input/output—those are in the trace it points to. It only binds "experiment / question / execution record" together, letting you follow a run down to each question's full execution detail.</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">reuse all</span><span class="name">the trace is an ordinary trace</span></div><div class="ld">The beauty: a run's traces are <strong>indistinguishable</strong> from production traces—same observation tree (Lessons 13, 25), same ability to attach scores (Lesson 28), same ingestion path (Lesson 12). Experiments aren't a separate system but "a batch of ordinary traces fed by a dataset", reusing all of the first five parts.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">reuse all</span><span class="name">the trace is an ordinary trace</span></div><div class="ld">The beauty: a run's traces are <strong>indistinguishable</strong> from production traces—same observation tree (Lessons 13, 25), same ability to attach scores (<a class="xref" href="28-scoring-model.html">Lesson 28</a>), same ingestion path (<a class="xref" href="12-ingestion-api.html">Lesson 12</a>). Experiments aren't a separate system but "a batch of ordinary traces fed by a dataset", reusing all of the first five parts.</div></div>
 </div>
 
 
@@ -597,7 +600,7 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
   <line x1="490" y1="110" x2="558" y2="92" stroke="var(--teal)" stroke-width="1.5"/><polygon points="558,92 549,91 552,99" fill="var(--teal)"/>
   <text x="360" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">snapshot's payoff: even if the question is later versioned up (L34), this run item still remembers "what was actually tested then"—reproducibility, doubly insured</text>
 </svg>
-<div class="figcap"><b>denormalize = trade space for aggregation speed + memory</b>: the CH table inlines immutable run fields and <b>snapshots item input/expectedOutput</b> (the source comment: "denormalized … but snapshots are relevant"). Even if the question is later versioned up, this run still remembers the question text then—Lesson 34's reproducibility, doubly insured. Engine ReplacingMergeTree (same as Lesson 17). Source: <code>clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</code>.</div>
+<div class="figcap"><b>denormalize = trade space for aggregation speed + memory</b>: the CH table inlines immutable run fields and <b>snapshots item input/expectedOutput</b> (the source comment: "denormalized … but snapshots are relevant"). Even if the question is later versioned up, this run still remembers the question text then—<a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s reproducibility, doubly insured. Engine ReplacingMergeTree (same as <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a>). Source: <code>clickhouse/migrations/clustered/0024_dataset_run_items.up.sql</code>.</div>
 </div>
 
 <div class="codefile">
@@ -611,7 +614,7 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
   dataset_item_input Nullable(String) CODEC(ZSTD(3)),
   dataset_item_expected_output Nullable(String) CODEC(ZSTD(3)),
   event_ts DateTime64(3), is_deleted UInt8
-) <span class="kw">ENGINE</span> = ReplicatedReplacingMergeTree(event_ts, is_deleted)   <span class="cm">-- many writes per id, keep latest (L17)</span>
+) <span class="kw">ENGINE</span> = ReplicatedReplacingMergeTree(event_ts, is_deleted)   <span class="cm">-- many writes per id, keep latest (<a class="xref" href="17-clickhouse-writer.html">L17</a>)</span>
 <span class="kw">ORDER BY</span> (project_id, dataset_id, dataset_run_id, id);   <span class="cm">-- sort key fits "aggregate by run"</span></pre>
 </div>
 
@@ -624,11 +627,11 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
     <tr><td>good at</td><td>exact single-row reads, FK constraints</td><td>"group by run, average" in one scan</td></tr>
   </tbody>
 </table>
-<p>This is Lesson 22's "dual-store" pattern replayed in the experiment domain: <strong>Postgres as the authority, ClickHouse as the snapshot</strong>. The two don't compete but divide labor—one keeps it correct, one keeps it fast.</p>
+<p>This is <a class="xref" href="22-repository-layer.html">Lesson 22</a>'s "dual-store" pattern replayed in the experiment domain: <strong>Postgres as the authority, ClickHouse as the snapshot</strong>. The two don't compete but divide labor—one keeps it correct, one keeps it fast.</p>
 
 
 <h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
-<p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+<p>A run item points to a trace, the trace carries scores (<a class="xref" href="28-scoring-model.html">Lesson 28</a>). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
 
 <svg viewBox="0 0 720 230" role="img" aria-label="the experiment aggregation chain: a dataset of N questions, a run executes the app per item producing one trace each, auto-scoring (L29-32) attaches a score to each trace, then per-run aggregation JOINs scores and averages by name into agg_scores_avg, e.g. helpfulness 0.82 and toxicity 0.03, handed to L36 for experiment comparison">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
@@ -659,10 +662,10 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>create run item (pin the version)</h4><p>Record run×item→traceId, pinning the item's <code>validFrom</code> (L34). Mirror into CH, snapshot the question.</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>auto-trigger evaluation</h4><p>Persisting the run item emits a <code>dataset-run-item-upsert</code> event → Lesson 30's createEvalJobs queues eval for this trace.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>create run item (pin the version)</h4><p>Record run×item→traceId, pinning the item's <code>validFrom</code> (<a class="xref" href="34-datasets-and-items.html">L34</a>). Mirror into CH, snapshot the question.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>auto-trigger evaluation</h4><p>Persisting the run item emits a <code>dataset-run-item-upsert</code> event → <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s createEvalJobs queues eval for this trace.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>scores flow back</h4><p>Judge / code / human (Lessons 29–32) produce scores, attached back to this trace via the ingestion path.</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to Lesson 36 for comparison.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>aggregate by run</h4><p><code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>), yielding "this run's average"—handed to <a class="xref" href="36-experiments-and-comparison.html">Lesson 36</a> for comparison.</p></div></div>
 </div>
 
 <div class="codefile">
@@ -677,13 +680,13 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
 <span class="cm">// so "gpt-4o sitting vs claude sitting" compares directly on agg_scores_avg — next lesson's comparison</span></pre>
 </div>
 
-<p>With that, Part 6's first two lessons assemble the full <strong>experiment skeleton</strong>: dataset (exam paper, L34) → run (a sitting) → run item (answer-card stub, pinning question to sheet) → trace (the sheet) → auto-scoring (Lessons 29–32) → aggregate by run (the exam's grade). The next lesson is the last step: place multiple runs' grades <strong>side by side</strong> and pick the best config—that's an "experiment".</p>
+<p>With that, Part 6's first two lessons assemble the full <strong>experiment skeleton</strong>: dataset (exam paper, <a class="xref" href="34-datasets-and-items.html">L34</a>) → run (a sitting) → run item (answer-card stub, pinning question to sheet) → trace (the sheet) → auto-scoring (Lessons 29–32) → aggregate by run (the exam's grade). The next lesson is the last step: place multiple runs' grades <strong>side by side</strong> and pick the best config—that's an "experiment".</p>
 
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why build a dedicated run-item table rather than just tag a trace with "which experiment it belongs to"?</strong> Because it's a <strong>many-to-many</strong> relation that must support efficient aggregation. A trace conceptually belongs to "some question of some run", but "run", "item", and "trace" each evolve independently (questions get versioned, runs get re-run, traces have full lifecycles). A dedicated junction table (the run item) carrying this three-way relation both keeps the three decoupled and independent, and gives you a clean aggregation entry: to compute "which questions this exam covered, what the average is", just scan this table and JOIN scores—rather than fishing for tagged needles in a vast trace ocean. <strong>Modeling the relation independently is the precondition for efficient query and aggregation.</strong><br><br>
-  <strong>Why does the CH mirror table denormalize and "snapshot" the run fields and question text?</strong> Two compounding reasons. One is <strong>aggregation speed</strong> (Lessons 17, 22's old theme): inlining run name and question text saves repeated back-to-table JOINs when computing "average grouped by run"—OLAP thrives on this. The other is subtler, <strong>memory</strong>: questions get versioned (Lesson 34), but a March experiment ought to forever remember the question text it tested <strong>then</strong>. Snapshotting input/expectedOutput into the run item at run time doubly insures "reproducibility"—even if the original question later changes beyond recognition, this experiment's context is preserved intact. <strong>The snapshot isn't redundancy but freezing "the truth as of then".</strong>
+  <strong>Why does the CH mirror table denormalize and "snapshot" the run fields and question text?</strong> Two compounding reasons. One is <strong>aggregation speed</strong> (Lessons 17, 22's old theme): inlining run name and question text saves repeated back-to-table JOINs when computing "average grouped by run"—OLAP thrives on this. The other is subtler, <strong>memory</strong>: questions get versioned (<a class="xref" href="34-datasets-and-items.html">Lesson 34</a>), but a March experiment ought to forever remember the question text it tested <strong>then</strong>. Snapshotting input/expectedOutput into the run item at run time doubly insures "reproducibility"—even if the original question later changes beyond recognition, this experiment's context is preserved intact. <strong>The snapshot isn't redundancy but freezing "the truth as of then".</strong>
 </div>
 
 <div class="card key">
@@ -693,7 +696,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
     <li><strong>A run item = carrier of the three-way link</strong>: <code>DatasetRunItems</code> pins <code>datasetRunId</code>+<code>datasetItemId</code>→<code>traceId</code>, storing no input/output—the answer is in the trace it points to. This keeps run/item/trace decoupled yet aggregatable.</li>
     <li><strong>A run's trace is an ordinary trace</strong>: same observation tree, same scores, same ingestion path—experiments reuse all of the first five parts, not a separate system.</li>
     <li><strong>Mirror to CH with a denormalized snapshot</strong>: <code>dataset_run_items_rmt</code> (ReplacingMergeTree) inlines run fields + <strong>snapshots question input/expectedOutput</strong>—both speeding "aggregate by run" and making an experiment forever remember what it tested (reproducibility, insured).</li>
-    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → Lesson 30 auto-queues eval → scores flow back → <code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to Lesson 36 for comparison.</li>
+    <li><strong>Run an experiment, scores auto-compute</strong>: creating a run item emits <code>dataset-run-item-upsert</code> → <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> auto-queues eval → scores flow back → <code>dataset-run-items.ts</code> JOINs scores, averages by name (<code>agg_scores_avg</code>) into "this run's grade", handed to <a class="xref" href="36-experiments-and-comparison.html">Lesson 36</a> for comparison.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -715,26 +718,26 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
   <div class="qn">2. In ClickHouse's dataset_run_items_rmt mirror table, besides the id/run/item/trace relations it denormalizes the run name and 'snapshots' the item's input/expectedOutput. What unique problem does snapshotting the question text solve?</div>
   <ol class="opts">
     <li>preventing question deletion</li>
-    <li>memory: questions get versioned (L34), but the snapshot lets a March experiment forever remember the question text it tested then—even if the original later changes beyond recognition, the experiment's context is preserved, doubly insuring reproducibility</li>
+    <li>memory: questions get versioned (<a class="xref" href="34-datasets-and-items.html">L34</a>), but the snapshot lets a March experiment forever remember the question text it tested then—even if the original later changes beyond recognition, the experiment's context is preserved, doubly insuring reproducibility</li>
     <li>encrypting the question</li>
     <li>compressing storage</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Denormalization has two payoffs. Aggregation speed: inlining run name/question saves back-to-table JOINs (the OLAP theme). Subtler is memory: questions get versioned, but a March experiment should forever remember March's question text. Snapshotting input/expectedOutput into the run item at run time preserves the experiment's context even if the original later changes—doubly insuring L34's reproducibility. The snapshot isn't redundancy but freezing 'the truth as of then'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Denormalization has two payoffs. Aggregation speed: inlining run name/question saves back-to-table JOINs (the OLAP theme). Subtler is memory: questions get versioned, but a March experiment should forever remember March's question text. Snapshotting input/expectedOutput into the run item at run time preserves the experiment's context even if the original later changes—doubly insuring <a class="xref" href="34-datasets-and-items.html">L34</a>'s reproducibility. The snapshot isn't redundancy but freezing 'the truth as of then'.</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">3. In Langfuse, 'running a dataset run computes scores automatically'. How is this auto-scoring triggered?</div>
   <ol class="opts">
-    <li>creating a run item emits a dataset-run-item-upsert event, triggering Lesson 30's createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-run-items.ts JOINs scores and averages by name (agg_scores_avg)</li>
+    <li>creating a run item emits a dataset-run-item-upsert event, triggering <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s createEvalJobs to queue eval for this run's trace; once scores flow back, dataset-run-items.ts JOINs scores and averages by name (agg_scores_avg)</li>
     <li>ClickHouse computes it automatically</li>
     <li>the frontend polls and scores every second</li>
     <li>manually clicking score when the run finishes</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Recall Lesson 30: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-run-items.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to Lesson 36. The whole chain is automatic.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Recall <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>: createEvalJobs has three trigger sources, one being dataset-run-item-upsert. Creating a run item emits this event → evaluators filter-match this run's trace → queue a JobExecution → judge/code/human produce scores attached back via ingestion. Finally dataset-run-items.ts JOINs scores and averages by name into agg_scores_avg (the run's grade), handed to <a class="xref" href="36-experiments-and-comparison.html">Lesson 36</a>. The whole chain is automatic.</div></div></div>
   </details>
 </div>
 <div class="card spark">

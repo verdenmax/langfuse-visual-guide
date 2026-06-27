@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -351,7 +354,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 你在 trace 列表里筛出「过去 7 天、出错的、来自某用户的」5 万条 trace，想<strong>一次性导成 CSV</strong>，或者<strong>一键全删</strong>。这种「对一票筛出来的数据，整体干一件事」的需求，就是这一课的主角：<strong>批量导出（Batch Export）</strong>和<strong>批量操作（Batch Action）</strong>。它俩看着不同——一个是只读地产出文件、一个是危险地批量改数据——骨子里却共享同一套工程姿态：都基于一个<strong>可能命中海量行的查询/过滤条件</strong>，都因为<strong>耗时太长不能卡在请求里</strong>而扔进队列异步跑，都用<strong>流式 + 分块</strong>避免一次性把几万行塞进内存。
-作为「自动化与集成」这一部分的收官课，它把前面攒下的<strong>流式导出（第46课）、任务状态机（第30/35课）、签名 URL 与对象存储（第46课）</strong>又一次组装起来，还会讲清楚一个批量改数据时绕不开的硬约束：<strong>幂等</strong>。
+作为「自动化与集成」这一部分的收官课，它把前面攒下的<strong>流式导出（<a class="xref" href="46-analytics-integrations.html">第46课</a>）、任务状态机（第30/35课）、签名 URL 与对象存储（<a class="xref" href="46-analytics-integrations.html">第46课</a>）</strong>又一次组装起来，还会讲清楚一个批量改数据时绕不开的硬约束：<strong>幂等</strong>。
 </p>
 
 <div class="card analogy">
@@ -362,7 +365,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>一个查询，两条路：只读导出 vs 改数据操作</h2>
-<p>两者都从同一个起点出发：一个<strong>过滤/查询条件</strong>（和第 23 课列表筛选同源），它可能命中成千上万行。然后分叉：<strong>批量导出</strong>是<strong>只读</strong>的——把命中的行流式查出、转成 CSV/JSON、写进对象存储、给你一个<strong>限时下载链接</strong>。<strong>批量操作</strong>是<strong>会改数据</strong>的——把命中的行的 id 流式取出、<strong>每 1000 个一块</strong>地执行删除 / 加进标注队列 / 加进数据集 / 重新评估。共同点是：都<strong>耗时</strong>（所以走队列异步、有状态机可追踪）、都<strong>数据量大</strong>（所以流式 + 分块、绝不全装内存）。</p>
+<p>两者都从同一个起点出发：一个<strong>过滤/查询条件</strong>（和<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>列表筛选同源），它可能命中成千上万行。然后分叉：<strong>批量导出</strong>是<strong>只读</strong>的——把命中的行流式查出、转成 CSV/JSON、写进对象存储、给你一个<strong>限时下载链接</strong>。<strong>批量操作</strong>是<strong>会改数据</strong>的——把命中的行的 id 流式取出、<strong>每 1000 个一块</strong>地执行删除 / 加进标注队列 / 加进数据集 / 重新评估。共同点是：都<strong>耗时</strong>（所以走队列异步、有状态机可追踪）、都<strong>数据量大</strong>（所以流式 + 分块、绝不全装内存）。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="一个查询两条路：过滤条件命中海量行，分叉成批量导出(只读：流式查→转CSV/JSON→写对象存储→限时签名URL→邮件)和批量操作(改数据：流式取id→每1000一块→删除/加队列/加数据集/重评)，两者都走队列异步、有状态机">
@@ -375,7 +378,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="190" y1="140" x2="268" y2="175" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,175 259,171 260,179" fill="var(--accent)"/>
   <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
 </svg>
-<div class="figcap"><b>同源分叉</b>：批量导出 <code>worker/src/features/batchExport/handleBatchExportJob.ts</code>（只读产文件）；批量操作 <code>worker/src/features/batchAction/handleBatchActionJob.ts</code>（<code>CHUNK_SIZE=1000</code>，switch 分发到 trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create 等处理器）。两者都基于第 23 课的过滤条件、都走 BullMQ 队列。</div>
+<div class="figcap"><b>同源分叉</b>：批量导出 <code>worker/src/features/batchExport/handleBatchExportJob.ts</code>（只读产文件）；批量操作 <code>worker/src/features/batchAction/handleBatchActionJob.ts</code>（<code>CHUNK_SIZE=1000</code>，switch 分发到 trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create 等处理器）。两者都基于<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>的过滤条件、都走 BullMQ 队列。</div>
 </div>
 
 <table class="t">
@@ -391,7 +394,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>批量导出：流式 → 文件 → 限时链接 → 邮件</h2>
-<p>导出任务是一台<strong>状态机</strong>（<code>BatchExportStatus</code>：QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED），和第 30 课 eval 的 JobExecution、第 35 课数据集运行同根同源。一进来先<strong>校验状态</strong>（已取消就跳过、非 QUEUED 也跳过——幂等防重复执行），置为 PROCESSING。核心是<strong>流式管道</strong>：<code>getDatabaseReadStreamPaginated</code> 分页读出命中的行，<code>pipeline</code> 一行行经 <code>streamTransformations[format]</code> 转成 CSV/JSON，<code>uploadFileBuffered</code> 分片传进对象存储（和第 46 课同一个 StorageService）。传完生成一个<strong>限时签名 URL</strong>（<code>getSignedUrl(expiresInSeconds)</code>），把状态置 COMPLETED、记下 <code>url</code> 和 <code>expiresAt</code>，最后<strong>发邮件</strong>把下载链接送到用户邮箱。</p>
+<p>导出任务是一台<strong>状态机</strong>（<code>BatchExportStatus</code>：QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED），和<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> eval 的 JobExecution、<a class="xref" href="35-dataset-runs.html">第 35 课</a>数据集运行同根同源。一进来先<strong>校验状态</strong>（已取消就跳过、非 QUEUED 也跳过——幂等防重复执行），置为 PROCESSING。核心是<strong>流式管道</strong>：<code>getDatabaseReadStreamPaginated</code> 分页读出命中的行，<code>pipeline</code> 一行行经 <code>streamTransformations[format]</code> 转成 CSV/JSON，<code>uploadFileBuffered</code> 分片传进对象存储（和<a class="xref" href="46-analytics-integrations.html">第 46 课</a>同一个 StorageService）。传完生成一个<strong>限时签名 URL</strong>（<code>getSignedUrl(expiresInSeconds)</code>），把状态置 COMPLETED、记下 <code>url</code> 和 <code>expiresAt</code>，最后<strong>发邮件</strong>把下载链接送到用户邮箱。</p>
 
 <svg viewBox="0 0 720 210" role="img" aria-label="批量导出流式管道五步：① 分页读 getDatabaseReadStreamPaginated 命中行，② 逐行经 streamTransformations 转 CSV 或 JSON 内存恒定，③ uploadFileBuffered 分片传进 S3 或 GCS，④ getSignedUrl 生成限时签名下载链接记 expiresAt，⑤ sendBatchExportSuccessEmail 把下载链接发到用户邮箱；整个任务是 QUEUED 到 PROCESSING 到 COMPLETED 的状态机，幂等防重复执行">
   <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
@@ -456,7 +459,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>批量操作：分块 1000，且必须幂等</h2>
-<p>批量操作要<strong>改</strong>数据，分块流程是：用过滤条件 + 一个 <code>cutoffCreatedAt</code> 截止时间（<strong>快照边界</strong>——任务启动后才新建的行不算进来，目标集合稳定）流式取出命中行的 id，攒够 <strong>1000 个一块</strong>，交给 <code>processActionChunk</code> 按 actionId 分发：<code>trace-delete</code> 删 trace、<code>*-add-to-annotation-queue</code> 加进第 32 课的标注队列、<code>dataset-delete</code> 删数据集、<code>eval-create</code> 给历史数据补跑第 29 课的评估……源码在这里留了一句<strong>醒目的红线注释</strong>：「所有操作必须幂等。任务失败会重试，重试时已处理过的块可能被再处理一遍。」这不是建议，是<strong>硬约束</strong>。</p>
+<p>批量操作要<strong>改</strong>数据，分块流程是：用过滤条件 + 一个 <code>cutoffCreatedAt</code> 截止时间（<strong>快照边界</strong>——任务启动后才新建的行不算进来，目标集合稳定）流式取出命中行的 id，攒够 <strong>1000 个一块</strong>，交给 <code>processActionChunk</code> 按 actionId 分发：<code>trace-delete</code> 删 trace、<code>*-add-to-annotation-queue</code> 加进<a class="xref" href="32-human-annotation.html">第 32 课</a>的标注队列、<code>dataset-delete</code> 删数据集、<code>eval-create</code> 给历史数据补跑<a class="xref" href="29-llm-as-a-judge.html">第 29 课</a>的评估……源码在这里留了一句<strong>醒目的红线注释</strong>：「所有操作必须幂等。任务失败会重试，重试时已处理过的块可能被再处理一遍。」这不是建议，是<strong>硬约束</strong>。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 230" role="img" aria-label="批量操作分块处理：过滤+cutoffCreatedAt快照边界流式取命中id，攒够1000一块交processActionChunk按actionId分发到trace-delete/add-to-queue/dataset-delete/eval-create处理器；红线注释：所有操作必须幂等，重试会重跑已处理块">
@@ -487,19 +490,19 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么批量操作「必须幂等」是一条铁律，而不是「尽量做到」？</strong> 因为它和「队列会重试」这条现实<strong>正面相撞</strong>。一个删 5 万行的任务，分成 50 块跑，假设跑到第 30 块时 worker 崩了——BullMQ 会把<strong>整个任务</strong>重新派发（它不知道你内部跑到了第几块），于是前 29 块<strong>会被再执行一遍</strong>。如果「删除」不是幂等的（比如删一个不存在的 id 就抛异常），重试会直接失败、任务永远卡死；如果「加入队列」不是幂等的，同一批 trace 会被<strong>加两次</strong>。幂等不是锦上添花，而是「<strong>在一个会重试的系统里，正确性的前提</strong>」。源码作者把这句话写成醒目注释顶在函数上，就是在反复提醒每一个未来改这里的人：你写的每个 action，都活在「可能被重复调用」的世界里。这与第 43 课计量的「恰好一次」、第 30 课 eval 的去重，是同一种对「分布式世界不可靠」的清醒。<br><br>
+  <strong>为什么批量操作「必须幂等」是一条铁律，而不是「尽量做到」？</strong> 因为它和「队列会重试」这条现实<strong>正面相撞</strong>。一个删 5 万行的任务，分成 50 块跑，假设跑到第 30 块时 worker 崩了——BullMQ 会把<strong>整个任务</strong>重新派发（它不知道你内部跑到了第几块），于是前 29 块<strong>会被再执行一遍</strong>。如果「删除」不是幂等的（比如删一个不存在的 id 就抛异常），重试会直接失败、任务永远卡死；如果「加入队列」不是幂等的，同一批 trace 会被<strong>加两次</strong>。幂等不是锦上添花，而是「<strong>在一个会重试的系统里，正确性的前提</strong>」。源码作者把这句话写成醒目注释顶在函数上，就是在反复提醒每一个未来改这里的人：你写的每个 action，都活在「可能被重复调用」的世界里。这与<a class="xref" href="43-cloud-usage-metering.html">第 43 课</a>计量的「恰好一次」、<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> eval 的去重，是同一种对「分布式世界不可靠」的清醒。<br><br>
   <strong>为什么导出给的是「限时签名 URL」，而不是一个永久公开的下载地址？</strong> 因为导出的文件里往往是<strong>敏感数据</strong>（用户的 trace、输入输出、可能含 PII）。如果生成一个永久公开链接，它一旦被转发、被日志记录、被缓存，就等于把这批数据<strong>永久泄露</strong>到了一个谁拿到链接谁就能下载的地方。签名 URL 的设计是「<strong>临时授权</strong>」：链接里带着加密签名和过期时间，<code>expiresAt</code> 一到就自动失效。再配合 BatchExport 记录里的 <code>expiresAt</code>，平台对「这份导出还能不能下」始终有据可查。<strong>对敏感数据的访问，默认应该是有时限的、可收回的，而不是一次给出、永久敞开。</strong>
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点（兼 Part 9 收官）</div>
   <ul>
-    <li><strong>一个查询，两条路</strong>：批量导出（只读，产文件）与批量操作（改数据，删/加队列/加数据集/重评）都基于第 23 课的过滤条件，都因耗时长而走队列异步、有状态机追踪，都用流式 + 分块避免内存爆。</li>
+    <li><strong>一个查询，两条路</strong>：批量导出（只读，产文件）与批量操作（改数据，删/加队列/加数据集/重评）都基于<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>的过滤条件，都因耗时长而走队列异步、有状态机追踪，都用流式 + 分块避免内存爆。</li>
     <li><strong>批量导出 = 流式 → 文件 → 限时链接 → 邮件</strong>：<code>BatchExportStatus</code> 状态机（QUEUED→PROCESSING→COMPLETED）；<code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> 转 CSV/JSON；<code>uploadFileBuffered</code> 传对象存储；<code>getSignedUrl</code> 给<strong>限时</strong>下载链接；记 <code>expiresAt</code> 后发邮件。</li>
     <li><strong>批量操作 = 分块 1000 + 幂等</strong>：<code>cutoffCreatedAt</code> 快照边界固定目标集；<code>CHUNK_SIZE=1000</code> 保护 DB、细化重试粒度；<code>processActionChunk</code> 按 actionId 分发（trace-delete / 加标注队列 / dataset-delete / eval-create）。</li>
-    <li><strong>幂等是铁律</strong>：队列失败会整体重试、已处理块会被重跑，所以每个 action 必须「重复执行不出错、副作用不翻倍」。这是分布式重试系统里正确性的前提，与第 43 课「恰好一次」、第 30 课去重同源。</li>
+    <li><strong>幂等是铁律</strong>：队列失败会整体重试、已处理块会被重跑，所以每个 action 必须「重复执行不出错、副作用不翻倍」。这是分布式重试系统里正确性的前提，与<a class="xref" href="43-cloud-usage-metering.html">第 43 课</a>「恰好一次」、<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>去重同源。</li>
     <li><strong>限时签名 URL</strong>：导出含敏感数据，给<strong>带过期时间</strong>的临时授权链接而非永久公开地址——对敏感数据的访问默认应有时限、可收回。</li>
-    <li><strong>第九部分收官</strong>：自动化（L44 webhook/SSRF）→ Slack（L45）→ 分析集成（L46 fan-out/增量/流式）→ 批量导出与操作（L47）。一条主线：<strong>把平台的数据安全、可靠、可控地与外部世界连接</strong>。</li>
+    <li><strong>第九部分收官</strong>：自动化（<a class="xref" href="44-automations-webhooks.html">L44</a> webhook/SSRF）→ Slack（<a class="xref" href="45-slack-and-notifications.html">L45</a>）→ 分析集成（<a class="xref" href="46-analytics-integrations.html">L46</a> fan-out/增量/流式）→ 批量导出与操作（L47）。一条主线：<strong>把平台的数据安全、可靠、可控地与外部世界连接</strong>。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -527,7 +530,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。队列的「失败重试」是可靠性的来源，但它和「批量改数据」相遇时产生一个尖锐后果：重试是把整个任务重发，而任务内部已经跑完的块，队列并不知道、也会跟着重跑。于是每个 action 都活在「可能被重复调用」的世界里。如果不幂等：删一个已删的 id 抛异常 → 重试永远失败、任务卡死；把一批 trace 重复加进标注队列 → 数据被污染。所以幂等是「在会重试的系统里保证正确」的前提，不是可选项。这与第43课计量「恰好一次」、第30课 eval 去重，都是对『分布式不可靠』的同一种清醒。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。队列的「失败重试」是可靠性的来源，但它和「批量改数据」相遇时产生一个尖锐后果：重试是把整个任务重发，而任务内部已经跑完的块，队列并不知道、也会跟着重跑。于是每个 action 都活在「可能被重复调用」的世界里。如果不幂等：删一个已删的 id 抛异常 → 重试永远失败、任务卡死；把一批 trace 重复加进标注队列 → 数据被污染。所以幂等是「在会重试的系统里保证正确」的前提，不是可选项。这与<a class="xref" href="43-cloud-usage-metering.html">第43课</a>计量「恰好一次」、<a class="xref" href="30-eval-execution-pipeline.html">第30课</a> eval 去重，都是对『分布式不可靠』的同一种清醒。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -546,14 +549,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card spark">
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
-    <li>这一课是第九部分（自动化与集成）的收官：从 webhook/SSRF（L44）、Slack（L45）、分析集成（L46）到批量导出与操作（L47），主线是「把平台数据安全、可靠、可控地与外部世界连接」。回看这四课，你能总结出几条反复出现的『与外部世界打交道』的工程原则吗（如：不可信输入要纵深防御、敏感凭据/数据要加密与限时、耗时大活要队列+流式、会重试就必须幂等）？这些原则在你自己做过的『对接外部系统』里，哪些被遵守了、哪些被忽略并酿成过问题？</li>
+    <li>这一课是第九部分（自动化与集成）的收官：从 webhook/SSRF（<a class="xref" href="44-automations-webhooks.html">L44</a>）、Slack（<a class="xref" href="45-slack-and-notifications.html">L45</a>）、分析集成（<a class="xref" href="46-analytics-integrations.html">L46</a>）到批量导出与操作（L47），主线是「把平台数据安全、可靠、可控地与外部世界连接」。回看这四课，你能总结出几条反复出现的『与外部世界打交道』的工程原则吗（如：不可信输入要纵深防御、敏感凭据/数据要加密与限时、耗时大活要队列+流式、会重试就必须幂等）？这些原则在你自己做过的『对接外部系统』里，哪些被遵守了、哪些被忽略并酿成过问题？</li>
   </ul>
 </div>
 </div></div>
   <div class="lang-en">
 <p class="lead">
 In the trace list you filter down to "the past 7 days, errored, from a certain user" — 50,000 traces — and want to <strong>export them all to CSV</strong> in one go, or <strong>delete them all</strong> with one click. This "do one thing to a whole batch of filtered data" need is this lesson's lead: <strong>Batch Export</strong> and <strong>Batch Action</strong>. They look different — one read-only produces a file, the other dangerously mutates data in bulk — but at heart they share one engineering posture: both built on a <strong>query/filter that may match a huge number of rows</strong>, both thrown onto a queue to run async because they're <strong>too slow to block a request</strong>, both using <strong>streaming + chunking</strong> to avoid stuffing tens of thousands of rows into memory at once.
-As the closing lesson of "Automation & Integrations," it once again assembles the <strong>streaming export (Lesson 46), job state machine (Lessons 30/35), signed URLs and object storage (Lesson 46)</strong> accumulated earlier, and spells out a hard constraint unavoidable when mutating data in bulk: <strong>idempotency</strong>.
+As the closing lesson of "Automation & Integrations," it once again assembles the <strong>streaming export (<a class="xref" href="46-analytics-integrations.html">Lesson 46</a>), job state machine (Lessons 30/35), signed URLs and object storage (<a class="xref" href="46-analytics-integrations.html">Lesson 46</a>)</strong> accumulated earlier, and spells out a hard constraint unavoidable when mutating data in bulk: <strong>idempotency</strong>.
 </p>
 
 <div class="card analogy">
@@ -563,7 +566,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 </div>
 
 <h2>One query, two paths: read-only export vs data-mutating action</h2>
-<p>Both start from the same point: a <strong>filter/query condition</strong> (same origin as Lesson 23's list filter) that may match thousands of rows. Then they fork: <strong>batch export</strong> is <strong>read-only</strong> — stream the matched rows out, transform to CSV/JSON, write to object storage, give you a <strong>time-limited download link</strong>. <strong>Batch action</strong> <strong>mutates data</strong> — stream out the matched rows' ids, <strong>1000 per chunk</strong>, executing delete / add-to-annotation-queue / add-to-dataset / re-evaluate. The commonality: both are <strong>slow</strong> (so async via queue, with a trackable state machine) and <strong>large</strong> (so streaming + chunking, never all-in-memory).</p>
+<p>Both start from the same point: a <strong>filter/query condition</strong> (same origin as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s list filter) that may match thousands of rows. Then they fork: <strong>batch export</strong> is <strong>read-only</strong> — stream the matched rows out, transform to CSV/JSON, write to object storage, give you a <strong>time-limited download link</strong>. <strong>Batch action</strong> <strong>mutates data</strong> — stream out the matched rows' ids, <strong>1000 per chunk</strong>, executing delete / add-to-annotation-queue / add-to-dataset / re-evaluate. The commonality: both are <strong>slow</strong> (so async via queue, with a trackable state machine) and <strong>large</strong> (so streaming + chunking, never all-in-memory).</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="One query two paths: a filter matches massive rows, forking into batch export (read-only: stream query→transform CSV/JSON→write object storage→time-limited signed URL→email) and batch action (mutate: stream ids→1000 per chunk→delete/add-to-queue/add-to-dataset/re-eval); both go async via queue with a state machine">
@@ -576,7 +579,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
   <line x1="190" y1="140" x2="268" y2="175" stroke="var(--accent)" stroke-width="1.4"/><polygon points="268,175 259,171 260,179" fill="var(--accent)"/>
   <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
 </svg>
-<div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on Lesson 23's filter, both via BullMQ queues.</div>
+<div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s filter, both via BullMQ queues.</div>
 </div>
 
 <table class="t">
@@ -592,7 +595,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 
 
 <h2>Batch export: stream → file → time-limited link → email</h2>
-<p>An export job is a <strong>state machine</strong> (<code>BatchExportStatus</code>: QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED), of the same lineage as Lesson 30's eval JobExecution and Lesson 35's dataset runs. On entry it first <strong>validates status</strong> (skip if CANCELLED, skip if not QUEUED — idempotent guard against re-execution), sets PROCESSING. The core is a <strong>streaming pipeline</strong>: <code>getDatabaseReadStreamPaginated</code> reads the matched rows by page, <code>pipeline</code> transforms them row by row through <code>streamTransformations[format]</code> into CSV/JSON, <code>uploadFileBuffered</code> multipart-uploads into object storage (the same StorageService as Lesson 46). After upload it generates a <strong>time-limited signed URL</strong> (<code>getSignedUrl(expiresInSeconds)</code>), sets status COMPLETED, records <code>url</code> and <code>expiresAt</code>, and finally <strong>emails</strong> the download link to the user.</p>
+<p>An export job is a <strong>state machine</strong> (<code>BatchExportStatus</code>: QUEUED→PROCESSING→COMPLETED/FAILED/CANCELLED), of the same lineage as <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval JobExecution and <a class="xref" href="35-dataset-runs.html">Lesson 35</a>'s dataset runs. On entry it first <strong>validates status</strong> (skip if CANCELLED, skip if not QUEUED — idempotent guard against re-execution), sets PROCESSING. The core is a <strong>streaming pipeline</strong>: <code>getDatabaseReadStreamPaginated</code> reads the matched rows by page, <code>pipeline</code> transforms them row by row through <code>streamTransformations[format]</code> into CSV/JSON, <code>uploadFileBuffered</code> multipart-uploads into object storage (the same StorageService as <a class="xref" href="46-analytics-integrations.html">Lesson 46</a>). After upload it generates a <strong>time-limited signed URL</strong> (<code>getSignedUrl(expiresInSeconds)</code>), sets status COMPLETED, records <code>url</code> and <code>expiresAt</code>, and finally <strong>emails</strong> the download link to the user.</p>
 
 <svg viewBox="0 0 720 210" role="img" aria-label="the streaming batch-export pipeline in five steps: 1 page-read the matched rows via getDatabaseReadStreamPaginated, 2 transform row by row through streamTransformations into CSV or JSON at constant memory, 3 uploadFileBuffered multipart-uploads into S3 or GCS, 4 getSignedUrl makes a time-limited signed download link recording expiresAt, 5 sendBatchExportSuccessEmail emails the link to the user; the whole job is a QUEUED to PROCESSING to COMPLETED state machine, idempotent against re-execution">
   <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
@@ -657,7 +660,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 
 
 <h2>Batch action: chunks of 1000, and must be idempotent</h2>
-<p>A batch action <strong>mutates</strong> data; the chunking flow is: using the filter + a <code>cutoffCreatedAt</code> cutoff time (a <strong>snapshot boundary</strong> — rows created after the job starts aren't included, so the target set is stable), stream out the matched rows' ids, accumulate <strong>1000 per chunk</strong>, and hand each to <code>processActionChunk</code>, which dispatches by actionId: <code>trace-delete</code> deletes traces, <code>*-add-to-annotation-queue</code> adds to Lesson 32's annotation queue, <code>dataset-delete</code> deletes datasets, <code>eval-create</code> backfills Lesson 29's evaluation on historic data… The source leaves a <strong>conspicuous red-line comment</strong> here: "All operations must be idempotent. The job is retried on failure, and on retry chunks already processed may be processed again." This isn't a suggestion — it's a <strong>hard constraint</strong>.</p>
+<p>A batch action <strong>mutates</strong> data; the chunking flow is: using the filter + a <code>cutoffCreatedAt</code> cutoff time (a <strong>snapshot boundary</strong> — rows created after the job starts aren't included, so the target set is stable), stream out the matched rows' ids, accumulate <strong>1000 per chunk</strong>, and hand each to <code>processActionChunk</code>, which dispatches by actionId: <code>trace-delete</code> deletes traces, <code>*-add-to-annotation-queue</code> adds to <a class="xref" href="32-human-annotation.html">Lesson 32</a>'s annotation queue, <code>dataset-delete</code> deletes datasets, <code>eval-create</code> backfills <a class="xref" href="29-llm-as-a-judge.html">Lesson 29</a>'s evaluation on historic data… The source leaves a <strong>conspicuous red-line comment</strong> here: "All operations must be idempotent. The job is retried on failure, and on retry chunks already processed may be processed again." This isn't a suggestion — it's a <strong>hard constraint</strong>.</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 230" role="img" aria-label="Batch action chunked processing: filter + cutoffCreatedAt snapshot boundary streams matched ids, accumulates 1000 per chunk to processActionChunk dispatched by actionId to trace-delete/add-to-queue/dataset-delete/eval-create processors; red-line comment: all operations must be idempotent, retry reruns processed chunks">
@@ -688,19 +691,19 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why is "batch actions must be idempotent" an iron rule, not "try your best"?</strong> Because it <strong>collides head-on</strong> with the reality that "queues retry." A job deleting 50,000 rows runs in 50 chunks; say the worker crashes at chunk 30 — BullMQ re-dispatches the <strong>whole job</strong> (it has no idea which chunk you reached internally), so the first 29 chunks <strong>run again</strong>. If "delete" isn't idempotent (e.g. deleting a nonexistent id throws), the retry fails outright and the job is stuck forever; if "add to queue" isn't idempotent, the same batch of traces gets <strong>added twice</strong>. Idempotency isn't a nicety but "<strong>the precondition for correctness in a system that retries</strong>." The author pinned this sentence as a conspicuous comment atop the function precisely to remind every future editor: every action you write lives in a world where "it may be called more than once." This is the same clarity about "the distributed world is unreliable" as Lesson 43's metering "exactly once" and Lesson 30's eval dedup.<br><br>
+  <strong>Why is "batch actions must be idempotent" an iron rule, not "try your best"?</strong> Because it <strong>collides head-on</strong> with the reality that "queues retry." A job deleting 50,000 rows runs in 50 chunks; say the worker crashes at chunk 30 — BullMQ re-dispatches the <strong>whole job</strong> (it has no idea which chunk you reached internally), so the first 29 chunks <strong>run again</strong>. If "delete" isn't idempotent (e.g. deleting a nonexistent id throws), the retry fails outright and the job is stuck forever; if "add to queue" isn't idempotent, the same batch of traces gets <strong>added twice</strong>. Idempotency isn't a nicety but "<strong>the precondition for correctness in a system that retries</strong>." The author pinned this sentence as a conspicuous comment atop the function precisely to remind every future editor: every action you write lives in a world where "it may be called more than once." This is the same clarity about "the distributed world is unreliable" as <a class="xref" href="43-cloud-usage-metering.html">Lesson 43</a>'s metering "exactly once" and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval dedup.<br><br>
   <strong>Why does export give a "time-limited signed URL" rather than a permanently-public download address?</strong> Because the export file often holds <strong>sensitive data</strong> (users' traces, inputs/outputs, possibly PII). Generating a permanent public link means that once forwarded, logged, or cached, it <strong>permanently leaks</strong> this data to a place where anyone with the link can download it. A signed URL is "<strong>temporary authorization</strong>": the link carries a cryptographic signature and an expiry, auto-invalidating once <code>expiresAt</code> passes. Combined with the <code>expiresAt</code> on the BatchExport record, the platform always has an auditable answer to "can this export still be downloaded." <strong>Access to sensitive data should default to time-bound and revocable, not given-once and open-forever.</strong>
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points (Part 9 finale)</div>
   <ul>
-    <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on Lesson 23's filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
+    <li><strong>One query, two paths</strong>: batch export (read-only, produces a file) and batch action (mutates data — delete/add-to-queue/add-to-dataset/re-eval) both build on <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s filter, both go async via queue with a state machine for being slow, both use streaming + chunking to avoid memory blowup.</li>
     <li><strong>Batch export = stream → file → time-limited link → email</strong>: <code>BatchExportStatus</code> state machine (QUEUED→PROCESSING→COMPLETED); <code>getDatabaseReadStreamPaginated</code>+<code>pipeline</code> transform to CSV/JSON; <code>uploadFileBuffered</code> to object storage; <code>getSignedUrl</code> gives a <strong>time-limited</strong> download link; record <code>expiresAt</code> then email.</li>
     <li><strong>Batch action = chunks of 1000 + idempotency</strong>: <code>cutoffCreatedAt</code> snapshot boundary fixes the target set; <code>CHUNK_SIZE=1000</code> protects the DB and refines retry granularity; <code>processActionChunk</code> dispatches by actionId (trace-delete / add-to-annotation-queue / dataset-delete / eval-create).</li>
-    <li><strong>Idempotency is the iron rule</strong>: queue failure retries the whole job, processed chunks rerun, so every action must "not error on repeat, not double side effects." It's the precondition for correctness in a distributed retry system, of the same origin as Lesson 43's "exactly once" and Lesson 30's dedup.</li>
+    <li><strong>Idempotency is the iron rule</strong>: queue failure retries the whole job, processed chunks rerun, so every action must "not error on repeat, not double side effects." It's the precondition for correctness in a distributed retry system, of the same origin as <a class="xref" href="43-cloud-usage-metering.html">Lesson 43</a>'s "exactly once" and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s dedup.</li>
     <li><strong>Time-limited signed URL</strong>: exports hold sensitive data, so give a temporary-authorization link <strong>with an expiry</strong> rather than a permanently-public address — access to sensitive data should default to time-bound and revocable.</li>
-    <li><strong>Part 9 finale</strong>: Automation (L44 webhook/SSRF) → Slack (L45) → analytics integrations (L46 fan-out/incremental/streaming) → batch export & actions (L47). One through-line: <strong>connecting the platform's data to the outside world securely, reliably, and controllably</strong>.</li>
+    <li><strong>Part 9 finale</strong>: Automation (<a class="xref" href="44-automations-webhooks.html">L44</a> webhook/SSRF) → Slack (<a class="xref" href="45-slack-and-notifications.html">L45</a>) → analytics integrations (<a class="xref" href="46-analytics-integrations.html">L46</a> fan-out/incremental/streaming) → batch export & actions (L47). One through-line: <strong>connecting the platform's data to the outside world securely, reliably, and controllably</strong>.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -728,7 +731,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. A queue's 'retry on failure' is the source of reliability, but meeting 'bulk data mutation' yields a sharp consequence: a retry re-dispatches the whole job, and the chunks already done inside it—the queue doesn't know, and reruns them too. So every action lives in a world where 'it may be called again.' Without idempotency: deleting an already-deleted id throws → the retry fails forever, job stuck; re-adding a batch of traces to the annotation queue → data polluted. So idempotency is the precondition for 'correctness in a retrying system', not optional. Same clarity about 'distributed unreliability' as Lesson 43's 'exactly once' and Lesson 30's eval dedup.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. A queue's 'retry on failure' is the source of reliability, but meeting 'bulk data mutation' yields a sharp consequence: a retry re-dispatches the whole job, and the chunks already done inside it—the queue doesn't know, and reruns them too. So every action lives in a world where 'it may be called again.' Without idempotency: deleting an already-deleted id throws → the retry fails forever, job stuck; re-adding a batch of traces to the annotation queue → data polluted. So idempotency is the precondition for 'correctness in a retrying system', not optional. Same clarity about 'distributed unreliability' as <a class="xref" href="43-cloud-usage-metering.html">Lesson 43</a>'s 'exactly once' and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval dedup.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -747,7 +750,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 <div class="card spark">
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
-    <li>This lesson closes Part 9 (Automation & Integrations): from webhook/SSRF (L44), Slack (L45), analytics integrations (L46) to batch export & actions (L47), the through-line is 'connecting platform data to the outside world securely, reliably, controllably.' Reviewing these four lessons, can you distill a few recurring engineering principles for 'dealing with the outside world' (e.g.: untrusted input needs defense-in-depth, sensitive credentials/data need encryption and time-limits, slow big jobs need queue+streaming, anything that retries must be idempotent)? In your own 'integrate with external systems' work, which were honored, and which were ignored and caused problems?</li>
+    <li>This lesson closes Part 9 (Automation & Integrations): from webhook/SSRF (<a class="xref" href="44-automations-webhooks.html">L44</a>), Slack (<a class="xref" href="45-slack-and-notifications.html">L45</a>), analytics integrations (<a class="xref" href="46-analytics-integrations.html">L46</a>) to batch export & actions (L47), the through-line is 'connecting platform data to the outside world securely, reliably, controllably.' Reviewing these four lessons, can you distill a few recurring engineering principles for 'dealing with the outside world' (e.g.: untrusted input needs defense-in-depth, sensitive credentials/data need encryption and time-limits, slow big jobs need queue+streaming, anything that retries must be idempotent)? In your own 'integrate with external systems' work, which were honored, and which were ignored and caused problems?</li>
   </ul>
 </div>
 </div></div>

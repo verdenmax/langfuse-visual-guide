@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -437,11 +440,11 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">session</span><span class="name">你是谁（NextAuth）</span></div><div class="ld">当前登录用户及其<strong>「组织 → 项目」成员树</strong>。RBAC 中间件正是查这棵树，判断你能否访问某个 project——身份信息<strong>随 session 一起到</strong>，不必每次查库。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">headers</span><span class="name">这次请求带了什么</span></div><div class="ld">原始请求头，供<strong>限流</strong>、<strong>追踪</strong>、<strong>特性标志</strong>等横切关注点使用——比如根据来源限速、或把请求关联到一条 OTel trace。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">能用哪些工具</span></div><div class="ld">Postgres 客户端（第 9 课），让 resolver 与中间件能读控制面数据（如 admin 兜底查 project 的归属组织）。ClickHouse 则由仓储层按需取（第 22 课）。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">能用哪些工具</span></div><div class="ld">Postgres 客户端（<a class="xref" href="09-postgres-metadata-schema.html">第 9 课</a>），让 resolver 与中间件能读控制面数据（如 admin 兜底查 project 的归属组织）。ClickHouse 则由仓储层按需取（<a class="xref" href="22-repository-layer.html">第 22 课</a>）。</div></div>
 </div>
 
 <p>RBAC 最关键的一招，藏在 <code>enforceUserIsAuthedAndProjectMember</code> 里：它不等 resolver 跑，而是<strong>在中间件阶段就从请求输入里把 <code>projectId</code> 抠出来</strong>，
-再去 session 里查「你是不是这个 project 的成员」。这样一来，<strong>每个受保护路由都自动获得统一的租户校验</strong>，无需各写一遍，也不会因为某个路由作者一时疏忽而留下后门（呼应第 10 课「project_id 是隔离键」）：</p>
+再去 session 里查「你是不是这个 project 的成员」。这样一来，<strong>每个受保护路由都自动获得统一的租户校验</strong>，无需各写一遍，也不会因为某个路由作者一时疏忽而留下后门（呼应<a class="xref" href="10-multi-tenancy.html">第 10 课</a>「project_id 是隔离键」）：</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="RBAC 中间件在 resolver 之前把守：从请求原始输入抠出 projectId，再到 session 的组织到项目成员树里查你是不是该 project 成员，是成员或 admin 则放行去 resolver 读库，否则抛 403 FORBIDDEN，每个受保护路由因此自动获得统一租户校验">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
@@ -505,7 +508,7 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
   如果 64 个路由各自手写「检查登录、检查项目成员」，迟早有人会忘掉一处、或写得不一致——而那一处就是租户隔离的破口。把校验<strong>收敛成几个中间件</strong>、
   再用 procedure 构建器<strong>声明式地组合</strong>，路由作者只需选对「门」（<code>protectedProjectProcedure</code>），RBAC 就<strong>自动、统一</strong>地生效。
   更妙的是「<strong>从输入里取 projectId</strong>」这一招：它让校验<strong>先于业务逻辑</strong>发生，任何受保护路由都不可能在没核验租户的情况下碰到数据。
-  这正是第 6 课「把复杂度收敛到一处能严格测试的地方」、第 10 课「project_id 是隔离键」在 API 层的落地——<strong>安全靠结构保证，而非靠每个人自觉。</strong>
+  这正是<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>「把复杂度收敛到一处能严格测试的地方」、<a class="xref" href="10-multi-tenancy.html">第 10 课</a>「project_id 是隔离键」在 API 层的落地——<strong>安全靠结构保证，而非靠每个人自觉。</strong>
 </div>
 
 <div class="card key">
@@ -514,8 +517,8 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
     <li>tRPC 是 UI↔后端的<strong>类型安全契约</strong>：一个根路由 <code>appRouter</code>（<code>root.ts:70</code>）聚合约 64 个功能路由，返回类型一路贯穿到前端。</li>
     <li><strong>context</strong>（<code>createTRPCContext</code>）给每个请求注入 <code>{ session, headers, prisma }</code>；session 来自 NextAuth。</li>
     <li><strong>procedure = 可叠加的中间件栈</strong>：<code>publicProcedure</code>(OTel+错误处理) → <code>authenticatedProcedure</code>(+登录) → <code>protectedProjectProcedure</code>(+项目 RBAC)。</li>
-    <li><strong>RBAC 关键招</strong>：<code>enforceUserIsAuthedAndProjectMember</code> 在中间件阶段从输入取 <code>projectId</code>、校验 session 成员资格——统一、先于 resolver（呼应第 10 课）。</li>
-    <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 64 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（第 6 课）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
+    <li><strong>RBAC 关键招</strong>：<code>enforceUserIsAuthedAndProjectMember</code> 在中间件阶段从输入取 <code>projectId</code>、校验 session 成员资格——统一、先于 resolver（呼应<a class="xref" href="10-multi-tenancy.html">第 10 课</a>）。</li>
+    <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 64 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -543,7 +546,7 @@ Langfuse 在 <code>web/src/server/api/trpc.ts</code> 里定义了一组：从只
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。enforceUserIsAuthedAndProjectMember 用 getRawInput() 取出 projectId，再去 session 的「组织→项目」树里查成员资格，不通过就抛 FORBIDDEN。这让每个受保护路由自动获得统一、前置的租户校验——正是第 10 课「project_id 是隔离键」在 API 层的落地，安全靠结构而非靠人。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。enforceUserIsAuthedAndProjectMember 用 getRawInput() 取出 projectId，再去 session 的「组织→项目」树里查成员资格，不通过就抛 FORBIDDEN。这让每个受保护路由自动获得统一、前置的租户校验——正是<a class="xref" href="10-multi-tenancy.html">第 10 课</a>「project_id 是隔离键」在 API 层的落地，安全靠结构而非靠人。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -664,12 +667,12 @@ carry, what tools may it use":</p>
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">session</span><span class="name">who you are (NextAuth)</span></div><div class="ld">The current logged-in user and their <strong>"organization → project" membership tree</strong>. The RBAC middleware reads exactly this tree to decide whether you can access a project — identity <strong>arrives with the session</strong>, no per-request DB lookup.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">headers</span><span class="name">what the request carried</span></div><div class="ld">Raw request headers, used by cross-cutting concerns like <strong>rate limiting</strong>, <strong>tracing</strong>, <strong>feature flags</strong> — e.g. rate-limit by source, or tie the request to an OTel trace.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">what tools you may use</span></div><div class="ld">The Postgres client (Lesson 9), letting resolvers and middleware read control-plane data (e.g. the admin fallback looking up a project's owning org). ClickHouse is fetched on demand by the repository layer (Lesson 22).</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">prisma</span><span class="name">what tools you may use</span></div><div class="ld">The Postgres client (<a class="xref" href="09-postgres-metadata-schema.html">Lesson 9</a>), letting resolvers and middleware read control-plane data (e.g. the admin fallback looking up a project's owning org). ClickHouse is fetched on demand by the repository layer (<a class="xref" href="22-repository-layer.html">Lesson 22</a>).</div></div>
 </div>
 
 <p>RBAC's key move hides in <code>enforceUserIsAuthedAndProjectMember</code>: rather than waiting for the resolver, it <strong>pulls <code>projectId</code> out of the
 request input at the middleware stage</strong>, then checks the session for "are you a member of this project". This way <strong>every protected router gets uniform
-tenant checking automatically</strong>, never re-written per router, and no backdoor left by one router author's lapse (echoing Lesson 10's "project_id is the
+tenant checking automatically</strong>, never re-written per router, and no backdoor left by one router author's lapse (echoing <a class="xref" href="10-multi-tenancy.html">Lesson 10</a>'s "project_id is the
 isolation key"):</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="the RBAC middleware guards before the resolver: it pulls projectId out of the request raw input, then looks it up in the session's organization-to-project membership tree; if you are a member or an admin it proceeds to the resolver to read the DB, otherwise it throws 403 FORBIDDEN, so every protected router gets uniform tenant checking automatically">
@@ -735,8 +738,8 @@ isolation key"):</p>
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
   <strong>declaratively</strong> via procedure builders, means a router author only picks the right "door" (<code>protectedProjectProcedure</code>) and RBAC takes
   effect <strong>automatically and uniformly</strong>. Even better is the "<strong>pull projectId from the input</strong>" move: it makes the check happen
-  <strong>before</strong> business logic, so no protected router can ever touch data without verifying the tenant first. This is Lesson 6's "converge complexity
-  into one strictly testable place" and Lesson 10's "project_id is the isolation key" landing at the API layer — <strong>security guaranteed by structure, not by
+  <strong>before</strong> business logic, so no protected router can ever touch data without verifying the tenant first. This is <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a>'s "converge complexity
+  into one strictly testable place" and <a class="xref" href="10-multi-tenancy.html">Lesson 10</a>'s "project_id is the isolation key" landing at the API layer — <strong>security guaranteed by structure, not by
   everyone's diligence.</strong>
 </div>
 
@@ -746,8 +749,8 @@ isolation key"):</p>
     <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~64 feature routers, the return type threading to the frontend.</li>
     <li><strong>context</strong> (<code>createTRPCContext</code>) injects <code>{ session, headers, prisma }</code> into every request; session from NextAuth.</li>
     <li><strong>A procedure = a stackable middleware chain</strong>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project RBAC).</li>
-    <li><strong>RBAC's key move</strong>: <code>enforceUserIsAuthedAndProjectMember</code> pulls <code>projectId</code> from the input at the middleware stage and checks session membership — uniform, before the resolver (echoing Lesson 10).</li>
-    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
+    <li><strong>RBAC's key move</strong>: <code>enforceUserIsAuthedAndProjectMember</code> pulls <code>projectId</code> from the input at the middleware stage and checks session membership — uniform, before the resolver (echoing <a class="xref" href="10-multi-tenancy.html">Lesson 10</a>).</li>
+    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (<a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a>). The error layer also turns ClickHouse resource errors into friendly advice.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -775,7 +778,7 @@ isolation key"):</p>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. enforceUserIsAuthedAndProjectMember pulls projectId via getRawInput(), then checks membership in the session's 'org→project' tree, throwing FORBIDDEN otherwise. This gives every protected router uniform, up-front tenant checking — Lesson 10's 'project_id is the isolation key' landing at the API layer, security by structure not by people.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. enforceUserIsAuthedAndProjectMember pulls projectId via getRawInput(), then checks membership in the session's 'org→project' tree, throwing FORBIDDEN otherwise. This gives every protected router uniform, up-front tenant checking — <a class="xref" href="10-multi-tenancy.html">Lesson 10</a>'s 'project_id is the isolation key' landing at the API layer, security by structure not by people.</div></div></div>
   </details>
 </div>
 <div class="quiz">

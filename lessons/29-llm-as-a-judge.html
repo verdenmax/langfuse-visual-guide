@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -358,7 +361,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   想象一场作文比赛的<strong>评委</strong>。<strong>评分细则</strong>（模板 prompt）写着「请就『有用性』给 0–1 分，并说明理由」；但评委不会读整个学生档案，工作人员只把<strong>作文正文和题目</strong>递过去（变量映射：把 trace 的 input/output 填进模板的 <code>{{question}}</code>/<code>{{answer}}</code>）。
-  评委看完，必须在<strong>规定表格</strong>里填「分数 + 评语」（结构化输出，不能写成一段散文让人没法录入）。最后这张评分表被<strong>归档进成绩册</strong>（评出的分作为一个 source=EVAL 的 score，走回第 12 课那条摄取链路，落进 scores 表）。
+  评委看完，必须在<strong>规定表格</strong>里填「分数 + 评语」（结构化输出，不能写成一段散文让人没法录入）。最后这张评分表被<strong>归档进成绩册</strong>（评出的分作为一个 source=EVAL 的 score，走回<a class="xref" href="12-ingestion-api.html">第 12 课</a>那条摄取链路，落进 scores 表）。
   整套流程的妙处：评委本身也是一次 LLM 调用，<strong>所以它自己也被 Langfuse 记成一条 trace</strong>——裁判也在被观测。
 </div>
 
@@ -389,7 +392,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">①</span><span class="name">模板 Eval Template</span></div><div class="ld">可复用的「评分标准」：一段带 <code>{{变量}}</code> 的 prompt（如「就有用性给 0–1 分并说明理由」）、一个<strong>输出定义</strong>（产出 NUMERIC/CATEGORICAL/BOOLEAN 哪种分、范围多少），外加用哪个 provider/model 当裁判。模板只描述「怎么评」，不绑定具体数据。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">评估器 Evaluator（JobConfiguration）</span></div><div class="ld">把模板「落地」：用一个<strong>过滤条件</strong>圈定要评哪些 trace（如「只评 production 环境、name=chat 的」）、一份<strong>变量映射</strong>（模板里的 <code>{{answer}}</code> 该取 trace 的哪一列），以及最终分数叫什么名（<code>scoreName</code>）。</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">执行 Execution（JobExecution）</span></div><div class="ld">每条命中的 trace 触发一次执行：提取变量 → 编译提示 → 调裁判 LLM 拿结构化结果 → 归一成 score → 经摄取链路写回。这条「执行」本身有状态生命周期（第 30 课细讲）。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">执行 Execution（JobExecution）</span></div><div class="ld">每条命中的 trace 触发一次执行：提取变量 → 编译提示 → 调裁判 LLM 拿结构化结果 → 归一成 score → 经摄取链路写回。这条「执行」本身有状态生命周期（<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>细讲）。</div></div>
 </div>
 
 
@@ -450,7 +453,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 }</pre>
 </div>
 
-<p>注意一个细节：提取阶段<strong>保留原始数据形状</strong>（给代码 eval 用，第 31 课），只有在 <code>compileEvalPrompt</code> 这个「喂给裁判 LLM」的边界上才用 <code>parseUnknownToString</code> 拍平成字符串——因为 LLM 的 prompt 终究是文本。这种「在边界处才转换、内部保留原样」的克制，是干净数据流的标志。</p>
+<p>注意一个细节：提取阶段<strong>保留原始数据形状</strong>（给代码 eval 用，<a class="xref" href="31-code-based-evaluation.html">第 31 课</a>），只有在 <code>compileEvalPrompt</code> 这个「喂给裁判 LLM」的边界上才用 <code>parseUnknownToString</code> 拍平成字符串——因为 LLM 的 prompt 终究是文本。这种「在边界处才转换、内部保留原样」的克制，是干净数据流的标志。</p>
 
 
 <h2>结构化输出与回流：分数怎么变回一个 score</h2>
@@ -468,7 +471,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="574" y1="79" x2="598" y2="79" stroke="var(--teal)" stroke-width="1.5"/><polygon points="598,79 589,75 589,83" fill="var(--teal)"/>
   <rect x="120" y="142" width="480" height="50" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">关键：评估不是另开一条管道，而是「第 12 课摄取链路」的又一个生产者</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">EVAL 分数和 API、ANNOTATION 分数走同一条 SCORE_CREATE 入口，享受同样的去重/合并/落库</text>
 </svg>
-<div class="figcap"><b>评出来的分，和你亲手提交的分，是同一种事件</b>。<code>evalScoreEvent.ts:52</code> 把结果包成 <code>SCORE_CREATE</code> 且 <code>source: ScoreSourceEnum.EVAL</code>，再走第 12 课的摄取链路。所以裁判产出的分天然与其它来源<strong>同表、同尺、可比</strong>。</div>
+<div class="figcap"><b>评出来的分，和你亲手提交的分，是同一种事件</b>。<code>evalScoreEvent.ts:52</code> 把结果包成 <code>SCORE_CREATE</code> 且 <code>source: ScoreSourceEnum.EVAL</code>，再走<a class="xref" href="12-ingestion-api.html">第 12 课</a>的摄取链路。所以裁判产出的分天然与其它来源<strong>同表、同尺、可比</strong>。</div>
 </div>
 
 <div class="codefile">
@@ -501,7 +504,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么裁判必须用「结构化输出」，而不是让它自由发挥？</strong> 因为评估的产物要能<strong>录入、聚合、比较</strong>。若裁判回一段「我觉得这个回答还不错，但开头有点啰嗦……」的散文，你既没法可靠地抽出一个分、也没法跨千条 trace 求平均。
   强制 <code>{score, reasoning}</code> 的 schema，让分数能进 scores 表（可聚合），又把「为什么给这个分」留在 <code>comment</code> 里（可追溯）——<strong>两全</strong>。<br><br>
-  <strong>更深一层：为什么评估结果要走回摄取链路，而不是直接写库？</strong> 这是 Langfuse 反复出现的信念——<strong>「一个入口，多个生产者」</strong>。无论分数来自 API、人工、还是裁判 LLM，都包成同一种 <code>SCORE_CREATE</code> 事件、走第 12 课那条链路，
+  <strong>更深一层：为什么评估结果要走回摄取链路，而不是直接写库？</strong> 这是 Langfuse 反复出现的信念——<strong>「一个入口，多个生产者」</strong>。无论分数来自 API、人工、还是裁判 LLM，都包成同一种 <code>SCORE_CREATE</code> 事件、走<a class="xref" href="12-ingestion-api.html">第 12 课</a>那条链路，
   于是去重、合并、落 ClickHouse 的逻辑只写一遍、对所有来源一致。评估因此不是「另一个系统」，而是<strong>摄取管道的又一个上游</strong>。还有个优雅的递归：裁判自己的那次 LLM 调用，也被记成一条 Langfuse trace（环境标为 LLMJudge）——<strong>观测平台连自己的裁判都一并观测了</strong>。
 </div>
 
@@ -512,7 +515,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>三件套</strong>：模板（prompt+输出定义+模型，描述「怎么评」）、评估器（过滤目标+变量映射+scoreName，描述「评谁」）、执行（每条 trace 实际跑一次）。</li>
     <li><strong>变量映射</strong>：模板的 <code>{{占位符}}</code> 各自声明来自 trace/observation/dataset_item 的哪一列；<code>extractVariablesFromTracingData</code> 执行时去真实数据里取值，<code>compileEvalPrompt</code> 在「喂给 LLM」的边界才拍平成字符串。</li>
     <li><strong>结构化输出</strong>：裁判被强制返回 <code>{score, reasoning}</code>（或分类的 <code>{matches, reasoning}</code>）；<code>toNormalizedScores</code> 归一为 value=分、comment=理由——可聚合又可追溯。</li>
-    <li><strong>回流摄取（source=EVAL）</strong>：结果包成与手写 score 相同的 <code>SCORE_CREATE</code> 事件走第 12 课链路。评估是摄取管道的又一个生产者，不是独立系统；裁判自身的调用也被记成 trace。</li>
+    <li><strong>回流摄取（source=EVAL）</strong>：结果包成与手写 score 相同的 <code>SCORE_CREATE</code> 事件走<a class="xref" href="12-ingestion-api.html">第 12 课</a>链路。评估是摄取管道的又一个生产者，不是独立系统；裁判自身的调用也被记成 trace。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -535,7 +538,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <ol class="opts">
     <li>存进一张专门的 eval 结果表</li>
     <li>直接 INSERT 进 ClickHouse，绕过摄取链路</li>
-    <li>包成 source=EVAL 的 SCORE_CREATE 事件，走第 12 课那条和手写 score 完全相同的摄取链路——评估是摄取管道的又一个生产者，不是独立系统</li>
+    <li>包成 source=EVAL 的 SCORE_CREATE 事件，走<a class="xref" href="12-ingestion-api.html">第 12 课</a>那条和手写 score 完全相同的摄取链路——评估是摄取管道的又一个生产者，不是独立系统</li>
     <li>只存在内存里供仪表盘读取</li>
   </ol>
   <details class="accordion">
@@ -573,7 +576,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   Picture a <strong>judge</strong> at an essay contest. The <strong>scoring rubric</strong> (template prompt) says "rate 'helpfulness' 0–1 and explain why"; but the judge doesn't read the whole student file—staff hand over only the <strong>essay body and the prompt</strong> (variable mapping: fill the trace's input/output into the template's <code>{{question}}</code>/<code>{{answer}}</code>).
-  After reading, the judge must fill in a <strong>fixed form</strong> with "score + comment" (structured output—not a prose blob no one can record). Finally that scoring sheet is <strong>filed into the gradebook</strong> (the verdict becomes a source=EVAL score, flowing back through Lesson 12's ingestion path into the scores table).
+  After reading, the judge must fill in a <strong>fixed form</strong> with "score + comment" (structured output—not a prose blob no one can record). Finally that scoring sheet is <strong>filed into the gradebook</strong> (the verdict becomes a source=EVAL score, flowing back through <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s ingestion path into the scores table).
   The neat part: the judge is itself an LLM call, <strong>so it too is recorded as a Langfuse trace</strong>—the judge is also observed.
 </div>
 
@@ -604,7 +607,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">①</span><span class="name">Eval Template</span></div><div class="ld">A reusable "rubric": a prompt with <code>{{variables}}</code> (e.g. "rate helpfulness 0–1 with reasoning"), an <strong>output definition</strong> (which score it produces—NUMERIC/CATEGORICAL/BOOLEAN, what range), plus which provider/model judges. A template only describes "how to rate", binding no specific data.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">②</span><span class="name">Evaluator (JobConfiguration)</span></div><div class="ld">"Grounds" the template: a <strong>filter</strong> picking which traces to evaluate (e.g. "only production, name=chat"), a <strong>variable mapping</strong> (which column the template's <code>{{answer}}</code> reads), and what the final score is named (<code>scoreName</code>).</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">Execution (JobExecution)</span></div><div class="ld">Each matching trace triggers one execution: extract variables → compile prompt → call judge LLM for a structured result → normalize into a score → write back via the ingestion path. This "execution" has its own status lifecycle (detailed in Lesson 30).</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">③–⑥</span><span class="name">Execution (JobExecution)</span></div><div class="ld">Each matching trace triggers one execution: extract variables → compile prompt → call judge LLM for a structured result → normalize into a score → write back via the ingestion path. This "execution" has its own status lifecycle (detailed in <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>).</div></div>
 </div>
 
 
@@ -665,7 +668,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
 }</pre>
 </div>
 
-<p>Note a detail: extraction <strong>preserves the original data shape</strong> (for code eval, Lesson 31), and only at the <code>compileEvalPrompt</code> boundary—the "feed to the judge LLM" boundary—is it flattened to a string via <code>parseUnknownToString</code>, because a prompt is ultimately text. This restraint—"convert at the boundary, keep raw internally"—is a hallmark of clean data flow.</p>
+<p>Note a detail: extraction <strong>preserves the original data shape</strong> (for code eval, <a class="xref" href="31-code-based-evaluation.html">Lesson 31</a>), and only at the <code>compileEvalPrompt</code> boundary—the "feed to the judge LLM" boundary—is it flattened to a string via <code>parseUnknownToString</code>, because a prompt is ultimately text. This restraint—"convert at the boundary, keep raw internally"—is a hallmark of clean data flow.</p>
 
 
 <h2>Structured output and flow-back: how a verdict becomes a score</h2>
@@ -683,7 +686,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
   <line x1="574" y1="79" x2="598" y2="79" stroke="var(--teal)" stroke-width="1.5"/><polygon points="598,79 589,75 589,83" fill="var(--teal)"/>
   <rect x="120" y="142" width="480" height="50" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="360" y="162" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Key: evaluation isn't a separate pipeline—it's another producer for Lesson 12's ingestion path</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">EVAL scores share the SCORE_CREATE entry with API & ANNOTATION—same dedup/merge/persist</text>
 </svg>
-<div class="figcap"><b>A judged score and a hand-submitted score are the same event</b>. <code>evalScoreEvent.ts:52</code> wraps the result as a <code>SCORE_CREATE</code> with <code>source: ScoreSourceEnum.EVAL</code>, then runs Lesson 12's ingestion path. So judge-produced scores are inherently <strong>same-table, same-ruler, comparable</strong> with other sources.</div>
+<div class="figcap"><b>A judged score and a hand-submitted score are the same event</b>. <code>evalScoreEvent.ts:52</code> wraps the result as a <code>SCORE_CREATE</code> with <code>source: ScoreSourceEnum.EVAL</code>, then runs <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s ingestion path. So judge-produced scores are inherently <strong>same-table, same-ruler, comparable</strong> with other sources.</div>
 </div>
 
 <div class="codefile">
@@ -716,7 +719,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why must the judge use "structured output" instead of free-forming?</strong> Because the product of evaluation must be <strong>recordable, aggregatable, comparable</strong>. If the judge returns prose like "I think this answer is decent but the opening is wordy…", you can neither reliably extract a score nor average across a thousand traces.
   Forcing a <code>{score, reasoning}</code> schema lets the score enter the scores table (aggregatable) while keeping "why this score" in <code>comment</code> (traceable)—<strong>both at once</strong>.<br><br>
-  <strong>Deeper: why do eval results flow back through the ingestion path rather than write the DB directly?</strong> This is a recurring Langfuse belief—<strong>"one entry, many producers"</strong>. Whether a score comes from API, human, or a judge LLM, it's wrapped as the same <code>SCORE_CREATE</code> event through Lesson 12's path,
+  <strong>Deeper: why do eval results flow back through the ingestion path rather than write the DB directly?</strong> This is a recurring Langfuse belief—<strong>"one entry, many producers"</strong>. Whether a score comes from API, human, or a judge LLM, it's wrapped as the same <code>SCORE_CREATE</code> event through <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s path,
   so dedup, merge, and ClickHouse persistence are written once and consistent for every source. Evaluation is therefore not "another system" but <strong>another upstream of the ingestion pipeline</strong>. And an elegant recursion: the judge's own LLM call is recorded as a Langfuse trace (environment tagged LLMJudge)—<strong>the observability platform observes even its own judge</strong>.
 </div>
 
@@ -727,7 +730,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
     <li><strong>Three pieces</strong>: template (prompt+output def+model, "how to rate"), evaluator (target filter+variable mapping+scoreName, "whom to rate"), execution (actually runs once per trace).</li>
     <li><strong>Variable mapping</strong>: each template <code>{{placeholder}}</code> declares which column of trace/observation/dataset_item it comes from; <code>extractVariablesFromTracingData</code> fetches real values at run, and <code>compileEvalPrompt</code> flattens to a string only at the "feed-to-LLM" boundary.</li>
     <li><strong>Structured output</strong>: the judge is forced to return <code>{score, reasoning}</code> (or <code>{matches, reasoning}</code> for categorical); <code>toNormalizedScores</code> normalizes to value=score, comment=reasoning—aggregatable and traceable.</li>
-    <li><strong>Flow back (source=EVAL)</strong>: the result is wrapped as the same <code>SCORE_CREATE</code> event through Lesson 12's path. Evaluation is another producer for the ingestion pipeline, not a separate system; the judge's own call is also recorded as a trace.</li>
+    <li><strong>Flow back (source=EVAL)</strong>: the result is wrapped as the same <code>SCORE_CREATE</code> event through <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s path. Evaluation is another producer for the ingestion pipeline, not a separate system; the judge's own call is also recorded as a trace.</li>
   </ul>
 </div>
 <div class="selftest">

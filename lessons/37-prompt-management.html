@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -459,10 +462,10 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
 ...(dep.type === <span class="st">"version"</span> ? { childVersion: dep.version } : { childLabel: dep.label })</pre>
 </div>
 
-<p>把这套机制串起来，「安全地改 prompt」就成了一条清晰的流水线——这也正好衔接后两课的 Playground（第39课）与整个 Part 6 的实验：</p>
+<p>把这套机制串起来，「安全地改 prompt」就成了一条清晰的流水线——这也正好衔接后两课的 Playground（<a class="xref" href="39-playground-llm-connections.html">第39课</a>）与整个 Part 6 的实验：</p>
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>编辑 → 存为新版</h4><p>改完保存即生成新 version（自增、带 commitMessage），旧版原封不动留存。</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>在 Playground 试</h4><p>新版先在 Playground（第39课）手动试几条，或拉进数据集跑实验（第36课）量化对比。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>在 Playground 试</h4><p>新版先在 Playground（<a class="xref" href="39-playground-llm-connections.html">第39课</a>）手动试几条，或拉进数据集跑实验（<a class="xref" href="36-experiments-and-comparison.html">第36课</a>）量化对比。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>满意 → 移 production label</h4><p>确认更好，把 <code>production</code> 指针移到新版——线上应用下一次取 prompt 即生效，零部署。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>出问题 → 秒回滚</h4><p>万一线上表现不对，把 <code>production</code> 移回旧版即可——旧版一直在，回滚不丢数据、不等发布。</p></div></div>
 </div>
@@ -470,7 +473,7 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么版本要不可变、而 label 要可移动？</strong> 这套「不可变实体 + 可移动指针」是版本控制的精髓，git 如此、第 34 课的数据项版本如此、这里的 prompt 亦如此。<strong>不可变</strong>保证了「可复现」：v5 永远是 v5，你三个月前生产用的那版，今天一字不差地还能调出来复盘。<strong>可移动的 label</strong>则提供了「可演进」：现实需要一个稳定的名字（<code>production</code>）来指代「当前现役」，而现役会变。两者结合，你既能<strong>大胆迭代</strong>（每改一版都安全留存），又能<strong>安心运营</strong>（用 label 平滑切换、随时回滚）。把不可变与可变这对矛盾，干净地分配到「版本」和「label」两个概念上——这是数据建模的优雅。<br><br>
+  <strong>为什么版本要不可变、而 label 要可移动？</strong> 这套「不可变实体 + 可移动指针」是版本控制的精髓，git 如此、<a class="xref" href="34-datasets-and-items.html">第 34 课</a>的数据项版本如此、这里的 prompt 亦如此。<strong>不可变</strong>保证了「可复现」：v5 永远是 v5，你三个月前生产用的那版，今天一字不差地还能调出来复盘。<strong>可移动的 label</strong>则提供了「可演进」：现实需要一个稳定的名字（<code>production</code>）来指代「当前现役」，而现役会变。两者结合，你既能<strong>大胆迭代</strong>（每改一版都安全留存），又能<strong>安心运营</strong>（用 label 平滑切换、随时回滚）。把不可变与可变这对矛盾，干净地分配到「版本」和「label」两个概念上——这是数据建模的优雅。<br><br>
   <strong>为什么「按 label 取」是生产解耦的关键？</strong> 因为它把<strong>「用哪一版 prompt」这个决定，从代码里彻底搬走了</strong>。如果应用写死 <code>version=5</code>，那换 prompt 就得改代码、过 CI、重新部署——慢、重、还得工程师在场。而写 <code>label="production"</code>，换版本就变成运营在 UI 上点一下移个指针：<strong>秒级生效、可回滚、非工程师也能做</strong>。这正是「配置与代码分离」的威力——把<strong>变化频繁的东西（prompt 内容）</strong>从<strong>变化缓慢的东西（应用代码）</strong>里剥离，各自用最适合的节奏演进。<code>PromptProtectedLabels</code> 再给关键 label 加一道权限门，让「秒级发布」既灵活又不失控。
 </div>
 
@@ -496,7 +499,7 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。这是版本控制的精髓，git、第34课数据项、prompt 皆然。不可变保证可复现：v5 永远是 v5，三个月前生产那版今天一字不差可复盘。可移动 label 提供可演进：现实需要 production 这个稳定名字指代「当前现役」，而现役会变。两者结合既能大胆迭代（每版安全留存）又能安心运营（label 平滑切换/秒回滚）。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。这是版本控制的精髓，git、<a class="xref" href="34-datasets-and-items.html">第34课</a>数据项、prompt 皆然。不可变保证可复现：v5 永远是 v5，三个月前生产那版今天一字不差可复盘。可移动 label 提供可演进：现实需要 production 这个稳定名字指代「当前现役」，而现役会变。两者结合既能大胆迭代（每版安全留存）又能安心运营（label 平滑切换/秒回滚）。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -643,10 +646,10 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
 ...(dep.type === <span class="st">"version"</span> ? { childVersion: dep.version } : { childLabel: dep.label })</pre>
 </div>
 
-<p>String this mechanism together and "changing a prompt safely" becomes a clear pipeline—dovetailing with the next lessons' Playground (L39) and all of Part 6's experiments:</p>
+<p>String this mechanism together and "changing a prompt safely" becomes a clear pipeline—dovetailing with the next lessons' Playground (<a class="xref" href="39-playground-llm-connections.html">L39</a>) and all of Part 6's experiments:</p>
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>edit → save as a new version</h4><p>Saving an edit creates a new version (auto-incrementing, with a commitMessage); the old version is preserved intact.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>try in the Playground</h4><p>Try the new version on a few cases in the Playground (L39), or pull it into a dataset to run an experiment (L36) for a quantitative comparison.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>try in the Playground</h4><p>Try the new version on a few cases in the Playground (<a class="xref" href="39-playground-llm-connections.html">L39</a>), or pull it into a dataset to run an experiment (<a class="xref" href="36-experiments-and-comparison.html">L36</a>) for a quantitative comparison.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>satisfied → move the production label</h4><p>Confirmed better, move the <code>production</code> pointer to the new version—the production app's next prompt fetch picks it up, zero-deploy.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>trouble → instant rollback</h4><p>If production misbehaves, move <code>production</code> back to the old version—the old one is always there, rollback loses no data and waits for no release.</p></div></div>
 </div>
@@ -654,7 +657,7 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why are versions immutable while labels are movable?</strong> This "immutable entity + movable pointer" is the essence of version control—git is so, Lesson 34's dataset items are so, prompts here too. <strong>Immutability</strong> guarantees "reproducibility": v5 is forever v5, and the version you ran in production three months ago can be pulled up today, word for word, for a post-mortem. <strong>Movable labels</strong> provide "evolvability": reality needs a stable name (<code>production</code>) to denote "the current active one", and the active one changes. Together, you can both <strong>iterate boldly</strong> (every edit safely preserved) and <strong>operate calmly</strong> (switch smoothly via labels, roll back anytime). Cleanly assigning the immutable/mutable tension onto the two concepts "version" and "label" is the elegance of data modeling.<br><br>
+  <strong>Why are versions immutable while labels are movable?</strong> This "immutable entity + movable pointer" is the essence of version control—git is so, <a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s dataset items are so, prompts here too. <strong>Immutability</strong> guarantees "reproducibility": v5 is forever v5, and the version you ran in production three months ago can be pulled up today, word for word, for a post-mortem. <strong>Movable labels</strong> provide "evolvability": reality needs a stable name (<code>production</code>) to denote "the current active one", and the active one changes. Together, you can both <strong>iterate boldly</strong> (every edit safely preserved) and <strong>operate calmly</strong> (switch smoothly via labels, roll back anytime). Cleanly assigning the immutable/mutable tension onto the two concepts "version" and "label" is the elegance of data modeling.<br><br>
   <strong>Why is "fetch by label" the key to production decoupling?</strong> Because it <strong>fully moves the decision "which prompt version to use" out of the code</strong>. If the app hardcodes <code>version=5</code>, switching prompts means changing code, passing CI, redeploying—slow, heavy, and needs an engineer present. With <code>label="production"</code>, switching becomes operations clicking a pointer-move in the UI: <strong>second-scale, rollback-able, doable by non-engineers</strong>. This is the power of "config-code separation"—lifting <strong>the frequently-changing thing (prompt content)</strong> out of <strong>the slowly-changing thing (app code)</strong>, each evolving at its own pace. <code>PromptProtectedLabels</code> then gates key labels, keeping "second-scale releases" flexible without losing control.
 </div>
 
@@ -680,7 +683,7 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. This is the essence of version control—git, Lesson 34's items, prompts alike. Immutability guarantees reproducibility: v5 is forever v5, the version in production three months ago is replayable word-for-word today. Movable labels provide evolvability: reality needs a stable name like production for 'the current active', which changes. Together you iterate boldly (each version preserved) and operate calmly (smooth switch/instant rollback via labels).</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. This is the essence of version control—git, <a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s items, prompts alike. Immutability guarantees reproducibility: v5 is forever v5, the version in production three months ago is replayable word-for-word today. Movable labels provide evolvability: reality needs a stable name like production for 'the current active', which changes. Together you iterate boldly (each version preserved) and operate calmly (smooth switch/instant rollback via labels).</div></div></div>
   </details>
 </div>
 <div class="quiz">

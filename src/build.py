@@ -25,15 +25,17 @@ from registry import CONTENT  # noqa: E402
 
 def build():
     os.makedirs(LESSONS_DIR, exist_ok=True)
+    order = [p[0] for p in shell.PAGES]
     written = []
     for page in shell.PAGES:
         fname = page[0]
         if fname not in CONTENT:
             sys.exit(f"build error: no registry.CONTENT entry for {fname!r} (declared in shell.PAGES)")
         base = CONTENT[fname]
+        self_num = order.index(fname) + 1
         content = {
-            "zh": base["zh"] + quizzes.render(fname, "zh"),
-            "en": base["en"] + quizzes.render(fname, "en"),
+            "zh": shell.autolink(base["zh"] + quizzes.render(fname, "zh"), self_num, order),
+            "en": shell.autolink(base["en"] + quizzes.render(fname, "en"), self_num, order),
         }
         html = shell.page(fname, content, home_href="../index.html")
         with open(os.path.join(LESSONS_DIR, fname), "w", encoding="utf-8") as f:

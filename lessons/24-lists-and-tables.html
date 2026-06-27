@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -399,7 +402,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 
 
 <h2>按需 FINAL：默认视图只读最新分区</h2>
-<p>这里藏着一个 ClickHouse 老手才懂的优化。回想第 8 课：traces 是 <code>ReplacingMergeTree</code>，同一 id 可能有多行（create/update 各一行），靠后台合并去重。
+<p>这里藏着一个 ClickHouse 老手才懂的优化。回想<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>：traces 是 <code>ReplacingMergeTree</code>，同一 id 可能有多行（create/update 各一行），靠后台合并去重。
 查询时若加 <code>FINAL</code>，ClickHouse 会<strong>当场把所有分区读出来、去重</strong>，结果正确但<strong>慢</strong>。Langfuse 的取舍是——<strong>能不用 FINAL 就不用</strong>：</p>
 
 <div class="fig">
@@ -460,13 +463,13 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 </svg>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">分享与真源</span></div><div class="ld">过滤、排序、搜索、当前视图 id 都编码进 <strong>URL</strong>。于是你把链接发给同事，他打开看到的<strong>和你一模一样</strong>——URL 是「此刻这张表长什么样」的单一真源（呼应第 23 课 FilterState）。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">分享与真源</span></div><div class="ld">过滤、排序、搜索、当前视图 id 都编码进 <strong>URL</strong>。于是你把链接发给同事，他打开看到的<strong>和你一模一样</strong>——URL 是「此刻这张表长什么样」的单一真源（呼应<a class="xref" href="23-filtering-search-bar.html">第 23 课</a> FilterState）。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">session 存储</span><span class="name">导航记忆</span></div><div class="ld">在表之间来回跳时，用<strong>会话存储</strong>记住你刚才的列宽、可见列、滚动位置等，免得每次回来都被重置——只在本次浏览会话内有效，关掉标签页即清。</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">数据库</span><span class="name">永久预设</span></div><div class="ld">「视图预设」（saved view）存进 <strong>DB</strong>，永久保留、可跨设备、可团队共享。删了某个预设、或它引用的列已不存在？<strong>优雅降级</strong>：丢掉失效部分 + 提示，绝不白屏。</div></div>
 </div>
 
 <p>这三层各管一段时效——URL 管「此刻可分享」、session 管「这次导航」、DB 管「永久保存」——共同让大表格<strong>既可深度链接、又在跳转间不丢状态、还能长期沉淀团队的常用视图</strong>。
-配合一个全局时间范围（Zustand 默认 ⊕ URL 显式），它会变成那条强制的 <code>timestamp</code> 过滤，正好喂给第 22 课的回看窗、把扫描范围钉死。<strong>状态分层，是大型列表「快」之外的另一半功夫——「稳」（跳转间不丢）与「可分享」（一个链接复现全貌）。</strong></p>
+配合一个全局时间范围（Zustand 默认 ⊕ URL 显式），它会变成那条强制的 <code>timestamp</code> 过滤，正好喂给<a class="xref" href="22-repository-layer.html">第 22 课</a>的回看窗、把扫描范围钉死。<strong>状态分层，是大型列表「快」之外的另一半功夫——「稳」（跳转间不丢）与「可分享」（一个链接复现全貌）。</strong></p>
 
 
 <div class="card spark">
@@ -485,7 +488,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
     <li><strong>按需 JOIN</strong>：只在过滤/排序需要或 <code>select==="metrics"</code> 时才 LEFT JOIN observations/scores，默认浏览省掉两次 JOIN。</li>
     <li><strong>按需 FINAL</strong>：默认按时间排序用 <code>toDate(timestamp),event_ts DESC</code> + <code>LIMIT 1 BY id</code> 只读最新分区；非默认排序才退回 <code>FROM traces FINAL</code> 全量去重。</li>
     <li>黄金法则：为最常见路径极致优化，把复杂度/代价推迟到「真的要了」才引入——别让 1% 的高级需求拖慢 99% 的日常浏览。</li>
-    <li><strong>表格状态分三层、以 URL 为真源</strong>：URL（可分享/真源）⊕ session（导航记忆）⊕ DB（永久视图预设，失效部分优雅降级）；全局时间范围变成喂给第 22 课回看窗的强制 timestamp 过滤。</li>
+    <li><strong>表格状态分三层、以 URL 为真源</strong>：URL（可分享/真源）⊕ session（导航记忆）⊕ DB（永久视图预设，失效部分优雅降级）；全局时间范围变成喂给<a class="xref" href="22-repository-layer.html">第 22 课</a>回看窗的强制 timestamp 过滤。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -526,7 +529,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。三层各管一段时效：URL「此刻可分享」（深链、一个链接复现全貌，呼应第 23 课 FilterState）、session「这次导航」（跳转间不丢列宽/可见列）、DB「永久」（saved view 跨设备团队共享，失效部分丢弃+提示不白屏）。这让大表格既快又稳又可分享。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。三层各管一段时效：URL「此刻可分享」（深链、一个链接复现全貌，呼应<a class="xref" href="23-filtering-search-bar.html">第 23 课</a> FilterState）、session「这次导航」（跳转间不丢列宽/可见列）、DB「永久」（saved view 跨设备团队共享，失效部分丢弃+提示不白屏）。这让大表格既快又稳又可分享。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -592,7 +595,7 @@ ${requiresScoresJoin ? <span class="st">"LEFT JOIN scores_avg s ..."</span> : <s
 
 
 <h2>Conditional FINAL: the default view reads only the latest partition</h2>
-<p>Here hides an optimization only ClickHouse veterans appreciate. Recall Lesson 8: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
+<p>Here hides an optimization only ClickHouse veterans appreciate. Recall <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>: traces is a <code>ReplacingMergeTree</code>, where one id may have multiple rows
 (create/update each a row), deduped by background merges. Add <code>FINAL</code> to a query and ClickHouse <strong>reads all partitions and dedups on the spot</strong> —
 correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL whenever possible</strong>:</p>
 
@@ -655,14 +658,14 @@ Langfuse's answer is <strong>three layers, with the URL as the source of truth</
 </svg>
 
 <div class="layers">
-  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">sharing &amp; source of truth</span></div><div class="ld">Filters, sort, search, current view id are all encoded into the <strong>URL</strong>. So you send a colleague the link and they see <strong>exactly the same thing</strong> — the URL is the single source of truth for "what this table looks like right now" (echoing Lesson 23's FilterState).</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">sharing &amp; source of truth</span></div><div class="ld">Filters, sort, search, current view id are all encoded into the <strong>URL</strong>. So you send a colleague the link and they see <strong>exactly the same thing</strong> — the URL is the single source of truth for "what this table looks like right now" (echoing <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState).</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">session storage</span><span class="name">navigation memory</span></div><div class="ld">Hopping between tables, <strong>session storage</strong> remembers your recent column widths, visible columns, scroll position so you aren't reset each time you return — valid only within this browsing session.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">database</span><span class="name">permanent presets</span></div><div class="ld">"View presets" (saved views) go into the <strong>DB</strong>, permanent, cross-device, team-shareable. Deleted a preset, or a column it referenced no longer exists? <strong>Graceful degradation</strong>: drop the invalid part + warn, never a blank screen.</div></div>
 </div>
 
 <p>The three layers each own a timescale — URL "shareable right now", session "this navigation", DB "permanent" — together letting a big table be
 <strong>deep-linkable, state-preserving across navigation, and a long-term home for the team's go-to views</strong>. Paired with a global time range (Zustand default
-⊕ URL explicit), it becomes the mandatory <code>timestamp</code> filter feeding Lesson 22's look-back windows, nailing down the scan range. <strong>State layering is
+⊕ URL explicit), it becomes the mandatory <code>timestamp</code> filter feeding <a class="xref" href="22-repository-layer.html">Lesson 22</a>'s look-back windows, nailing down the scan range. <strong>State layering is
 the other half of a big list's craft beyond "fast" — "stable" (no loss across navigation) and "shareable" (one link reproduces the whole view).</strong></p>
 
 <div class="card spark">
@@ -682,7 +685,7 @@ the other half of a big list's craft beyond "fast" — "stable" (no loss across 
     <li><strong>Compact rows vs metrics, split</strong>: the UI fires <code>traces.all</code> (rows) + <code>traces.metrics</code> (metrics) in parallel; <code>joinTableCoreAndMetrics</code> merges by id and returns success even without metrics, so the table <strong>renders from rows first</strong>.</li>
     <li><strong>Conditional JOIN</strong>: LEFT JOIN observations/scores only when filter/sort needs it or <code>select==="metrics"</code>, saving two JOINs on default browsing.</li>
     <li><strong>Conditional FINAL</strong>: default time-ordering uses <code>toDate(timestamp),event_ts DESC</code> + <code>LIMIT 1 BY id</code> to read only the latest partition; non-default ordering falls back to <code>FROM traces FINAL</code> full dedup.</li>
-    <li>Golden rule: optimize for the most common path, defer complexity/cost until "actually asked". Table state lives in <strong>three layers, URL as source of truth</strong> (URL ⊕ session ⊕ DB presets with graceful degradation); the global time range becomes the mandatory timestamp filter feeding Lesson 22's look-back windows.</li>
+    <li>Golden rule: optimize for the most common path, defer complexity/cost until "actually asked". Table state lives in <strong>three layers, URL as source of truth</strong> (URL ⊕ session ⊕ DB presets with graceful degradation); the global time range becomes the mandatory timestamp filter feeding <a class="xref" href="22-repository-layer.html">Lesson 22</a>'s look-back windows.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -723,7 +726,7 @@ the other half of a big list's craft beyond "fast" — "stable" (no loss across 
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Three layers each own a timescale: URL 'shareable now' (deep links, one link reproduces the whole view, echoing L23's FilterState), session 'this navigation' (column widths/visible columns survive hops), DB 'permanent' (saved views shared cross-device/team, invalid parts dropped+warned, no blank screen). This makes big tables fast, stable, and shareable.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Three layers each own a timescale: URL 'shareable now' (deep links, one link reproduces the whole view, echoing <a class="xref" href="23-filtering-search-bar.html">L23</a>'s FilterState), session 'this navigation' (column widths/visible columns survive hops), DB 'permanent' (saved views shared cross-device/team, invalid parts dropped+warned, no blank screen). This makes big tables fast, stable, and shareable.</div></div></div>
   </details>
 </div>
 <div class="card spark">

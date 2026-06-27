@@ -1,6 +1,7 @@
 """Shared HTML shell (CSS design system + navigation) for the Langfuse visual guide."""
 
 import base64
+import re
 
 # ---- favicon (inline SVG, base64) ----
 _FAVICON_SVG = (
@@ -487,6 +488,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 """
 
 SEARCH_JS = """
@@ -570,6 +574,42 @@ LANG_BOOT = (
     "if(l==='en'){document.documentElement.dataset.lang='en';"
     "document.documentElement.lang='en';}}catch(e){}</script>"
 )
+
+
+# ---- cross-reference auto-linking -------------------------------------------
+# Lessons constantly mention sibling lessons in prose ("第24课" / "Lesson 24" /
+# "L24") but those were plain text. autolink() wraps them in <a> so a reader can
+# jump. It splits the HTML into protected chunks (code/svg/existing anchors/raw
+# tags) vs plain text and only rewrites the plain text, so it never links inside
+# <code>, inside SVG diagrams, inside attribute values, or double-wraps an
+# existing link. Applied to web lesson bodies only (the print build concatenates
+# everything into one file where per-file hrefs wouldn't resolve).
+_PROTECT = re.compile(
+    r"(<code\b[^>]*>.*?</code>|<svg\b[^>]*>.*?</svg>|<a\b[^>]*>.*?</a>|<[^>]+>)", re.S
+)
+_XREF_PATTERNS = (
+    re.compile(r"第\s*(\d{1,2})\s*课"),
+    re.compile(r"Lesson\s+(\d{1,2})\b"),
+    re.compile(r"\bL(\d{2})\b"),
+)
+
+
+def autolink(html, self_num, order):
+    """Wrap inter-lesson references in <a class="xref">. ``order`` is the list of
+    lesson filenames (index 0 = lesson 01); ``self_num`` is this lesson's number
+    (1-based) so self-references stay plain."""
+    parts = _PROTECT.split(html)
+    for i in range(0, len(parts), 2):  # even indices = unprotected text
+        seg = parts[i]
+        for pat in _XREF_PATTERNS:
+            def repl(m):
+                n = int(m.group(1))
+                if n == self_num or not (1 <= n <= len(order)):
+                    return m.group(0)
+                return f'<a class="xref" href="{order[n - 1]}">{m.group(0)}</a>'
+            seg = pat.sub(repl, seg)
+        parts[i] = seg
+    return "".join(parts)
 
 
 def page(filename, content, home_href="../index.html"):

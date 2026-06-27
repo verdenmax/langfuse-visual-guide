@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,9 +353,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 15 课合并完，最后一步是 <code>clickHouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
+<a class="xref" href="15-ingestion-service.html">第 15 课</a>合并完，最后一步是 <code>clickHouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
 <code>ClickhouseWriter</code>：一个<strong>单例</strong>，把潮水般涌来的<strong>单条记录</strong>攒成<strong>少数几个大批次</strong>，再一次性 INSERT 进 ClickHouse。
-为什么非要攒？因为第 8 课说过，ClickHouse <strong>极度偏爱大批量写入</strong>、最怕逐条插入。这一层，就是把「高频小写」翻译成「低频大写」的<strong>缓冲带</strong>。
+为什么非要攒？因为<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>说过，ClickHouse <strong>极度偏爱大批量写入</strong>、最怕逐条插入。这一层，就是把「高频小写」翻译成「低频大写」的<strong>缓冲带</strong>。
 </p>
 
 <div class="card analogy">
@@ -366,7 +369,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <h2>缓冲带：每张表一个队列，两个发车条件</h2>
 <p><code>ClickhouseWriter</code> 内部为<strong>每张表各开一个内存队列</strong>（traces / observations / scores / …）。
-第 15 课的 <code>addToQueue</code> 把合并好的记录推进对应队列；记录在队列里<strong>排队等发车</strong>。发车（flush）由<strong>两个条件</strong>触发，谁先到算谁：</p>
+<a class="xref" href="15-ingestion-service.html">第 15 课</a>的 <code>addToQueue</code> 把合并好的记录推进对应队列；记录在队列里<strong>排队等发车</strong>。发车（flush）由<strong>两个条件</strong>触发，谁先到算谁：</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 为每张表开内存队列，记录达 batchSize 或 writeInterval 定时器触发时批量 INSERT 进 ClickHouse">
@@ -400,7 +403,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
 </div>
 
-<p>为什么 ClickHouse 这么怕「逐条写」？回到第 8 课的存储机制：MergeTree 每收一次 <code>INSERT</code> 就在磁盘上落一个新的<strong>数据分片（part）</strong>，
+<p>为什么 ClickHouse 这么怕「逐条写」？回到<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的存储机制：MergeTree 每收一次 <code>INSERT</code> 就在磁盘上落一个新的<strong>数据分片（part）</strong>，
 之后还要靠后台不断把小分片<strong>合并</strong>成大分片。如果你每条记录都单独 INSERT，瞬间会产生<strong>海量小分片</strong>——磁盘元数据爆炸、后台合并永远追不上、查询也被拖慢
 （甚至触发 ClickHouse 的「too many parts」保护而拒写）。把一万条记录攒成一次 INSERT，就只生成<strong>一个</strong>大分片，写入、合并、查询全都轻松。
 所以这一层不是可有可无的优化，而是让 ClickHouse 这种列式存储能扛住高频摄取的<strong>必要前提</strong>——没有这道缓冲带，再好的表设计也会被海量小写拖垮。</p>
@@ -453,7 +456,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>为什么是单例，为什么敢用内存缓冲</h2>
 <p><code>ClickhouseWriter</code> 是<strong>单例</strong>（私有构造 + <code>getInstance</code>）：整个 worker 进程<strong>只有一个</strong>写入器、一组队列。这很关键——
 只有汇到一处，才能把来自无数任务的零散记录<strong>真正攒成大批</strong>；如果每个任务各写各的，批就永远攒不大。写入时还带<strong>退避重试</strong>（<code>maxAttempts</code>），
-遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和第 12 课摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
+遇到可重试错误就指数退避再试，遇到「字符串过长」这类错误则<strong>把批拆小</strong>重试——既追求大批量，又不被个别异常记录拖垮整批。这种「<strong>整批共进退、坏的单独拎出来</strong>」的策略，和<a class="xref" href="12-ingestion-api.html">第 12 课</a>摄取 API 的「部分成功」一脉相承：系统在每一层都尽量做到<strong>容错而不牵连</strong>，让一两条问题数据不至于阻塞整条管道。</p>
 
 <svg viewBox="0 0 720 250" role="img" aria-label="ClickhouseWriter 的内存缓冲是易失的，崩溃会丢这批；但 S3 事件账本绝不丢、队列任务在写库成功前不 ack，于是 worker 半路崩溃时任务会重投、从 S3 重读重合并重写，数据一条不少，持久性由上游兜底所以这层敢用易失缓冲换吞吐">
   <rect x="0" y="0" width="720" height="250" fill="var(--bg)"></rect>
@@ -487,7 +490,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>记录攒在内存队列里，万一 worker 突然崩了，这批不就丢了吗？</strong> 会丢——但这<strong>不要紧</strong>，因为真正的「账本」不在这里。回想第 14 课：
+  <strong>记录攒在内存队列里，万一 worker 突然崩了，这批不就丢了吗？</strong> 会丢——但这<strong>不要紧</strong>，因为真正的「账本」不在这里。回想<a class="xref" href="14-ingestion-queue.html">第 14 课</a>：
   每个事件都<strong>原原本本躺在 S3</strong>，而队列任务在写库成功前<strong>不会被确认</strong>。于是 worker 半路崩溃，最多是这批合并结果没落盘，
   对应的队列任务会<strong>重新投递</strong>、从 S3 重新读事件、重新合并重新写——<strong>数据一条不少</strong>。正因为<strong>持久性已经由上游的 S3 + 队列兜底</strong>，
   这一层才敢<strong>放心地用易失的内存缓冲去换写入吞吐</strong>。这是一个典型的分层设计智慧：<strong>把持久和高效分给不同层，各自做到极致</strong>——
@@ -497,11 +500,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><code>ClickhouseWriter</code> 是<strong>单例</strong>，把高频单条记录攒成<strong>大批</strong>再一次 <code>INSERT</code>——因为第 8 课 ClickHouse 偏爱大批量、最怕逐条。</li>
+    <li><code>ClickhouseWriter</code> 是<strong>单例</strong>，把高频单条记录攒成<strong>大批</strong>再一次 <code>INSERT</code>——因为<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a> ClickHouse 偏爱大批量、最怕逐条。</li>
     <li><strong>每张表一个内存队列</strong>（traces/observations/scores…），<code>addToQueue</code> 喂入，<code>flushAll</code> 用 <code>Promise.all</code> 并行刷各表。</li>
     <li><strong>两个 flush 触发</strong>：① 队列 ≥ <code>batchSize</code>（按量，保吞吐）② 每 <code>writeInterval</code> 定时器（按时，封顶延迟）；谁先到算谁。</li>
     <li><code>shutdown</code> 先清定时器、再 <code>flushAll(true)</code> <strong>排空</strong>所有队列，进程退出不丢数据；写入带退避重试、超长批自动拆分。</li>
-    <li>敢用<strong>易失内存缓冲换吞吐</strong>，是因为<strong>持久性由上游 S3 + 队列兜底</strong>（第 14 课）：崩了就重投重算，一条不丢——分层各司其职。</li>
+    <li>敢用<strong>易失内存缓冲换吞吐</strong>，是因为<strong>持久性由上游 S3 + 队列兜底</strong>（<a class="xref" href="14-ingestion-queue.html">第 14 课</a>）：崩了就重投重算，一条不丢——分层各司其职。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -516,7 +519,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。第 8 课讲过 ClickHouse 偏爱大批量。MergeTree 每个 INSERT 生成一个数据分片，小分片越多、磁盘元数据和后台合并压力越大。把高频小写翻译成低频大写，是列式存储扛住高频摄取的必要前提，而非可有可无的优化。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>讲过 ClickHouse 偏爱大批量。MergeTree 每个 INSERT 生成一个数据分片，小分片越多、磁盘元数据和后台合并压力越大。把高频小写翻译成低频大写，是列式存储扛住高频摄取的必要前提，而非可有可无的优化。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -542,7 +545,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。这是典型的分层智慧：S3（第 14 课）负责“绝不丢”，ClickhouseWriter 负责“写得快”，谁也不为对方妥协。因为队列 + S3 已经保证了持久性与可重放，写入器才敢用易失内存缓冲去换吞吐——崩溃只是触发一次重投重算。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。这是典型的分层智慧：S3（<a class="xref" href="14-ingestion-queue.html">第 14 课</a>）负责“绝不丢”，ClickhouseWriter 负责“写得快”，谁也不为对方妥协。因为队列 + S3 已经保证了持久性与可重放，写入器才敢用易失内存缓冲去换吞吐——崩溃只是触发一次重投重算。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -554,9 +557,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 15's merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+<a class="xref" href="15-ingestion-service.html">Lesson 15</a>'s merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
 what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
-handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as Lesson 8 said, ClickHouse
+handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> said, ClickHouse
 <strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates
 "high-frequency small writes" into "low-frequency large writes".
 </p>
@@ -573,7 +576,7 @@ handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in on
 
 
 <h2>The buffer: one queue per table, two departure conditions</h2>
-<p>Inside, <code>ClickhouseWriter</code> keeps <strong>an in-memory queue per table</strong> (traces / observations / scores / …). Lesson 15's
+<p>Inside, <code>ClickhouseWriter</code> keeps <strong>an in-memory queue per table</strong> (traces / observations / scores / …). <a class="xref" href="15-ingestion-service.html">Lesson 15</a>'s
 <code>addToQueue</code> pushes the merged record into the matching queue; records <strong>wait in line to depart</strong>. Departure (flush) is triggered by
 <strong>two conditions</strong>, whichever comes first:</p>
 
@@ -609,7 +612,7 @@ handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in on
 <span class="kw">await</span> <span class="fn">backOff</span>(() =&gt; <span class="fn">writeToClickhouse</span>({ table, records }), { numOfAttempts });</pre>
 </div>
 
-<p>Why does ClickHouse so dread "row-by-row writes"? Back to Lesson 8's storage mechanics: a MergeTree drops a new <strong>data part</strong> on disk for
+<p>Why does ClickHouse so dread "row-by-row writes"? Back to <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s storage mechanics: a MergeTree drops a new <strong>data part</strong> on disk for
 every <code>INSERT</code>, then relies on background <strong>merges</strong> to combine small parts into large ones. INSERT each record separately and you
 instantly spawn <strong>a flood of tiny parts</strong> — exploding disk metadata, background merges that never catch up, slowed queries (and even ClickHouse's
 "too many parts" guard rejecting writes). Batch ten thousand records into one INSERT and you create just <strong>one</strong> big part — easy to write,
@@ -668,7 +671,7 @@ needs without touching code.</p>
 process. That's crucial — only by converging to one place can scattered records from countless jobs <strong>actually batch up large</strong>; if each job
 wrote on its own, batches would never grow. Writes carry <strong>backoff retry</strong> (<code>maxAttempts</code>): retryable errors back off and retry,
 "string too long" errors <strong>split the batch</strong> and retry — chasing big batches without letting one bad record drag down the whole batch. This
-"<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes Lesson 12's ingestion-API "partial success": at
+"<strong>the batch rises and falls together, the bad ones get pulled out alone</strong>" strategy echoes <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s ingestion-API "partial success": at
 every layer the system tries to be <strong>fault-tolerant without collateral damage</strong>, so a problem record or two won't block the whole pipeline.</p>
 
 <svg viewBox="0 0 720 250" role="img" aria-label="The ClickhouseWriter in-memory buffer is volatile and a crash drops that batch; but the S3 event ledger never loses data and the queue job is not acked until the write succeeds, so when the worker crashes mid-way the job is redelivered, re-read from S3, re-merged and re-written, losing nothing; durability is handled upstream so this layer dares to trade a volatile buffer for write throughput">
@@ -704,7 +707,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
   <strong>Records sit in an in-memory queue — if the worker suddenly crashes, isn't the batch lost?</strong> It is — but that <strong>doesn't matter</strong>,
-  because the real "ledger" isn't here. Recall Lesson 14: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
+  because the real "ledger" isn't here. Recall <a class="xref" href="14-ingestion-queue.html">Lesson 14</a>: every event <strong>rests verbatim in S3</strong>, and the queue job <strong>isn't acked</strong>
   until the DB write succeeds. So a mid-flight worker crash, at worst, means this batch of merged results didn't land; the corresponding queue job is
   <strong>redelivered</strong>, re-reads events from S3, re-merges and re-writes — <strong>not a single record lost</strong>. Precisely because
   <strong>durability is already backstopped by upstream S3 + the queue</strong>, this layer can <strong>safely trade volatile in-memory buffering for write
@@ -715,11 +718,11 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><code>ClickhouseWriter</code> is a <strong>singleton</strong> that gathers high-frequency single records into <strong>big batches</strong> for one <code>INSERT</code> — because Lesson 8's ClickHouse prefers large batches and dreads row-by-row.</li>
+    <li><code>ClickhouseWriter</code> is a <strong>singleton</strong> that gathers high-frequency single records into <strong>big batches</strong> for one <code>INSERT</code> — because <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s ClickHouse prefers large batches and dreads row-by-row.</li>
     <li><strong>One in-memory queue per table</strong> (traces/observations/scores…); <code>addToQueue</code> feeds it, <code>flushAll</code> fans out across tables with <code>Promise.all</code>.</li>
     <li><strong>Two flush triggers</strong>: ① queue ≥ <code>batchSize</code> (by size, for throughput) ② every <code>writeInterval</code> timer (by time, capping latency); whichever first.</li>
     <li><code>shutdown</code> clears the timer then <code>flushAll(true)</code> <strong>drains</strong> all queues so nothing is lost on exit; writes carry backoff retry, oversized batches auto-split.</li>
-    <li>It <strong>dares to trade volatile memory buffering for throughput</strong> because <strong>durability is backstopped by upstream S3 + the queue</strong> (Lesson 14): crash → redeliver and recompute, nothing lost — layers each doing their job.</li>
+    <li>It <strong>dares to trade volatile memory buffering for throughput</strong> because <strong>durability is backstopped by upstream S3 + the queue</strong> (<a class="xref" href="14-ingestion-queue.html">Lesson 14</a>): crash → redeliver and recompute, nothing lost — layers each doing their job.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -734,7 +737,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Lesson 8 noted ClickHouse prefers large batches. Each INSERT creates a MergeTree part; more tiny parts means heavier disk metadata and background merges. Translating high-frequency small writes into low-frequency large ones is a precondition for a columnar store to withstand high-frequency ingestion, not an optional optimization.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> noted ClickHouse prefers large batches. Each INSERT creates a MergeTree part; more tiny parts means heavier disk metadata and background merges. Translating high-frequency small writes into low-frequency large ones is a precondition for a columnar store to withstand high-frequency ingestion, not an optional optimization.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -760,7 +763,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Classic layered wisdom: S3 (Lesson 14) owns 'never lose', ClickhouseWriter owns 'write fast', neither compromising for the other. Because the queue + S3 already guarantee durability and replayability, the writer can trade volatile memory buffering for throughput — a crash merely triggers a redeliver-and-recompute.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Classic layered wisdom: S3 (<a class="xref" href="14-ingestion-queue.html">Lesson 14</a>) owns 'never lose', ClickhouseWriter owns 'write fast', neither compromising for the other. Because the queue + S3 already guarantee durability and replayability, the writer can trade volatile memory buffering for throughput — a crash merely triggers a redeliver-and-recompute.</div></div></div>
   </details>
 </div>
 <div class="card spark">

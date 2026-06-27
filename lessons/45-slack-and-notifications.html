@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,19 +353,19 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-上一课的 webhook 是「裸的」投递：给个 URL、把 JSON 砸过去。但很多团队想要的不是一条 HTTP 请求，而是<strong>「在我们的 Slack 频道里，弹出一条排版漂亮、能点按钮跳转的告警」</strong>。这一课讲 Langfuse 怎么把 <strong>Slack 做成一等公民的投递通道</strong>：不是让你填一个 Slack 的 webhook URL 了事，而是走完整的 <strong>OAuth 安装</strong>、把工作区的 <strong>bot 令牌加密入库</strong>、按频道精准投递、用 <strong>Block Kit</strong> 渲染带颜色和按钮的富消息。你会看到第 39 课的<strong>加密能力</strong>在这里被复用来保管令牌，也会看到一条独立的 <strong>notificationQueue</strong> 处理站内通知（如评论 @你）。
+上一课的 webhook 是「裸的」投递：给个 URL、把 JSON 砸过去。但很多团队想要的不是一条 HTTP 请求，而是<strong>「在我们的 Slack 频道里，弹出一条排版漂亮、能点按钮跳转的告警」</strong>。这一课讲 Langfuse 怎么把 <strong>Slack 做成一等公民的投递通道</strong>：不是让你填一个 Slack 的 webhook URL 了事，而是走完整的 <strong>OAuth 安装</strong>、把工作区的 <strong>bot 令牌加密入库</strong>、按频道精准投递、用 <strong>Block Kit</strong> 渲染带颜色和按钮的富消息。你会看到<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>的<strong>加密能力</strong>在这里被复用来保管令牌，也会看到一条独立的 <strong>notificationQueue</strong> 处理站内通知（如评论 @你）。
 「webhook 通用但粗糙，Slack 专用但精致」——这一课讲清楚一个成熟平台怎么对待一个<strong>它真正重视的集成</strong>。
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   上一课的 webhook 像<strong>往邮筒里塞一封信</strong>：你写个地址（URL），把信（JSON）投进去，对方收不收得到、怎么读，你不管。通用，但简陋。
-  这一课的 Slack 集成，像<strong>正式给你的公司配一个「企业微信/钉钉」对接</strong>：先要<strong>走一道授权流程</strong>（OAuth——你在 Slack 点「同意安装」，Slack 发给 Langfuse 一把<strong>专属钥匙</strong>=bot 令牌）；这把钥匙太重要，得<strong>锁进保险柜</strong>（加密入库，复用第 39 课的 AES-256-GCM）；之后 Langfuse 就能<strong>以你授权的身份</strong>，往<strong>指定频道</strong>发<strong>排版精美</strong>的消息（Block Kit：标题、正文、时间戳、「在 Langfuse 中查看」按钮，告警还按严重度染成红/黄/绿）。同样是「通知」，webhook 是塞信、Slack 是配了专线——<strong>越重视的集成，越值得做深</strong>。
+  这一课的 Slack 集成，像<strong>正式给你的公司配一个「企业微信/钉钉」对接</strong>：先要<strong>走一道授权流程</strong>（OAuth——你在 Slack 点「同意安装」，Slack 发给 Langfuse 一把<strong>专属钥匙</strong>=bot 令牌）；这把钥匙太重要，得<strong>锁进保险柜</strong>（加密入库，复用<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>的 AES-256-GCM）；之后 Langfuse 就能<strong>以你授权的身份</strong>，往<strong>指定频道</strong>发<strong>排版精美</strong>的消息（Block Kit：标题、正文、时间戳、「在 Langfuse 中查看」按钮，告警还按严重度染成红/黄/绿）。同样是「通知」，webhook 是塞信、Slack 是配了专线——<strong>越重视的集成，越值得做深</strong>。
 </div>
 
 
 <h2>第一步：OAuth 安装，把 bot 令牌加密入库</h2>
-<p>Slack 集成不是填个 URL，而是一次标准的 <strong>OAuth 安装</strong>。Langfuse 用 <code>@slack/oauth</code> 的 <strong>InstallProvider</strong> 托管整个授权流程：用户在 Langfuse 点「安装到 Slack」→ 跳到 Slack 的同意页 → 用户选好工作区、点授权 → Slack 带着授权码回调 Langfuse → InstallProvider 换取 <strong>bot 令牌</strong>，触发 <code>storeInstallation</code>。关键就在这一步：令牌不是明文存，而是 <code>encrypt(botToken)</code> 后 <strong>upsert 进 SlackIntegration 表</strong>（<code>projectId @unique</code>——<strong>一个项目一个工作区连接</strong>）。这把「保管密钥」的活，直接复用第 39 课的 AES-256-GCM 加密。</p>
+<p>Slack 集成不是填个 URL，而是一次标准的 <strong>OAuth 安装</strong>。Langfuse 用 <code>@slack/oauth</code> 的 <strong>InstallProvider</strong> 托管整个授权流程：用户在 Langfuse 点「安装到 Slack」→ 跳到 Slack 的同意页 → 用户选好工作区、点授权 → Slack 带着授权码回调 Langfuse → InstallProvider 换取 <strong>bot 令牌</strong>，触发 <code>storeInstallation</code>。关键就在这一步：令牌不是明文存，而是 <code>encrypt(botToken)</code> 后 <strong>upsert 进 SlackIntegration 表</strong>（<code>projectId @unique</code>——<strong>一个项目一个工作区连接</strong>）。这把「保管密钥」的活，直接复用<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>的 AES-256-GCM 加密。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="Slack OAuth 安装流程：用户在Langfuse点安装，InstallProvider 跳转Slack同意页，用户授权后Slack回调，InstallProvider 换取bot令牌触发storeInstallation，加密令牌后upsert进SlackIntegration表（projectId唯一，一项目一连接）">
@@ -385,7 +388,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">托管</span><span class="name">InstallProvider（@slack/oauth）</span></div><div class="ld">不自己手搓 OAuth 的 code-exchange，而是用官方 SDK 的 <code>InstallProvider</code> 托管整套跳转/回调/换令牌。<code>handleInstallPath</code> 渲染安装页、<code>handleCallback</code> 处理回调（<code>oauth-handlers.ts</code>），projectId 通过 OAuth <code>metadata</code> 一路带回来。</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">加密</span><span class="name">storeInstallation → encrypt</span></div><div class="ld">回调成功后把 bot 令牌 <code>encrypt()</code> 再落库——和第 39 课保管 LLM API Key 是<strong>同一套</strong> AES-256-GCM。令牌是「以你的身份发消息」的钥匙，绝不能明文躺在数据库里。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">加密</span><span class="name">storeInstallation → encrypt</span></div><div class="ld">回调成功后把 bot 令牌 <code>encrypt()</code> 再落库——和<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>保管 LLM API Key 是<strong>同一套</strong> AES-256-GCM。令牌是「以你的身份发消息」的钥匙，绝不能明文躺在数据库里。</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">建模</span><span class="name">SlackIntegration（一项目一连接）</span></div><div class="ld"><code>projectId @unique</code> 强制「一个项目对一个 Slack 工作区」。存 teamId/teamName（哪个工作区）、botUserId（机器人身份）、加密 botToken。<code>upsert</code> 让「重装/换工作区」自然覆盖旧连接。</div></div>
 </div>
 
@@ -415,7 +418,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/SlackService.ts</span><span class="ln">存→取→发</span></div>
-  <pre class="code"><span class="cm">// 存：OAuth 回调时把 bot 令牌加密入库（复用第39课加密）</span>
+  <pre class="code"><span class="cm">// 存：OAuth 回调时把 bot 令牌加密入库（复用<a class="xref" href="39-playground-llm-connections.html">第39课</a>加密）</span>
 storeInstallation: <span class="kw">async</span> (installation) =&gt; {
   <span class="kw">await</span> prisma.slackIntegration.<span class="fn">upsert</span>({ where: { projectId },
     create: { projectId, teamId, teamName,
@@ -460,7 +463,7 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 </svg>
 
 <div class="cols">
-  <div class="col"><h4>📮 webhook（第44课）</h4><p>最通用：填个 URL、推 JSON。Langfuse 是发起方、不持凭据，风险集中在 SSRF。适合对接<strong>任意自定义系统</strong>。</p></div>
+  <div class="col"><h4>📮 webhook（<a class="xref" href="44-automations-webhooks.html">第44课</a>）</h4><p>最通用：填个 URL、推 JSON。Langfuse 是发起方、不持凭据，风险集中在 SSRF。适合对接<strong>任意自定义系统</strong>。</p></div>
   <div class="col"><h4>💬 Slack（本课）</h4><p>最精致：OAuth 授权、加密令牌、按频道发 Block Kit 富消息。持「代表你」的令牌，能力大、保管严。适合<strong>团队协作通知</strong>。</p></div>
   <div class="col"><h4>🔔 站内通知</h4><p>最贴身：notificationQueue 处理 <code>COMMENT_MENTION</code> 等产品内事件，不出 Langfuse。适合<strong>把人拉回应用现场</strong>（如评论@你）。</p></div>
 </div>
@@ -468,10 +471,10 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 <table class="t">
   <thead><tr><th>这一课复用了什么</th><th>来自</th><th>为什么</th></tr></thead>
   <tbody>
-    <tr><td><b>AES-256-GCM 加密</b></td><td>第 39 课 encryption.ts</td><td>bot 令牌是「以你身份发消息」的钥匙，必须密文入库、用时解密</td></tr>
+    <tr><td><b>AES-256-GCM 加密</b></td><td><a class="xref" href="39-playground-llm-connections.html">第 39 课</a> encryption.ts</td><td>bot 令牌是「以你身份发消息」的钥匙，必须密文入库、用时解密</td></tr>
     <tr><td><b>单例 Service</b></td><td><code>SlackService.getInstance()</code></td><td>InstallProvider 配置一次复用，避免重复初始化 OAuth 客户端</td></tr>
     <tr><td><b>游标分页</b></td><td><code>getChannelsRecursive</code></td><td>列频道走 Slack 的 cursor 分页，频道再多也能拉全（配置 UI 用）</td></tr>
-    <tr><td><b>自动重试</b></td><td><code>WebClient retryConfig</code></td><td>Slack API 偶发抖动时 SDK 自动重试 3 次，和第 44 课 webhook 退避同理</td></tr>
+    <tr><td><b>自动重试</b></td><td><code>WebClient retryConfig</code></td><td>Slack API 偶发抖动时 SDK 自动重试 3 次，和<a class="xref" href="44-automations-webhooks.html">第 44 课</a> webhook 退避同理</td></tr>
     <tr><td><b>BullMQ 队列消费者</b></td><td><code>notificationQueue</code></td><td>站内通知异步化，和摄取/eval/webhook 是同一套队列骨架</td></tr>
   </tbody>
 </table>
@@ -481,25 +484,25 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么 Slack 要走 OAuth + 加密令牌这么重的流程，而 webhook 填个 URL 就行？</strong> 因为两者的<strong>信任模型</strong>不同。webhook 是「我把数据推给你的端点」——Langfuse 是<strong>发起方</strong>，不需要任何对方的凭据，所以填个 URL 即可（代价是把 SSRF 防御的重担全压在 URL 校验上，见第 44 课）。Slack 则要「<strong>以你的身份</strong>，在你的工作区里发消息」——这需要 Slack 授予一把<strong>代表你的钥匙</strong>（bot 令牌）。一旦持有这把钥匙，Langfuse 就能精准投递到频道、渲染富消息、甚至读频道列表；但钥匙泄露 = 别人能冒充你在你的工作区发消息。所以它必须<strong>加密入库</strong>，复用第 39 课保管 LLM API Key 的同一套 AES-256-GCM。<strong>能力越大，保管越严</strong>：填 URL 的 webhook 不持有你的任何凭据，持令牌的 Slack 则要按「最高机密」对待。<br><br>
-  <strong>为什么发消息时每次都从库里解密令牌，而不把 WebClient 缓存起来复用？</strong> 因为令牌可能<strong>随时失效</strong>：用户在 Slack 侧卸载了应用、重装到了别的工作区、或令牌被轮换。每次发送都走 <code>fetchInstallation</code> → <code>decrypt</code> 拿<strong>当前</strong>的令牌，保证用的永远是最新、最有效的凭据——这和第 38 课 prompt 缓存「读时校验新鲜度」、第 44 课「请求时校验真实 IP」是同一种<strong>「贴着使用那一刻取最新状态」</strong>的智慧。缓存一个长生命周期的、握着敏感令牌的客户端，省下的那点开销，远不值它带来的「用了过期/已撤销凭据」的风险。
+  <strong>为什么 Slack 要走 OAuth + 加密令牌这么重的流程，而 webhook 填个 URL 就行？</strong> 因为两者的<strong>信任模型</strong>不同。webhook 是「我把数据推给你的端点」——Langfuse 是<strong>发起方</strong>，不需要任何对方的凭据，所以填个 URL 即可（代价是把 SSRF 防御的重担全压在 URL 校验上，见<a class="xref" href="44-automations-webhooks.html">第 44 课</a>）。Slack 则要「<strong>以你的身份</strong>，在你的工作区里发消息」——这需要 Slack 授予一把<strong>代表你的钥匙</strong>（bot 令牌）。一旦持有这把钥匙，Langfuse 就能精准投递到频道、渲染富消息、甚至读频道列表；但钥匙泄露 = 别人能冒充你在你的工作区发消息。所以它必须<strong>加密入库</strong>，复用<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>保管 LLM API Key 的同一套 AES-256-GCM。<strong>能力越大，保管越严</strong>：填 URL 的 webhook 不持有你的任何凭据，持令牌的 Slack 则要按「最高机密」对待。<br><br>
+  <strong>为什么发消息时每次都从库里解密令牌，而不把 WebClient 缓存起来复用？</strong> 因为令牌可能<strong>随时失效</strong>：用户在 Slack 侧卸载了应用、重装到了别的工作区、或令牌被轮换。每次发送都走 <code>fetchInstallation</code> → <code>decrypt</code> 拿<strong>当前</strong>的令牌，保证用的永远是最新、最有效的凭据——这和<a class="xref" href="38-prompt-serving-caching.html">第 38 课</a> prompt 缓存「读时校验新鲜度」、<a class="xref" href="44-automations-webhooks.html">第 44 课</a>「请求时校验真实 IP」是同一种<strong>「贴着使用那一刻取最新状态」</strong>的智慧。缓存一个长生命周期的、握着敏感令牌的客户端，省下的那点开销，远不值它带来的「用了过期/已撤销凭据」的风险。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>Slack = 一等公民的投递通道</strong>：相比第 44 课「裸 webhook」（填 URL、砸 JSON），Slack 走完整 OAuth 安装、加密令牌、按频道投递、Block Kit 富消息——平台对真正重视的集成会做深。</li>
-    <li><strong>OAuth 安装 + 加密入库</strong>：<code>InstallProvider</code>（@slack/oauth）托管授权；<code>storeInstallation</code> 把 bot 令牌 <code>encrypt()</code> 后 upsert 进 <code>SlackIntegration</code>（<code>projectId @unique</code>，一项目一连接），复用第 39 课 AES-256-GCM。</li>
+    <li><strong>Slack = 一等公民的投递通道</strong>：相比<a class="xref" href="44-automations-webhooks.html">第 44 课</a>「裸 webhook」（填 URL、砸 JSON），Slack 走完整 OAuth 安装、加密令牌、按频道投递、Block Kit 富消息——平台对真正重视的集成会做深。</li>
+    <li><strong>OAuth 安装 + 加密入库</strong>：<code>InstallProvider</code>（@slack/oauth）托管授权；<code>storeInstallation</code> 把 bot 令牌 <code>encrypt()</code> 后 upsert 进 <code>SlackIntegration</code>（<code>projectId @unique</code>，一项目一连接），复用<a class="xref" href="39-playground-llm-connections.html">第 39 课</a> AES-256-GCM。</li>
     <li><strong>发消息：解密 → WebClient → postMessage</strong>：<code>getWebClientForProject</code> 经 <code>fetchInstallation</code>+<code>decrypt</code> 取令牌、构造带重试(3次)的 WebClient；<code>sendMessage</code> 调 <code>chat.postMessage</code>。</li>
     <li><strong>Block Kit 富消息</strong>：<code>buildMonitorAlertSlackMessage</code> 按 severity 染色（ALERT 红/WARNING 黄/OK 绿），拼标题+正文(md)+时间戳+「在 Langfuse 中查看」按钮——比纯文本通知信息量大得多。</li>
     <li><strong>notificationQueue 站内通知</strong>：独立 BullMQ 消费者，按 type 分发（COMMENT_MENTION 评论@你），可扩展。webhook/Slack/站内通知是并列的几条投递通道。</li>
-    <li><strong>新功能=旧能力的新组合</strong>：加密(L39)+单例+游标分页+重试+队列，组装出体面的 Slack 集成。信任模型决定保管强度：持令牌须按最高机密加密；用时实时解密以防凭据失效。</li>
+    <li><strong>新功能=旧能力的新组合</strong>：加密(<a class="xref" href="39-playground-llm-connections.html">L39</a>)+单例+游标分页+重试+队列，组装出体面的 Slack 集成。信任模型决定保管强度：持令牌须按最高机密加密；用时实时解密以防凭据失效。</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 自测 · 想一想为什么这么设计</h2>
 <div class="quiz">
-  <div class="qn">1. 同样是「通知投递」，第 44 课的 webhook 只要填一个 URL，而 Slack 集成却要走完整 OAuth 安装、把 bot 令牌加密入库。为什么 Slack 需要这么重的流程？</div>
+  <div class="qn">1. 同样是「通知投递」，<a class="xref" href="44-automations-webhooks.html">第 44 课</a>的 webhook 只要填一个 URL，而 Slack 集成却要走完整 OAuth 安装、把 bot 令牌加密入库。为什么 Slack 需要这么重的流程？</div>
   <ol class="opts">
     <li>信任模型不同：webhook 是 Langfuse 作为发起方把数据推给你的端点，不需要你的任何凭据(填URL即可)；Slack 要「以你的身份在你工作区发消息」，必须由 Slack 授予一把代表你的钥匙(bot令牌)——这把钥匙泄露=别人能冒充你，所以必须加密保管</li>
     <li>OAuth 只是为了好看，技术上 URL 也能实现</li>
@@ -508,20 +511,20 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。这是「能力越大、保管越严」的体现。webhook 是 Langfuse 主动往外推，自己不持有对方任何凭据，所以风险集中在「URL 会不会指向危险目标」(SSRF，第44课用 URL 校验解决)。Slack 则要拿到一把「代表你」的 bot 令牌，凭它能往你的频道发消息、读频道列表——这是被授予的、可冒充你的权力，所以必须像第 39 课保管 LLM API Key 一样，用 AES-256-GCM 加密入库。两种集成的「重」与「轻」，直接由它们的信任模型决定。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。这是「能力越大、保管越严」的体现。webhook 是 Langfuse 主动往外推，自己不持有对方任何凭据，所以风险集中在「URL 会不会指向危险目标」(SSRF，<a class="xref" href="44-automations-webhooks.html">第44课</a>用 URL 校验解决)。Slack 则要拿到一把「代表你」的 bot 令牌，凭它能往你的频道发消息、读频道列表——这是被授予的、可冒充你的权力，所以必须像<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>保管 LLM API Key 一样，用 AES-256-GCM 加密入库。两种集成的「重」与「轻」，直接由它们的信任模型决定。</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">2. Langfuse 每次给 Slack 发消息，都重新从数据库取出加密令牌、解密、构造 WebClient，而不是缓存一个 WebClient 长期复用。这个选择的主要好处是？</div>
   <ol class="opts">
-    <li>保证永远用「当前最新」的令牌：用户可能在 Slack 侧卸载应用、重装到别的工作区、或令牌被轮换——每次解密取最新令牌就不会用到已失效的凭据，和第38课prompt缓存读时校验新鲜度、第44课请求时校验真实IP同理</li>
+    <li>保证永远用「当前最新」的令牌：用户可能在 Slack 侧卸载应用、重装到别的工作区、或令牌被轮换——每次解密取最新令牌就不会用到已失效的凭据，和<a class="xref" href="38-prompt-serving-caching.html">第38课</a>prompt缓存读时校验新鲜度、<a class="xref" href="44-automations-webhooks.html">第44课</a>请求时校验真实IP同理</li>
     <li>解密比缓存更快</li>
     <li>为了让数据库有更多读负载</li>
     <li>WebClient 不能被缓存</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。缓存一个长生命周期、握着敏感令牌的客户端，省下的开销很小，却带来「用了过期/已撤销凭据」的真实风险：令牌可能因卸载、重装、轮换而失效。每次发送都 fetchInstallation→decrypt 取当前令牌，就总用最新最有效的凭据。这和第 38 课 prompt「读时校验是否被改」、第 44 课「请求那一刻才校验真实 IP」是同一种智慧——贴着「使用的那一刻」取最新状态，而不是依赖一个可能过期的快照。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。缓存一个长生命周期、握着敏感令牌的客户端，省下的开销很小，却带来「用了过期/已撤销凭据」的真实风险：令牌可能因卸载、重装、轮换而失效。每次发送都 fetchInstallation→decrypt 取当前令牌，就总用最新最有效的凭据。这和<a class="xref" href="38-prompt-serving-caching.html">第 38 课</a> prompt「读时校验是否被改」、<a class="xref" href="44-automations-webhooks.html">第 44 课</a>「请求那一刻才校验真实 IP」是同一种智慧——贴着「使用的那一刻」取最新状态，而不是依赖一个可能过期的快照。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -540,24 +543,24 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 <div class="card spark">
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
-    <li>这一课指出：L45 几乎没有全新的基础设施，而是把前面攒下的加密(L39)、单例、游标分页、自动重试、BullMQ 队列这些零件，组装成一个体面的 Slack 集成。请回想你做过的项目：有没有哪个「看起来很新」的功能，其实是已有能力的重新组合？识别出这种「可复用的骨架」对一个工程团队意味着什么？过度追求复用又可能带来什么问题（错误的抽象、强行套用）？</li>
+    <li>这一课指出：L45 几乎没有全新的基础设施，而是把前面攒下的加密(<a class="xref" href="39-playground-llm-connections.html">L39</a>)、单例、游标分页、自动重试、BullMQ 队列这些零件，组装成一个体面的 Slack 集成。请回想你做过的项目：有没有哪个「看起来很新」的功能，其实是已有能力的重新组合？识别出这种「可复用的骨架」对一个工程团队意味着什么？过度追求复用又可能带来什么问题（错误的抽象、强行套用）？</li>
   </ul>
 </div>
 </div></div>
   <div class="lang-en">
 <p class="lead">
-The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it. But many teams don't want one HTTP request — they want <strong>"a nicely-formatted, button-clickable alert popping up in our Slack channel"</strong>. This lesson covers how Langfuse makes <strong>Slack a first-class delivery channel</strong>: not just filling in a Slack webhook URL, but a full <strong>OAuth install</strong>, storing the workspace's <strong>bot token encrypted</strong>, channel-targeted delivery, and rich <strong>Block Kit</strong> messages with colors and buttons. You'll see Lesson 39's <strong>encryption</strong> reused to safeguard the token, and a separate <strong>notificationQueue</strong> handling in-app notifications (e.g. a comment @-mentioning you).
+The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it. But many teams don't want one HTTP request — they want <strong>"a nicely-formatted, button-clickable alert popping up in our Slack channel"</strong>. This lesson covers how Langfuse makes <strong>Slack a first-class delivery channel</strong>: not just filling in a Slack webhook URL, but a full <strong>OAuth install</strong>, storing the workspace's <strong>bot token encrypted</strong>, channel-targeted delivery, and rich <strong>Block Kit</strong> messages with colors and buttons. You'll see <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>'s <strong>encryption</strong> reused to safeguard the token, and a separate <strong>notificationQueue</strong> handling in-app notifications (e.g. a comment @-mentioning you).
 "webhook is generic but crude, Slack is specific but refined" — this lesson shows how a mature platform treats an <strong>integration it truly cares about</strong>.
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   The previous lesson's webhook is like <strong>dropping a letter in a mailbox</strong>: you write an address (URL), drop the letter (JSON) in, and whether they receive or read it is not your concern. Generic, but crude.
-  This lesson's Slack integration is like <strong>formally provisioning an enterprise messaging hookup for your company</strong>: first you go through an <strong>authorization flow</strong> (OAuth — you click "approve install" in Slack, Slack hands Langfuse a <strong>dedicated key</strong> = bot token); this key is so important it must be <strong>locked in a safe</strong> (encrypted at rest, reusing Lesson 39's AES-256-GCM); afterward Langfuse can, <strong>under the identity you authorized</strong>, send <strong>beautifully formatted</strong> messages to a <strong>chosen channel</strong> (Block Kit: title, body, timestamp, a "View in Langfuse" button, alerts even tinted red/amber/green by severity). Both are "notifications," but webhook drops a letter while Slack lays a dedicated line — <strong>the more an integration matters, the deeper it's worth building</strong>.
+  This lesson's Slack integration is like <strong>formally provisioning an enterprise messaging hookup for your company</strong>: first you go through an <strong>authorization flow</strong> (OAuth — you click "approve install" in Slack, Slack hands Langfuse a <strong>dedicated key</strong> = bot token); this key is so important it must be <strong>locked in a safe</strong> (encrypted at rest, reusing <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>'s AES-256-GCM); afterward Langfuse can, <strong>under the identity you authorized</strong>, send <strong>beautifully formatted</strong> messages to a <strong>chosen channel</strong> (Block Kit: title, body, timestamp, a "View in Langfuse" button, alerts even tinted red/amber/green by severity). Both are "notifications," but webhook drops a letter while Slack lays a dedicated line — <strong>the more an integration matters, the deeper it's worth building</strong>.
 </div>
 
 <h2>Step one: OAuth install, store the bot token encrypted</h2>
-<p>The Slack integration isn't a URL — it's a standard <strong>OAuth install</strong>. Langfuse uses <code>@slack/oauth</code>'s <strong>InstallProvider</strong> to host the whole authorization flow: the user clicks "Install to Slack" in Langfuse → redirected to Slack's consent page → picks a workspace, authorizes → Slack calls back to Langfuse with an auth code → InstallProvider exchanges it for a <strong>bot token</strong>, firing <code>storeInstallation</code>. The crux is right here: the token isn't stored in cleartext but <code>encrypt(botToken)</code> then <strong>upserted into the SlackIntegration table</strong> (<code>projectId @unique</code> — <strong>one workspace connection per project</strong>). This "key safekeeping" work directly reuses Lesson 39's AES-256-GCM.</p>
+<p>The Slack integration isn't a URL — it's a standard <strong>OAuth install</strong>. Langfuse uses <code>@slack/oauth</code>'s <strong>InstallProvider</strong> to host the whole authorization flow: the user clicks "Install to Slack" in Langfuse → redirected to Slack's consent page → picks a workspace, authorizes → Slack calls back to Langfuse with an auth code → InstallProvider exchanges it for a <strong>bot token</strong>, firing <code>storeInstallation</code>. The crux is right here: the token isn't stored in cleartext but <code>encrypt(botToken)</code> then <strong>upserted into the SlackIntegration table</strong> (<code>projectId @unique</code> — <strong>one workspace connection per project</strong>). This "key safekeeping" work directly reuses <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>'s AES-256-GCM.</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="Slack OAuth install flow: user clicks install in Langfuse, InstallProvider redirects to Slack consent, after the user authorizes Slack calls back, InstallProvider exchanges the bot token firing storeInstallation, which encrypts the token and upserts into the SlackIntegration table (projectId unique, one connection per project)">
@@ -580,7 +583,7 @@ The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it.
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">host</span><span class="name">InstallProvider (@slack/oauth)</span></div><div class="ld">Rather than hand-rolling OAuth code-exchange, it uses the official SDK's <code>InstallProvider</code> to host the whole redirect/callback/token-exchange. <code>handleInstallPath</code> renders the install page, <code>handleCallback</code> handles the callback (<code>oauth-handlers.ts</code>); projectId rides back through OAuth <code>metadata</code>.</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">encrypt</span><span class="name">storeInstallation → encrypt</span></div><div class="ld">On a successful callback the bot token is <code>encrypt()</code>'d before landing in the DB — the <strong>same</strong> AES-256-GCM as Lesson 39's LLM API key safekeeping. The token is the key to "post as you"; it must never sit in cleartext in the database.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">encrypt</span><span class="name">storeInstallation → encrypt</span></div><div class="ld">On a successful callback the bot token is <code>encrypt()</code>'d before landing in the DB — the <strong>same</strong> AES-256-GCM as <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>'s LLM API key safekeeping. The token is the key to "post as you"; it must never sit in cleartext in the database.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">model</span><span class="name">SlackIntegration (one per project)</span></div><div class="ld"><code>projectId @unique</code> enforces "one project to one Slack workspace." Stores teamId/teamName (which workspace), botUserId (bot identity), encrypted botToken. <code>upsert</code> makes "reinstall / switch workspace" naturally overwrite the old connection.</div></div>
 </div>
 
@@ -610,7 +613,7 @@ The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it.
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/SlackService.ts</span><span class="ln">store→fetch→send</span></div>
-  <pre class="code"><span class="cm">// store: on OAuth callback, encrypt the bot token at rest (reuses Lesson 39 encryption)</span>
+  <pre class="code"><span class="cm">// store: on OAuth callback, encrypt the bot token at rest (reuses <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a> encryption)</span>
 storeInstallation: <span class="kw">async</span> (installation) =&gt; {
   <span class="kw">await</span> prisma.slackIntegration.<span class="fn">upsert</span>({ where: { projectId },
     create: { projectId, teamId, teamName,
@@ -655,7 +658,7 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 </svg>
 
 <div class="cols">
-  <div class="col"><h4>📮 webhook (Lesson 44)</h4><p>Most generic: fill a URL, push JSON. Langfuse is the initiator holding no credentials; risk concentrates on SSRF. Best for wiring up <strong>any custom system</strong>.</p></div>
+  <div class="col"><h4>📮 webhook (<a class="xref" href="44-automations-webhooks.html">Lesson 44</a>)</h4><p>Most generic: fill a URL, push JSON. Langfuse is the initiator holding no credentials; risk concentrates on SSRF. Best for wiring up <strong>any custom system</strong>.</p></div>
   <div class="col"><h4>💬 Slack (this lesson)</h4><p>Most refined: OAuth authorization, encrypted token, channel-targeted Block Kit rich messages. Holds a token "representing you" — big capability, strict safekeeping. Best for <strong>team-collaboration notifications</strong>.</p></div>
   <div class="col"><h4>🔔 in-app</h4><p>Most intimate: notificationQueue handles in-product events like <code>COMMENT_MENTION</code>, never leaving Langfuse. Best for <strong>pulling people back to the scene</strong> (e.g. a comment @-mentioning you).</p></div>
 </div>
@@ -663,10 +666,10 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 <table class="t">
   <thead><tr><th>What this lesson reuses</th><th>From</th><th>Why</th></tr></thead>
   <tbody>
-    <tr><td><b>AES-256-GCM encryption</b></td><td>Lesson 39 encryption.ts</td><td>the bot token is the key to "post as you"; it must be ciphertext at rest, decrypted at use</td></tr>
+    <tr><td><b>AES-256-GCM encryption</b></td><td><a class="xref" href="39-playground-llm-connections.html">Lesson 39</a> encryption.ts</td><td>the bot token is the key to "post as you"; it must be ciphertext at rest, decrypted at use</td></tr>
     <tr><td><b>Singleton Service</b></td><td><code>SlackService.getInstance()</code></td><td>configure InstallProvider once and reuse, avoiding re-initializing the OAuth client</td></tr>
     <tr><td><b>Cursor pagination</b></td><td><code>getChannelsRecursive</code></td><td>listing channels uses Slack's cursor pagination, fetching them all no matter how many (for the config UI)</td></tr>
-    <tr><td><b>Automatic retry</b></td><td><code>WebClient retryConfig</code></td><td>on a transient Slack API blip the SDK auto-retries 3×, same idea as Lesson 44's webhook backoff</td></tr>
+    <tr><td><b>Automatic retry</b></td><td><code>WebClient retryConfig</code></td><td>on a transient Slack API blip the SDK auto-retries 3×, same idea as <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s webhook backoff</td></tr>
     <tr><td><b>BullMQ queue consumer</b></td><td><code>notificationQueue</code></td><td>in-app notifications go async, the same queue skeleton as ingestion/eval/webhook</td></tr>
   </tbody>
 </table>
@@ -676,25 +679,25 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why does Slack go through the heavy OAuth + encrypted-token flow, while a webhook just needs a URL?</strong> Because their <strong>trust models</strong> differ. A webhook is "I push data to your endpoint" — Langfuse is the <strong>initiator</strong>, needing no credentials from the other side, so a URL suffices (the cost: all the SSRF-defense burden lands on URL validation, see Lesson 44). Slack instead requires "post a message <strong>as you</strong>, in your workspace" — which needs Slack to grant a <strong>key that represents you</strong> (the bot token). Once holding that key, Langfuse can target channels precisely, render rich messages, even read the channel list; but a leaked key = someone can impersonate you posting in your workspace. So it must be <strong>encrypted at rest</strong>, reusing the same AES-256-GCM that safeguards LLM API keys in Lesson 39. <strong>The greater the capability, the stricter the safekeeping</strong>: a URL-only webhook holds none of your credentials, a token-holding Slack must be treated as top secret.<br><br>
-  <strong>Why decrypt the token from the DB on every send, instead of caching and reusing the WebClient?</strong> Because the token may <strong>expire at any time</strong>: the user uninstalled the app on the Slack side, reinstalled to a different workspace, or the token got rotated. Every send goes through <code>fetchInstallation</code> → <code>decrypt</code> to get the <strong>current</strong> token, guaranteeing you always use the freshest, most-valid credential — the same <strong>"fetch the latest state right at the moment of use"</strong> wisdom as Lesson 38's prompt cache "validate freshness on read" and Lesson 44's "validate the real IP at request time." Caching a long-lived client clutching a sensitive token saves a trivial cost, far outweighed by the risk of "using an expired/revoked credential."
+  <strong>Why does Slack go through the heavy OAuth + encrypted-token flow, while a webhook just needs a URL?</strong> Because their <strong>trust models</strong> differ. A webhook is "I push data to your endpoint" — Langfuse is the <strong>initiator</strong>, needing no credentials from the other side, so a URL suffices (the cost: all the SSRF-defense burden lands on URL validation, see <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>). Slack instead requires "post a message <strong>as you</strong>, in your workspace" — which needs Slack to grant a <strong>key that represents you</strong> (the bot token). Once holding that key, Langfuse can target channels precisely, render rich messages, even read the channel list; but a leaked key = someone can impersonate you posting in your workspace. So it must be <strong>encrypted at rest</strong>, reusing the same AES-256-GCM that safeguards LLM API keys in <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>. <strong>The greater the capability, the stricter the safekeeping</strong>: a URL-only webhook holds none of your credentials, a token-holding Slack must be treated as top secret.<br><br>
+  <strong>Why decrypt the token from the DB on every send, instead of caching and reusing the WebClient?</strong> Because the token may <strong>expire at any time</strong>: the user uninstalled the app on the Slack side, reinstalled to a different workspace, or the token got rotated. Every send goes through <code>fetchInstallation</code> → <code>decrypt</code> to get the <strong>current</strong> token, guaranteeing you always use the freshest, most-valid credential — the same <strong>"fetch the latest state right at the moment of use"</strong> wisdom as <a class="xref" href="38-prompt-serving-caching.html">Lesson 38</a>'s prompt cache "validate freshness on read" and <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s "validate the real IP at request time." Caching a long-lived client clutching a sensitive token saves a trivial cost, far outweighed by the risk of "using an expired/revoked credential."
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>Slack = a first-class delivery channel</strong>: versus Lesson 44's "naked webhook" (fill a URL, hurl JSON), Slack goes through a full OAuth install, encrypted token, channel-targeted delivery, Block Kit rich messages — a platform builds deep on integrations it truly values.</li>
-    <li><strong>OAuth install + encrypted at rest</strong>: <code>InstallProvider</code> (@slack/oauth) hosts authorization; <code>storeInstallation</code> <code>encrypt()</code>s the bot token then upserts into <code>SlackIntegration</code> (<code>projectId @unique</code>, one connection per project), reusing Lesson 39 AES-256-GCM.</li>
+    <li><strong>Slack = a first-class delivery channel</strong>: versus <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s "naked webhook" (fill a URL, hurl JSON), Slack goes through a full OAuth install, encrypted token, channel-targeted delivery, Block Kit rich messages — a platform builds deep on integrations it truly values.</li>
+    <li><strong>OAuth install + encrypted at rest</strong>: <code>InstallProvider</code> (@slack/oauth) hosts authorization; <code>storeInstallation</code> <code>encrypt()</code>s the bot token then upserts into <code>SlackIntegration</code> (<code>projectId @unique</code>, one connection per project), reusing <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a> AES-256-GCM.</li>
     <li><strong>Sending: decrypt → WebClient → postMessage</strong>: <code>getWebClientForProject</code> pulls the token via <code>fetchInstallation</code>+<code>decrypt</code>, builds a retrying (3×) WebClient; <code>sendMessage</code> calls <code>chat.postMessage</code>.</li>
     <li><strong>Block Kit rich messages</strong>: <code>buildMonitorAlertSlackMessage</code> tints by severity (ALERT red/WARNING amber/OK green), assembling title + body (md) + timestamp + "View in Langfuse" button — far more informative than plain-text notifications.</li>
     <li><strong>notificationQueue for in-app notifications</strong>: a separate BullMQ consumer dispatching by type (COMMENT_MENTION @-mentions you), extensible. webhook/Slack/in-app are parallel delivery channels.</li>
-    <li><strong>New feature = new combination of old capabilities</strong>: encryption (L39) + singleton + cursor pagination + retry + queue assemble a respectable Slack integration. The trust model sets the safekeeping strength: holding a token demands top-secret encryption; decrypt at use time to guard against stale credentials.</li>
+    <li><strong>New feature = new combination of old capabilities</strong>: encryption (<a class="xref" href="39-playground-llm-connections.html">L39</a>) + singleton + cursor pagination + retry + queue assemble a respectable Slack integration. The trust model sets the safekeeping strength: holding a token demands top-secret encryption; decrypt at use time to guard against stale credentials.</li>
   </ul>
 </div>
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. Both are 'notification delivery', yet Lesson 44's webhook just needs a URL, while the Slack integration goes through a full OAuth install and stores the bot token encrypted. Why does Slack need such a heavy flow?</div>
+  <div class="qn">1. Both are 'notification delivery', yet <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s webhook just needs a URL, while the Slack integration goes through a full OAuth install and stores the bot token encrypted. Why does Slack need such a heavy flow?</div>
   <ol class="opts">
     <li>different trust models: a webhook has Langfuse as initiator pushing data to your endpoint, needing none of your credentials (a URL suffices); Slack must 'post as you in your workspace', so Slack must grant a key representing you (bot token)—leaking it = someone can impersonate you, so it must be encrypted at rest</li>
     <li>OAuth is just cosmetic; a URL could do it technically</li>
@@ -703,20 +706,20 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. This embodies 'the greater the capability, the stricter the safekeeping'. A webhook is Langfuse actively pushing out, holding none of the peer's credentials, so risk concentrates on 'does the URL point somewhere dangerous' (SSRF, solved by URL validation in Lesson 44). Slack must obtain a bot token that 'represents you', wielding which it can post to your channels and read channel lists—a granted, impersonating power, so it must be encrypted at rest with AES-256-GCM like Lesson 39's LLM API key safekeeping. Each integration's 'heavy' or 'light' is set directly by its trust model.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. This embodies 'the greater the capability, the stricter the safekeeping'. A webhook is Langfuse actively pushing out, holding none of the peer's credentials, so risk concentrates on 'does the URL point somewhere dangerous' (SSRF, solved by URL validation in <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>). Slack must obtain a bot token that 'represents you', wielding which it can post to your channels and read channel lists—a granted, impersonating power, so it must be encrypted at rest with AES-256-GCM like <a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>'s LLM API key safekeeping. Each integration's 'heavy' or 'light' is set directly by its trust model.</div></div></div>
   </details>
 </div>
 <div class="quiz">
   <div class="qn">2. Each time Langfuse sends a Slack message, it re-fetches the encrypted token from the DB, decrypts it, and builds a WebClient, rather than caching a long-lived WebClient. The main benefit of this choice is?</div>
   <ol class="opts">
-    <li>guarantees always using the 'currently latest' token: the user may uninstall the app on Slack's side, reinstall to another workspace, or the token may be rotated—decrypting the latest token each time avoids using a stale credential, same as Lesson 38's prompt cache validating freshness on read and Lesson 44's checking the real IP at request time</li>
+    <li>guarantees always using the 'currently latest' token: the user may uninstall the app on Slack's side, reinstall to another workspace, or the token may be rotated—decrypting the latest token each time avoids using a stale credential, same as <a class="xref" href="38-prompt-serving-caching.html">Lesson 38</a>'s prompt cache validating freshness on read and <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s checking the real IP at request time</li>
     <li>decrypting is faster than caching</li>
     <li>to give the database more read load</li>
     <li>WebClient cannot be cached</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Caching a long-lived client clutching a sensitive token saves little, yet brings the real risk of 'using an expired/revoked credential': the token may invalidate via uninstall, reinstall, or rotation. Fetching the current token via fetchInstallation→decrypt each send always uses the freshest, most-valid credential. This is the same wisdom as Lesson 38's prompt 'validate-on-read whether it changed' and Lesson 44's 'check the real IP only at request time'—fetch the latest state right at the moment of use, not rely on a possibly-stale snapshot.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Caching a long-lived client clutching a sensitive token saves little, yet brings the real risk of 'using an expired/revoked credential': the token may invalidate via uninstall, reinstall, or rotation. Fetching the current token via fetchInstallation→decrypt each send always uses the freshest, most-valid credential. This is the same wisdom as <a class="xref" href="38-prompt-serving-caching.html">Lesson 38</a>'s prompt 'validate-on-read whether it changed' and <a class="xref" href="44-automations-webhooks.html">Lesson 44</a>'s 'check the real IP only at request time'—fetch the latest state right at the moment of use, not rely on a possibly-stale snapshot.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -735,7 +738,7 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 <div class="card spark">
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
-    <li>This lesson notes: L45 has almost no brand-new infrastructure but assembles parts accumulated earlier—encryption (L39), singleton, cursor pagination, auto-retry, BullMQ queue—into a respectable Slack integration. Recall your own projects: was there a 'seemingly new' feature that was actually a recombination of existing capabilities? What does recognizing such 'reusable skeletons' mean for an engineering team? And what problems can over-pursuing reuse bring (wrong abstractions, forced fits)?</li>
+    <li>This lesson notes: L45 has almost no brand-new infrastructure but assembles parts accumulated earlier—encryption (<a class="xref" href="39-playground-llm-connections.html">L39</a>), singleton, cursor pagination, auto-retry, BullMQ queue—into a respectable Slack integration. Recall your own projects: was there a 'seemingly new' feature that was actually a recombination of existing capabilities? What does recognizing such 'reusable skeletons' mean for an engineering team? And what problems can over-pursuing reuse bring (wrong abstractions, forced fits)?</li>
   </ul>
 </div>
 </div></div>

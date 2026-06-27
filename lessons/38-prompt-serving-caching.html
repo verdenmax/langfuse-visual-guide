@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -351,13 +354,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 上一课让你能<strong>安全地管</strong> prompt。但生产里有个现实问题：应用可能<strong>每一次 LLM 调用都要先取一次 prompt</strong>（「给我 production 那版」）。如果每次都去 Postgres 查一遍，既慢、又把数据库压垮。这一课讲 <strong>PromptService</strong> 怎么用 Redis 把 prompt 服务做得又快又稳，重点是两个机制：经典的 <strong>read-through 缓存</strong>，和一个极其优雅的<strong>「换命名空间，而非逐个删 key」</strong>的 epoch 失效策略。
-中间还会看到第 37 课依赖的「下半场」：被引用的子 prompt 在服务时会被<strong>解析内联</strong>成一个完整 prompt，而正是这个「一份 prompt 可能横跨多个名字」的事实，逼出了那个聪明的失效设计。
+中间还会看到<a class="xref" href="37-prompt-management.html">第 37 课</a>依赖的「下半场」：被引用的子 prompt 在服务时会被<strong>解析内联</strong>成一个完整 prompt，而正是这个「一份 prompt 可能横跨多个名字」的事实，逼出了那个聪明的失效设计。
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   prompt 服务像图书馆的<strong>热门书快取架</strong>。读者（应用）来借书（prompt），管理员先看<strong>快取架</strong>（Redis）上有没有：有就<strong>秒递</strong>，没有才跑去<strong>大书库</strong>（Postgres）取一本、顺手在快取架放一份，下个人就快了。
-  难题来了：一本书<strong>出了新版</strong>，怎么让大家别再借到旧版？满架去翻、把旧版一本本抽走<strong>太难了</strong>——何况一本书里还可能<strong>夹着别本书的章节</strong>（第 37 课的依赖），牵一发动全身。图书馆的妙招是：给整个快取架挂一块<strong>新的「版本号牌」</strong>。旧号牌下的书<strong>没人再认</strong>（按规则只认当前号牌），它们不必清理、放着自然过期就行；而所有新借的，都从<strong>挂着新号牌的货架</strong>走。<strong>换块牌子，比逐本抽书，快太多也稳太多。</strong>
+  难题来了：一本书<strong>出了新版</strong>，怎么让大家别再借到旧版？满架去翻、把旧版一本本抽走<strong>太难了</strong>——何况一本书里还可能<strong>夹着别本书的章节</strong>（<a class="xref" href="37-prompt-management.html">第 37 课</a>的依赖），牵一发动全身。图书馆的妙招是：给整个快取架挂一块<strong>新的「版本号牌」</strong>。旧号牌下的书<strong>没人再认</strong>（按规则只认当前号牌），它们不必清理、放着自然过期就行；而所有新借的，都从<strong>挂着新号牌的货架</strong>走。<strong>换块牌子，比逐本抽书，快太多也稳太多。</strong>
 </div>
 
 
@@ -407,7 +410,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>解析：把依赖内联成一个完整 prompt</h2>
-<p>第 37 课说 prompt 能引用别的 prompt。但应用最终拿到的，得是一个<strong>完整、自包含</strong>的 prompt——不能让运行时还去现凑那些被引用的片段。所以服务时有一步<strong>解析（resolve）</strong>：<code>buildAndResolvePromptGraph</code> 沿着依赖图把每个被引用的子 prompt 找出来、<strong>内联</strong>进父 prompt，得到一个「展开后」的成品。两道安全闸不可少：<strong>嵌套深度上限</strong>（<code>MAX_PROMPT_NESTING_DEPTH</code>）和<strong>环检测</strong>（<code>seen</code> 集合），防止 A 依赖 B、B 又依赖 A 把服务拖死。</p>
+<p><a class="xref" href="37-prompt-management.html">第 37 课</a>说 prompt 能引用别的 prompt。但应用最终拿到的，得是一个<strong>完整、自包含</strong>的 prompt——不能让运行时还去现凑那些被引用的片段。所以服务时有一步<strong>解析（resolve）</strong>：<code>buildAndResolvePromptGraph</code> 沿着依赖图把每个被引用的子 prompt 找出来、<strong>内联</strong>进父 prompt，得到一个「展开后」的成品。两道安全闸不可少：<strong>嵌套深度上限</strong>（<code>MAX_PROMPT_NESTING_DEPTH</code>）和<strong>环检测</strong>（<code>seen</code> 集合），防止 A 依赖 B、B 又依赖 A 把服务拖死。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 195" role="img" aria-label="prompt 依赖解析：父 prompt 引用两个子 prompt，buildAndResolvePromptGraph 沿依赖图把子 prompt 内联进父，得到展开后的完整 prompt；过程有嵌套深度上限和 seen 环检测两道闸；缓存与返回的都是这个 resolved 成品">
@@ -419,7 +422,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
   <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">关键事实：一个 resolved prompt 可能横跨好几个 prompt 名字——这正是下一节失效设计要项目级的根因</text>
 </svg>
-<div class="figcap"><b>解析 = 把组合展开成成品</b>：<code>buildAndResolvePromptGraph</code> 沿第 37 课的依赖图把子 prompt 内联进父，得到 <code>resolvedPrompt</code>；<code>MAX_PROMPT_NESTING_DEPTH</code> 限深、<code>seen</code> 集合防环。<strong>缓存与返回的都是这个展开后的成品</strong>。源码：<code>PromptService/index.ts:132-144,218+</code>。</div>
+<div class="figcap"><b>解析 = 把组合展开成成品</b>：<code>buildAndResolvePromptGraph</code> 沿<a class="xref" href="37-prompt-management.html">第 37 课</a>的依赖图把子 prompt 内联进父，得到 <code>resolvedPrompt</code>；<code>MAX_PROMPT_NESTING_DEPTH</code> 限深、<code>seen</code> 集合防环。<strong>缓存与返回的都是这个展开后的成品</strong>。源码：<code>PromptService/index.ts:132-144,218+</code>。</div>
 </div>
 
 <div class="codefile">
@@ -484,7 +487,7 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么用「转 epoch」失效，而不是老老实实把旧 key 删掉？</strong> 因为<strong>精确删除在这里几乎不可行</strong>。一个被服务的 prompt 是<strong>解析后的成品</strong>，可能内联了好几个别的 prompt（第 37 课依赖）。当你改动其中任意一个 child，所有<strong>间接依赖它的 resolved 成品</strong>都该失效——但你很难反查「到底哪些 key 受了牵连」，更别说它们还散落在不同名字下。「逐个找出来删」既慢又容易漏，漏一个就意味着<strong>有人读到了陈旧的 prompt</strong>。转 epoch 把这个难题一刀斩断：<strong>不去找、不去删，直接换一片新命名空间</strong>，旧的全部作废、自然过期。失效从此是 O(1) 的、绝不漏的。代价是旧 key 过期前的一点内存浪费——这是教科书级的「<strong>用空间换正确性与简单性</strong>」。<br><br>
+  <strong>为什么用「转 epoch」失效，而不是老老实实把旧 key 删掉？</strong> 因为<strong>精确删除在这里几乎不可行</strong>。一个被服务的 prompt 是<strong>解析后的成品</strong>，可能内联了好几个别的 prompt（<a class="xref" href="37-prompt-management.html">第 37 课</a>依赖）。当你改动其中任意一个 child，所有<strong>间接依赖它的 resolved 成品</strong>都该失效——但你很难反查「到底哪些 key 受了牵连」，更别说它们还散落在不同名字下。「逐个找出来删」既慢又容易漏，漏一个就意味着<strong>有人读到了陈旧的 prompt</strong>。转 epoch 把这个难题一刀斩断：<strong>不去找、不去删，直接换一片新命名空间</strong>，旧的全部作废、自然过期。失效从此是 O(1) 的、绝不漏的。代价是旧 key 过期前的一点内存浪费——这是教科书级的「<strong>用空间换正确性与简单性</strong>」。<br><br>
   <strong>为什么 epoch 是「项目级」而不是「prompt 级」？</strong> 正是上面那个原因的直接推论。如果 epoch 按单个 prompt 名字隔离，那改 child prompt 时，你又得去想「哪些 parent 依赖了它、要不要也转它们的 epoch」——依赖追踪的难题原地复活。把 epoch 放在<strong>项目这个粒度</strong>，意味着「这个项目里任何一个 prompt 有变动，整个项目的 prompt 缓存就翻篇」。粒度粗了点、偶尔会多失效一些本可保留的缓存，但换来的是<strong>彻底不必追踪依赖关系</strong>的确定性。在「失效少一点」和「永不读到陈旧数据」之间，它果断选了后者——对 prompt 这种<strong>正确性远比缓存命中率重要</strong>的数据，这个取舍无比正确。
 </div>
 
@@ -523,7 +526,7 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。服务的 prompt 是解析后的成品，可能内联多个 child（第37课）。改一个 child，所有间接依赖它的 resolved 成品都该失效，但你很难反查受影响的 key、它们还散落在不同名字下，逐个删既慢又漏。invalidateCache 只对项目级 epoch 键 SET 新令牌，缓存 key 含该 epoch，于是旧 key 全部失联、按 TTL 自然过期。用一点内存浪费换失效的简单与正确。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。服务的 prompt 是解析后的成品，可能内联多个 child（<a class="xref" href="37-prompt-management.html">第37课</a>）。改一个 child，所有间接依赖它的 resolved 成品都该失效，但你很难反查受影响的 key、它们还散落在不同名字下，逐个删既慢又漏。invalidateCache 只对项目级 epoch 键 SET 新令牌，缓存 key 含该 epoch，于是旧 key 全部失联、按 TTL 自然过期。用一点内存浪费换失效的简单与正确。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -549,13 +552,13 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   <div class="lang-en">
 <p class="lead">
 The last lesson let you <strong>manage</strong> prompts safely. But production has a real problem: an app may <strong>fetch a prompt before every single LLM call</strong> ("give me the production one"). Hitting Postgres each time is slow and crushes the database. This lesson is about how <strong>PromptService</strong> uses Redis to make prompt serving fast and steady, focusing on two mechanisms: the classic <strong>read-through cache</strong>, and an exceptionally elegant <strong>"swap the namespace, don't delete keys one by one"</strong> epoch invalidation strategy.
-Along the way we'll see Lesson 37's dependencies' "second half": referenced child prompts are <strong>resolved and inlined</strong> into one complete prompt at serving time—and it's precisely this fact, "one prompt may span multiple names", that forces the clever invalidation design.
+Along the way we'll see <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s dependencies' "second half": referenced child prompts are <strong>resolved and inlined</strong> into one complete prompt at serving time—and it's precisely this fact, "one prompt may span multiple names", that forces the clever invalidation design.
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   Prompt serving is like a library's <strong>popular-books fast-access shelf</strong>. A reader (the app) comes to borrow a book (prompt); the librarian first checks the <strong>fast shelf</strong> (Redis): if it's there, <strong>hand it over instantly</strong>; if not, run to the <strong>main stacks</strong> (Postgres) to fetch one and drop a copy on the fast shelf, so the next person is quick.
-  Then the hard part: a book gets a <strong>new edition</strong>—how do you stop everyone from still borrowing the old one? Combing the whole shelf to pull old editions one by one is <strong>too hard</strong>—besides, one book may have <strong>chapters of other books tucked inside</strong> (Lesson 37's dependencies), so one change ripples everywhere. The library's trick: hang a <strong>new "edition tag"</strong> on the entire fast shelf. Books under the old tag are <strong>no longer recognized</strong> (the rule only honors the current tag); they needn't be cleaned, just left to expire; and every new borrow goes through the <strong>shelf with the new tag</strong>. <strong>Swapping a tag is far faster and steadier than pulling books one by one.</strong>
+  Then the hard part: a book gets a <strong>new edition</strong>—how do you stop everyone from still borrowing the old one? Combing the whole shelf to pull old editions one by one is <strong>too hard</strong>—besides, one book may have <strong>chapters of other books tucked inside</strong> (<a class="xref" href="37-prompt-management.html">Lesson 37</a>'s dependencies), so one change ripples everywhere. The library's trick: hang a <strong>new "edition tag"</strong> on the entire fast shelf. Books under the old tag are <strong>no longer recognized</strong> (the rule only honors the current tag); they needn't be cleaned, just left to expire; and every new borrow goes through the <strong>shelf with the new tag</strong>. <strong>Swapping a tag is far faster and steadier than pulling books one by one.</strong>
 </div>
 
 
@@ -605,7 +608,7 @@ Along the way we'll see Lesson 37's dependencies' "second half": referenced chil
 
 
 <h2>Resolution: inline dependencies into one complete prompt</h2>
-<p>Lesson 37 said prompts can reference other prompts. But what the app ultimately gets must be a <strong>complete, self-contained</strong> prompt—the runtime can't be left to assemble the referenced snippets on the fly. So serving includes a <strong>resolve</strong> step: <code>buildAndResolvePromptGraph</code> walks the dependency graph, finds each referenced child, and <strong>inlines</strong> it into the parent, producing an "expanded" finished product. Two safety gates are essential: a <strong>nesting depth cap</strong> (<code>MAX_PROMPT_NESTING_DEPTH</code>) and <strong>cycle detection</strong> (a <code>seen</code> set), preventing A-depends-on-B-depends-on-A from hanging the service.</p>
+<p><a class="xref" href="37-prompt-management.html">Lesson 37</a> said prompts can reference other prompts. But what the app ultimately gets must be a <strong>complete, self-contained</strong> prompt—the runtime can't be left to assemble the referenced snippets on the fly. So serving includes a <strong>resolve</strong> step: <code>buildAndResolvePromptGraph</code> walks the dependency graph, finds each referenced child, and <strong>inlines</strong> it into the parent, producing an "expanded" finished product. Two safety gates are essential: a <strong>nesting depth cap</strong> (<code>MAX_PROMPT_NESTING_DEPTH</code>) and <strong>cycle detection</strong> (a <code>seen</code> set), preventing A-depends-on-B-depends-on-A from hanging the service.</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 195" role="img" aria-label="Prompt dependency resolution: a parent prompt references two children, buildAndResolvePromptGraph walks the graph and inlines the children into the parent, producing an expanded complete prompt; the process has a nesting depth cap and a seen cycle check; what is cached and returned is this resolved product">
@@ -617,7 +620,7 @@ Along the way we'll see Lesson 37's dependencies' "second half": referenced chil
   <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
   <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">key fact: a resolved prompt may span several prompt names—the very reason the next section's invalidation is project-scoped</text>
 </svg>
-<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,218+</code>.</div>
+<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,218+</code>.</div>
 </div>
 
 <div class="codefile">
@@ -682,7 +685,7 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why invalidate by "rotating the epoch" rather than dutifully deleting the old keys?</strong> Because <strong>precise deletion is nearly infeasible here</strong>. A served prompt is a <strong>resolved product</strong> that may inline several other prompts (Lesson 37 dependencies). When you change any one child, all <strong>resolved products that indirectly depend on it</strong> should be invalidated—but you can barely reverse-lookup "which keys are affected", let alone the fact that they're scattered across different names. "Find them one by one and delete" is slow and miss-prone, and one miss means <strong>someone reads a stale prompt</strong>. Rotating the epoch cuts the knot: <strong>don't search, don't delete, just swap to a fresh namespace</strong>; the old ones are all voided and expire naturally. Invalidation is now O(1) and never misses. The cost is a little wasted memory before old keys expire—a textbook "<strong>trade space for correctness and simplicity</strong>".<br><br>
+  <strong>Why invalidate by "rotating the epoch" rather than dutifully deleting the old keys?</strong> Because <strong>precise deletion is nearly infeasible here</strong>. A served prompt is a <strong>resolved product</strong> that may inline several other prompts (<a class="xref" href="37-prompt-management.html">Lesson 37</a> dependencies). When you change any one child, all <strong>resolved products that indirectly depend on it</strong> should be invalidated—but you can barely reverse-lookup "which keys are affected", let alone the fact that they're scattered across different names. "Find them one by one and delete" is slow and miss-prone, and one miss means <strong>someone reads a stale prompt</strong>. Rotating the epoch cuts the knot: <strong>don't search, don't delete, just swap to a fresh namespace</strong>; the old ones are all voided and expire naturally. Invalidation is now O(1) and never misses. The cost is a little wasted memory before old keys expire—a textbook "<strong>trade space for correctness and simplicity</strong>".<br><br>
   <strong>Why is the epoch "project-scoped" rather than "prompt-scoped"?</strong> A direct corollary of the above. If the epoch were isolated per prompt name, then on changing a child prompt you'd again have to figure out "which parents depend on it, and should I rotate their epochs too"—the dependency-tracking problem reborn. Putting the epoch at <strong>project granularity</strong> means "any prompt change in this project turns the page on the whole project's prompt cache". A bit coarse—occasionally invalidating caches that could have been kept—but it buys the certainty of <strong>never needing to track dependencies at all</strong>. Between "invalidate a little less" and "never read stale data", it firmly chooses the latter—exactly right for prompts, where <strong>correctness matters far more than cache hit rate</strong>.
 </div>
 
@@ -721,7 +724,7 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A served prompt is a resolved product that may inline several children (L37). Changing one child should invalidate all resolved products indirectly depending on it, but you can barely reverse-lookup the affected keys, scattered across names—deleting one by one is slow and miss-prone. invalidateCache just SETs a new token on the project-scoped epoch key; cache keys embed that epoch, so old keys are all orphaned and expire by TTL. Trade a little wasted memory for simple, correct invalidation.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. A served prompt is a resolved product that may inline several children (<a class="xref" href="37-prompt-management.html">L37</a>). Changing one child should invalidate all resolved products indirectly depending on it, but you can barely reverse-lookup the affected keys, scattered across names—deleting one by one is slow and miss-prone. invalidateCache just SETs a new token on the project-scoped epoch key; cache keys embed that epoch, so old keys are all orphaned and expire by TTL. Trade a little wasted memory for simple, correct invalidation.</div></div></div>
   </details>
 </div>
 <div class="quiz">

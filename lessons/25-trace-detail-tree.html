@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,7 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 24 课是<strong>列表</strong>——给几千条 trace 各取一行紧凑数据、把昂贵的都推迟。这一课是它的<strong>反面</strong>：<strong>详情页</strong>。点开一条 trace，你要看的是<strong>整棵观测树 + 所有评分</strong>——
+<a class="xref" href="24-lists-and-tables.html">第 24 课</a>是<strong>列表</strong>——给几千条 trace 各取一行紧凑数据、把昂贵的都推迟。这一课是它的<strong>反面</strong>：<strong>详情页</strong>。点开一条 trace，你要看的是<strong>整棵观测树 + 所有评分</strong>——
 一次<strong>全量取</strong>。为什么敢全取？因为「一条 trace」本身是<strong>有界</strong>的（不是几千条的列表）。但树里每个观测的 input/output 可能<strong>巨大</strong>，所以详情依然有纪律：
 树查询<strong>不带 IO</strong>（点开某节点才懒加载），再用一个 <code>verbosity</code> 旋钮给 trace 自身的 IO 封顶。<strong>同一套「限制无界维度」的功夫，换了个尺度施展。</strong>
 </p>
@@ -364,7 +367,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>一次取全树，但树上不挂 IO</h2>
-<p>详情页的主查询是 <code>byIdWithObservationsAndScores</code>。它跑在 <code>protectedGetTraceProcedure</code> 上——这道门（第 21 课）已经<strong>预取了 trace 本体并校验过访问权</strong>（还允许公开分享的 trace）。
+<p>详情页的主查询是 <code>byIdWithObservationsAndScores</code>。它跑在 <code>protectedGetTraceProcedure</code> 上——这道门（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）已经<strong>预取了 trace 本体并校验过访问权</strong>（还允许公开分享的 trace）。
 然后它<strong>并行</strong>取两样：整棵<strong>观测树</strong>和这条 trace 的<strong>全部评分</strong>：</p>
 
 <div class="fig">
@@ -460,7 +463,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <p>把第 24、25 两课摆在一起，「同一套纪律、两个尺度」就一目了然了——<strong>无论列表还是详情，都先圈定有界的维度、把无界的维度往后推</strong>：</p>
 
 <table class="t">
-  <tr><th></th><th>列表（第 24 课）</th><th>详情（本课）</th></tr>
+  <tr><th></th><th>列表（<a class="xref" href="24-lists-and-tables.html">第 24 课</a>）</th><th>详情（本课）</th></tr>
   <tr><td><b>有界的，先取</b></td><td>几千条 trace 的<strong>紧凑行</strong>（每条 ~12 列）</td><td>一条 trace 的<strong>整棵观测树</strong>（结构+时序）</td></tr>
   <tr><td><b>无界的，缓取</b></td><td>成本/延迟/评分<strong>指标</strong>（要 JOIN）→ 并行后到</td><td>每个观测的 <strong>IO</strong>（可能巨大）→ 点开懒加载</td></tr>
   <tr><td><b>封顶手段</b></td><td>分页、回看时间窗、按需 FINAL/JOIN</td><td>树查询不带 IO、<code>verbosity</code> 截断 trace 自身 IO</td></tr>
@@ -481,7 +484,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>并行</strong>取观测树 + 评分；<code>partition</code> 出 CORRECTION 类分数；从观测起止<strong>派生 latency</strong>。</li>
     <li><strong>树不带 IO</strong>（<code>includeIO:false</code>，观测 input/output 置空）——点开某节点才<strong>懒加载</strong>它的 IO，避免一次拉几百个观测的巨型内容、让超大 trace 详情也能秒开。</li>
     <li><code>verbosity</code>（<code>compact / truncated / full</code>）在<strong>服务端</strong>给 trace 自身 IO 定档/截断，防超大 trace 撑爆响应。另有 <code>getAgentGraphData</code> 供 agent 图视图。</li>
-    <li>与第 24 课「同一纪律、两个尺度」：<strong>先取有界维度（列表=紧凑行 / 详情=树结构），推迟无界维度（列表=指标 / 详情=观测 IO）</strong>——只急着取你扛得住的那部分。</li>
+    <li>与<a class="xref" href="24-lists-and-tables.html">第 24 课</a>「同一纪律、两个尺度」：<strong>先取有界维度（列表=紧凑行 / 详情=树结构），推迟无界维度（列表=指标 / 详情=观测 IO）</strong>——只急着取你扛得住的那部分。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -500,7 +503,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. 第 24 课列表「极力推迟」、第 25 课详情「一次取全树」，看似相反。它们其实遵循同一条原则，是哪条？</div>
+  <div class="qn">2. <a class="xref" href="24-lists-and-tables.html">第 24 课</a>列表「极力推迟」、第 25 课详情「一次取全树」，看似相反。它们其实遵循同一条原则，是哪条？</div>
   <ol class="opts">
     <li>列表用 ClickHouse、详情用 Postgres</li>
     <li>先取有界的维度、推迟无界的维度：列表面对无界行数→连稍贵的列都推迟；详情面对一条 trace（观测数有界）→结构取全，但树内单个观测 IO 仍是无界维度→懒加载。只急着取你扛得住的那部分</li>
@@ -534,7 +537,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 24 was the <strong>list</strong> — fetch one compact row each for thousands of traces, defer everything expensive. This lesson is its <strong>opposite</strong>:
+<a class="xref" href="24-lists-and-tables.html">Lesson 24</a> was the <strong>list</strong> — fetch one compact row each for thousands of traces, defer everything expensive. This lesson is its <strong>opposite</strong>:
 the <strong>detail page</strong>. Open one trace and you want the <strong>whole observation tree + all scores</strong> — one <strong>full fetch</strong>. Why dare to fetch
 it all? Because "one trace" is <strong>bounded</strong> (not a list of thousands). But each observation's input/output in the tree could be <strong>huge</strong>, so the
 detail still has discipline: the tree query carries <strong>no IO</strong> (lazy-loaded per node when you expand it), with a <code>verbosity</code> knob capping the
@@ -552,7 +555,7 @@ trace's own IO. <strong>The same "bound the unbounded dimension" craft, applied 
 
 
 <h2>Fetch the whole tree at once, but hang no IO on it</h2>
-<p>The detail page's main query is <code>byIdWithObservationsAndScores</code>. It runs on <code>protectedGetTraceProcedure</code> — that door (Lesson 21) has already
+<p>The detail page's main query is <code>byIdWithObservationsAndScores</code>. It runs on <code>protectedGetTraceProcedure</code> — that door (<a class="xref" href="21-trpc-backbone.html">Lesson 21</a>) has already
 <strong>prefetched the trace itself and verified access</strong> (allowing publicly shared traces too). It then fetches two things <strong>in parallel</strong>: the
 whole <strong>observation tree</strong> and all of this trace's <strong>scores</strong>:</p>
 
@@ -655,7 +658,7 @@ parameter.</p>
 unbounded one</strong>:</p>
 
 <table class="t">
-  <tr><th></th><th>list (Lesson 24)</th><th>detail (this lesson)</th></tr>
+  <tr><th></th><th>list (<a class="xref" href="24-lists-and-tables.html">Lesson 24</a>)</th><th>detail (this lesson)</th></tr>
   <tr><td><b>bounded — fetch first</b></td><td>thousands of traces' <strong>compact rows</strong> (~12 cols each)</td><td>one trace's <strong>whole observation tree</strong> (structure+timing)</td></tr>
   <tr><td><b>unbounded — defer</b></td><td>cost/latency/score <strong>metrics</strong> (need JOINs) → parallel, later</td><td>each observation's <strong>IO</strong> (possibly huge) → lazy-load on click</td></tr>
   <tr><td><b>capping means</b></td><td>pagination, look-back windows, conditional FINAL/JOIN</td><td>tree query without IO, <code>verbosity</code> truncating the trace's own IO</td></tr>
@@ -679,7 +682,7 @@ unbounded one</strong>:</p>
     <li><strong>Parallel</strong> fetch of the observation tree + scores; <code>partition</code> out CORRECTION-type scores; <strong>derive latency</strong> from observation start/end.</li>
     <li><strong>Tree without IO</strong> (<code>includeIO:false</code>, observation input/output stripped) — opening a node <strong>lazy-loads</strong> its IO, avoiding pulling hundreds of observations' huge content at once.</li>
     <li><code>verbosity</code> (<code>compact / truncated / full</code>) tiers/truncates the trace's own IO <strong>server-side</strong>, preventing huge traces from blowing up the response. Plus <code>getAgentGraphData</code> for the agent graph view.</li>
-    <li>With Lesson 24, "one discipline, two scales": <strong>fetch the bounded dimension first (list=compact rows / detail=tree structure), defer the unbounded one (list=metrics / detail=observation IO)</strong> — only rush to fetch the part you can bear.</li>
+    <li>With <a class="xref" href="24-lists-and-tables.html">Lesson 24</a>, "one discipline, two scales": <strong>fetch the bounded dimension first (list=compact rows / detail=tree structure), defer the unbounded one (list=metrics / detail=observation IO)</strong> — only rush to fetch the part you can bear.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -698,7 +701,7 @@ unbounded one</strong>:</p>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Lesson 24's list 'defers aggressively' while Lesson 25's detail 'fetches the whole tree' — seemingly opposite. What single principle do they share?</div>
+  <div class="qn">2. <a class="xref" href="24-lists-and-tables.html">Lesson 24</a>'s list 'defers aggressively' while Lesson 25's detail 'fetches the whole tree' — seemingly opposite. What single principle do they share?</div>
   <ol class="opts">
     <li>list uses ClickHouse, detail uses Postgres</li>
     <li>fetch the bounded dimension first, defer the unbounded one: the list faces unbounded rows → defer even slightly pricey columns; the detail faces one trace (bounded observation count) → fetch structure in full, but a single observation's IO is still an unbounded dimension within → lazy-load. Only rush to fetch the part you can bear</li>

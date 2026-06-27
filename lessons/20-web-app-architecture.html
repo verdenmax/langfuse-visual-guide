@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -370,8 +373,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">纵向功能模块（数十个）</span></div><div class="ld">按业务功能切分的「竖切片」：traces、search-bar、public-api、batch-exports… 每个功能把自己的页面、组件、server 逻辑收在一处。Langfuse 绝大多数代码住在这里。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">共享 UI</span></div><div class="ld">跨功能复用的通用组件，最重要的是 <code>components/table/</code> 那套表格系统（第 24 课）——列表、过滤、分页、列控制、行选择全靠它，是整个后台界面的骨架。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">鉴权 + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> 是 tRPC 的根与中间件、procedure 定义（第 21 课）；<code>server/auth.ts</code> 是 NextAuth 会话。这是「员工通道」的安检处。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">共享 UI</span></div><div class="ld">跨功能复用的通用组件，最重要的是 <code>components/table/</code> 那套表格系统（<a class="xref" href="24-lists-and-tables.html">第 24 课</a>）——列表、过滤、分页、列控制、行选择全靠它，是整个后台界面的骨架。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">鉴权 + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> 是 tRPC 的根与中间件、procedure 定义（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）；<code>server/auth.ts</code> 是 NextAuth 会话。这是「员工通道」的安检处。</div></div>
   <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">路由</span></div><div class="ld"><code>pages/</code> 是主干（UI 页面 + API 路由），<code>app/</code> 仅 4 个文件兜特殊语义。还有 <code>hooks/</code>、<code>ee/</code>（企业版）等。</div></div>
 </div>
 
@@ -394,11 +397,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">三种 API 入口</span></div>
   <pre class="code"><span class="cm">// ① tRPC：UI 的类型安全后端，一个文件接住全部 ~64 个路由</span>
-web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter（第 21 课）</span>
+web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）</span>
 
 <span class="cm">// ② 公共 REST：给 SDK 的稳定接口，按资源 + 版本分文件夹</span>
 web/src/pages/api/public/traces/index.ts
-web/src/pages/api/public/v2/scores/…    <span class="cm">// 文件夹即版本（第 27 课）</span>
+web/src/pages/api/public/v2/scores/…    <span class="cm">// 文件夹即版本（<a class="xref" href="27-public-rest-api.html">第 27 课</a>）</span>
 
 <span class="cm">// ③ App Router：只有 4 个文件，专给需要原始 Request/流式/webhook 的端点</span>
 web/src/app/api/billing/stripe-webhook/route.ts
@@ -428,7 +431,7 @@ web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流
 <table class="t">
   <tr><th>这道门</th><th>给谁用</th><th>在哪</th><th>为什么</th></tr>
   <tr><td><b>tRPC</b></td><td>自家 UI（React）</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>类型从后端贯穿到前端，改一处全链路报错；内部接口无需对外稳定</td></tr>
-  <tr><td><b>公共 REST</b></td><td>外部 SDK / 用户脚本</td><td><code>pages/api/public/**</code></td><td>对外契约要<strong>稳定、带版本</strong>，由 Fern 生成多语言 SDK（第 27 课）</td></tr>
+  <tr><td><b>公共 REST</b></td><td>外部 SDK / 用户脚本</td><td><code>pages/api/public/**</code></td><td>对外契约要<strong>稳定、带版本</strong>，由 Fern 生成多语言 SDK（<a class="xref" href="27-public-rest-api.html">第 27 课</a>）</td></tr>
   <tr><td><b>特殊语义（App Router + SSE）</b></td><td>webhook 源 · 流式仪表盘</td><td>App Router <code>app/api/**</code>（webhook 等）+ Pages Router 的流式 SSE 端点</td><td>需要原始 <code>Request</code>、<code>text/event-stream</code> 等普通 Pages Router 路由不顺手的语义</td></tr>
 </table>
 
@@ -475,10 +478,10 @@ web/src/pages/api/dashboard/execute-query-stream.ts  <span class="cm">// SSE 流
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>入口（tRPC 或 REST）</h4><p>UI 发 tRPC 调用、SDK 发 REST 请求；各自的入口先做<strong>鉴权</strong>，确认你能读这个 project（第 21、27 课）。</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>过滤与查询构建</h4><p>把 UI 的 <code>FilterState</code>（或 SDK 的查询参数）<strong>编译成参数化 SQL</strong>，并带上强制的 project_id 与时间窗（第 23 课）。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>仓储层执行</h4><p>经过统一的 ClickHouse 执行器：打 OTel span、贴查询 tag、失败退避重试、把资源错误翻成友好提示（第 22 课）。</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>过滤与查询构建</h4><p>把 UI 的 <code>FilterState</code>（或 SDK 的查询参数）<strong>编译成参数化 SQL</strong>，并带上强制的 project_id 与时间窗（<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>仓储层执行</h4><p>经过统一的 ClickHouse 执行器：打 OTel span、贴查询 tag、失败退避重试、把资源错误翻成友好提示（<a class="xref" href="22-repository-layer.html">第 22 课</a>）。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>读模型塑形</h4><p>列表走「紧凑行 + 懒加载指标」的双查询，详情走「整棵观测树」的全量取——按场景选不同读模型（第 24、25 课）。</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>返回 + 前端渲染</h4><p>结果回到 UI，表格系统用 URL 状态、列预设、行选择把它<strong>快速且可分享地</strong>渲染出来（第 24 课）。</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>返回 + 前端渲染</h4><p>结果回到 UI，表格系统用 URL 状态、列预设、行选择把它<strong>快速且可分享地</strong>渲染出来（<a class="xref" href="24-lists-and-tables.html">第 24 课</a>）。</p></div></div>
 </div>
 
 
@@ -575,8 +578,8 @@ routes), plus a small <code>app/</code> (App Router). And the external interface
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">features/</span><span class="name">vertical feature modules (dozens)</span></div><div class="ld">"Vertical slices" cut by business feature: traces, search-bar, public-api, batch-exports… each gathers its own pages, components, and server logic in one place. Most Langfuse code lives here.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (Lesson 24) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (Lesson 21); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">components/</span><span class="name">shared UI</span></div><div class="ld">Cross-feature reusable components, most importantly <code>components/table/</code> (<a class="xref" href="24-lists-and-tables.html">Lesson 24</a>) — lists, filtering, pagination, column control, row selection, the skeleton of the whole back-office UI.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">server/</span><span class="name">auth + tRPC</span></div><div class="ld"><code>server/api/{root,trpc}.ts</code> is the tRPC root, middleware, and procedure definitions (<a class="xref" href="21-trpc-backbone.html">Lesson 21</a>); <code>server/auth.ts</code> is the NextAuth session. The "staff entrance" security check.</div></div>
   <div class="layer l-app"><div class="lh"><span class="badge">pages/ · app/</span><span class="name">routing</span></div><div class="ld"><code>pages/</code> is the trunk (UI pages + API routes), <code>app/</code> is just 4 files for special semantics. Plus <code>hooks/</code>, <code>ee/</code> (enterprise), etc.</div></div>
 </div>
 
@@ -602,11 +605,11 @@ precisely at a <code>features/</code> subfolder.</p>
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
   <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~64 routers</span>
-web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (Lesson 21)</span>
+web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (<a class="xref" href="21-trpc-backbone.html">Lesson 21</a>)</span>
 
 <span class="cm">// ② public REST: the stable interface for SDKs, by resource + version folder</span>
 web/src/pages/api/public/traces/index.ts
-web/src/pages/api/public/v2/scores/…    <span class="cm">// folder = version (Lesson 27)</span>
+web/src/pages/api/public/v2/scores/…    <span class="cm">// folder = version (<a class="xref" href="27-public-rest-api.html">Lesson 27</a>)</span>
 
 <span class="cm">// ③ App Router: only 4 files, for endpoints needing raw Request/streaming/webhook</span>
 web/src/app/api/billing/stripe-webhook/route.ts
@@ -636,7 +639,7 @@ the App Router has all of <strong>4 files</strong>. This isn't being behind the 
 <table class="t">
   <tr><th>this door</th><th>for whom</th><th>where</th><th>why</th></tr>
   <tr><td><b>tRPC</b></td><td>own UI (React)</td><td><code>pages/api/trpc/[trpc].ts</code></td><td>types flow backend → frontend, change one spot and the whole chain errors; internal API needn't be externally stable</td></tr>
-  <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (Lesson 27)</td></tr>
+  <tr><td><b>public REST</b></td><td>external SDK / user scripts</td><td><code>pages/api/public/**</code></td><td>the external contract must be <strong>stable, versioned</strong>, with Fern generating multi-language SDKs (<a class="xref" href="27-public-rest-api.html">Lesson 27</a>)</td></tr>
   <tr><td><b>special semantics (App Router + SSE)</b></td><td>webhook sources · streaming dashboards</td><td>App Router <code>app/api/**</code> (webhooks etc.) + a Pages-Router streaming SSE endpoint</td><td>needs raw <code>Request</code>, <code>text/event-stream</code>, etc. — semantics a plain Pages-Router route handles awkwardly</td></tr>
 </table>
 
@@ -685,10 +688,10 @@ other. This is the master plan of Part 4's read path.</p>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>entry (tRPC or REST)</h4><p>The UI fires a tRPC call, the SDK a REST request; each entry first does <strong>auth</strong>, confirming you can read this project (Lessons 21, 27).</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>filter &amp; query build</h4><p>The UI's <code>FilterState</code> (or SDK query params) is <strong>compiled into parameterized SQL</strong>, with the mandatory project_id and time window (Lesson 23).</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>repository executes</h4><p>Through a unified ClickHouse executor: OTel span, query tags, backoff retry on failure, resource errors turned into friendly messages (Lesson 22).</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>filter &amp; query build</h4><p>The UI's <code>FilterState</code> (or SDK query params) is <strong>compiled into parameterized SQL</strong>, with the mandatory project_id and time window (<a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>repository executes</h4><p>Through a unified ClickHouse executor: OTel span, query tags, backoff retry on failure, resource errors turned into friendly messages (<a class="xref" href="22-repository-layer.html">Lesson 22</a>).</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>read-model shaping</h4><p>Lists use a "compact rows + lazy metrics" dual query; details fetch the "whole observation tree" — different read models per scenario (Lessons 24, 25).</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>return + frontend render</h4><p>Results return to the UI, where the table system renders them <strong>fast and shareably</strong> with URL state, column presets, row selection (Lesson 24).</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>return + frontend render</h4><p>Results return to the UI, where the table system renders them <strong>fast and shareably</strong> with URL state, column presets, row selection (<a class="xref" href="24-lists-and-tables.html">Lesson 24</a>).</p></div></div>
 </div>
 
 

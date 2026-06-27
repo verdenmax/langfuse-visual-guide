@@ -95,6 +95,20 @@ def check_subtitles():
                 add("ERR", fname, f"subtitle {lang} leaks a file:line citation (belongs in the lesson body)")
 
 
+def check_xrefs(lesson_html_by_name):
+    """Inter-lesson references (第N课 / Lesson N) should be auto-linked. Guards
+    against the build-time autolink silently regressing. Ranges like 第34、35课
+    only link partially, so the bar is a ratio, not 100%."""
+    total = linked = 0
+    for html in lesson_html_by_name.values():
+        total += len(re.findall(r"第\s*\d{1,2}\s*课", html))
+        total += len(re.findall(r"\bLesson\s+\d{1,2}\b", html))
+        linked += len(re.findall(r'<a class="xref"[^>]*>第\s*\d{1,2}\s*课', html))
+        linked += len(re.findall(r'<a class="xref"[^>]*>Lesson\s+\d{1,2}', html))
+    if total and linked / total < 0.8:
+        add("ERR", "lessons", f"only {linked}/{total} inter-lesson refs auto-linked (<80%); autolink regressed")
+
+
 def check_lesson(fname, html):
     for tag in ("div", "details", "table", "pre", "summary"):
         check_balance(fname, html, tag)
@@ -151,6 +165,7 @@ def check_lesson(fname, html):
 
 
 def main():
+    lesson_html = {}
     for page in PAGES:
         fname = page[0]
         path = os.path.join(ROOT, "lessons", fname)
@@ -158,7 +173,9 @@ def main():
             add("ERR", fname, "lesson file missing (run build.py)")
             continue
         with open(path, encoding="utf-8") as fh:
-            check_lesson(fname, fh.read())
+            html = fh.read()
+        lesson_html[fname] = html
+        check_lesson(fname, html)
 
     # registry <-> PAGES alignment + non-empty bilingual source content.
     # Checking the source (not the rendered HTML) avoids being fooled by the
@@ -181,6 +198,7 @@ def main():
             add("ERR", "registry", f"CONTENT key not in PAGES: {fname}")
 
     check_subtitles()
+    check_xrefs(lesson_html)
 
     index_path = os.path.join(ROOT, shell.INDEX_FILE)
     with open(index_path, encoding="utf-8") as fh:

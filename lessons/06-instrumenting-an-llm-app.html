@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,7 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 5 课的全链路里，第一段是「SDK 创建事件」。这一课就把镜头对准这第一段：在数据还没离开<strong>你的应用</strong>之前，它是怎么被「<strong>埋点</strong>」生成的。
+<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>的全链路里，第一段是「SDK 创建事件」。这一课就把镜头对准这第一段：在数据还没离开<strong>你的应用</strong>之前，它是怎么被「<strong>埋点</strong>」生成的。
 你会看到 Langfuse 接收数据的<strong>两个入口</strong>——一种是用 Langfuse 自家的 <strong>SDK</strong> 发「原生事件」，另一种是走业界标准的
 <strong>OpenTelemetry（OTLP）</strong>。理解了「应用这头发出的是什么」，后面第三部分「服务端怎么收、怎么处理」才有的放矢。
 </p>
@@ -394,7 +397,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <tr><td class="mono">SCORE_CREATE</td><td>提交一个 score（评分）</td></tr>
 </table>
 
-<p>注意这里有 <code>CREATE</code> 也有 <code>UPDATE</code>——这正是第 5 课「合并」的来源：一个 span 通常先 <code>SPAN_CREATE</code>（开始时），结束时再 <code>SPAN_UPDATE</code>（补上耗时、输出）。
+<p>注意这里有 <code>CREATE</code> 也有 <code>UPDATE</code>——这正是<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>「合并」的来源：一个 span 通常先 <code>SPAN_CREATE</code>（开始时），结束时再 <code>SPAN_UPDATE</code>（补上耗时、输出）。
 应用把这些事件<strong>攒成一批</strong>，一次 HTTP 请求发给摄取 API，服务端再去合并。所以你在 SDK 里写的 <code>langfuse.trace(...)</code>、<code>span.end()</code>，
 本质上就是在<strong>生成这些事件</strong>。</p>
 
@@ -444,10 +447,10 @@ gen.<span class="fn">end</span>(output=result, usage={<span class="st">"input"</
 trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, value=0.9)</pre>
 
 <p>关键观察：你只是<strong>在原有业务代码旁边「顺手记一笔」</strong>，并没有改变 <code>call_llm</code> 本身的逻辑。好的埋点应当<strong>尽量不侵入</strong>——
-它不该决定你的应用怎么跑，只是<strong>旁观并记录</strong>。这也呼应了第 1 课的定位：Langfuse 站在你应用<strong>旁边</strong>，而不是<strong>里面</strong>。
+它不该决定你的应用怎么跑，只是<strong>旁观并记录</strong>。这也呼应了<a class="xref" href="01-what-is-langfuse.html">第 1 课</a>的定位：Langfuse 站在你应用<strong>旁边</strong>，而不是<strong>里面</strong>。
 正因为埋点是「旁路」的，它出问题（比如网络抖动发不出去）也<strong>不应拖垮你的主流程</strong>——SDK 通常会异步、批量、失败可丢地发送，把对应用的影响压到最低。把交互拆成「一串带类型的小事件」而不是「一个大对象」，正是为了让它们能分批、增量、乱序地发送。</p>
 
-<p>那「一串带类型的小事件」到底长什么样？源码里每个事件都是同一个<strong>信封</strong>：一个 <code>base</code>（id + timestamp + metadata），再 <code>extend</code> 出 <code>type</code>（取值来自 <code>eventTypes</code> 映射）和 <code>body</code>（这种类型特有的字段）。一次 LLM 调用，SDK 可能发 <code>generation-create</code> 起头、<code>generation-update</code> 收尾——同一个信封、不同的 type，分批送达，worker 再按 id 合并（第 5 课已预演过）。</p>
+<p>那「一串带类型的小事件」到底长什么样？源码里每个事件都是同一个<strong>信封</strong>：一个 <code>base</code>（id + timestamp + metadata），再 <code>extend</code> 出 <code>type</code>（取值来自 <code>eventTypes</code> 映射）和 <code>body</code>（这种类型特有的字段）。一次 LLM 调用，SDK 可能发 <code>generation-create</code> 起头、<code>generation-update</code> 收尾——同一个信封、不同的 type，分批送达，worker 再按 id 合并（<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>已预演过）。</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">事件信封 + 事件类型</span></div>
@@ -481,7 +484,7 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 
 <p>这是一个典型的<strong>「拥抱标准 vs 发挥专长」</strong>的权衡。OTel 是云原生可观测的事实标准，支持它意味着 Langfuse 能<strong>无缝接入</strong>已有的 OTel 生态——
 你不必为了用 Langfuse 就把埋点全部重写。但 OTel 的通用模型并不天然懂「prompt 版本」「token 用量」这些 LLM 专有概念，所以原生 SDK 在表达力上仍更强。
-Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛，用原生 SDK 提供最佳体验。OTel 这条路的服务端处理，单独放在第 18 课讲。</p>
+Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛，用原生 SDK 提供最佳体验。OTel 这条路的服务端处理，单独放在<a class="xref" href="18-opentelemetry-ingestion.html">第 18 课</a>讲。</p>
 
 <h2>create 然后 update：事件是「增量」的</h2>
 <p>再强调一遍这个对理解整条链路至关重要的点：<strong>一个 observation 的信息往往不是一次发齐的</strong>。看一次 LLM 调用的典型时间线：</p>
@@ -489,7 +492,7 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
 <div class="timeline">
   <div class="lane"><span class="lane-label">t0 开始</span><span class="tslot now">GENERATION_CREATE</span><span class="tslot">model=gpt-4o, input=…（这时还没有输出）</span></div>
   <div class="lane"><span class="lane-label">t1 结束</span><span class="tslot now">OBSERVATION_UPDATE</span><span class="tslot">output=…, usage=1240 tok, latency=1.8s</span></div>
-  <div class="lane"><span class="lane-label">服务端</span><span class="tslot span">worker 把 create + update 合并成一条最终 observation（第 15 课）</span></div>
+  <div class="lane"><span class="lane-label">服务端</span><span class="tslot span">worker 把 create + update 合并成一条最终 observation（<a class="xref" href="15-ingestion-service.html">第 15 课</a>）</span></div>
 </div>
 
 <div class="fig">
@@ -512,7 +515,7 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>把「事件增量上报 + 服务端合并」这套协议，复杂度放在哪一端？</strong> 放在<strong>服务端</strong>。SDK 那头被刻意做得很「笨」——只管把发生的事拆成小事件发出去，
-  不负责拼装最终状态；真正麻烦的「把先后到达、可能乱序、可能重复的事件收敛成一致的一行」交给 worker（第 15 课）。这么分工的好处是：SDK 轻、对应用影响小、各语言都好实现；
+  不负责拼装最终状态；真正麻烦的「把先后到达、可能乱序、可能重复的事件收敛成一致的一行」交给 worker（<a class="xref" href="15-ingestion-service.html">第 15 课</a>）。这么分工的好处是：SDK 轻、对应用影响小、各语言都好实现；
   而最复杂、最需要小心的合并逻辑<strong>只在一处</strong>（服务端）维护，不必每个语言的 SDK 各写一遍、各错一遍。<strong>把复杂度收敛到一个能严格测试的地方。</strong>这条「客户端薄、服务端厚」的取舍，在很多大型系统里都能见到，Langfuse 只是把它用在了遥测协议上。
 </div>
 
@@ -522,7 +525,7 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
     <li>埋点发生在<strong>你的应用</strong>里：把运行踪迹拆成一批<strong>事件</strong>发给 Langfuse，不改变业务逻辑。</li>
     <li><strong>两个入口</strong>：Langfuse <strong>原生 SDK</strong>（<code>ingestion.ts</code>，表达力最强）或 <strong>OpenTelemetry OTLP</strong>（<code>otel/v1/traces</code>，无缝接入已有 OTel）。</li>
     <li>事件类型（<code>eventTypes</code>）：<code>TRACE_CREATE / SPAN_CREATE / GENERATION_CREATE / OBSERVATION_UPDATE / SCORE_CREATE …</code>，描述「对哪个对象做了什么」。</li>
-    <li>事件是<strong>增量</strong>的（create 开始、update 补全），所以「边发生边记录」，失败 case 也不丢——服务端负责合并（第 15 课）。</li>
+    <li>事件是<strong>增量</strong>的（create 开始、update 补全），所以「边发生边记录」，失败 case 也不丢——服务端负责合并（<a class="xref" href="15-ingestion-service.html">第 15 课</a>）。</li>
     <li>协议把复杂度放在服务端：SDK 轻、好移植；合并逻辑只在一处维护。</li>
   </ul>
 </div>
@@ -551,7 +554,7 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。若等结束才发一条完整事件，一旦中途挂掉这一步就彻底消失，而失败恰恰最该被观测。增量上报 = “边发生边记录”，服务端再把 create+update 合并成一条（第 15 课）。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。若等结束才发一条完整事件，一旦中途挂掉这一步就彻底消失，而失败恰恰最该被观测。增量上报 = “边发生边记录”，服务端再把 create+update 合并成一条（<a class="xref" href="15-ingestion-service.html">第 15 课</a>）。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -576,7 +579,7 @@ Langfuse 的选择是<strong>两者都要</strong>：用 OTLP 降低接入门槛
 </div></div>
   <div class="lang-en">
 <p class="lead">
-In Lesson 5's pipeline, the first leg was "SDK creates events". This lesson focuses on that first leg: how, before data ever leaves
+In <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s pipeline, the first leg was "SDK creates events". This lesson focuses on that first leg: how, before data ever leaves
 <strong>your app</strong>, it gets <strong>instrumented</strong> into existence. You'll see Langfuse's <strong>two entry points</strong> —
 sending "native events" via the Langfuse <strong>SDK</strong>, or sending standard <strong>OpenTelemetry (OTLP)</strong>. Understanding
 "what the app side emits" makes Part 3 ("how the server receives and processes it") land.
@@ -625,7 +628,7 @@ object</strong>":</p>
   <tr><td class="mono">SCORE_CREATE</td><td>submit a score</td></tr>
 </table>
 
-<p>Note there's both <code>CREATE</code> and <code>UPDATE</code> — this is the source of Lesson 5's "merge": a span usually starts with
+<p>Note there's both <code>CREATE</code> and <code>UPDATE</code> — this is the source of <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "merge": a span usually starts with
 <code>SPAN_CREATE</code> and ends with <code>SPAN_UPDATE</code> (adding duration, output). The app <strong>batches</strong> these events
 into one HTTP request to the ingestion API, and the server merges them. So your <code>langfuse.trace(...)</code> and
 <code>span.end()</code> calls are essentially <strong>generating these events</strong>.</p>
@@ -678,11 +681,11 @@ trace.<span class="fn">score</span>(name=<span class="st">"helpfulness"</span>, 
 
 <p>Key observation: you merely "<strong>jot a note alongside</strong>" your existing business code — you didn't change
 <code>call_llm</code>'s logic. Good instrumentation is <strong>as non-intrusive as possible</strong> — it shouldn't dictate how your app
-runs, only <strong>observe and record</strong>. This echoes Lesson 1: Langfuse sits <strong>beside</strong> your app, not
+runs, only <strong>observe and record</strong>. This echoes <a class="xref" href="01-what-is-langfuse.html">Lesson 1</a>: Langfuse sits <strong>beside</strong> your app, not
 <strong>inside</strong> it. Because instrumentation is "side-channel", its failure (e.g. a network hiccup) <strong>shouldn't take down your
 main flow</strong> — SDKs typically send asynchronously, batched, drop-on-failure, minimizing impact on the app.</p>
 
-<p>So what does "a stream of typed little events" actually look like? In the source, every event is the same <strong>envelope</strong>: a <code>base</code> (id + timestamp + metadata), then <code>extend</code>ed with a <code>type</code> (a value from the <code>eventTypes</code> map) and a <code>body</code> (the fields specific to that type). One LLM call may have the SDK send a <code>generation-create</code> to start and a <code>generation-update</code> to finish — same envelope, different type, sent in batches, merged by id by the worker (rehearsed in Lesson 5).</p>
+<p>So what does "a stream of typed little events" actually look like? In the source, every event is the same <strong>envelope</strong>: a <code>base</code> (id + timestamp + metadata), then <code>extend</code>ed with a <code>type</code> (a value from the <code>eventTypes</code> map) and a <code>body</code> (the fields specific to that type). One LLM call may have the SDK send a <code>generation-create</code> to start and a <code>generation-update</code> to finish — same envelope, different type, sent in batches, merged by id by the worker (rehearsed in <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>).</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/ingestion/types.ts:259,597</span><span class="ln">event envelope + event types</span></div>
@@ -718,7 +721,7 @@ main flow</strong> — SDKs typically send asynchronously, batched, drop-on-fail
 cloud-native observability, so supporting it lets Langfuse <strong>plug into existing OTel ecosystems</strong> — you needn't rewrite all
 your instrumentation to adopt Langfuse. But OTel's generic model doesn't natively understand LLM-specific concepts like "prompt
 version" or "token usage", so the native SDK is still more expressive. Langfuse chooses <strong>both</strong>: OTLP lowers the barrier,
-the native SDK gives the best experience. The server-side handling of the OTel path is its own Lesson 18.</p>
+the native SDK gives the best experience. The server-side handling of the OTel path is its own <a class="xref" href="18-opentelemetry-ingestion.html">Lesson 18</a>.</p>
 
 <h2>create then update: events are "incremental"</h2>
 <p>Once more, a point crucial to understanding the whole path: <strong>an observation's info often isn't sent all at once</strong>. Look
@@ -727,7 +730,7 @@ at a typical LLM call timeline:</p>
 <div class="timeline">
   <div class="lane"><span class="lane-label">t0 start</span><span class="tslot now">GENERATION_CREATE</span><span class="tslot">model=gpt-4o, input=… (no output yet)</span></div>
   <div class="lane"><span class="lane-label">t1 end</span><span class="tslot now">OBSERVATION_UPDATE</span><span class="tslot">output=…, usage=1240 tok, latency=1.8s</span></div>
-  <div class="lane"><span class="lane-label">server</span><span class="tslot span">worker merges create + update into one final observation (L15)</span></div>
+  <div class="lane"><span class="lane-label">server</span><span class="tslot span">worker merges create + update into one final observation (<a class="xref" href="15-ingestion-service.html">L15</a>)</span></div>
 </div>
 
 <div class="fig">
@@ -753,7 +756,7 @@ observability.</p>
   <div class="tag">🎯 Design tradeoff</div>
   <strong>Where does the "incremental events + server merge" protocol put the complexity?</strong> On the <strong>server</strong>. The
   SDK is deliberately "dumb" — it just splits what happens into small events and ships them, not assembling the final state; the truly
-  tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (L15). The payoff: the
+  tricky "converge possibly-out-of-order, possibly-duplicate events into one consistent row" goes to the worker (<a class="xref" href="15-ingestion-service.html">L15</a>). The payoff: the
   SDK is light, low-impact, easy to implement in every language; and the most complex, careful merge logic lives in <strong>one
   place</strong> (the server), not re-implemented (and re-bugged) in each language SDK. <strong>Converge complexity to one strictly
   testable place.</strong> This "thin client, thick server" trade shows up in many large systems; Langfuse just applies it to a
@@ -766,7 +769,7 @@ observability.</p>
     <li>Instrumentation happens in <strong>your app</strong>: split the run-time trace into a batch of <strong>events</strong> sent to Langfuse, without changing business logic.</li>
     <li><strong>Two entries</strong>: Langfuse <strong>native SDK</strong> (<code>ingestion.ts</code>, most expressive) or <strong>OpenTelemetry OTLP</strong> (<code>otel/v1/traces</code>, plugs into existing OTel).</li>
     <li>Event types (<code>eventTypes</code>): <code>TRACE_CREATE / SPAN_CREATE / GENERATION_CREATE / OBSERVATION_UPDATE / SCORE_CREATE …</code>, describing "what was done to which object".</li>
-    <li>Events are <strong>incremental</strong> (create starts, update completes), so "record as it happens" and failures aren't lost — the server merges (L15).</li>
+    <li>Events are <strong>incremental</strong> (create starts, update completes), so "record as it happens" and failures aren't lost — the server merges (<a class="xref" href="15-ingestion-service.html">L15</a>).</li>
     <li>The protocol puts complexity on the server: SDKs stay light and portable; merge logic lives in one place.</li>
   </ul>
 </div>
@@ -795,7 +798,7 @@ observability.</p>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Waiting to send one complete event means a mid-flight crash erases that step — yet failures are exactly what you most want to observe. Incremental reporting = 'record as it happens', and the server merges create+update into one row (L15).</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Waiting to send one complete event means a mid-flight crash erases that step — yet failures are exactly what you most want to observe. Incremental reporting = 'record as it happens', and the server merges create+update into one row (<a class="xref" href="15-ingestion-service.html">L15</a>).</div></div></div>
   </details>
 </div>
 <div class="quiz">

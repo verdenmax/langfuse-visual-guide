@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -477,7 +480,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="col"><h4>③ 自托管（self-host）</h4><p>没有①——自己部署 Langfuse <strong>不向你收平台费</strong>。但②那样的成本观测、第 16/42 课的成本计算照样能用，你的 LLM 花了多少一样看得清。</p></div>
 </div>
 
-<p>把这条线收个尾：Part 8 从第 40 课「把数据聚合成图」一路走到这里，本质是回答<strong>「看清并管住数字」</strong>这件事——仪表盘看趋势、查询引擎统一口径、定价模型算清成本，而这一课，是把其中一类数字（用量）<strong>变成真金白银的账单</strong>。它也顺势揭开了 Langfuse 作为一门<strong>云生意</strong>的内里：开源可自托管（不收费），云托管按用量计费（这套 Stripe 计量）——技术与商业，在这台 worker 上严丝合缝地咬合。</p>
+<p>把这条线收个尾：Part 8 从<a class="xref" href="40-dashboards-and-widgets.html">第 40 课</a>「把数据聚合成图」一路走到这里，本质是回答<strong>「看清并管住数字」</strong>这件事——仪表盘看趋势、查询引擎统一口径、定价模型算清成本，而这一课，是把其中一类数字（用量）<strong>变成真金白银的账单</strong>。它也顺势揭开了 Langfuse 作为一门<strong>云生意</strong>的内里：开源可自托管（不收费），云托管按用量计费（这套 Stripe 计量）——技术与商业，在这台 worker 上严丝合缝地咬合。</p>
 
 
 <div class="card spark">
@@ -673,7 +676,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <div class="col"><h4>③ self-host</h4><p>no ①—self-deploying Langfuse <strong>charges you no platform fee</strong>. But cost observation like ② and the cost computation of Lessons 16/42 still work—you see your LLM spend just the same.</p></div>
 </div>
 
-<p>To wrap this thread: Part 8 ran from Lesson 40's "aggregate data into charts" all the way here, essentially answering <strong>"see clearly and govern the numbers"</strong>—dashboards show trends, the query engine unifies definitions, the pricing model computes cost clearly, and this lesson turns one kind of number (usage) <strong>into a real-money invoice</strong>. It also pulls back the curtain on Langfuse as a <strong>cloud business</strong>: open source and self-hostable (no charge), cloud-managed and usage-billed (this Stripe metering)—technology and commerce meshing tightly on this one worker.</p>
+<p>To wrap this thread: Part 8 ran from <a class="xref" href="40-dashboards-and-widgets.html">Lesson 40</a>'s "aggregate data into charts" all the way here, essentially answering <strong>"see clearly and govern the numbers"</strong>—dashboards show trends, the query engine unifies definitions, the pricing model computes cost clearly, and this lesson turns one kind of number (usage) <strong>into a real-money invoice</strong>. It also pulls back the curtain on Langfuse as a <strong>cloud business</strong>: open source and self-hostable (no charge), cloud-managed and usage-billed (this Stripe metering)—technology and commerce meshing tightly on this one worker.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>

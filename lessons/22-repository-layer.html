@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -397,7 +400,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
       () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② 内部设 log_comment=JSON(tags)</span>
       { numOfAttempts, retry: isRetryableError },
     ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
-  });                                                <span class="cm">// ④ 内存/超时 → 友好错误（第 21 课接住）</span>
+  });                                                <span class="cm">// ④ 内存/超时 → 友好错误（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>接住）</span>
 }</pre>
 </div>
 
@@ -432,13 +435,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">一次取回全部</span></div><div class="ld">最常用：跑查询、把结果一次性读成数组返回。绝大多数列表、详情、聚合都走它。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">边读边吐</span></div><div class="ld">大读不必把整个结果攒在内存里，而是<strong>流式</strong>一行行吐出——批量导出（第 12 课提过的导出）这类「结果可能巨大」的场景靠它，内存有界。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">边读边吐</span></div><div class="ld">大读不必把整个结果攒在内存里，而是<strong>流式</strong>一行行吐出——批量导出（<a class="xref" href="12-ingestion-api.html">第 12 课</a>提过的导出）这类「结果可能巨大」的场景靠它，内存有界。</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">带进度的流</span></div><div class="ld">给 <strong>SSE 流式仪表盘</strong>用：一边查一边把进度推给前端，让大仪表盘查询「有反馈、不假死」。</div></div>
 </div>
 
 
 <h2>回看时间窗：让跨表 JOIN 不再扫全表</h2>
-<p>还记得第 8 课吗——trace、observation、score 是<strong>三张独立的宽表</strong>，彼此没有外键，而是靠<strong>时间</strong>关联。问题来了：要把一条 trace 的观测和评分拼起来，
+<p>还记得<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>吗——trace、observation、score 是<strong>三张独立的宽表</strong>，彼此没有外键，而是靠<strong>时间</strong>关联。问题来了：要把一条 trace 的观测和评分拼起来，
 难道要在动辄几个月、上亿行的 observations 表里全表搜一遍？那会慢到无法接受。仓储层的答案是<strong>回看时间窗</strong>：利用「一条 trace 的观测，几乎都集中在它发生后的一小段时间内」这个事实，
 只在一个<strong>有界的时间范围</strong>里找。</p>
 
@@ -453,7 +456,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">窗外：不扫</text>
   <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 天 · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 小时</text>
 </svg>
-<div class="figcap"><b>有界回看，跳过旧分区</b>：以 trace 的 <code>timestamp</code> 为锚，观测只在 <code>start_time ≥ 锚 − 2 天</code> 内找、评分在 1 小时内找。这些常量被注入 WHERE 子句，配合第 8 课「按月分区」让 JOIN <strong>只碰几个分区</strong>。源码：<code>repositories/constants.ts:4,9</code>。</div>
+<div class="figcap"><b>有界回看，跳过旧分区</b>：以 trace 的 <code>timestamp</code> 为锚，观测只在 <code>start_time ≥ 锚 − 2 天</code> 内找、评分在 1 小时内找。这些常量被注入 WHERE 子句，配合<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「按月分区」让 JOIN <strong>只碰几个分区</strong>。源码：<code>repositories/constants.ts:4,9</code>。</div>
 </div>
 
 <div class="cols">
@@ -471,7 +474,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <tr><td><b>OTel span</b></td><td>每条查询可追踪、可看耗时——观测性焊进数据层</td></tr>
   <tr><td><b>log_comment 标签</b></td><td>每条 SQL 自带 project/面/路由，慢查询能在 CH 查询日志里按标签追责</td></tr>
   <tr><td><b>退避重试</b></td><td>网络抖动等可重试错误自动重试，不打扰调用方</td></tr>
-  <tr><td><b>资源错误包装</b></td><td>内存/超时翻成友好的 <code>ClickHouseResourceError</code>，交第 21 课给出「缩小范围」建议</td></tr>
+  <tr><td><b>资源错误包装</b></td><td>内存/超时翻成友好的 <code>ClickHouseResourceError</code>，交<a class="xref" href="21-trpc-backbone.html">第 21 课</a>给出「缩小范围」建议</td></tr>
   <tr><td><b>回看时间窗</b></td><td>跨表 JOIN 只扫有界分区，把全表扫描挡在门外</td></tr>
   <tr><td><b>legacy 守卫 + 流式变体</b></td><td>禁读旧 events 表；大读用 Stream、SSE 仪表盘用 WithProgress</td></tr>
 </table>
@@ -480,7 +483,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么把所有读取硬挤到一个执行器里，而不是哪儿要查哪儿写 SQL？</strong> 因为<strong>横切关注最忌散落</strong>。可观测性、追责、重试、资源保护——这些和「业务查什么」无关、
   却每条查询都需要的能力，如果让一百处裸查询各自实现，必然有的写、有的漏、写法还不一致。收敛成<strong>一个执行器</strong>，它们就<strong>一次实现、处处生效</strong>：
-  加一项能力（比如新的查询标签维度），全平台的查询<strong>一起获得</strong>。回看时间窗则是另一种智慧：它承认第 8 课「三张独立宽表、靠时间关联」的设计代价（JOIN 没有外键可走），
+  加一项能力（比如新的查询标签维度），全平台的查询<strong>一起获得</strong>。回看时间窗则是另一种智慧：它承认<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「三张独立宽表、靠时间关联」的设计代价（JOIN 没有外键可走），
   并用「数据的真实时间局部性」把这个代价摊薄到几乎为零。<strong>一个总闸门管住所有共性，一条务实的时间线管住所有 JOIN</strong>——这就是仓储层的全部精髓。
 </div>
 
@@ -489,9 +492,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <ul>
     <li>所有 ClickHouse 读取都汇到一个执行器 <code>queryClickhouse()</code>，沿途统一套上 <strong>OTel span、查询标签、退避重试、资源错误包装</strong>。</li>
     <li><strong>查询标签</strong>经 <code>log_comment</code> 进 ClickHouse 查询日志，每条 SQL 自带 project/面/路由——慢查询可按标签追责。</li>
-    <li><strong>资源错误</strong>（内存/超时）被包装成 <code>ClickHouseResourceError</code>，交第 21 课的错误中间件翻成「缩小时间范围」的可操作建议。</li>
+    <li><strong>资源错误</strong>（内存/超时）被包装成 <code>ClickHouseResourceError</code>，交<a class="xref" href="21-trpc-backbone.html">第 21 课</a>的错误中间件翻成「缩小时间范围」的可操作建议。</li>
     <li><strong>回看时间窗</strong>：trace/observation/score 是三张独立宽表、靠时间关联；JOIN 时以 trace 时间戳为锚、只在 2 天（观测）/1 小时（评分）内找，避免全表扫描。</li>
-    <li>取舍：横切能力收敛到一处「一次实现处处生效」；时间窗用「真实时间局部性」摊薄第 8 课分表的 JOIN 成本，以极小长尾正确性换巨大成本节省。</li>
+    <li>取舍：横切能力收敛到一处「一次实现处处生效」；时间窗用「真实时间局部性」摊薄<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>分表的 JOIN 成本，以极小长尾正确性换巨大成本节省。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -506,7 +509,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。可观测性、追责、重试、资源保护都和「业务查什么」无关却每条查询都需要。收敛到一个执行器，它们一次实现、处处复用；散落各处的裸查询必然写法不一、漏东漏西。这与第 6 课「把复杂度收敛到一处」一脉相承。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。可观测性、追责、重试、资源保护都和「业务查什么」无关却每条查询都需要。收敛到一个执行器，它们一次实现、处处复用；散落各处的裸查询必然写法不一、漏东漏西。这与<a class="xref" href="06-instrumenting-an-llm-app.html">第 6 课</a>「把复杂度收敛到一处」一脉相承。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -532,7 +535,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。第 8 课让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -596,7 +599,7 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
       () =&gt; <span class="fn">sendClickhouseQuery</span>({ ...opts, span }),     <span class="cm">// ② sets log_comment=JSON(tags) inside</span>
       { numOfAttempts, retry: isRetryableError },
     ).<span class="fn">catch</span>((e) =&gt; { <span class="kw">throw</span> ClickHouseResourceError.<span class="fn">wrapIfResourceError</span>(e, tags); });
-  });                                                <span class="cm">// ④ memory/timeout → friendly error (caught by L21)</span>
+  });                                                <span class="cm">// ④ memory/timeout → friendly error (caught by <a class="xref" href="21-trpc-backbone.html">L21</a>)</span>
 }</pre>
 </div>
 
@@ -632,13 +635,13 @@ query log — a way to <strong>weld observability into the data-access layer</st
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">queryClickhouse</span><span class="name">fetch all at once</span></div><div class="ld">The common case: run the query, read the whole result into an array, return. Most lists, details, aggregations go through it.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">stream as it reads</span></div><div class="ld">Big reads needn't buffer the whole result in memory; they <strong>stream</strong> row by row — batch exports (the exports mentioned in L12) and other "result might be huge" cases use it, with bounded memory.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">queryClickhouseStream</span><span class="name">stream as it reads</span></div><div class="ld">Big reads needn't buffer the whole result in memory; they <strong>stream</strong> row by row — batch exports (the exports mentioned in <a class="xref" href="12-ingestion-api.html">L12</a>) and other "result might be huge" cases use it, with bounded memory.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">queryClickhouseWithProgress</span><span class="name">streaming with progress</span></div><div class="ld">For <strong>SSE streaming dashboards</strong>: pushes progress to the frontend as it queries, so big dashboard queries "give feedback, don't freeze".</div></div>
 </div>
 
 
 <h2>Look-back windows: cross-table JOINs without full scans</h2>
-<p>Remember Lesson 8 — trace, observation, score are <strong>three independent wide tables</strong>, with no foreign keys, correlated by <strong>time</strong>. The
+<p>Remember <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> — trace, observation, score are <strong>three independent wide tables</strong>, with no foreign keys, correlated by <strong>time</strong>. The
 problem: to stitch a trace's observations and scores together, must we full-scan an observations table of months and billions of rows? Unacceptably slow. The
 repository layer's answer is the <strong>look-back window</strong>: exploiting the fact that "a trace's observations almost all cluster in a short window after it
 happened", it searches only within a <strong>bounded time range</strong>.</p>
@@ -654,7 +657,7 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
   <rect x="490" y="100" width="210" height="56" rx="6" fill="none" stroke="var(--faint)" stroke-dasharray="5 4"/><text x="595" y="122" text-anchor="middle" font-size="8" fill="var(--muted)">outside: not scanned</text>
   <text x="360" y="184" text-anchor="middle" font-size="8.5" fill="var(--faint)">OBSERVATIONS_TO_TRACE_INTERVAL=2 days · SCORE_TO_TRACE_OBSERVATIONS_INTERVAL=1 hour</text>
 </svg>
-<div class="figcap"><b>Bounded look-back, skip old partitions</b>: anchored at the trace's <code>timestamp</code>, observations are found within <code>start_time ≥ anchor − 2 days</code>, scores within 1 hour. These constants are injected into WHERE clauses, with Lesson 8's monthly partitioning letting JOINs <strong>touch only a few partitions</strong>. Source: <code>repositories/constants.ts:4,9</code>.</div>
+<div class="figcap"><b>Bounded look-back, skip old partitions</b>: anchored at the trace's <code>timestamp</code>, observations are found within <code>start_time ≥ anchor − 2 days</code>, scores within 1 hour. These constants are injected into WHERE clauses, with <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s monthly partitioning letting JOINs <strong>touch only a few partitions</strong>. Source: <code>repositories/constants.ts:4,9</code>.</div>
 </div>
 
 <div class="cols">
@@ -672,7 +675,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   <tr><td><b>OTel span</b></td><td>every query traceable, its latency visible — observability welded into the data layer</td></tr>
   <tr><td><b>log_comment tags</b></td><td>every SQL carries project/surface/route, so slow queries can be traced by tag in CH's query log</td></tr>
   <tr><td><b>backoff retry</b></td><td>retryable errors (network blips) auto-retry without bothering the caller</td></tr>
-  <tr><td><b>resource-error wrapping</b></td><td>memory/timeout become a friendly <code>ClickHouseResourceError</code>, handed to L21 for "narrow it" advice</td></tr>
+  <tr><td><b>resource-error wrapping</b></td><td>memory/timeout become a friendly <code>ClickHouseResourceError</code>, handed to <a class="xref" href="21-trpc-backbone.html">L21</a> for "narrow it" advice</td></tr>
   <tr><td><b>look-back window</b></td><td>cross-table JOINs scan only bounded partitions, keeping full scans out</td></tr>
   <tr><td><b>legacy guard + streaming variants</b></td><td>forbids reading legacy events; big reads use Stream, SSE dashboards use WithProgress</td></tr>
 </table>
@@ -683,7 +686,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   scattered</strong>. Observability, accountability, retry, resource protection — capabilities unrelated to "what business queries" yet needed by every query — if
   a hundred raw queries each implement them, some will write them, some omit them, and inconsistently. Converge into <strong>one executor</strong> and they're
   <strong>implemented once, in effect everywhere</strong>: add a capability (say a new query-tag dimension) and every query platform-wide <strong>gains it
-  together</strong>. The look-back window is another kind of wisdom: it accepts the cost of Lesson 8's "three independent wide tables, correlated by time" design
+  together</strong>. The look-back window is another kind of wisdom: it accepts the cost of <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s "three independent wide tables, correlated by time" design
   (JOINs have no foreign key to follow), and uses "the data's real temporal locality" to amortize that cost to near zero. <strong>One master valve for all
   commonalities, one pragmatic timeline for all JOINs</strong> — that's the whole essence of the repository layer.
 </div>
@@ -693,9 +696,9 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   <ul>
     <li>All ClickHouse reads funnel into one executor <code>queryClickhouse()</code>, uniformly wrapped with <strong>OTel span, query tags, backoff retry, resource-error wrapping</strong>.</li>
     <li><strong>Query tags</strong> go via <code>log_comment</code> into ClickHouse's query log, so every SQL carries project/surface/route — slow queries traceable by tag.</li>
-    <li><strong>Resource errors</strong> (memory/timeout) are wrapped into <code>ClickHouseResourceError</code>, handed to L21's error middleware for "narrow the time range" advice.</li>
+    <li><strong>Resource errors</strong> (memory/timeout) are wrapped into <code>ClickHouseResourceError</code>, handed to <a class="xref" href="21-trpc-backbone.html">L21</a>'s error middleware for "narrow the time range" advice.</li>
     <li><strong>Look-back windows</strong>: trace/observation/score are three independent wide tables correlated by time; JOINs anchor at the trace timestamp and search only within 2 days (obs) / 1 hour (scores), avoiding full scans.</li>
-    <li>Tradeoff: cross-cutting capabilities converge to one place "implemented once, everywhere"; the time window uses "real temporal locality" to amortize Lesson 8's split-table JOIN cost, trading a tiny long-tail of correctness for huge cost savings.</li>
+    <li>Tradeoff: cross-cutting capabilities converge to one place "implemented once, everywhere"; the time window uses "real temporal locality" to amortize <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s split-table JOIN cost, trading a tiny long-tail of correctness for huge cost savings.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -710,7 +713,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Observability, accountability, retry, resource protection are unrelated to 'what business queries' yet needed by every query. Converged into one executor they're implemented once and reused; scattered raw queries inevitably drift and omit. In line with L06's 'converge complexity to one place'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Observability, accountability, retry, resource protection are unrelated to 'what business queries' yet needed by every query. Converged into one executor they're implemented once and reused; scattered raw queries inevitably drift and omit. In line with <a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>'s 'converge complexity to one place'.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -736,7 +739,7 @@ is a <strong>deliberate tradeoff</strong> — trading "letting go of a tiny long
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. <a class="xref" href="08-clickhouse-wide-events.html">L08</a> made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
   </details>
 </div>
 <div class="card spark">

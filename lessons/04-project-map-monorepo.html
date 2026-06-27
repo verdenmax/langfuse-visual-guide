@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -397,7 +400,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <p>稍微展开一下两个运行时各自在忙什么，你会更有体感。<strong>web</strong> 是那个你浏览器里打开的 Next.js 应用，它干三件事：渲染<strong>界面</strong>、
-给界面提供类型安全的内部 API（<strong>tRPC</strong>，第 21 课）、以及给外部 SDK 提供<strong>公共 REST API</strong>（<code>web/src/pages/api/public</code>，第 27 课）——
+给界面提供类型安全的内部 API（<strong>tRPC</strong>，<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）、以及给外部 SDK 提供<strong>公共 REST API</strong>（<code>web/src/pages/api/public</code>，<a class="xref" href="27-public-rest-api.html">第 27 课</a>）——
 摄取事件的入口就在这里。<strong>worker</strong> 则是个没有界面的后台进程，它订阅几十个 <strong>BullMQ 队列</strong>，把所有<strong>重活、慢活、可重试的活</strong>都揽下来：
 把摄取的事件合并写进 ClickHouse、跑 LLM 评估、导出数据、删除项目……（第三部分起逐个讲）。一句话：<strong>web 负责「快进快出」，worker 负责「埋头苦干」</strong>，
 两者通过中间的 Redis 队列解耦——这也正是下一课「双存储」和第三部分「摄取链路」要展开的主线。</p>
@@ -522,7 +525,7 @@ Turbo 会给每个任务的<strong>输入算一个指纹</strong>（源码 + 依
 <table class="t">
   <tr><th>位置</th><th>放什么</th></tr>
   <tr><td class="mono">web/src/pages</td><td>Next.js 页面 + API 路由（含 <code>api/public</code> 公共 REST、<code>api/trpc</code>）</td></tr>
-  <tr><td class="mono">web/src/server/api</td><td>tRPC 的 root 路由、context、中间件（第 21 课）</td></tr>
+  <tr><td class="mono">web/src/server/api</td><td>tRPC 的 root 路由、context、中间件（<a class="xref" href="21-trpc-backbone.html">第 21 课</a>）</td></tr>
   <tr><td class="mono">web/src/features</td><td>按功能切分的「纵切片」目录（traces、evals、prompts…约几十个）</td></tr>
   <tr><td class="mono">worker/src/queues</td><td>各个 BullMQ 队列的消费者（ingestion、eval、export…）</td></tr>
   <tr><td class="mono">worker/src/services</td><td>核心服务（IngestionService、ClickhouseWriter）</td></tr>
@@ -534,7 +537,7 @@ Turbo 会给每个任务的<strong>输入算一个指纹</strong>（源码 + 依
 
 <p>表里没列、但值得单独一提的是 <code>fern/</code> 和 <code>generated/</code>。Langfuse 的公共 REST API 不是手写的，而是先在 <code>fern/</code> 里用
 <strong>Fern</strong> 把「有哪些端点、收什么参数、返回什么」<strong>声明</strong>出来，再自动<strong>生成</strong> <code>generated/</code> 下的 API 客户端代码。
-所以 <code>generated/</code> 是<strong>构建产物，绝不能手改</strong>——改了下次生成就被覆盖。这也是为什么改公共 API 时要同步更新 <code>fern/</code> 源（第 27 课）。
+所以 <code>generated/</code> 是<strong>构建产物，绝不能手改</strong>——改了下次生成就被覆盖。这也是为什么改公共 API 时要同步更新 <code>fern/</code> 源（<a class="xref" href="27-public-rest-api.html">第 27 课</a>）。
 这种「契约先行、代码生成」的做法，保证了 API 文档、服务端、各语言 SDK 三者始终对得上。带着这张全景地图，下一课我们就深入支撑这一切的<strong>双存储</strong>：为什么偏要 Postgres 加 ClickHouse 一起上。</p>
 
 <div class="card spark">
@@ -655,8 +658,8 @@ internally into a few purpose-built "workspaces". Hold this map in mind and when
 </div>
 
 <p>Unpacking what each runtime actually does makes it tangible. <strong>web</strong> is the Next.js app you open in your browser; it does
-three things: render the <strong>UI</strong>, serve that UI a type-safe internal API (<strong>tRPC</strong>, L21), and serve external
-SDKs a <strong>public REST API</strong> (<code>web/src/pages/api/public</code>, L27) — the ingestion entry point lives here.
+three things: render the <strong>UI</strong>, serve that UI a type-safe internal API (<strong>tRPC</strong>, <a class="xref" href="21-trpc-backbone.html">L21</a>), and serve external
+SDKs a <strong>public REST API</strong> (<code>web/src/pages/api/public</code>, <a class="xref" href="27-public-rest-api.html">L27</a>) — the ingestion entry point lives here.
 <strong>worker</strong> is a headless background process that subscribes to dozens of <strong>BullMQ queues</strong> and takes on all
 the <strong>heavy, slow, retryable</strong> work: merge ingested events into ClickHouse, run LLM evals, export data, delete projects…
 (covered from Part 3 on). In a line: <strong>web does "fast in, fast out", worker does "heads-down grind"</strong>, decoupled by a
@@ -797,7 +800,7 @@ precondition</strong> that makes "use a monorepo" viable: without good caching, 
 <table class="t">
   <tr><th>Location</th><th>What's there</th></tr>
   <tr><td class="mono">web/src/pages</td><td>Next.js pages + API routes (incl. <code>api/public</code> REST, <code>api/trpc</code>)</td></tr>
-  <tr><td class="mono">web/src/server/api</td><td>tRPC root router, context, middleware (L21)</td></tr>
+  <tr><td class="mono">web/src/server/api</td><td>tRPC root router, context, middleware (<a class="xref" href="21-trpc-backbone.html">L21</a>)</td></tr>
   <tr><td class="mono">web/src/features</td><td>feature "vertical slices" (traces, evals, prompts… dozens)</td></tr>
   <tr><td class="mono">worker/src/queues</td><td>BullMQ queue consumers (ingestion, eval, export…)</td></tr>
   <tr><td class="mono">worker/src/services</td><td>core services (IngestionService, ClickhouseWriter)</td></tr>
@@ -811,7 +814,7 @@ precondition</strong> that makes "use a monorepo" viable: without good caching, 
 hand-written — it's first <strong>declared</strong> in <code>fern/</code> with <strong>Fern</strong> ("which endpoints, what params,
 what responses"), then API client code is <strong>generated</strong> into <code>generated/</code>. So <code>generated/</code> is a
 <strong>build artifact you must never hand-edit</strong> — edits get overwritten on the next generation. That's why changing the
-public API means updating the <code>fern/</code> sources too (L27). This "contract-first, code-generated" approach keeps the API docs,
+public API means updating the <code>fern/</code> sources too (<a class="xref" href="27-public-rest-api.html">L27</a>). This "contract-first, code-generated" approach keeps the API docs,
 the server, and the per-language SDKs always in sync.</p>
 
 <div class="card spark">

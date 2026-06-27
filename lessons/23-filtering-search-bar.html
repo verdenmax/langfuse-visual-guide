@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,7 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 22 课的执行器负责「把查询发出去」，可<strong>那些查询的 WHERE 条件是谁拼的</strong>？这一课就讲过滤。关键洞察是：用户过滤的方式五花八门——点侧栏面板、敲搜索栏语法、甚至用 AI 自然语言描述——
+<a class="xref" href="22-repository-layer.html">第 22 课</a>的执行器负责「把查询发出去」，可<strong>那些查询的 WHERE 条件是谁拼的</strong>？这一课就讲过滤。关键洞察是：用户过滤的方式五花八门——点侧栏面板、敲搜索栏语法、甚至用 AI 自然语言描述——
 但它们最终<strong>都汇成同一个 <code>FilterState</code></strong>（一组带类型的条件），再由它编译成<strong>参数化 SQL</strong>（ClickHouse 或 Postgres）。一个中间契约，
 既挡住了 SQL 注入，又让搜索栏、AI filter 这些花样都<strong>构造即安全</strong>。
 </p>
@@ -391,7 +394,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <pre class="code"><span class="cm">// 工厂：逐个把关再翻译</span>
 <span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// 列必须在 CH schema 里</span>
 <span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// 类型必须兼容</span>
-<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// 强制注入 project_id（第 10 课）</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// 强制注入 project_id（<a class="xref" href="10-multi-tenancy.html">第 10 课</a>）</span>
 
 <span class="cm">// 每个过滤器的 apply()：用随机参数名传值，绝不拼接字符串</span>
 <span class="fn">apply</span>(): ClickhouseFilter {
@@ -402,7 +405,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <p>看清这段就抓住了过滤系统的<strong>安全底座</strong>：用户输入的值，<strong>永远不会被拼进 SQL 字符串</strong>，而是绑定到一个<strong>随机命名的占位符</strong>（<code>stringFilter_xY9z</code>），
 由数据库驱动安全地代入。哪怕你在过滤值里写 <code>'; DROP TABLE…</code>，它也只会被当成一个普通字符串去匹配，<strong>注入无从下手</strong>。加上工厂对「列是否存在、类型是否兼容」的前置校验，
-脏输入在编译期就被挡下——这正是第 22 课资源保护之外的另一道防线。</p>
+脏输入在编译期就被挡下——这正是<a class="xref" href="22-repository-layer.html">第 22 课</a>资源保护之外的另一道防线。</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="一条 FilterState 条件经 apply 编译后一分为二：SQL 片段只留随机命名的占位符 level IN 大括号 pXY9z，用户的值则单独绑进 params，绝不拼进 SQL 字符串，哪怕值是分号 DROP TABLE 也只当普通字符串匹配，注入无从下手">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
@@ -492,7 +495,7 @@ Langfuse 的解法堪称精巧——把模型输出<strong>往返一遍</strong>
   <ul>
     <li>用户过滤的多种入口（侧栏 / 搜索栏 / AI）都<strong>汇成一个 <code>FilterState</code></strong>（带类型的条件组），再编译成 SQL。</li>
     <li><strong>一个抽象、两套后端</strong>：同一份 FilterState 经工厂可编译到 <strong>ClickHouse</strong>（<code>clickhouse-sql/</code>）或 <strong>Postgres</strong>（<code>filterToPrisma.ts</code>）。</li>
-    <li><strong>注入安全</strong>：每个过滤器 <code>apply()</code> 用<strong>随机命名的占位符</strong>传值，绝不拼接字符串；工厂还校验列存在性、类型兼容，并注入强制 <code>project_id</code>（第 10 课）。</li>
+    <li><strong>注入安全</strong>：每个过滤器 <code>apply()</code> 用<strong>随机命名的占位符</strong>传值，绝不拼接字符串；工厂还校验列存在性、类型兼容，并注入强制 <code>project_id</code>（<a class="xref" href="10-multi-tenancy.html">第 10 课</a>）。</li>
     <li><strong>搜索栏</strong>是 FilterState 的「受控编辑器」（README：侧栏 FilterState 是唯一真源）；语法只覆盖 FilterState 能表达的范围，编不出的<strong>阻止提交、不静默丢弃</strong>。</li>
     <li><strong>AI filter</strong>把模型输出<strong>往返</strong> <code>filterStateToQueryText</code>，只留能还原成合法语法的——幻觉列<strong>构造上进不来</strong>。安全靠结构，不靠事后检查。</li>
   </ul>
@@ -522,7 +525,7 @@ Langfuse 的解法堪称精巧——把模型输出<strong>往返一遍</strong>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。参数化查询是防注入的根本：值绑定到占位符、由驱动安全代入，绝不与 SQL 文本拼接。随机参数名进一步避免命名冲突。工厂还前置校验列是否在 schema、类型是否兼容，并注入强制 project_id（第 10 课）——多道防线叠加。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。参数化查询是防注入的根本：值绑定到占位符、由驱动安全代入，绝不与 SQL 文本拼接。随机参数名进一步避免命名冲突。工厂还前置校验列是否在 schema、类型是否兼容，并注入强制 project_id（<a class="xref" href="10-multi-tenancy.html">第 10 课</a>）——多道防线叠加。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -547,7 +550,7 @@ Langfuse 的解法堪称精巧——把模型输出<strong>往返一遍</strong>
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 22's executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
+<a class="xref" href="22-repository-layer.html">Lesson 22</a>'s executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
 many ways — clicking the sidebar facets, typing search-bar grammar, even describing it in natural language to AI — yet they all <strong>converge into one
 <code>FilterState</code></strong> (a set of typed conditions), which then compiles to <strong>parameterized SQL</strong> (ClickHouse or Postgres). One intermediate
 contract that both blocks SQL injection and makes the search bar and AI filters <strong>safe by construction</strong>.
@@ -593,7 +596,7 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
   <pre class="code"><span class="cm">// factory: gatekeep each, then translate</span>
 <span class="kw">const</span> column = <span class="fn">matchAndVerifyTracesUiColumn</span>(filter, columnMapping); <span class="cm">// column must be in CH schema</span>
 <span class="kw">const</span> compatible = COMPATIBLE_FILTER_TYPES[colDef.type];           <span class="cm">// type must be compatible</span>
-<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// force-inject project_id (L10)</span>
+<span class="fn">getProjectIdDefaultFilter</span>(projectId, …);                        <span class="cm">// force-inject project_id (<a class="xref" href="10-multi-tenancy.html">L10</a>)</span>
 
 <span class="cm">// each filter's apply(): pass values via random param names, never splice strings</span>
 <span class="fn">apply</span>(): ClickhouseFilter {
@@ -605,7 +608,7 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
 <p>Grasp this and you've got the filtering system's <strong>security bedrock</strong>: user-input values are <strong>never spliced into the SQL string</strong>, but bound
 to a <strong>randomly-named placeholder</strong> (<code>stringFilter_xY9z</code>), safely substituted by the DB driver. Even if you write <code>'; DROP TABLE…</code> in a
 filter value, it's matched as a plain string — <strong>injection has no foothold</strong>. Plus the factory's up-front checks for "does the column exist, is the type
-compatible" stop dirty input at compile time — another line of defense beyond Lesson 22's resource protection.</p>
+compatible" stop dirty input at compile time — another line of defense beyond <a class="xref" href="22-repository-layer.html">Lesson 22</a>'s resource protection.</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="one FilterState condition compiled by apply splits into two: the SQL fragment keeps only a randomly-named placeholder level IN brace pXY9z, while the user's value is bound separately into params, never concatenated into the SQL string, so even a value like semicolon DROP TABLE is matched as a plain string and injection has no foothold">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
@@ -702,7 +705,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
   <ul>
     <li>The many filtering entries (sidebar / search bar / AI) all <strong>converge to one <code>FilterState</code></strong> (a set of typed conditions), then compile to SQL.</li>
     <li><strong>One abstraction, two backends</strong>: the same FilterState compiles via the factory to <strong>ClickHouse</strong> (<code>clickhouse-sql/</code>) or <strong>Postgres</strong> (<code>filterToPrisma.ts</code>).</li>
-    <li><strong>Injection safety</strong>: each filter's <code>apply()</code> passes values via <strong>randomly-named placeholders</strong>, never splicing strings; the factory also verifies column existence, type compatibility, and injects the mandatory <code>project_id</code> (L10).</li>
+    <li><strong>Injection safety</strong>: each filter's <code>apply()</code> passes values via <strong>randomly-named placeholders</strong>, never splicing strings; the factory also verifies column existence, type compatibility, and injects the mandatory <code>project_id</code> (<a class="xref" href="10-multi-tenancy.html">L10</a>).</li>
     <li><strong>The search bar</strong> is FilterState's "controlled editor" (README: the sidebar FilterState is the single source of truth); its grammar covers only what FilterState can express, the rest <strong>blocking commit, not silently dropped</strong>.</li>
     <li><strong>AI filter</strong> round-trips the model output through <code>filterStateToQueryText</code>, keeping only what restores to valid grammar — hallucinated columns <strong>can't enter by construction</strong>. Security by structure, not after-checks.</li>
   </ul>
@@ -732,7 +735,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Parameterized queries are the root of injection defense: values bind to placeholders and are safely substituted by the driver, never spliced into SQL text. Random param names avoid collisions. The factory also pre-checks column existence, type compatibility, and injects the mandatory project_id (L10) — layered defenses.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Parameterized queries are the root of injection defense: values bind to placeholders and are safely substituted by the driver, never spliced into SQL text. Random param names avoid collisions. The factory also pre-checks column existence, type compatibility, and injects the mandatory project_id (<a class="xref" href="10-multi-tenancy.html">L10</a>) — layered defenses.</div></div></div>
   </details>
 </div>
 <div class="quiz">

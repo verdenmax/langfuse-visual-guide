@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -387,8 +390,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <tr><th>服务</th><th>镜像</th><th>角色</th></tr>
   <tr><td class="mono">langfuse-web</td><td class="mono">langfuse/langfuse:3</td><td>面向用户：UI + tRPC + 公共 REST API（摄取入口）</td></tr>
   <tr><td class="mono">langfuse-worker</td><td class="mono">langfuse/langfuse-worker:3</td><td>后台：消费队列、合并写入、评估、导出…</td></tr>
-  <tr><td class="mono">postgres</td><td class="mono">postgres:17</td><td>控制面：配置/元数据（第 9 课）</td></tr>
-  <tr><td class="mono">clickhouse</td><td class="mono">clickhouse/clickhouse-server</td><td>数据面：宽事件表（第 8 课）</td></tr>
+  <tr><td class="mono">postgres</td><td class="mono">postgres:17</td><td>控制面：配置/元数据（<a class="xref" href="09-postgres-metadata-schema.html">第 9 课</a>）</td></tr>
+  <tr><td class="mono">clickhouse</td><td class="mono">clickhouse/clickhouse-server</td><td>数据面：宽事件表（<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>）</td></tr>
   <tr><td class="mono">redis</td><td class="mono">redis:7</td><td>BullMQ 队列 + 缓存</td></tr>
   <tr><td class="mono">minio</td><td class="mono">chainguard/minio</td><td>S3 兼容对象存储（本地替身）：事件底稿·媒体·导出</td></tr>
 </table>
@@ -429,19 +432,19 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="400" y1="110" x2="418" y2="110" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,110 409,105 409,115" fill="var(--faint)"/>
   <text x="360" y="200" text-anchor="middle" font-size="9.5" fill="var(--faint)">通过队列解耦：两者可各自独立部署、独立扩容、互不阻塞</text>
 </svg>
-<div class="figcap"><b>左右手分工</b>：<b>web</b> 面向用户、追求低延迟、可随时重启；<b>worker</b> 啃重活、可重试、按队列积压伸缩。二者通过 <b>Redis 队列</b>解耦（第 5 课），所以你能<b>分别</b>给它们扩容——用户多了加 web，队列堵了加 worker。这正是第 4 课「窄腰」让两个容器独立演进的部署体现。</div>
+<div class="figcap"><b>左右手分工</b>：<b>web</b> 面向用户、追求低延迟、可随时重启；<b>worker</b> 啃重活、可重试、按队列积压伸缩。二者通过 <b>Redis 队列</b>解耦（<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>），所以你能<b>分别</b>给它们扩容——用户多了加 web，队列堵了加 worker。这正是<a class="xref" href="04-project-map-monorepo.html">第 4 课</a>「窄腰」让两个容器独立演进的部署体现。</div>
 </div>
 
 <div class="cols">
   <div class="col"><h4>web 怎么扩</h4><p>无状态、面向请求 → 看<strong>并发用户 / QPS</strong>，水平多开几份、前面挂负载均衡即可。</p></div>
-  <div class="col"><h4>worker 怎么扩</h4><p>面向队列 → 看<strong>队列积压</strong>，积压上来就多开 worker 实例消费（还能按队列分片，第 14 课）。</p></div>
+  <div class="col"><h4>worker 怎么扩</h4><p>面向队列 → 看<strong>队列积压</strong>，积压上来就多开 worker 实例消费（还能按队列分片，<a class="xref" href="14-ingestion-queue.html">第 14 课</a>）。</p></div>
 </div>
 
 <h2>配置全靠环境变量</h2>
 <p>这六个容器怎么知道彼此地址、密钥、各种开关？答案是<strong>环境变量</strong>。仓库里有一组 <code>.env.*.example</code> 模板（如 <code>.env.dev.example</code>、<code>.env.prod.example</code>），
 列出了所有需要配置的变量（数据库连接、S3 端点、加密密钥…）。更重要的是，这些 env <strong>不是随便读的</strong>——它们经过 <strong>Zod 校验</strong>
 （<code>packages/shared/src/env.ts</code>、<code>worker/src/env.ts</code> 等），<strong>启动时</strong>就检查类型与必填项。配错了、漏填了，进程会<strong>直接启动失败并报清楚哪个变量有问题</strong>，
-而不是带病运行到半路才崩。这条「<strong>启动即校验配置</strong>」的纪律，是把「配置错误」从难查的运行时 bug 变成一眼可见的启动错误（第 51 课展开）。</p>
+而不是带病运行到半路才崩。这条「<strong>启动即校验配置</strong>」的纪律，是把「配置错误」从难查的运行时 bug 变成一眼可见的启动错误（<a class="xref" href="51-self-observability-and-config.html">第 51 课</a>展开）。</p>
 
 <p>把这些拼起来，第一次自托管的体验其实很简单：<strong>克隆仓库 → 复制一份 <code>.env.dev.example</code> 填好关键变量 → <code>docker compose up</code></strong>，
 六个容器就按依赖次序拉起、连通，几分钟后你就能打开浏览器看到 Langfuse 界面。仓库里还备了<strong>多套 compose 文件</strong>应对不同场景——
@@ -478,24 +481,24 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example（节选，按「4 基础设施 + 认证」分组）</span><span class="ln">配置即接线</span></div>
-  <pre class="code"><span class="cm"># ① Postgres —— 配置/用户/权限等元数据（第7课 OLTP）</span>
+  <pre class="code"><span class="cm"># ① Postgres —— 配置/用户/权限等元数据（<a class="xref" href="07-dual-store-architecture.html">第7课</a> OLTP）</span>
 DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
-<span class="cm"># ② ClickHouse —— 海量 trace/observation/score 事件（第8课列存）</span>
+<span class="cm"># ② ClickHouse —— 海量 trace/observation/score 事件（<a class="xref" href="08-clickhouse-wide-events.html">第8课</a>列存）</span>
 CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
 CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
-<span class="cm"># ③ Redis —— 摄取队列 + 缓存（第12课快接收的落点）</span>
+<span class="cm"># ③ Redis —— 摄取队列 + 缓存（<a class="xref" href="12-ingestion-api.html">第12课</a>快接收的落点）</span>
 REDIS_HOST=localhost   REDIS_PORT=6379
-<span class="cm"># ④ S3 / MinIO —— 大块负载与媒体（第18课）；MinIO 是本地 S3 替身</span>
+<span class="cm"># ④ S3 / MinIO —— 大块负载与媒体（<a class="xref" href="18-opentelemetry-ingestion.html">第18课</a>）；MinIO 是本地 S3 替身</span>
 LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
 LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
-<span class="cm"># 认证与密钥 —— 启动时由 Zod 校验，缺一即启动失败（第51课）</span>
+<span class="cm"># 认证与密钥 —— 启动时由 Zod 校验，缺一即启动失败（<a class="xref" href="51-self-observability-and-config.html">第51课</a>）</span>
 NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
-SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（第49课 createShaHash）</span></pre>
+SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（<a class="xref" href="49-rbac-apikeys-scim.html">第49课</a> createShaHash）</span></pre>
 </div>
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>四个基础设施依赖，对自托管者是不是负担？</strong> 坦白说，是——相比「一个二进制 + 一个 SQLite」，Langfuse 的自托管门槛确实更高。但这正是第 7 课那条取舍的<strong>部署侧后果</strong>：
+  <strong>四个基础设施依赖，对自托管者是不是负担？</strong> 坦白说，是——相比「一个二进制 + 一个 SQLite」，Langfuse 的自托管门槛确实更高。但这正是<a class="xref" href="07-dual-store-architecture.html">第 7 课</a>那条取舍的<strong>部署侧后果</strong>：
   为了能扛生产级规模（海量遥测、异步摄取、对象存储），这四个组件每一个都不可省。Langfuse 的缓解办法是用 <strong>docker-compose 一键拉起</strong>全部六个容器、用 <strong>MinIO 替身</strong>免去对云 S3 的依赖，
   让「在自己机器上跑起完整一套」变得简单。<strong>复杂度无法消除，但可以被打包好、一键交付。</strong>这也是为什么官方强调「self-host in minutes」——不是没有依赖，而是把依赖编排好了。对自托管者来说，真正要权衡的不是「依赖多不多」，而是「这套规模化能力你用不用得上」。
 </div>
@@ -507,7 +510,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（
     <li><strong>web vs worker</strong>：同连一套存储但职责相反——web 面向用户低延迟、按 QPS 扩；worker 啃重活、按队列积压扩；靠 Redis 队列解耦。</li>
     <li><strong>MinIO</strong> 是 S3 协议替身：同一套代码云上用真 S3、本地用 MinIO，应用无感。</li>
     <li><strong>配置全靠环境变量</strong>，并经 Zod <strong>启动即校验</strong>（<code>env.ts</code>）——配错就启动失败、报清楚，而非带病运行。</li>
-    <li>四依赖是规模化的必要代价（第 7 课），用 docker-compose 一键编排来缓解——「依赖不少，但都打包好了」。</li>
+    <li>四依赖是规模化的必要代价（<a class="xref" href="07-dual-store-architecture.html">第 7 课</a>），用 docker-compose 一键编排来缓解——「依赖不少，但都打包好了」。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -535,7 +538,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。用户压力（QPS）和后台压力（队列积压）是两条独立的扩容信号。拆成两个容器、用队列解耦，就能“用户多了加 web、队列堵了加 worker”，互不牵连。这是第 4 课窄腰让两容器独立演进的部署体现。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。用户压力（QPS）和后台压力（队列积压）是两条独立的扩容信号。拆成两个容器、用队列解耦，就能“用户多了加 web、队列堵了加 worker”，互不牵连。这是<a class="xref" href="04-project-map-monorepo.html">第 4 课</a>窄腰让两容器独立演进的部署体现。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -548,7 +551,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm"># API key 哈希用盐（
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。fail-fast：env.ts 用 Zod 在启动时校验类型与必填项，错了立刻报清楚。这比“带着错误配置跑半天、在某个边角功能才崩”可调试得多（第 51 课展开）。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。fail-fast：env.ts 用 Zod 在启动时校验类型与必填项，错了立刻报清楚。这比“带着错误配置跑半天、在某个边角功能才崩”可调试得多（<a class="xref" href="51-self-observability-and-config.html">第 51 课</a>展开）。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -600,8 +603,8 @@ concrete "packing list" and your mental model of Langfuse's "shape" is complete.
   <tr><th>Service</th><th>Image</th><th>Role</th></tr>
   <tr><td class="mono">langfuse-web</td><td class="mono">langfuse/langfuse:3</td><td>user-facing: UI + tRPC + public REST API (ingestion entry)</td></tr>
   <tr><td class="mono">langfuse-worker</td><td class="mono">langfuse/langfuse-worker:3</td><td>background: consume queues, merge-write, eval, export…</td></tr>
-  <tr><td class="mono">postgres</td><td class="mono">postgres:17</td><td>control plane: config/metadata (L09)</td></tr>
-  <tr><td class="mono">clickhouse</td><td class="mono">clickhouse/clickhouse-server</td><td>data plane: wide-event tables (L08)</td></tr>
+  <tr><td class="mono">postgres</td><td class="mono">postgres:17</td><td>control plane: config/metadata (<a class="xref" href="09-postgres-metadata-schema.html">L09</a>)</td></tr>
+  <tr><td class="mono">clickhouse</td><td class="mono">clickhouse/clickhouse-server</td><td>data plane: wide-event tables (<a class="xref" href="08-clickhouse-wide-events.html">L08</a>)</td></tr>
   <tr><td class="mono">redis</td><td class="mono">redis:7</td><td>BullMQ queues + cache</td></tr>
   <tr><td class="mono">minio</td><td class="mono">chainguard/minio</td><td>S3-compatible object store (local stand-in): event log · media · exports</td></tr>
 </table>
@@ -647,12 +650,12 @@ duty</strong>:</p>
   <line x1="400" y1="110" x2="418" y2="110" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,110 409,105 409,115" fill="var(--faint)"/>
   <text x="360" y="200" text-anchor="middle" font-size="9.5" fill="var(--faint)">decoupled by the queue: deploy and scale each independently, without blocking the other</text>
 </svg>
-<div class="figcap"><b>Two hands</b>: <b>web</b> is user-facing, low-latency, restartable; <b>worker</b> chews heavy jobs, retryable, scales by queue backlog. The two are decoupled by the <b>Redis queue</b> (L05), so you scale them <b>separately</b> — more users, add web; backed-up queue, add worker. This is the deployment-side expression of Lesson 4's "narrow waist" letting the two containers evolve independently.</div>
+<div class="figcap"><b>Two hands</b>: <b>web</b> is user-facing, low-latency, restartable; <b>worker</b> chews heavy jobs, retryable, scales by queue backlog. The two are decoupled by the <b>Redis queue</b> (<a class="xref" href="05-life-of-a-trace.html">L05</a>), so you scale them <b>separately</b> — more users, add web; backed-up queue, add worker. This is the deployment-side expression of <a class="xref" href="04-project-map-monorepo.html">Lesson 4</a>'s "narrow waist" letting the two containers evolve independently.</div>
 </div>
 
 <div class="cols">
   <div class="col"><h4>scaling web</h4><p>stateless, request-facing → watch <strong>concurrent users / QPS</strong>, run a few replicas behind a load balancer.</p></div>
-  <div class="col"><h4>scaling worker</h4><p>queue-facing → watch <strong>queue backlog</strong>, spin up more worker instances to consume (and shard by queue, L14).</p></div>
+  <div class="col"><h4>scaling worker</h4><p>queue-facing → watch <strong>queue backlog</strong>, spin up more worker instances to consume (and shard by queue, <a class="xref" href="14-ingestion-queue.html">L14</a>).</p></div>
 </div>
 
 <h2>Configuration is all environment variables</h2>
@@ -662,7 +665,7 @@ connections, S3 endpoint, encryption keys…). More importantly, these envs <str
 validation</strong> (<code>packages/shared/src/env.ts</code>, <code>worker/src/env.ts</code>, etc.), checking types and required fields <strong>at
 startup</strong>. Misconfigure or miss one and the process <strong>fails to start and tells you exactly which variable is wrong</strong>, rather
 than running sick and crashing midway. This "<strong>validate config at startup</strong>" discipline turns "config errors" from hard-to-find
-runtime bugs into obvious startup errors (expanded in L51).</p>
+runtime bugs into obvious startup errors (expanded in <a class="xref" href="51-self-observability-and-config.html">L51</a>).</p>
 
 <p>Put it together and the first self-host experience is actually simple: <strong>clone the repo → copy an <code>.env.dev.example</code> and fill
 the key variables → <code>docker compose up</code></strong>, and the six containers come up in dependency order, connect, and within minutes you
@@ -702,25 +705,25 @@ also know which container's logs to check when something breaks.</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example (excerpt, grouped by "4 infra + auth")</span><span class="ln">config = wiring</span></div>
-  <pre class="code"><span class="cm"># ① Postgres — metadata: config/users/permissions (L07 OLTP)</span>
+  <pre class="code"><span class="cm"># ① Postgres — metadata: config/users/permissions (<a class="xref" href="07-dual-store-architecture.html">L07</a> OLTP)</span>
 DATABASE_URL=<span class="st">"postgresql://postgres:postgres@localhost:5432/postgres"</span>
-<span class="cm"># ② ClickHouse — massive trace/observation/score events (L08 columnar)</span>
+<span class="cm"># ② ClickHouse — massive trace/observation/score events (<a class="xref" href="08-clickhouse-wide-events.html">L08</a> columnar)</span>
 CLICKHOUSE_URL=<span class="st">"http://localhost:8123"</span>
 CLICKHOUSE_USER=<span class="st">"clickhouse"</span>   CLICKHOUSE_PASSWORD=<span class="st">"clickhouse"</span>
-<span class="cm"># ③ Redis — ingestion queue + cache (where L12's "receive fast" lands)</span>
+<span class="cm"># ③ Redis — ingestion queue + cache (where <a class="xref" href="12-ingestion-api.html">L12</a>'s "receive fast" lands)</span>
 REDIS_HOST=localhost   REDIS_PORT=6379
-<span class="cm"># ④ S3 / MinIO — bulky payloads & media (L18); MinIO is a local S3 stand-in</span>
+<span class="cm"># ④ S3 / MinIO — bulky payloads & media (<a class="xref" href="18-opentelemetry-ingestion.html">L18</a>); MinIO is a local S3 stand-in</span>
 LANGFUSE_S3_MEDIA_UPLOAD_BUCKET=langfuse
 LANGFUSE_S3_..._ENDPOINT=<span class="st">"http://localhost:9090"</span>   ..._FORCE_PATH_STYLE=<span class="kw">true</span>
-<span class="cm"># auth & secrets — Zod-validated at startup, miss one = fail to start (L51)</span>
+<span class="cm"># auth & secrets — Zod-validated at startup, miss one = fail to start (<a class="xref" href="51-self-observability-and-config.html">L51</a>)</span>
 NEXTAUTH_URL=<span class="st">"http://localhost:3000"</span>   NEXTAUTH_SECRET=<span class="st">"secret"</span>
-SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashing (L49 createShaHash)</span></pre>
+SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashing (<a class="xref" href="49-rbac-apikeys-scim.html">L49</a> createShaHash)</span></pre>
 </div>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
   <strong>Are four infra dependencies a burden for self-hosters?</strong> Honestly, yes — versus "one binary + one SQLite", Langfuse's
-  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of Lesson 7's tradeoff: to handle
+  self-host bar is genuinely higher. But that's the <strong>deployment-side consequence</strong> of <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>'s tradeoff: to handle
   production scale (massive telemetry, async ingestion, object storage), none of the four is droppable. Langfuse's mitigation is bringing up
   all six containers with <strong>one docker-compose command</strong> and using a <strong>MinIO stand-in</strong> to remove the dependency on
   cloud S3, making "run the whole thing on your own machine" easy. <strong>Complexity can't be erased, but it can be packaged and delivered in
@@ -734,7 +737,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
     <li><strong>web vs worker</strong>: same storage, opposite duties — web user-facing/low-latency, scales by QPS; worker heavy/retryable, scales by queue backlog; decoupled by the Redis queue.</li>
     <li><strong>MinIO</strong> is an S3-protocol stand-in: same code uses real S3 in the cloud, MinIO locally — transparent to the app.</li>
     <li><strong>Config is all env vars</strong>, Zod-<strong>validated at startup</strong> (<code>env.ts</code>) — misconfigure and it fails to start with a clear message, no sick running.</li>
-    <li>Four deps are the necessary cost of scale (L07), mitigated by one-command docker-compose orchestration — "plenty of deps, but packaged".</li>
+    <li>Four deps are the necessary cost of scale (<a class="xref" href="07-dual-store-architecture.html">L07</a>), mitigated by one-command docker-compose orchestration — "plenty of deps, but packaged".</li>
   </ul>
 </div>
 <div class="selftest">
@@ -749,7 +752,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. docker-compose.yml lists two app containers (web/worker) plus four infra (postgres:17, clickhouse-server, redis:7, minio). It's the physical version of the architecture in L05/L07.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. docker-compose.yml lists two app containers (web/worker) plus four infra (postgres:17, clickhouse-server, redis:7, minio). It's the physical version of the architecture in <a class="xref" href="05-life-of-a-trace.html">L05</a>/<a class="xref" href="07-dual-store-architecture.html">L07</a>.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -762,7 +765,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. User pressure (QPS) and background pressure (queue backlog) are independent scaling signals. Splitting into two containers decoupled by a queue lets you 'add web for more users, add worker for a backed-up queue', without entanglement. It's the deployment-side expression of L04's narrow waist.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. User pressure (QPS) and background pressure (queue backlog) are independent scaling signals. Splitting into two containers decoupled by a queue lets you 'add web for more users, add worker for a backed-up queue', without entanglement. It's the deployment-side expression of <a class="xref" href="04-project-map-monorepo.html">L04</a>'s narrow waist.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -775,7 +778,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Fail-fast: env.ts uses Zod to validate types and required fields at startup, reporting clearly on error. Far more debuggable than 'running with bad config and crashing in some corner feature later' (expanded in L51).</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. Fail-fast: env.ts uses Zod to validate types and required fields at startup, reporting clearly on error. Far more debuggable than 'running with bad config and crashing in some corner feature later' (expanded in <a class="xref" href="51-self-observability-and-config.html">L51</a>).</div></div></div>
   </details>
 </div>
 <div class="card spark">

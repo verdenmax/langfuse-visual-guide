@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -390,7 +393,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 </div>
 
 <p>注意一个优雅之处：<strong>布尔不是独立的第四种类型，而是被实现成「恰好两档、且锁死为 True=1/False=0」的分类</strong>。这样底层只需处理「数值」和「分类」两套逻辑，布尔顺势复用分类的存储与聚合——
-少一套特例，多一分一致。这也呼应了第 8 课「宽事件」的思路：能用通用机制表达的，就别新造一个。</p>
+少一套特例，多一分一致。这也呼应了<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「宽事件」的思路：能用通用机制表达的，就别新造一个。</p>
 
 <p>还有个贯穿始终的设计：<strong><code>value</code> 永远是一个数</strong>，而 <code>stringValue</code> 只用来存「标签」。NUMERIC 的 value 就是那个数、stringValue 为空；CATEGORICAL/BOOLEAN 则把标签放进 stringValue、把映射后的数放进 value（如 <code>"positive"</code>→某数、<code>"True"</code>→1）。
 正因为<strong>任何 score 都有一个数值 value</strong>，求平均、画趋势、算通过率才对所有类型一视同仁——这是「可比」的物理基础。</p>
@@ -428,8 +431,8 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">你亲手提交</span></div><div class="ld">用 SDK 直接 <code>score.create</code>——比如你自己的离线评测脚本、或线上收集的用户点赞。这是第 6、12 课摄取链路里 <code>SCORE_CREATE</code> 事件的来路之一。</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（第 29 课）或代码 eval（第 31 课）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（第 32 课）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI 或代码评判</span></div><div class="ld">LLM-as-a-judge（<a class="xref" href="29-llm-as-a-judge.html">第 29 课</a>）或代码 eval（<a class="xref" href="31-code-based-evaluation.html">第 31 课</a>）算出来的分。它们最终也<strong>走回同一条摄取链路</strong>写成 score——评估不是独立管道，而是 score 的生产者。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">人工标注</span></div><div class="ld">人类审核员在标注队列里（<a class="xref" href="32-human-annotation.html">第 32 课</a>）按 config 给 trace 打分。同样落进 scores 表，只是 source 标成 ANNOTATION。</div></div>
 </div>
 
 <h2>一个 score 对象到底有哪些字段</h2>
@@ -470,7 +473,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么要专门搞一个 score config，而不是让大家随手打分？</strong> 因为<strong>「能比较」是评估的全部价值</strong>。如果「有用性」这个名字下，A 团队打 0–1、B 团队打百分制、C 又用「好/差」，
   那这些分数<strong>放在一起毫无意义</strong>——求平均是错的、画趋势是错的、做对比更是错的。score config 把「某个名字 = 某种刻度」<strong>固定下来、强制校验</strong>，于是同名分数永远可比，
-  你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和第 8 课「provided vs computed」、第 16 课「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
+  你才能放心地算「这周有用性均分涨了没」「哪个模型的毒性通过率更高」。这和<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「provided vs computed」、<a class="xref" href="16-token-counting-cost.html">第 16 课</a>「定价 schema」是同一种工程信念：<strong>把「数据该长什么样」显式建模、前置校验，
   下游的一切分析才有坚实地基</strong>。而把三种来源统一到同一张 scores 表、同一套 config，则让「AI 评的」「人审的」「API 报的」分数活在一个空间里——<strong>这正是 Part 5 后续每一课的共同终点：生产可比的 score</strong>。
 </div>
 
@@ -479,9 +482,9 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   <ul>
     <li><strong>score 是评估的原子单位</strong>：一个 (name, value, dataType, source) 挂在 trace 或其中某步 observation 上（也可挂 session / 数据集运行），把「发生了什么」变成「做得多好」。</li>
     <li><strong>三种 dataType</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
-    <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应第 8 课「能用通用机制就别新造」。</li>
+    <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「能用通用机制就别新造」。</li>
     <li><strong>score config = 某 name 的 schema</strong>：声明 dataType 与约束（区间/类别），强制校验，使<strong>同名分数永远同一把尺</strong>、可比可聚合。</li>
-    <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进第 8 课的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
+    <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -496,7 +499,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。BooleanConfigFields 强制 categories 长度为 2、且锁死 {True:1, False:0}（score-configs.ts）。这样就不必为布尔新造一套存储/聚合，它顺着分类的路走——少一套特例、多一分一致。这正呼应第 8 课「能用通用机制表达的，就别新造一个」。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。BooleanConfigFields 强制 categories 长度为 2、且锁死 {True:1, False:0}（score-configs.ts）。这样就不必为布尔新造一套存储/聚合，它顺着分类的路走——少一套特例、多一分一致。这正呼应<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「能用通用机制表达的，就别新造一个」。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -509,7 +512,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。「能比较」是评估的全部价值。若同名分数刻度各异，放一起求平均/画趋势/对比全是错的。score config 显式声明 dataType 与约束（区间/类别）并前置校验，使同名分数恒可比。这和第 8 课 provided/computed、第 16 课定价 schema 是同一种「把数据该长什么样显式建模」的工程信念。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。「能比较」是评估的全部价值。若同名分数刻度各异，放一起求平均/画趋势/对比全是错的。score config 显式声明 dataType 与约束（区间/类别）并前置校验，使同名分数恒可比。这和<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a> provided/computed、<a class="xref" href="16-token-counting-cost.html">第 16 课</a>定价 schema 是同一种「把数据该长什么样显式建模」的工程信念。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -574,7 +577,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 </div>
 
 <p>Note one elegant move: <strong>boolean is not a separate fourth type—it is implemented as a "exactly two categories, locked to True=1/False=0" category</strong>. So the core only handles two logics, "numeric" and "categorical", and boolean reuses categorical storage and aggregation—
-one fewer special case, one more bit of consistency. This echoes Lesson 8's "wide event" idea: if a general mechanism can express it, don't invent a new one.</p>
+one fewer special case, one more bit of consistency. This echoes <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s "wide event" idea: if a general mechanism can express it, don't invent a new one.</p>
 
 <p>One more design that runs throughout: <strong>the <code>value</code> is always a number</strong>, while <code>stringValue</code> only holds the "label". A NUMERIC value is just that number with an empty stringValue; CATEGORICAL/BOOLEAN put the label in stringValue and the mapped number in value (e.g. <code>"positive"</code>→a number, <code>"True"</code>→1).
 Precisely because <strong>every score has a numeric value</strong>, averaging, trending, and pass-rate work uniformly across all types—the physical basis of "comparable".</p>
@@ -612,8 +615,8 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">API</span><span class="name">you submit it</span></div><div class="ld">Use the SDK's <code>score.create</code> directly—e.g. your own offline eval script, or thumbs-up collected in production. This is one origin of the <code>SCORE_CREATE</code> event on the ingestion path of Lessons 6 & 12.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI or code judge</span></div><div class="ld">Scores computed by LLM-as-a-judge (Lesson 29) or code eval (Lesson 31). They too <strong>flow back through the same ingestion path</strong> to become scores—evaluation isn't a separate pipeline, it's a producer of scores.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">human annotation</span></div><div class="ld">Human reviewers score traces against the config in an annotation queue (Lesson 32). They land in the same scores table, just with source set to ANNOTATION.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">EVAL</span><span class="name">AI or code judge</span></div><div class="ld">Scores computed by LLM-as-a-judge (<a class="xref" href="29-llm-as-a-judge.html">Lesson 29</a>) or code eval (<a class="xref" href="31-code-based-evaluation.html">Lesson 31</a>). They too <strong>flow back through the same ingestion path</strong> to become scores—evaluation isn't a separate pipeline, it's a producer of scores.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">ANNOTATION</span><span class="name">human annotation</span></div><div class="ld">Human reviewers score traces against the config in an annotation queue (<a class="xref" href="32-human-annotation.html">Lesson 32</a>). They land in the same scores table, just with source set to ANNOTATION.</div></div>
 </div>
 
 <h2>What fields a score object actually has</h2>
@@ -654,7 +657,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why bother with a dedicated score config instead of letting everyone score freely?</strong> Because <strong>"being comparable" is the entire value of evaluation</strong>. If under the name "helpfulness" team A rates 0–1, team B uses a percentage, and C uses "good/bad",
   then those scores are <strong>meaningless together</strong>—averaging is wrong, trending is wrong, comparing is more wrong still. A score config <strong>fixes and enforces</strong> "a given name = a given scale", so same-named scores are forever comparable,
-  and you can confidently ask "did average helpfulness rise this week" or "which model has the higher toxicity pass-rate". This is the same engineering belief as Lesson 8's "provided vs computed" and Lesson 16's "pricing schema": <strong>model "what the data should look like" explicitly and validate up front,
+  and you can confidently ask "did average helpfulness rise this week" or "which model has the higher toxicity pass-rate". This is the same engineering belief as <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s "provided vs computed" and <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s "pricing schema": <strong>model "what the data should look like" explicitly and validate up front,
   and every downstream analysis stands on solid ground</strong>. Unifying three sources into one scores table and one config set lets "AI-judged", "human-reviewed", and "API-reported" scores live in one space—<strong>which is the shared destination of every remaining lesson in Part 5: producing comparable scores</strong>.
 </div>
 
@@ -663,9 +666,9 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <ul>
     <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
     <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
-    <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing Lesson 8's "don't invent when a general mechanism works".</li>
+    <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s "don't invent when a general mechanism works".</li>
     <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
-    <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to Lesson 8's scores table. The next five lessons are just "producing scores in different ways".</li>
+    <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s scores table. The next five lessons are just "producing scores in different ways".</li>
   </ul>
 </div>
 <div class="selftest">
@@ -680,7 +683,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. BooleanConfigFields forces categories length 2, locked to {True:1, False:0} (score-configs.ts). So boolean needs no new storage/aggregation; it rides the categorical path — one fewer special case, more consistency. This echoes Lesson 8's 'if a general mechanism expresses it, don't invent a new one'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. BooleanConfigFields forces categories length 2, locked to {True:1, False:0} (score-configs.ts). So boolean needs no new storage/aggregation; it rides the categorical path — one fewer special case, more consistency. This echoes <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s 'if a general mechanism expresses it, don't invent a new one'.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -693,7 +696,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. 'Being comparable' is the whole value of evaluation. If same-named scores use different scales, averaging/trending/comparing them is all wrong. A score config explicitly declares dataType and constraints (bounds/categories) and validates up front, keeping same-named scores forever comparable. Same belief as Lesson 8's provided/computed and Lesson 16's pricing schema: model 'what the data should look like' explicitly.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. 'Being comparable' is the whole value of evaluation. If same-named scores use different scales, averaging/trending/comparing them is all wrong. A score config explicitly declares dataType and constraints (bounds/categories) and validates up front, keeping same-named scores forever comparable. Same belief as <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s provided/computed and <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s pricing schema: model 'what the data should look like' explicitly.</div></div></div>
   </details>
 </div>
 <div class="quiz">

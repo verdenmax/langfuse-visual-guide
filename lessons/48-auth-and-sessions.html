@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -470,7 +473,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">JWT 无状态 = 可水平扩展（验签即可，不必每请求查 session 表）；session 回调把鉴权结果「翻译」成 RBAC 的输入</text>
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">这个 session 回调用 instrumentAsync 包裹（第51课的 OTel 包装器）——平台连自己的登录都在自观测</text>
 </svg>
-<div class="figcap"><b>JWT + 身份注入</b>：<code>auth.ts:743</code> <code>session.strategy:"jwt"</code>、<code>:744</code> <code>maxAge:AUTH_SESSION_MAX_AGE*60</code>；session 回调（<code>:747</code> 起）查 <code>organizationMemberships</code>（含未删 <code>projects</code>，按 createdAt desc）+ <code>ProjectMemberships</code> 注入 session。回调体被 <code>instrumentAsync("next-auth-session")</code> 包裹（自观测，见第 51 课）。</div>
+<div class="figcap"><b>JWT + 身份注入</b>：<code>auth.ts:743</code> <code>session.strategy:"jwt"</code>、<code>:744</code> <code>maxAge:AUTH_SESSION_MAX_AGE*60</code>；session 回调（<code>:747</code> 起）查 <code>organizationMemberships</code>（含未删 <code>projects</code>，按 createdAt desc）+ <code>ProjectMemberships</code> 注入 session。回调体被 <code>instrumentAsync("next-auth-session")</code> 包裹（自观测，见<a class="xref" href="51-self-observability-and-config.html">第 51 课</a>）。</div>
 </div>
 
 <table class="t">
@@ -497,7 +500,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>密码登录的安全护栏</strong>：SSO 强制三道闸（实例级 <code>AUTH_DISABLE_USERNAME_PASSWORD</code> / 域名黑名单 / EE 多租户）；<strong>时序攻击防护</strong>（用户不存在也跑一遍 bcrypt 防枚举）；SSO 用户拦截（password=null 引导走 IdP）；最后 bcrypt(12 轮) 比对。</li>
     <li><strong>会话 = JWT</strong>：<code>strategy:"jwt"</code> 无状态、自带签名与身份、<code>maxAge</code> 过期。相比 DB session，天然适合多实例水平扩展（本地验签免查库），代价是即时吊销较难（用短有效期折中）。</li>
     <li><strong>session 回调注入身份</strong>：构建会话时查 <code>organizationMemberships→projects</code> + <code>ProjectMemberships</code> 塞进 session——这是把「你是谁」接到下一课「你能干什么」(RBAC) 的那根线。</li>
-    <li><strong>连登录都自观测</strong>：session 回调用 <code>instrumentAsync</code>（第 51 课的 OTel 包装器）包裹，给登录链路也挂上 span。平台对自己的可观测，无处不在。</li>
+    <li><strong>连登录都自观测</strong>：session 回调用 <code>instrumentAsync</code>（<a class="xref" href="51-self-observability-and-config.html">第 51 课</a>的 OTel 包装器）包裹，给登录链路也挂上 span。平台对自己的可观测，无处不在。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -669,7 +672,7 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">JWT stateless = horizontally scalable (just verify the signature, no per-request session-table lookup); the session callback "translates" the auth result into RBAC's input</text>
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">This session callback is wrapped in instrumentAsync (Lesson 51's OTel wrapper) — the platform self-observes even its own login</text>
 </svg>
-<div class="figcap"><b>JWT + identity injection</b>: <code>auth.ts:743</code> <code>session.strategy:"jwt"</code>, <code>:744</code> <code>maxAge:AUTH_SESSION_MAX_AGE*60</code>; the session callback (from <code>:747</code>) queries <code>organizationMemberships</code> (with non-deleted <code>projects</code>, ordered createdAt desc) + <code>ProjectMemberships</code> into the session. The callback body is wrapped in <code>instrumentAsync("next-auth-session")</code> (self-observability, see Lesson 51).</div>
+<div class="figcap"><b>JWT + identity injection</b>: <code>auth.ts:743</code> <code>session.strategy:"jwt"</code>, <code>:744</code> <code>maxAge:AUTH_SESSION_MAX_AGE*60</code>; the session callback (from <code>:747</code>) queries <code>organizationMemberships</code> (with non-deleted <code>projects</code>, ordered createdAt desc) + <code>ProjectMemberships</code> into the session. The callback body is wrapped in <code>instrumentAsync("next-auth-session")</code> (self-observability, see <a class="xref" href="51-self-observability-and-config.html">Lesson 51</a>).</div>
 </div>
 
 <table class="t">
@@ -696,7 +699,7 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
     <li><strong>Password-login guardrails</strong>: three SSO-enforcement gates (instance-level <code>AUTH_DISABLE_USERNAME_PASSWORD</code> / domain blocklist / EE multi-tenant); <strong>timing-attack defense</strong> (run bcrypt even when the user is absent to block enumeration); SSO-user interception (password=null guides to the IdP); finally a bcrypt(12-round) compare.</li>
     <li><strong>Session = JWT</strong>: <code>strategy:"jwt"</code> stateless, self-signed with identity, <code>maxAge</code> expiry. Versus DB sessions, naturally suited to multi-instance horizontal scaling (verify locally, no DB lookup), at the cost of harder instant revocation (split with a short validity window).</li>
     <li><strong>Session callback injects identity</strong>: on session build it queries <code>organizationMemberships→projects</code> + <code>ProjectMemberships</code> into the session — the wire connecting "who you are" to the next lesson's "what you can do" (RBAC).</li>
-    <li><strong>Even login self-observes</strong>: the session callback is wrapped in <code>instrumentAsync</code> (Lesson 51's OTel wrapper), attaching a span to the login path too. The platform's self-observability is everywhere.</li>
+    <li><strong>Even login self-observes</strong>: the session callback is wrapped in <code>instrumentAsync</code> (<a class="xref" href="51-self-observability-and-config.html">Lesson 51</a>'s OTel wrapper), attaching a span to the login path too. The platform's self-observability is everywhere.</li>
   </ul>
 </div>
 <div class="selftest">

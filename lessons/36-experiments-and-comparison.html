@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -357,7 +360,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   实验像一场严谨的 <strong>A/B 对照试验</strong>。同一套题（数据集），A 组用「gpt-4o + prompt v1」、B 组用「claude + prompt v2」，各自<strong>认真考一场</strong>。
-  你不用亲自监考：系统自动<strong>替你出题</strong>（把每道题的输入填进 prompt 的变量空格）、自动<strong>阅卷</strong>（第 29–32 课的评分）、自动<strong>算总评</strong>（第 35 课按 run 聚合）。最后把两组成绩单<strong>并排摊开</strong>，还允许你钦定一组当<strong>基准（baseline）</strong>，其余组就显示「比基准高了多少 / 低了多少」。
+  你不用亲自监考：系统自动<strong>替你出题</strong>（把每道题的输入填进 prompt 的变量空格）、自动<strong>阅卷</strong>（第 29–32 课的评分）、自动<strong>算总评</strong>（<a class="xref" href="35-dataset-runs.html">第 35 课</a>按 run 聚合）。最后把两组成绩单<strong>并排摊开</strong>，还允许你钦定一组当<strong>基准（baseline）</strong>，其余组就显示「比基准高了多少 / 低了多少」。
   于是那个让无数人纠结的问题——「我这个 prompt 改动，到底是变好了还是变坏了？」——不再靠感觉，而是<strong>一张并排的、带增量的成绩单</strong>说了算。
 </div>
 
@@ -409,7 +412,7 @@ modelParams = { provider: config.provider, model: config.model,
     <tr><td>共同点</td><td colspan="2">都产出 run + run item + trace，都走同一套自动评分与对比——下游完全一致</td></tr>
   </tbody>
 </table>
-<p>两种模式殊途同归：无论谁来跑应用，最终都落成第 35 课的 run item + trace，享受同一套自动评分（第 30 课）与对比视图。<strong>「怎么产生答卷」可以不同，「怎么评判与对比」完全统一</strong>——又一次「一个下游，多个上游」的解耦。</p>
+<p>两种模式殊途同归：无论谁来跑应用，最终都落成<a class="xref" href="35-dataset-runs.html">第 35 课</a>的 run item + trace，享受同一套自动评分（<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>）与对比视图。<strong>「怎么产生答卷」可以不同，「怎么评判与对比」完全统一</strong>——又一次「一个下游，多个上游」的解耦。</p>
 
 
 <h2>对比：选一组当基准，其余看增量</h2>
@@ -428,7 +431,7 @@ modelParams = { provider: config.provider, model: config.model,
 
 <div class="cols">
   <div class="col"><h4>选 baseline</h4><p><code>ExperimentBaselineControls</code> 让你钦定一场 run 当参照系——通常是「线上现役」那套配置，于是所有候选都和「现状」比，回答「换了会更好吗」。</p></div>
-  <div class="col"><h4>挑要比的 run</h4><p><code>ExperimentComparisonSelector</code> 选若干场 run 并排。同一套题、不同配置，公平可比（因为第 34 课的版本化保证了考的是同一批题）。</p></div>
+  <div class="col"><h4>挑要比的 run</h4><p><code>ExperimentComparisonSelector</code> 选若干场 run 并排。同一套题、不同配置，公平可比（因为<a class="xref" href="34-datasets-and-items.html">第 34 课</a>的版本化保证了考的是同一批题）。</p></div>
   <div class="col"><h4>看多维增量</h4><p><code>ExperimentChartsGrid</code> 把每个 score 维度画成对比图。好坏往往是<strong>多维权衡</strong>（更准但更慢更贵），增量视图让取舍一目了然。</p></div>
 </div>
 
@@ -463,7 +466,7 @@ modelParams = { provider: config.provider, model: config.model,
 </svg>
 
 <div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（第34课），让考卷紧贴真实分布。</p></div></div>
+  <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（<a class="xref" href="34-datasets-and-items.html">第34课</a>），让考卷紧贴真实分布。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>跑实验</h4><p>对一个候选 prompt/模型配置，服务端在整套题上跑一场 run（本课），产出一批 trace。</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>自动评分</h4><p>第30、35课自动给每条 trace 评分、按 run 聚合出这场的成绩单。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>对比决策</h4><p>和 baseline（现役配置）并排看增量：真的更好就上线，退步就否决——不靠感觉。</p></div></div>
@@ -475,16 +478,16 @@ modelParams = { provider: config.provider, model: config.model,
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么 Langfuse 要在服务端帮你跑实验，而不是只让你在本地跑完把结果传上来？</strong> 两种都支持（数据集上的 <code>remoteExperimentUrl</code> 就是给本地/外部跑的），但服务端跑有独特价值：<strong>零代码、强一致</strong>。产品经理或非工程师也能在 UI 上选个数据集、改个 prompt、点「跑」，不必写一行脚本；而且服务端跑能<strong>统一</strong>变量替换、版本钉定、评分调度、环境标记——把「实验该怎么做对」固化进平台，而不是指望每个人的本地脚本都写得严谨。代价是平台要承担 LLM 调用的成本与并发，所以它走 <code>ExperimentCreate</code> 队列、复用第 30 课那套调度韧性。<br><br>
-  <strong>为什么对比要用「baseline + 增量」，而不是直接看绝对分？</strong> 因为<strong>绝对分几乎没有意义，相对变化才有</strong>。「有用性 0.78」是好是坏？没有参照根本说不清。但「比现役配置高了 0.07」就是一个能据以决策的事实。更重要的是，质量往往是<strong>多维权衡</strong>：B 配置更准但更慢更贵。把每个维度的增量并排摊开，决策者才能做出「这点准度提升值不值这点延迟代价」的<strong>清醒取舍</strong>——而不是被单一指标牵着走。这也呼应第 33 课监控「只在变化时告警」：<strong>有信息量的永远是「变化」，不是「绝对值」。</strong>
+  <strong>为什么 Langfuse 要在服务端帮你跑实验，而不是只让你在本地跑完把结果传上来？</strong> 两种都支持（数据集上的 <code>remoteExperimentUrl</code> 就是给本地/外部跑的），但服务端跑有独特价值：<strong>零代码、强一致</strong>。产品经理或非工程师也能在 UI 上选个数据集、改个 prompt、点「跑」，不必写一行脚本；而且服务端跑能<strong>统一</strong>变量替换、版本钉定、评分调度、环境标记——把「实验该怎么做对」固化进平台，而不是指望每个人的本地脚本都写得严谨。代价是平台要承担 LLM 调用的成本与并发，所以它走 <code>ExperimentCreate</code> 队列、复用<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>那套调度韧性。<br><br>
+  <strong>为什么对比要用「baseline + 增量」，而不是直接看绝对分？</strong> 因为<strong>绝对分几乎没有意义，相对变化才有</strong>。「有用性 0.78」是好是坏？没有参照根本说不清。但「比现役配置高了 0.07」就是一个能据以决策的事实。更重要的是，质量往往是<strong>多维权衡</strong>：B 配置更准但更慢更贵。把每个维度的增量并排摊开，决策者才能做出「这点准度提升值不值这点延迟代价」的<strong>清醒取舍</strong>——而不是被单一指标牵着走。这也呼应<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控「只在变化时告警」：<strong>有信息量的永远是「变化」，不是「绝对值」。</strong>
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>实验 = prompt × 数据集 × 模型，服务端自动跑</strong>：<code>createExperimentJobClickhouse</code> 逐题用 <code>replaceVariablesInPrompt</code> 填变量、调选定 provider/model、产 trace + run item，全程零代码。</li>
-    <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（第37课）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
-    <li><strong>评分自动接上</strong>：复用第 30 课 <code>dataset-run-item-upsert</code> 触发、第 35 课按 run 聚合，跑完即有成绩单，无需手动。</li>
+    <li><strong>实验 trace 带丰富语境</strong>：环境标 <code>PromptExperiments</code>、链接被考 <code>prompt</code>（<a class="xref" href="37-prompt-management.html">第37课</a>）、metadata 钉住 <code>itemVersion=validFrom</code>（第34/35课的版本回放）——可复现、可追溯。</li>
+    <li><strong>评分自动接上</strong>：复用<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> <code>dataset-run-item-upsert</code> 触发、<a class="xref" href="35-dataset-runs.html">第 35 课</a>按 run 聚合，跑完即有成绩单，无需手动。</li>
     <li><strong>对比靠 baseline + 增量</strong>：<code>ExperimentBaselineControls</code> 选基准、<code>ExperimentComparisonSelector</code> 挑 run、<code>ExperimentChartsGrid</code> 画多维增量——绝对分难判，相对变化才能决策。</li>
     <li><strong>Part 6 闭环</strong>：数据集→实验→评分→对比→决策→（新难 case 回流数据集）。把「能打分」升级成「能用分做决策」，下一部分的 prompt 则给你「安全地改」的底气。</li>
   </ul>
@@ -514,7 +517,7 @@ modelParams = { provider: config.provider, model: config.model,
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。「有用性 0.78」没有参照根本判不了好坏，但「比现役配置高 0.07」是能决策的事实。更重要的是质量常是多维权衡（B 更准但更慢更贵），把每维增量并排，决策者才能清醒取舍而非被单一指标牵着走。这呼应第33课监控「只在变化时告警」——有信息量的永远是变化，不是绝对值。ExperimentBaselineControls/ComparisonSelector/ChartsGrid 实现这套对比。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。「有用性 0.78」没有参照根本判不了好坏，但「比现役配置高 0.07」是能决策的事实。更重要的是质量常是多维权衡（B 更准但更慢更贵），把每维增量并排，决策者才能清醒取舍而非被单一指标牵着走。这呼应<a class="xref" href="33-monitors-and-alerting.html">第33课</a>监控「只在变化时告警」——有信息量的永远是变化，不是绝对值。ExperimentBaselineControls/ComparisonSelector/ChartsGrid 实现这套对比。</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -533,7 +536,7 @@ modelParams = { provider: config.provider, model: config.model,
 <div class="card spark">
   <div class="tag">💭 发散思考（没有标准答案，动手或动脑想想）</div>
   <ul>
-    <li>实验把「改 prompt 前先验证」变成了科学方法。但它依赖一个前提：你的数据集能代表真实流量、你的评分能反映真实质量。设想这两个前提其中之一不成立（比如数据集偏窄、或 LLM 裁判有系统性偏差），实验对比的结论会怎样误导你？你会怎么防范这种「评估体系本身不可靠」的风险？（提示：回顾第32课人工标注当 ground truth。）</li>
+    <li>实验把「改 prompt 前先验证」变成了科学方法。但它依赖一个前提：你的数据集能代表真实流量、你的评分能反映真实质量。设想这两个前提其中之一不成立（比如数据集偏窄、或 LLM 裁判有系统性偏差），实验对比的结论会怎样误导你？你会怎么防范这种「评估体系本身不可靠」的风险？（提示：回顾<a class="xref" href="32-human-annotation.html">第32课</a>人工标注当 ground truth。）</li>
   </ul>
 </div>
 </div></div>
@@ -546,7 +549,7 @@ Three focuses: how an experiment <strong>runs server-side automatically</strong>
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   An experiment is like a rigorous <strong>A/B controlled trial</strong>. The same questions (dataset): group A uses "gpt-4o + prompt v1", group B uses "claude + prompt v2", each <strong>sits the exam properly</strong>.
-  You needn't proctor yourself: the system automatically <strong>sets the questions</strong> (fills each question's input into the prompt's variable blanks), automatically <strong>grades</strong> (Lessons 29–32's scoring), automatically <strong>computes the grade</strong> (Lesson 35's aggregate-by-run). Finally it <strong>lays the report cards side by side</strong>, and lets you anoint one group as the <strong>baseline</strong>, so the rest show "how much above/below baseline".
+  You needn't proctor yourself: the system automatically <strong>sets the questions</strong> (fills each question's input into the prompt's variable blanks), automatically <strong>grades</strong> (Lessons 29–32's scoring), automatically <strong>computes the grade</strong> (<a class="xref" href="35-dataset-runs.html">Lesson 35</a>'s aggregate-by-run). Finally it <strong>lays the report cards side by side</strong>, and lets you anoint one group as the <strong>baseline</strong>, so the rest show "how much above/below baseline".
   So the question that vexes everyone—"is my prompt change actually better or worse?"—no longer rests on feeling, but on <strong>a side-by-side report card with deltas</strong>.
 </div>
 
@@ -598,7 +601,7 @@ modelParams = { provider: config.provider, model: config.model,
     <tr><td>in common</td><td colspan="2">both produce run + run item + trace, both use the same auto-scoring and comparison—downstream is identical</td></tr>
   </tbody>
 </table>
-<p>Both modes converge: whoever runs the app, the result lands as Lesson 35's run item + trace, enjoying the same auto-scoring (Lesson 30) and comparison views. <strong>"How the answer sheet is produced" can differ; "how it's judged and compared" is fully unified</strong>—another "one downstream, many upstreams" decoupling.</p>
+<p>Both modes converge: whoever runs the app, the result lands as <a class="xref" href="35-dataset-runs.html">Lesson 35</a>'s run item + trace, enjoying the same auto-scoring (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>) and comparison views. <strong>"How the answer sheet is produced" can differ; "how it's judged and compared" is fully unified</strong>—another "one downstream, many upstreams" decoupling.</p>
 
 
 <h2>Comparison: anoint one as baseline, view the rest as deltas</h2>
@@ -617,7 +620,7 @@ modelParams = { provider: config.provider, model: config.model,
 
 <div class="cols">
   <div class="col"><h4>pick a baseline</h4><p><code>ExperimentBaselineControls</code> lets you anoint one run as the reference—usually the "production-active" config, so all candidates compare to "the status quo", answering "would changing be better".</p></div>
-  <div class="col"><h4>choose runs to compare</h4><p><code>ExperimentComparisonSelector</code> picks several runs side by side. Same questions, different configs, fairly comparable (Lesson 34's versioning guarantees they tested the same questions).</p></div>
+  <div class="col"><h4>choose runs to compare</h4><p><code>ExperimentComparisonSelector</code> picks several runs side by side. Same questions, different configs, fairly comparable (<a class="xref" href="34-datasets-and-items.html">Lesson 34</a>'s versioning guarantees they tested the same questions).</p></div>
   <div class="col"><h4>view multi-dimensional deltas</h4><p><code>ExperimentChartsGrid</code> charts each score dimension as a comparison. Goodness is often a <strong>multi-dimensional trade-off</strong> (more accurate but slower, costlier); the delta view makes the trade-off obvious.</p></div>
 </div>
 
@@ -652,7 +655,7 @@ modelParams = { provider: config.provider, model: config.model,
 </svg>
 
 <div class="vflow">
-  <div class="step"><div class="num">1</div><div class="sc"><h4>build a dataset</h4><p>Promote real botched production cases into test questions (L34), keeping the exam close to the real distribution.</p></div></div>
+  <div class="step"><div class="num">1</div><div class="sc"><h4>build a dataset</h4><p>Promote real botched production cases into test questions (<a class="xref" href="34-datasets-and-items.html">L34</a>), keeping the exam close to the real distribution.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>run an experiment</h4><p>For a candidate prompt/model config, the server runs a run over the whole set (this lesson), producing a batch of traces.</p></div></div>
   <div class="step"><div class="num">3</div><div class="sc"><h4>auto-score</h4><p>Lessons 30, 35 automatically score each trace and aggregate this run's report card.</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>compare & decide</h4><p>Side by side with the baseline (active config), view deltas: truly better → ship, regressed → reject—not by feeling.</p></div></div>
@@ -664,16 +667,16 @@ modelParams = { provider: config.provider, model: config.model,
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why does Langfuse run experiments server-side for you rather than just letting you run locally and upload results?</strong> Both are supported (the dataset's <code>remoteExperimentUrl</code> is for local/external runs), but server-side has unique value: <strong>zero-code, strongly consistent</strong>. A product manager or non-engineer can pick a dataset, tweak a prompt, and click "run" in the UI—no script needed; and server-side runs <strong>unify</strong> variable substitution, version pinning, eval scheduling, and environment tagging—baking "how to do an experiment right" into the platform, rather than hoping every person's local script is rigorous. The cost is the platform bearing LLM-call cost and concurrency, so it goes through the <code>ExperimentCreate</code> queue, reusing Lesson 30's scheduling resilience.<br><br>
-  <strong>Why compare with "baseline + deltas" rather than absolute scores?</strong> Because <strong>absolute scores mean almost nothing; relative change is what matters</strong>. Is "helpfulness 0.78" good or bad? Without a reference you can't say. But "0.07 above the active config" is a fact you can act on. More importantly, quality is often a <strong>multi-dimensional trade-off</strong>: config B is more accurate but slower and costlier. Laying each dimension's delta side by side lets a decision-maker make the <strong>clear-eyed trade-off</strong> "is this much accuracy gain worth this much latency cost"—rather than being led by a single metric. This echoes Lesson 33's monitor "alert only on change": <strong>what carries information is always "the change", not "the absolute value".</strong>
+  <strong>Why does Langfuse run experiments server-side for you rather than just letting you run locally and upload results?</strong> Both are supported (the dataset's <code>remoteExperimentUrl</code> is for local/external runs), but server-side has unique value: <strong>zero-code, strongly consistent</strong>. A product manager or non-engineer can pick a dataset, tweak a prompt, and click "run" in the UI—no script needed; and server-side runs <strong>unify</strong> variable substitution, version pinning, eval scheduling, and environment tagging—baking "how to do an experiment right" into the platform, rather than hoping every person's local script is rigorous. The cost is the platform bearing LLM-call cost and concurrency, so it goes through the <code>ExperimentCreate</code> queue, reusing <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s scheduling resilience.<br><br>
+  <strong>Why compare with "baseline + deltas" rather than absolute scores?</strong> Because <strong>absolute scores mean almost nothing; relative change is what matters</strong>. Is "helpfulness 0.78" good or bad? Without a reference you can't say. But "0.07 above the active config" is a fact you can act on. More importantly, quality is often a <strong>multi-dimensional trade-off</strong>: config B is more accurate but slower and costlier. Laying each dimension's delta side by side lets a decision-maker make the <strong>clear-eyed trade-off</strong> "is this much accuracy gain worth this much latency cost"—rather than being led by a single metric. This echoes <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor "alert only on change": <strong>what carries information is always "the change", not "the absolute value".</strong>
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>An experiment = prompt × dataset × model, run server-side</strong>: <code>createExperimentJobClickhouse</code> per question uses <code>replaceVariablesInPrompt</code> to fill variables, calls the chosen provider/model, produces a trace + run item—all zero-code.</li>
-    <li><strong>Experiment traces carry rich context</strong>: environment tagged <code>PromptExperiments</code>, linking the <code>prompt</code> under test (L37), metadata pinning <code>itemVersion=validFrom</code> (L34/35 version replay)—reproducible and traceable.</li>
-    <li><strong>Scoring auto-connects</strong>: reusing Lesson 30's <code>dataset-run-item-upsert</code> trigger and Lesson 35's aggregate-by-run, a report card appears once the run finishes, no manual work.</li>
+    <li><strong>Experiment traces carry rich context</strong>: environment tagged <code>PromptExperiments</code>, linking the <code>prompt</code> under test (<a class="xref" href="37-prompt-management.html">L37</a>), metadata pinning <code>itemVersion=validFrom</code> (<a class="xref" href="34-datasets-and-items.html">L34</a>/35 version replay)—reproducible and traceable.</li>
+    <li><strong>Scoring auto-connects</strong>: reusing <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s <code>dataset-run-item-upsert</code> trigger and <a class="xref" href="35-dataset-runs.html">Lesson 35</a>'s aggregate-by-run, a report card appears once the run finishes, no manual work.</li>
     <li><strong>Comparison via baseline + deltas</strong>: <code>ExperimentBaselineControls</code> picks the baseline, <code>ExperimentComparisonSelector</code> chooses runs, <code>ExperimentChartsGrid</code> charts multi-dimensional deltas—absolute scores are hard to judge, relative change drives decisions.</li>
     <li><strong>Part 6 closes the loop</strong>: dataset → experiment → score → compare → decide → (new hard cases flow back to the dataset). It upgrades "can score" into "can decide with scores"; the next part's prompt gives you the confidence to "change safely".</li>
   </ul>
@@ -690,7 +693,7 @@ modelParams = { provider: config.provider, model: config.model,
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processLLMCall's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (L34/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. processLLMCall's three steps: ① replaceVariablesInPrompt fills the prompt's variables with item.input into full messages; ② build the trace, tagging env PromptExperiments, linking config.prompt, metadata pinning itemVersion=validFrom (<a class="xref" href="34-datasets-and-items.html">L34</a>/35 version replay); ③ call the LLM with config.provider/model. This is 'zero-code server-side experiments'—a PM can click run in the UI, with the platform unifying variable substitution/version pinning/eval scheduling.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -703,7 +706,7 @@ modelParams = { provider: config.provider, model: config.model,
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'Helpfulness 0.78' can't be judged without a reference, but '0.07 above the active config' is an actionable fact. More importantly quality is often a multi-dimensional trade-off (B more accurate but slower/costlier); laying each dimension's delta side by side lets decision-makers trade off clearly rather than be led by one metric. This echoes Lesson 33's 'alert only on change'—information lives in change, not absolutes. ExperimentBaselineControls/ComparisonSelector/ChartsGrid implement this.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. 'Helpfulness 0.78' can't be judged without a reference, but '0.07 above the active config' is an actionable fact. More importantly quality is often a multi-dimensional trade-off (B more accurate but slower/costlier); laying each dimension's delta side by side lets decision-makers trade off clearly rather than be led by one metric. This echoes <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s 'alert only on change'—information lives in change, not absolutes. ExperimentBaselineControls/ComparisonSelector/ChartsGrid implement this.</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -722,7 +725,7 @@ modelParams = { provider: config.provider, model: config.model,
 <div class="card spark">
   <div class="tag">💭 Open questions (no single right answer - just think or try)</div>
   <ul>
-    <li>Experiments turn 'verify before changing a prompt' into a scientific method. But it rests on premises: your dataset represents real traffic, and your scoring reflects real quality. Imagine one premise fails (e.g. a narrow dataset, or an LLM judge with systematic bias)—how would the comparison's conclusions mislead you? How would you guard against this 'the evaluation system itself is unreliable' risk? (Hint: revisit Lesson 32's human annotation as ground truth.)</li>
+    <li>Experiments turn 'verify before changing a prompt' into a scientific method. But it rests on premises: your dataset represents real traffic, and your scoring reflects real quality. Imagine one premise fails (e.g. a narrow dataset, or an LLM judge with systematic bias)—how would the comparison's conclusions mislead you? How would you guard against this 'the evaluation system itself is unreliable' risk? (Hint: revisit <a class="xref" href="32-human-annotation.html">Lesson 32</a>'s human annotation as ground truth.)</li>
   </ul>
 </div>
 </div></div>

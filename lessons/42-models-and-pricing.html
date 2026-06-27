@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,8 +353,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 16 课说过「成本 = 用量 × 单价」，但留了个悬念：<strong>单价从哪来？一个叫法五花八门的模型名，又怎么对上它的价目？</strong> 这一课补上这块拼图——Langfuse 的<strong>定价数据模型</strong>。重点有三：<code>matchPattern</code> 用<strong>一条正则</strong>把同一个模型在各家平台千奇百怪的命名统一认出来；<code>pricingTiers</code> 用<strong>「默认档 + 条件档」</strong>支持按用量/上下文窗口<strong>分级定价</strong>；而 <code>prices</code> 是一张「<strong>每种用量、每个 token</strong>」的细价目（输入、输出、缓存读……各有各的价）。
-它直接喂养第 16 课的成本计算：拿一条调用的模型名去<strong>匹配</strong>出价目、按用量<strong>选中</strong>合适的档、再用「单价 × 用量」<strong>算</strong>出这次花了多少钱。
+<a class="xref" href="16-token-counting-cost.html">第 16 课</a>说过「成本 = 用量 × 单价」，但留了个悬念：<strong>单价从哪来？一个叫法五花八门的模型名，又怎么对上它的价目？</strong> 这一课补上这块拼图——Langfuse 的<strong>定价数据模型</strong>。重点有三：<code>matchPattern</code> 用<strong>一条正则</strong>把同一个模型在各家平台千奇百怪的命名统一认出来；<code>pricingTiers</code> 用<strong>「默认档 + 条件档」</strong>支持按用量/上下文窗口<strong>分级定价</strong>；而 <code>prices</code> 是一张「<strong>每种用量、每个 token</strong>」的细价目（输入、输出、缓存读……各有各的价）。
+它直接喂养<a class="xref" href="16-token-counting-cost.html">第 16 课</a>的成本计算：拿一条调用的模型名去<strong>匹配</strong>出价目、按用量<strong>选中</strong>合适的档、再用「单价 × 用量」<strong>算</strong>出这次花了多少钱。
 </p>
 
 <div class="card analogy">
@@ -437,7 +440,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>合起来：一次调用的成本是怎么算出来的</h2>
-<p>把 matchPattern 和 pricingTiers 串起来，就还原了第 16 课「成本 = 用量 × 单价」的完整链条。<code>default-model-prices.json</code> 这 158 条种子价会被 <code>upsertDefaultModelPrices</code> 灌进数据库的 Model/Price 表；之后每条调用都走这条计价线：</p>
+<p>把 matchPattern 和 pricingTiers 串起来，就还原了<a class="xref" href="16-token-counting-cost.html">第 16 课</a>「成本 = 用量 × 单价」的完整链条。<code>default-model-prices.json</code> 这 158 条种子价会被 <code>upsertDefaultModelPrices</code> 灌进数据库的 Model/Price 表；之后每条调用都走这条计价线：</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="一次调用的计价线五步：① 拿 observation 报告的模型名，② 用 matchPattern 正则匹配到 Model 条目（含 tokenizerId 与 pricingTiers），③ SDK 没报用量时按 tokenizerId 分词数 token，④ matchPricingTier 按用量选中价目档拿到 prices，⑤ 对每种用量用 prices 乘用量逐项相加，得总成本，还原第16课成本等于用量乘单价">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
@@ -474,7 +477,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>拿模型名</h4><p>从一条 observation（generation）取出它报告的模型名，如 <code>us.anthropic.claude-...-v1:0</code>。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>匹配 Model</h4><p>用模型名去试各条 <code>matchPattern</code> 正则，命中的就是这次该用的价目条目（含 tokenizerId 与 pricingTiers）。</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>（必要时）数 token</h4><p>若 SDK 没报用量，用条目的 <code>tokenizerId</code>/<code>tokenizerConfig</code> 把文本分词、数出 token 数（第 16 课）。</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>（必要时）数 token</h4><p>若 SDK 没报用量，用条目的 <code>tokenizerId</code>/<code>tokenizerConfig</code> 把文本分词、数出 token 数（<a class="xref" href="16-token-counting-cost.html">第 16 课</a>）。</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>选档</h4><p><code>matchPricingTier</code> 按用量选中合适的 tier（默认或条件档），拿到这次该用的 <code>prices</code> 价目。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>分项算钱</h4><p>对每种用量（输入/输出/缓存读…）用 <code>prices[该项] × 用量</code> 逐项相加，得这次调用的总成本。</p></div></div>
 </div>
@@ -485,13 +488,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么用正则匹配模型名，而不是精确字符串相等？</strong> 因为模型命名在生态里<strong>碎得令人发指</strong>。同一个 Claude，OpenAI 风格叫 <code>claude-3-5-sonnet</code>、Bedrock 上叫 <code>us.anthropic.claude-3-5-sonnet-v1:0</code>、Vertex 上叫 <code>claude-3-5-sonnet@20240620</code>，再加上大小写、<code>provider/</code> 前缀的排列组合，一个模型轻松有十几种合法写法。若用精确匹配，你得为每种写法各存一条价目，加个新区域、改个版本号就得全表翻新——维护成本爆炸，还极易漏。一条精心写的正则把这些<strong>同义写法收敛成一个意图</strong>：「无论你怎么称呼它，我都认得这是 gpt-4o」。<strong>正则在这里不是炫技，而是对抗命名碎片化的必需品</strong>——它把「世界的混乱」挡在了价目表之外。<br><br>
-  <strong>为什么定价要分「默认档 + 条件档」，而不是一口价？</strong> 因为真实定价<strong>本就分级</strong>：长上下文更贵、缓存命中更便宜、某些用量超阈值跳档。如果只存一口价，这些差异要么算错、要么得在计费代码里写满 if-else——把定价策略<strong>硬编码进逻辑</strong>，每变一次价就得改代码、发版本。把分级表达成<strong>数据</strong>（一组带 conditions 的 tier），计费逻辑就只剩一件事：<strong>按用量选中合适的档</strong>，而「档怎么分、价怎么定」全在数据里、可随时调。这又是一次「<strong>把策略从代码挪进数据</strong>」的胜利——和第 28 课 score config、第 16 课定价 schema 一脉相承：<strong>能用数据表达的规则，就别写进代码</strong>。而那个永远存在的默认档，则是一道优雅的兜底：保证<strong>任何</strong>用量都落得进某个价，绝不会因为没匹配上条件就算不出钱。
+  <strong>为什么定价要分「默认档 + 条件档」，而不是一口价？</strong> 因为真实定价<strong>本就分级</strong>：长上下文更贵、缓存命中更便宜、某些用量超阈值跳档。如果只存一口价，这些差异要么算错、要么得在计费代码里写满 if-else——把定价策略<strong>硬编码进逻辑</strong>，每变一次价就得改代码、发版本。把分级表达成<strong>数据</strong>（一组带 conditions 的 tier），计费逻辑就只剩一件事：<strong>按用量选中合适的档</strong>，而「档怎么分、价怎么定」全在数据里、可随时调。这又是一次「<strong>把策略从代码挪进数据</strong>」的胜利——和<a class="xref" href="28-scoring-model.html">第 28 课</a> score config、<a class="xref" href="16-token-counting-cost.html">第 16 课</a>定价 schema 一脉相承：<strong>能用数据表达的规则，就别写进代码</strong>。而那个永远存在的默认档，则是一道优雅的兜底：保证<strong>任何</strong>用量都落得进某个价，绝不会因为没匹配上条件就算不出钱。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>定价数据模型喂养第 16 课成本计算</strong>：<code>default-model-prices.json</code> 158 条种子价被 upsert 进 Model/Price 表，每条调用据此算「用量 × 单价」。</li>
+    <li><strong>定价数据模型喂养<a class="xref" href="16-token-counting-cost.html">第 16 课</a>成本计算</strong>：<code>default-model-prices.json</code> 158 条种子价被 upsert 进 Model/Price 表，每条调用据此算「用量 × 单价」。</li>
     <li><strong>matchPattern 统一命名</strong>：每模型一条大小写不敏感、全串匹配的正则，认尽 OpenAI/Anthropic/Bedrock/Vertex/Azure/Gemini 的各种写法（provider 前缀、区域前缀、版本后缀、@日期）。</li>
     <li><strong>pricingTiers 分级定价</strong>：恰一个默认档（兜底）+ 任意条件档；<code>matchPricingTier</code> 按 priority 升序评条件（AND 逻辑、operator gt/gte/lt/lte/eq/neq），第一个全满足者胜，否则回落默认。</li>
     <li><strong>prices 分项计费</strong>：每种用量（输入/输出/缓存读…）各有每-token 单价；成本 = Σ(各项单价 × 各项用量)。</li>
@@ -548,8 +551,8 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 16 said "cost = usage × price", but left a cliffhanger: <strong>where does the price come from, and how does a wildly-named model name match its price list?</strong> This lesson fills that piece—Langfuse's <strong>pricing data model</strong>. Three focuses: <code>matchPattern</code> uses <strong>one regex</strong> to recognize the same model under every platform's quirky naming; <code>pricingTiers</code> uses <strong>"a default tier + conditional tiers"</strong> to support <strong>tiered pricing</strong> by usage / context window; and <code>prices</code> is a fine price list "<strong>per usage type, per token</strong>" (input, output, cache reads… each with its own price).
-It directly feeds Lesson 16's cost computation: take a call's model name, <strong>match</strong> its price list, <strong>select</strong> the right tier by usage, and compute "price × usage" to get how much this call cost.
+<a class="xref" href="16-token-counting-cost.html">Lesson 16</a> said "cost = usage × price", but left a cliffhanger: <strong>where does the price come from, and how does a wildly-named model name match its price list?</strong> This lesson fills that piece—Langfuse's <strong>pricing data model</strong>. Three focuses: <code>matchPattern</code> uses <strong>one regex</strong> to recognize the same model under every platform's quirky naming; <code>pricingTiers</code> uses <strong>"a default tier + conditional tiers"</strong> to support <strong>tiered pricing</strong> by usage / context window; and <code>prices</code> is a fine price list "<strong>per usage type, per token</strong>" (input, output, cache reads… each with its own price).
+It directly feeds <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s cost computation: take a call's model name, <strong>match</strong> its price list, <strong>select</strong> the right tier by usage, and compute "price × usage" to get how much this call cost.
 </p>
 
 <div class="card analogy">
@@ -635,7 +638,7 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 
 
 <h2>Put together: how a call's cost is computed</h2>
-<p>Chaining matchPattern and pricingTiers restores Lesson 16's full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
+<p>Chaining matchPattern and pricingTiers restores <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s full "cost = usage × price" chain. The 158 seed prices in <code>default-model-prices.json</code> are loaded into the DB's Model/Price tables by <code>upsertDefaultModelPrices</code>; thereafter every call follows this pricing line:</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="a call's pricing line in five steps: 1 take the model name the observation reported, 2 match it with a matchPattern regex to a Model entry (with tokenizerId and pricingTiers), 3 if the SDK reported no usage, tokenize by tokenizerId to count tokens, 4 matchPricingTier picks the tier by usage to get prices, 5 multiply prices by usage per item and sum, giving total cost, restoring Lesson 16's cost equals usage times price">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
@@ -672,7 +675,7 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>get the model name</h4><p>From an observation (generation), take its reported model name, e.g. <code>us.anthropic.claude-...-v1:0</code>.</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>match the Model</h4><p>Test the name against each <code>matchPattern</code> regex; the hit is the price entry to use (with tokenizerId and pricingTiers).</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>(if needed) count tokens</h4><p>If the SDK didn't report usage, use the entry's <code>tokenizerId</code>/<code>tokenizerConfig</code> to tokenize the text and count tokens (Lesson 16).</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>(if needed) count tokens</h4><p>If the SDK didn't report usage, use the entry's <code>tokenizerId</code>/<code>tokenizerConfig</code> to tokenize the text and count tokens (<a class="xref" href="16-token-counting-cost.html">Lesson 16</a>).</p></div></div>
   <div class="step"><div class="num">4</div><div class="sc"><h4>select the tier</h4><p><code>matchPricingTier</code> picks the right tier by usage (default or conditional), yielding the <code>prices</code> list to use this time.</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>itemized cost</h4><p>For each usage type (input/output/cache-read…) sum <code>prices[item] × usage</code>, giving the call's total cost.</p></div></div>
 </div>
@@ -682,13 +685,13 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why match model names with regex rather than exact string equality?</strong> Because model naming in the ecosystem is <strong>maddeningly fragmented</strong>. The same Claude is <code>claude-3-5-sonnet</code> in OpenAI style, <code>us.anthropic.claude-3-5-sonnet-v1:0</code> on Bedrock, <code>claude-3-5-sonnet@20240620</code> on Vertex, plus permutations of casing and <code>provider/</code> prefixes—a model easily has a dozen valid spellings. With exact matching, you'd store one price entry per spelling, and adding a region or bumping a version means overhauling the whole table—maintenance explodes and misses abound. One carefully written regex <strong>converges these synonymous spellings into one intent</strong>: "however you call it, I know this is gpt-4o". <strong>Regex here isn't showing off but a necessity against naming fragmentation</strong>—it keeps "the world's chaos" outside the price table.<br><br>
-  <strong>Why split pricing into "default + conditional tiers" rather than a flat price?</strong> Because real pricing <strong>is tiered</strong>: long context costs more, cache hits cost less, some usage jumps tiers above a threshold. Storing only a flat price would either miscompute or fill the billing code with if-else—<strong>hardcoding pricing policy into logic</strong>, so every price change means a code change and a release. Expressing tiering as <strong>data</strong> (a set of tiers with conditions) leaves the billing logic just one job: <strong>pick the right tier by usage</strong>, while "how tiers split, how prices are set" lives in data, adjustable anytime. Another win for "<strong>move policy from code into data</strong>"—the same lineage as Lesson 28's score config and Lesson 16's pricing schema: <strong>a rule expressible as data shouldn't be written into code</strong>. And the ever-present default tier is an elegant backstop: it guarantees <strong>any</strong> usage lands in some price, never failing to compute just because no condition matched.
+  <strong>Why split pricing into "default + conditional tiers" rather than a flat price?</strong> Because real pricing <strong>is tiered</strong>: long context costs more, cache hits cost less, some usage jumps tiers above a threshold. Storing only a flat price would either miscompute or fill the billing code with if-else—<strong>hardcoding pricing policy into logic</strong>, so every price change means a code change and a release. Expressing tiering as <strong>data</strong> (a set of tiers with conditions) leaves the billing logic just one job: <strong>pick the right tier by usage</strong>, while "how tiers split, how prices are set" lives in data, adjustable anytime. Another win for "<strong>move policy from code into data</strong>"—the same lineage as <a class="xref" href="28-scoring-model.html">Lesson 28</a>'s score config and <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s pricing schema: <strong>a rule expressible as data shouldn't be written into code</strong>. And the ever-present default tier is an elegant backstop: it guarantees <strong>any</strong> usage lands in some price, never failing to compute just because no condition matched.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>The pricing data model feeds Lesson 16's cost computation</strong>: <code>default-model-prices.json</code>'s 158 seed prices are upserted into the Model/Price tables, and every call computes "usage × price" from them.</li>
+    <li><strong>The pricing data model feeds <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>'s cost computation</strong>: <code>default-model-prices.json</code>'s 158 seed prices are upserted into the Model/Price tables, and every call computes "usage × price" from them.</li>
     <li><strong>matchPattern unifies naming</strong>: one case-insensitive, full-string regex per model catches all the spellings of OpenAI/Anthropic/Bedrock/Vertex/Azure/Gemini (provider prefix, region prefix, version suffix, @date).</li>
     <li><strong>pricingTiers tier pricing</strong>: exactly one default tier (backstop) + any conditional tiers; <code>matchPricingTier</code> evaluates conditions in ascending priority (AND logic, operators gt/gte/lt/lte/eq/neq), first all-holding wins, else default.</li>
     <li><strong>prices bills line-by-line</strong>: each usage type (input/output/cache-read…) has its own per-token price; cost = Σ(per-item price × per-item usage).</li>

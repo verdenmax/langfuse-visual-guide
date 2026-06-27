@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -376,7 +379,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="580" y1="186" x2="580" y2="168" stroke="var(--accent)" stroke-width="1.5"/><polygon points="580,166 576,175 584,175" fill="var(--accent)"/><text x="638" y="180" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">提拔</text>
   <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">「生产即测试源」：把线上真实答砸的 case 一键收录成考题，让回归测试紧贴真实分布</text>
 </svg>
-<div class="figcap"><b>题从哪来</b>：<code>schema.prisma:685</code> 的 DatasetItem 有 <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>，外加 <code>sourceTraceId</code>/<code>sourceObservationId</code>——后两者让你把一条真实 trace（第 13 课）<b>提拔</b>成测试用例。Dataset（<code>:661</code>）还能用 <code>inputSchema</code>/<code>expectedOutputSchema</code> 约束题目格式。</div>
+<div class="figcap"><b>题从哪来</b>：<code>schema.prisma:685</code> 的 DatasetItem 有 <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>，外加 <code>sourceTraceId</code>/<code>sourceObservationId</code>——后两者让你把一条真实 trace（<a class="xref" href="13-event-types-merge.html">第 13 课</a>）<b>提拔</b>成测试用例。Dataset（<code>:661</code>）还能用 <code>inputSchema</code>/<code>expectedOutputSchema</code> 约束题目格式。</div>
 </div>
 
 <div class="layers">
@@ -389,7 +392,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="cols">
   <div class="col"><h4>回归测试</h4><p>改 prompt / 换模型后，把整套题重跑一遍，对照分数有没有掉——防止「修了一个 bug，带崩三个 case」。</p></div>
   <div class="col"><h4>实验对比</h4><p>同一套题，用不同配置各跑一次（第 35–36 课的 run），把多次结果并排比，挑出最优组合。</p></div>
-  <div class="col"><h4>few-shot 示例库</h4><p>数据项的 input/expectedOutput 也能当作 prompt 里的<strong>示例</strong>（第 37 课），让模型照着标准答案的样子答。</p></div>
+  <div class="col"><h4>few-shot 示例库</h4><p>数据项的 input/expectedOutput 也能当作 prompt 里的<strong>示例</strong>（<a class="xref" href="37-prompt-management.html">第 37 课</a>），让模型照着标准答案的样子答。</p></div>
 </div>
 
 
@@ -409,7 +412,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <rect x="300" y="160" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="390" y="179" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">3 月的 run 钉住 validFrom=t2</text>
   <line x1="390" y1="160" x2="390" y2="102" stroke="var(--blue)" stroke-width="1.2"/><polygon points="390,100 386,109 394,109" fill="var(--blue)"/>
 </svg>
-<div class="figcap"><b>双时态版本</b>：当前版 = <code>validTo IS NULL</code> 的那行。改题在事务里「关旧版（盖 validTo）+ 插新版（新 validFrom）」。一次 dataset run <b>钉住</b>某个 <code>validFrom</code>，所以它永远看到「当时那版题」——这正是第 30 课 eval 用 <code>datasetItemValidFrom</code> 的原因。源码：<code>dataset-items.ts:418-470</code>。</div>
+<div class="figcap"><b>双时态版本</b>：当前版 = <code>validTo IS NULL</code> 的那行。改题在事务里「关旧版（盖 validTo）+ 插新版（新 validFrom）」。一次 dataset run <b>钉住</b>某个 <code>validFrom</code>，所以它永远看到「当时那版题」——这正是<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> eval 用 <code>datasetItemValidFrom</code> 的原因。源码：<code>dataset-items.ts:418-470</code>。</div>
 </div>
 
 <div class="codefile">
@@ -467,7 +470,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么数据项要版本化，而不是简单地原地更新？</strong> 一句话：<strong>为了让历史实验永远可解释、可复现</strong>。评估的全部价值在于「比较」——这次比上次好还是差。但如果测试题本身会被悄悄改掉，那「上次」的分数就成了无根之木：你不知道它当时考的是什么，自然没法和「这次」公平对比。版本化用 <code>validFrom/validTo</code> 给每道题的每一版钉上时间区间，让每次 run 都能<strong>钉死</strong>它当时用的那一版（第 30 课 eval 取数据时正是带着 <code>datasetItemValidFrom</code> 精确回放）。这是「不可变历史 + 可移动当前指针」的经典思路，和第 37 课的 prompt 版本、git 的 commit 是同一种工程信念：<strong>真相一旦记录就不抹改，要变就追加新版本</strong>。<br><br>
+  <strong>为什么数据项要版本化，而不是简单地原地更新？</strong> 一句话：<strong>为了让历史实验永远可解释、可复现</strong>。评估的全部价值在于「比较」——这次比上次好还是差。但如果测试题本身会被悄悄改掉，那「上次」的分数就成了无根之木：你不知道它当时考的是什么，自然没法和「这次」公平对比。版本化用 <code>validFrom/validTo</code> 给每道题的每一版钉上时间区间，让每次 run 都能<strong>钉死</strong>它当时用的那一版（<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> eval 取数据时正是带着 <code>datasetItemValidFrom</code> 精确回放）。这是「不可变历史 + 可移动当前指针」的经典思路，和<a class="xref" href="37-prompt-management.html">第 37 课</a>的 prompt 版本、git 的 commit 是同一种工程信念：<strong>真相一旦记录就不抹改，要变就追加新版本</strong>。<br><br>
   <strong>为什么要让数据项能从真实 trace「提拔」？</strong> 因为<strong>最好的测试题就藏在生产事故里</strong>。凭空想象的测试用例往往覆盖不到真实用户那些刁钻的、长尾的输入；而线上每一次应用答砸的 trace，都是一道现成的、带着真实分布的好题。<code>sourceTraceId</code> 让「发现问题 → 收录成回归题 → 下次改进后验证」形成闭环——观测平台不只让你看见问题，还顺手把问题变成防止它复发的「疫苗」。
 </div>
 
@@ -475,10 +478,10 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>数据集 = 一组测试用例</strong>：Dataset 装一组 DatasetItem，每个 item = <code>input</code>（题干）+ <code>expectedOutput</code>（参考答案）+ <code>metadata</code>。它是评估的「考卷」，配合第 28–32 课的 score 用。</li>
-    <li><strong>题可从生产「提拔」</strong>：<code>sourceTraceId</code>/<code>sourceObservationId</code> 让你把一条真实 trace（第 13 课）一键收录成测试用例——回归集紧贴真实流量分布，而非凭空臆造。</li>
+    <li><strong>题可从生产「提拔」</strong>：<code>sourceTraceId</code>/<code>sourceObservationId</code> 让你把一条真实 trace（<a class="xref" href="13-event-types-merge.html">第 13 课</a>）一键收录成测试用例——回归集紧贴真实流量分布，而非凭空臆造。</li>
     <li><strong>数据项是版本化的</strong>：主键 <code>(id, projectId, validFrom)</code> 让同一道题多版本共存；当前版 = <code>validTo IS NULL</code>。改题在事务里「关旧版（盖 validTo）+ 插新版」——缓慢变化维 / 双时态。</li>
-    <li><strong>版本化是为了可复现</strong>：一次 run 钉住某个 <code>validFrom</code>，永远看到「当时那版题」（第 30 课 eval 用 <code>datasetItemValidFrom</code> 精确回放）。历史实验因此永远可解释、可公平对比。</li>
-    <li><strong>不可变历史 + 可移动指针</strong>：和第 37 课 prompt 版本、git commit 同一种信念——真相记录后不抹改，变更追加新版本。</li>
+    <li><strong>版本化是为了可复现</strong>：一次 run 钉住某个 <code>validFrom</code>，永远看到「当时那版题」（<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> eval 用 <code>datasetItemValidFrom</code> 精确回放）。历史实验因此永远可解释、可公平对比。</li>
+    <li><strong>不可变历史 + 可移动指针</strong>：和<a class="xref" href="37-prompt-management.html">第 37 课</a> prompt 版本、git commit 同一种信念——真相记录后不抹改，变更追加新版本。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -513,13 +516,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="qn">3. 为什么数据项要这样版本化，而不是简单地原地更新？</div>
   <ol class="opts">
     <li>为了加快查询</li>
-    <li>为了实验可复现：一次 run 钉住某个 validFrom，永远看到「当时那版题」；否则历史实验的分数会失去语境，两次实验无法公平对比（第30课 eval 正是用 datasetItemValidFrom 精确回放）</li>
+    <li>为了实验可复现：一次 run 钉住某个 validFrom，永远看到「当时那版题」；否则历史实验的分数会失去语境，两次实验无法公平对比（<a class="xref" href="30-eval-execution-pipeline.html">第30课</a> eval 正是用 datasetItemValidFrom 精确回放）</li>
     <li>为了节省存储</li>
     <li>为了支持并发写</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。评估的价值在比较。若题被原地改，「上次」的分就失去语境——不知道当时考的是什么，没法和「这次」公平比。版本化给每道题每版钉上时间区间，让每次 run 钉死它用的那版（第30课 eval 带 datasetItemValidFrom 精确回放）。这和第37课 prompt 版本、git commit 同一种「真相记录后不抹改」的信念。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：B</strong>。评估的价值在比较。若题被原地改，「上次」的分就失去语境——不知道当时考的是什么，没法和「这次」公平比。版本化给每道题每版钉上时间区间，让每次 run 钉死它用的那版（<a class="xref" href="30-eval-execution-pipeline.html">第30课</a> eval 带 datasetItemValidFrom 精确回放）。这和<a class="xref" href="37-prompt-management.html">第37课</a> prompt 版本、git commit 同一种「真相记录后不抹改」的信念。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -557,7 +560,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <line x1="580" y1="186" x2="580" y2="168" stroke="var(--accent)" stroke-width="1.5"/><polygon points="580,166 576,175 584,175" fill="var(--accent)"/><text x="632" y="180" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">promote</text>
   <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">"production as test source": capture a real botched case into a question, keeping regression tests close to the real distribution</text>
 </svg>
-<div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (Lesson 13) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
+<div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (<a class="xref" href="13-event-types-merge.html">Lesson 13</a>) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
 </div>
 
 <div class="layers">
@@ -570,7 +573,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
 <div class="cols">
   <div class="col"><h4>regression testing</h4><p>After changing a prompt / swapping a model, re-run the whole set and check whether scores dropped—preventing "fix one bug, break three cases".</p></div>
   <div class="col"><h4>experiment comparison</h4><p>The same set, run once per config (Lessons 35–36's runs), with multiple results placed side by side to pick the best combination.</p></div>
-  <div class="col"><h4>few-shot example bank</h4><p>An item's input/expectedOutput can also serve as <strong>examples</strong> in a prompt (Lesson 37), letting the model answer in the shape of the reference answers.</p></div>
+  <div class="col"><h4>few-shot example bank</h4><p>An item's input/expectedOutput can also serve as <strong>examples</strong> in a prompt (<a class="xref" href="37-prompt-management.html">Lesson 37</a>), letting the model answer in the shape of the reference answers.</p></div>
 </div>
 
 
@@ -590,7 +593,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <rect x="300" y="160" width="180" height="30" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="390" y="179" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--ink)">March's run pins validFrom=t2</text>
   <line x1="390" y1="160" x2="390" y2="102" stroke="var(--blue)" stroke-width="1.2"/><polygon points="390,100 386,109 394,109" fill="var(--blue)"/>
 </svg>
-<div class="figcap"><b>Bitemporal versions</b>: the current version = the row with <code>validTo IS NULL</code>. An edit, in a transaction, "closes the old version (stamps validTo) + inserts a new version (new validFrom)". A dataset run <b>pins</b> a <code>validFrom</code>, so it always sees "that version of the question"—exactly why Lesson 30's eval uses <code>datasetItemValidFrom</code>. Source: <code>dataset-items.ts:418-470</code>.</div>
+<div class="figcap"><b>Bitemporal versions</b>: the current version = the row with <code>validTo IS NULL</code>. An edit, in a transaction, "closes the old version (stamps validTo) + inserts a new version (new validFrom)". A dataset run <b>pins</b> a <code>validFrom</code>, so it always sees "that version of the question"—exactly why <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval uses <code>datasetItemValidFrom</code>. Source: <code>dataset-items.ts:418-470</code>.</div>
 </div>
 
 <div class="codefile">
@@ -648,7 +651,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why version dataset items rather than simply update in place?</strong> In a phrase: <strong>to keep historical experiments forever explainable and reproducible</strong>. The whole value of evaluation is "comparison"—is this better or worse than last time. But if the test questions are silently edited, "last time"'s score becomes rootless: you don't know what it tested, and can't fairly compare with "this time". Versioning uses <code>validFrom/validTo</code> to pin a time interval on every version of every question, letting each run <strong>pin</strong> the version it used (Lesson 30's eval replays exactly via <code>datasetItemValidFrom</code>). It's the classic "immutable history + a movable current pointer", the same belief as Lesson 37's prompt versions and git commits: <strong>once truth is recorded it's not erased; to change, append a new version</strong>.<br><br>
+  <strong>Why version dataset items rather than simply update in place?</strong> In a phrase: <strong>to keep historical experiments forever explainable and reproducible</strong>. The whole value of evaluation is "comparison"—is this better or worse than last time. But if the test questions are silently edited, "last time"'s score becomes rootless: you don't know what it tested, and can't fairly compare with "this time". Versioning uses <code>validFrom/validTo</code> to pin a time interval on every version of every question, letting each run <strong>pin</strong> the version it used (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval replays exactly via <code>datasetItemValidFrom</code>). It's the classic "immutable history + a movable current pointer", the same belief as <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s prompt versions and git commits: <strong>once truth is recorded it's not erased; to change, append a new version</strong>.<br><br>
   <strong>Why let items be "promoted" from real traces?</strong> Because <strong>the best test questions hide in production incidents</strong>. Imagined test cases rarely cover the tricky, long-tail inputs real users throw; whereas every botched production trace is a ready-made, real-distribution question. <code>sourceTraceId</code> closes the loop "find a problem → capture it as a regression question → verify after improving"—an observability platform not only lets you see problems but turns them into "vaccines" against recurrence.
 </div>
 
@@ -656,10 +659,10 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>A dataset = a set of test cases</strong>: a Dataset holds DatasetItems, each = <code>input</code> (prompt) + <code>expectedOutput</code> (reference answer) + <code>metadata</code>. It's the "exam paper" for evaluation, used with Lessons 28–32's scores.</li>
-    <li><strong>Questions can be "promoted" from production</strong>: <code>sourceTraceId</code>/<code>sourceObservationId</code> let you capture a real trace (Lesson 13) into a test case in one click—the regression set hugs the real traffic distribution, not made-up cases.</li>
+    <li><strong>Questions can be "promoted" from production</strong>: <code>sourceTraceId</code>/<code>sourceObservationId</code> let you capture a real trace (<a class="xref" href="13-event-types-merge.html">Lesson 13</a>) into a test case in one click—the regression set hugs the real traffic distribution, not made-up cases.</li>
     <li><strong>Items are versioned</strong>: the key <code>(id, projectId, validFrom)</code> lets many versions of one question coexist; the current = <code>validTo IS NULL</code>. An edit, in a transaction, "closes the old (stamps validTo) + inserts the new"—slowly-changing dimension / bitemporal.</li>
-    <li><strong>Versioning is for reproducibility</strong>: a run pins a <code>validFrom</code>, always seeing "that version" (Lesson 30's eval replays via <code>datasetItemValidFrom</code>). Historical experiments stay explainable and fairly comparable.</li>
-    <li><strong>Immutable history + a movable pointer</strong>: the same belief as Lesson 37's prompt versions and git commits—record truth without erasing it; append a new version to change.</li>
+    <li><strong>Versioning is for reproducibility</strong>: a run pins a <code>validFrom</code>, always seeing "that version" (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval replays via <code>datasetItemValidFrom</code>). Historical experiments stay explainable and fairly comparable.</li>
+    <li><strong>Immutable history + a movable pointer</strong>: the same belief as <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s prompt versions and git commits—record truth without erasing it; append a new version to change.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -694,13 +697,13 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <div class="qn">3. Why version dataset items this way rather than simply updating in place?</div>
   <ol class="opts">
     <li>to speed up queries</li>
-    <li>for reproducibility: a run pins a validFrom and always sees 'that version of the question'; otherwise historical scores lose their context and two experiments can't be fairly compared (Lesson 30's eval replays exactly via datasetItemValidFrom)</li>
+    <li>for reproducibility: a run pins a validFrom and always sees 'that version of the question'; otherwise historical scores lose their context and two experiments can't be fairly compared (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval replays exactly via datasetItemValidFrom)</li>
     <li>to save storage</li>
     <li>to support concurrent writes</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Evaluation's value is comparison. If a question is edited in place, 'last time'\'s score loses context—you don't know what it tested, can't fairly compare with 'this time'. Versioning pins a time interval on every version, letting each run pin the version it used (Lesson 30's eval replays via datasetItemValidFrom). Same 'record truth without erasing' belief as Lesson 37's prompt versions and git commits.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. Evaluation's value is comparison. If a question is edited in place, 'last time'\'s score loses context—you don't know what it tested, can't fairly compare with 'this time'. Versioning pins a time interval on every version, letting each run pin the version it used (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval replays via datasetItemValidFrom). Same 'record truth without erasing' belief as <a class="xref" href="37-prompt-management.html">Lesson 37</a>'s prompt versions and git commits.</div></div></div>
   </details>
 </div>
 <div class="card spark">

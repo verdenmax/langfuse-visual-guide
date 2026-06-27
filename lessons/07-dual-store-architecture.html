@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -393,7 +396,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <p>如果硬把遥测塞进 Postgres，海量行 + 频繁聚合会让它不堪重负；反过来把配置塞进 ClickHouse，它的<strong>弱事务、最终一致</strong>又满足不了「创建即可用」。
-所以 Langfuse 的选择不是「贪多」，而是<strong>让每种数据待在最适合它的库里</strong>——这正是第 2 课「按列式访问设计」「谨慎反范式化」等原则在存储层的总落点。</p>
+所以 Langfuse 的选择不是「贪多」，而是<strong>让每种数据待在最适合它的库里</strong>——这正是<a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>「按列式访问设计」「谨慎反范式化」等原则在存储层的总落点。</p>
 
 
 <div class="fig">
@@ -428,7 +431,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <p>注意一个细节：S3 不只是「存大文件」。摄取链路里，每个进来的事件<strong>先落 S3</strong>，worker 合并时再回 S3 取历史（第 5、15 课）——S3 在这里扮演的是
 <strong>「事件日志 / 真相之源」</strong>的角色。ClickHouse 里的宽事件，本质上是 S3 事件底稿<strong>合并后的「物化视图」</strong>：万一 ClickHouse 数据需要重建，
-理论上可以从 S3 的原始事件<strong>重放</strong>出来。这种「原始日志 + 派生表」的分工，正是第 2 课「不可变 / 追加式事件」原则的体现。</p>
+理论上可以从 S3 的原始事件<strong>重放</strong>出来。这种「原始日志 + 派生表」的分工，正是<a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>「不可变 / 追加式事件」原则的体现。</p>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">控制面</span><span class="name">Postgres</span></div><div class="ld">谁能用、配置成什么样：org/project/user、API key、prompt、eval 配置、定价。改动少而关键，要强一致。</div></div>
@@ -437,14 +440,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="layer l-app"><div class="lh"><span class="badge">对象存储</span><span class="name">S3 / blob</span></div><div class="ld">事件真相之源、上传媒体、批量导出。又大又不常翻的东西放这里，便宜耐放。</div></div>
 </div>
 
-<p>这四层在运行时是<strong>协作</strong>的，不是各自孤立。回想第 5 课那条链路：摄取时，事件先进 <strong>Redis 队列</strong>、原件落 <strong>S3</strong>，worker 合并后写 <strong>ClickHouse</strong>；
+<p>这四层在运行时是<strong>协作</strong>的，不是各自孤立。回想<a class="xref" href="05-life-of-a-trace.html">第 5 课</a>那条链路：摄取时，事件先进 <strong>Redis 队列</strong>、原件落 <strong>S3</strong>，worker 合并后写 <strong>ClickHouse</strong>；
 而合并时要知道「这个 observation 关联哪版 prompt」「按什么模型定价」，又要回 <strong>Postgres</strong> 查配置。一次摄取，四种存储各出一份力。读取时也类似：UI 列表查 <strong>ClickHouse</strong>，
 但「这个项目叫什么、谁有权限」来自 <strong>Postgres</strong>，热点配置走 <strong>Redis</strong> 缓存。所以理解 Langfuse，本质上就是理解<strong>数据如何在这四种存储之间流动</strong>——
 这也是为什么本指南的第二部分要专门用一课讲存储分工：它是后面所有链路课的<strong>共同底座</strong>。</p>
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>四个存储 = 四份运维负担，为什么还要这么拆？</strong> 第 2 课有一条原则：「把成本与运维简单性当作架构约束」——多一个数据库就要多一份备份、监控、升级、容灾。
+  <strong>四个存储 = 四份运维负担，为什么还要这么拆？</strong> <a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>有一条原则：「把成本与运维简单性当作架构约束」——多一个数据库就要多一份备份、监控、升级、容灾。
   Langfuse 之所以仍坚持四存储，是因为<strong>每一个都在解决一个单一存储解决不了的硬问题</strong>：没有 ClickHouse，海量聚合查询会慢到不可用；没有 Redis 队列，摄取就无法异步抗洪峰；
   没有 S3，大字段和媒体会把数据库撑爆、也无法重放。换句话说，这四个不是「想加就加」，而是<strong>各自挣到了自己的存在</strong>。这也是判断「该不该再加一个存储」的标准——
   它解决的问题，是否值得它带来的长期运维成本。
@@ -506,7 +509,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>四种存储各管一摊</strong>：Postgres（配置/元数据·OLTP）、ClickHouse（宽事件·OLAP）、Redis（队列+缓存）、S3（事件底稿+媒体+导出）。</li>
     <li>核心理由：<strong>OLTP 与 OLAP 是相反的优化目标</strong>，配置要精确单条+强一致，遥测要海量扫描+聚合，必须分库。</li>
     <li><strong>S3 是「真相之源」</strong>：事件先落 S3，ClickHouse 的宽事件是其合并后的派生表，可重放。</li>
-    <li>控制面（Postgres）vs 数据面（ClickHouse）的划分，是第 3 课「领域形状 vs 物理存储」的宏观版。</li>
+    <li>控制面（Postgres）vs 数据面（ClickHouse）的划分，是<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>「领域形状 vs 物理存储」的宏观版。</li>
     <li>四存储不是堆技术，而是各自<strong>挣到了存在</strong>——这也是「该不该再加一个存储」的判断标准。</li>
   </ul>
 </div>
@@ -535,11 +538,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。S3 不只是大文件仓。事件先落 S3 作为不可变原始日志，worker 据此合并出 ClickHouse 宽事件（派生/物化）。这正是第 2 课“不可变/追加式事件”的体现，也让数据可重放重建。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。S3 不只是大文件仓。事件先落 S3 作为不可变原始日志，worker 据此合并出 ClickHouse 宽事件（派生/物化）。这正是<a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>“不可变/追加式事件”的体现，也让数据可重放重建。</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. Langfuse 用四种存储，但第 2 课又说“把运维简单性当约束”。怎么调和？判断“该不该再加一个存储”的标准是什么？</div>
+  <div class="qn">3. Langfuse 用四种存储，但<a class="xref" href="02-observability-2-and-wide-events.html">第 2 课</a>又说“把运维简单性当约束”。怎么调和？判断“该不该再加一个存储”的标准是什么？</div>
   <ol class="opts">
     <li>由前端框架决定</li>
     <li>永远只能用一个数据库</li>
@@ -609,7 +612,7 @@ and no single store nails both extremes.</p>
 
 <p>Cram telemetry into Postgres and huge rows + frequent aggregation overwhelm it; cram config into ClickHouse and its <strong>weak
 transactions, eventual consistency</strong> fail "instantly usable". So Langfuse isn't being greedy — it's <strong>letting each kind of
-data live in the store that fits it best</strong>, the storage-layer landing point of Lesson 2's "design around columnar access" and
+data live in the store that fits it best</strong>, the storage-layer landing point of <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a>'s "design around columnar access" and
 "denormalize carefully".</p>
 
 <div class="fig">
@@ -643,9 +646,9 @@ data live in the store that fits it best</strong>, the storage-layer landing poi
 </table>
 
 <p>One detail: S3 isn't just "big-file storage". In the ingestion path, each incoming event <strong>lands in S3 first</strong>, and the
-worker re-reads S3 when merging (L05, L15) — here S3 plays the <strong>"event log / source of truth"</strong> role. The wide events in
+worker re-reads S3 when merging (<a class="xref" href="05-life-of-a-trace.html">L05</a>, <a class="xref" href="15-ingestion-service.html">L15</a>) — here S3 plays the <strong>"event log / source of truth"</strong> role. The wide events in
 ClickHouse are essentially a <strong>"materialized view" of the merged S3 manuscripts</strong>: if ClickHouse data ever needs rebuilding,
-it can in principle be <strong>replayed</strong> from the raw S3 events. This "raw log + derived table" split is Lesson 2's "immutable /
+it can in principle be <strong>replayed</strong> from the raw S3 events. This "raw log + derived table" split is <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a>'s "immutable /
 append-oriented events" in action.</p>
 
 <div class="layers">
@@ -655,7 +658,7 @@ append-oriented events" in action.</p>
   <div class="layer l-app"><div class="lh"><span class="badge">object store</span><span class="name">S3 / blob</span></div><div class="ld">the event source of truth, uploaded media, bulk exports. Big, rarely-flipped things live here — cheap and durable.</div></div>
 </div>
 
-<p>These four layers <strong>collaborate</strong> at runtime, not in isolation. Recall Lesson 5's path: on ingestion, events first enter the
+<p>These four layers <strong>collaborate</strong> at runtime, not in isolation. Recall <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s path: on ingestion, events first enter the
 <strong>Redis queue</strong> and originals land in <strong>S3</strong>; after merging the worker writes <strong>ClickHouse</strong>; and to
 merge it must know "which prompt version this observation links to" and "what model pricing applies", so it reads config back from
 <strong>Postgres</strong>. One ingestion, four stores each pulling their weight. Reads are similar: the UI list queries
@@ -666,7 +669,7 @@ of every later path lesson.</p>
 
 <div class="card spark">
   <div class="tag">🎯 Design tradeoff</div>
-  <strong>Four stores = four operational burdens, so why split this much?</strong> Lesson 2 has a principle: "treat cost and
+  <strong>Four stores = four operational burdens, so why split this much?</strong> <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a> has a principle: "treat cost and
   operational simplicity as constraints" — each extra database means more backups, monitoring, upgrades, DR. Langfuse still keeps four
   because <strong>each solves a hard problem a single store can't</strong>: without ClickHouse, huge aggregation queries are unusably
   slow; without the Redis queue, ingestion can't go async to absorb spikes; without S3, big fields and media bloat the database and you
@@ -730,7 +733,7 @@ of every later path lesson.</p>
     <li><strong>Four stores, each its own job</strong>: Postgres (config/metadata·OLTP), ClickHouse (wide events·OLAP), Redis (queue+cache), S3 (event manuscript+media+exports).</li>
     <li>Core reason: <strong>OLTP and OLAP are opposite targets</strong> — config needs precise single-row + strong consistency, telemetry needs massive scan + aggregation, so split stores.</li>
     <li><strong>S3 is the "source of truth"</strong>: events land in S3 first; ClickHouse wide events are the merged derived table, replayable.</li>
-    <li>Control plane (Postgres) vs data plane (ClickHouse) is the macro version of Lesson 3's "domain shape vs physical storage".</li>
+    <li>Control plane (Postgres) vs data plane (ClickHouse) is the macro version of <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a>'s "domain shape vs physical storage".</li>
     <li>Four stores aren't tech-stacking — each <strong>earned its existence</strong>, which is also the test for "should we add another store".</li>
   </ul>
 </div>
@@ -759,11 +762,11 @@ of every later path lesson.</p>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. S3 isn't just a big-file store. Events land in S3 as an immutable raw log, from which the worker merges ClickHouse wide events (derived/materialized). This is L02's 'immutable/append-oriented events', and makes data replayable.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. S3 isn't just a big-file store. Events land in S3 as an immutable raw log, from which the worker merges ClickHouse wide events (derived/materialized). This is <a class="xref" href="02-observability-2-and-wide-events.html">L02</a>'s 'immutable/append-oriented events', and makes data replayable.</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">3. Langfuse uses four stores, yet L02 says 'treat operational simplicity as a constraint'. How to reconcile? What's the test for 'should we add another store'?</div>
+  <div class="qn">3. Langfuse uses four stores, yet <a class="xref" href="02-observability-2-and-wide-events.html">L02</a> says 'treat operational simplicity as a constraint'. How to reconcile? What's the test for 'should we add another store'?</div>
   <ol class="opts">
     <li>The frontend framework decides</li>
     <li>You may only ever use one database</li>

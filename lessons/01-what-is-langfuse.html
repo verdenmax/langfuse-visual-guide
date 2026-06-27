@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -1023,10 +1026,10 @@ ten paragraphs of explanation.</p>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>Big picture & foundations (L01–11)</h4><p>Data model, dual store, ClickHouse wide-event tables, multi-tenancy, deployment topology.</p></div></div>
-  <div class="step"><div class="num">2</div><div class="sc"><h4>Ingestion · write (L12–19)</h4><p>SDK to ClickHouse: API, queue, merge, token/cost, OTel, media.</p></div></div>
-  <div class="step"><div class="num">3</div><div class="sc"><h4>Query · read (L20–27)</h4><p>tRPC, repositories, filtering/search, lists, trace detail, public API.</p></div></div>
-  <div class="step"><div class="num">4</div><div class="sc"><h4>Feature subsystems (L28–47)</h4><p>Eval/scoring, datasets/experiments, prompts/playground, dashboards/cost, automation/integrations.</p></div></div>
-  <div class="step"><div class="num">5</div><div class="sc"><h4>Platform · ops · design themes (L48–55)</h4><p>Auth/RBAC, EE, operations, deletion, build & test, then design themes and the capstone.</p></div></div>
+  <div class="step"><div class="num">2</div><div class="sc"><h4>Ingestion · write (<a class="xref" href="12-ingestion-api.html">L12</a>–19)</h4><p>SDK to ClickHouse: API, queue, merge, token/cost, OTel, media.</p></div></div>
+  <div class="step"><div class="num">3</div><div class="sc"><h4>Query · read (<a class="xref" href="20-web-app-architecture.html">L20</a>–27)</h4><p>tRPC, repositories, filtering/search, lists, trace detail, public API.</p></div></div>
+  <div class="step"><div class="num">4</div><div class="sc"><h4>Feature subsystems (<a class="xref" href="28-scoring-model.html">L28</a>–47)</h4><p>Eval/scoring, datasets/experiments, prompts/playground, dashboards/cost, automation/integrations.</p></div></div>
+  <div class="step"><div class="num">5</div><div class="sc"><h4>Platform · ops · design themes (<a class="xref" href="48-auth-and-sessions.html">L48</a>–55)</h4><p>Auth/RBAC, EE, operations, deletion, build & test, then design themes and the capstone.</p></div></div>
 </div>
 
 <div class="card key">

@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -350,7 +353,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </div>
   <div class="lang-zh">
 <p class="lead">
-第 33 课的监控告警要送到人手里、prompt 改了要通知外部系统、新 trace 来了要触发下游流程——这些「<strong>当 X 发生，就做 Y</strong>」的联动，由 Langfuse 的<strong>自动化（Automation）</strong>驱动：一个 <strong>Trigger（触发器，何时）</strong>绑一个 <strong>Action（动作，做什么）</strong>。这一课讲它的数据模型，但真正的重头戏，是一个绕不开的<strong>安全</strong>话题：当 Action 是 <strong>webhook</strong>（让 Langfuse 的服务器去访问<strong>用户填的任意 URL</strong>）时，怎么防住 <strong>SSRF</strong>——别让用户把你的服务器当跳板，去打内网、偷云凭证。
+<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>的监控告警要送到人手里、prompt 改了要通知外部系统、新 trace 来了要触发下游流程——这些「<strong>当 X 发生，就做 Y</strong>」的联动，由 Langfuse 的<strong>自动化（Automation）</strong>驱动：一个 <strong>Trigger（触发器，何时）</strong>绑一个 <strong>Action（动作，做什么）</strong>。这一课讲它的数据模型，但真正的重头戏，是一个绕不开的<strong>安全</strong>话题：当 Action 是 <strong>webhook</strong>（让 Langfuse 的服务器去访问<strong>用户填的任意 URL</strong>）时，怎么防住 <strong>SSRF</strong>——别让用户把你的服务器当跳板，去打内网、偷云凭证。
 你会看到一套教科书级的<strong>纵深防御</strong>：协议白名单、端口白名单、内网 IP 黑名单、云元数据地址黑名单、解析失败即拦截，再加上超时、重试、签名、自动停用。「用户给我们一个 URL、我们去请求它」——这是所有 Web 系统里最危险的功能之一，这一课讲清楚它该怎么做才安全。
 </p>
 
@@ -378,13 +381,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="172" text-anchor="middle" font-size="8" fill="var(--faint)">Automation 把一个 Trigger 绑一个 Action；这正是第33课监控告警「发布到 WebhookQueue 后」的去处——由某个 webhook Action 投递出去</text>
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">AutomationExecution 像第30课 JobExecution、第32课标注 item——又一个「落库的执行记录」状态机</text>
 </svg>
-<div class="figcap"><b>Trigger → Action 的 IFTTT 模型</b>：<code>schema.prisma:1635</code> Trigger（eventSource/eventActions/filter/status）、<code>:1613</code> Action（type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json）、<code>:1659</code> Automation（绑定二者）、<code>:1690</code> AutomationExecution（PENDING/COMPLETED/ERROR/CANCELLED + input/output/error）。第 33 课监控告警就经此投递。</div>
+<div class="figcap"><b>Trigger → Action 的 IFTTT 模型</b>：<code>schema.prisma:1635</code> Trigger（eventSource/eventActions/filter/status）、<code>:1613</code> Action（type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json）、<code>:1659</code> Automation（绑定二者）、<code>:1690</code> AutomationExecution（PENDING/COMPLETED/ERROR/CANCELLED + input/output/error）。<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控告警就经此投递。</div>
 </div>
 
 <div class="layers">
-  <div class="layer l-main"><div class="lh"><span class="badge">何时</span><span class="name">Trigger</span></div><div class="ld">守着事件流：<code>eventSource</code>（盯哪类对象）+ <code>eventActions</code>（哪种变化）+ <code>filter</code>（更细的条件，和第 23 课同款过滤）。<code>status=ACTIVE</code> 才生效——可随时停用而不删除。</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">做什么</span><span class="name">Action</span></div><div class="ld">三种动作类型：<strong>WEBHOOK</strong>（调用户给的 URL，本课重点）、<strong>SLACK</strong>（发到频道，第 45 课）、<strong>GITHUB_DISPATCH</strong>（触发 GitHub workflow）。<code>config</code> 用结构化 JSON 存各自参数，<code>secretId</code> 指向加密保管的密钥（第 39 课）。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">留痕</span><span class="name">AutomationExecution</span></div><div class="ld">每次触发都落一行：状态机 PENDING→COMPLETED/ERROR/CANCELLED，连 <code>input</code>/<code>output</code>/<code>error</code> 一并存——和第 30 课 JobExecution、第 32 课标注 item 是同一种「有状态、可追溯的执行记录」。</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">何时</span><span class="name">Trigger</span></div><div class="ld">守着事件流：<code>eventSource</code>（盯哪类对象）+ <code>eventActions</code>（哪种变化）+ <code>filter</code>（更细的条件，和<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>同款过滤）。<code>status=ACTIVE</code> 才生效——可随时停用而不删除。</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">做什么</span><span class="name">Action</span></div><div class="ld">三种动作类型：<strong>WEBHOOK</strong>（调用户给的 URL，本课重点）、<strong>SLACK</strong>（发到频道，<a class="xref" href="45-slack-and-notifications.html">第 45 课</a>）、<strong>GITHUB_DISPATCH</strong>（触发 GitHub workflow）。<code>config</code> 用结构化 JSON 存各自参数，<code>secretId</code> 指向加密保管的密钥（<a class="xref" href="39-playground-llm-connections.html">第 39 课</a>）。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">留痕</span><span class="name">AutomationExecution</span></div><div class="ld">每次触发都落一行：状态机 PENDING→COMPLETED/ERROR/CANCELLED，连 <code>input</code>/<code>output</code>/<code>error</code> 一并存——和<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a> JobExecution、<a class="xref" href="32-human-annotation.html">第 32 课</a>标注 item 是同一种「有状态、可追溯的执行记录」。</div></div>
 </div>
 
 
@@ -491,7 +494,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li><strong>自动化 = Trigger → Action</strong>：经典 IFTTT 模型。<code>Trigger</code>（eventSource/eventActions/filter 定「何时」）绑 <code>Action</code>（WEBHOOK/SLACK/GITHUB_DISPATCH 定「做什么」），<code>AutomationExecution</code> 留每次执行的状态记录。第 33 课监控告警经此投递。</li>
+    <li><strong>自动化 = Trigger → Action</strong>：经典 IFTTT 模型。<code>Trigger</code>（eventSource/eventActions/filter 定「何时」）绑 <code>Action</code>（WEBHOOK/SLACK/GITHUB_DISPATCH 定「做什么」），<code>AutomationExecution</code> 留每次执行的状态记录。<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控告警经此投递。</li>
     <li><strong>webhook 的命门是 SSRF</strong>：让服务器请求用户填的 URL，攻击者可借此打内网、偷 <code>169.254.169.254</code> 的云凭证——「用户给 URL 我们去请求」是 Web 系统最危险的功能之一。</li>
     <li><strong>纵深防御挡 SSRF</strong>：协议白名单（http/https）+ 端口白名单（80/443）+ 主机名黑名单（localhost/metadata）+ IP CIDR 黑名单（内网/loopback/link-local）+ <strong>fail-closed</strong>（解析不了就拦）。任一道都可能救命。</li>
     <li><strong>校验在请求时做</strong>：对实际解析出的真实 IP 判定，防 DNS-rebinding（创建时解析到合法 IP、请求时切到内网）。安全检查要贴着危险动作发生的那一刻。</li>
@@ -529,14 +532,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="quiz">
   <div class="qn">3. 自动化的数据模型是 Trigger → Action，每次执行还落一条 AutomationExecution 记录。这个 AutomationExecution 和前面哪些课的设计是「同一种东西」？</div>
   <ol class="opts">
-    <li>和第30课 eval 的 JobExecution、第32课人工标注的 queue item 是同一种「落库的、有状态的、可追溯的执行记录」——状态机 PENDING→COMPLETED/ERROR，连 input/output/error 一并存，便于排查与重试</li>
+    <li>和<a class="xref" href="30-eval-execution-pipeline.html">第30课</a> eval 的 JobExecution、<a class="xref" href="32-human-annotation.html">第32课</a>人工标注的 queue item 是同一种「落库的、有状态的、可追溯的执行记录」——状态机 PENDING→COMPLETED/ERROR，连 input/output/error 一并存，便于排查与重试</li>
     <li>和 ClickHouse 的 trace 表是同一种东西</li>
     <li>和 Redis 缓存是同一种东西</li>
     <li>和 Prompt 的版本号是同一种东西</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。Langfuse 反复用同一个模式：凡是「异步执行、可能失败、要能排查」的动作，就给它一张表、一个状态机、一份 input/output/error 留痕。eval 的 JobExecution（第30课）、标注 item（第32课）、这里的 AutomationExecution，本质都是「有状态、可追溯的执行记录」。认出这个反复出现的骨架，新功能就不再陌生：先问『它的执行记录长什么样、状态机怎么流转』。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：A</strong>。Langfuse 反复用同一个模式：凡是「异步执行、可能失败、要能排查」的动作，就给它一张表、一个状态机、一份 input/output/error 留痕。eval 的 JobExecution（<a class="xref" href="30-eval-execution-pipeline.html">第30课</a>）、标注 item（<a class="xref" href="32-human-annotation.html">第32课</a>）、这里的 AutomationExecution，本质都是「有状态、可追溯的执行记录」。认出这个反复出现的骨架，新功能就不再陌生：先问『它的执行记录长什么样、状态机怎么流转』。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -548,7 +551,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-Lesson 33's monitor alerts need to reach a human, a changed prompt needs to notify an external system, a new trace needs to kick off a downstream flow — all these "<strong>when X happens, do Y</strong>" linkages are driven by Langfuse <strong>Automations</strong>: a <strong>Trigger (when)</strong> bound to an <strong>Action (what to do)</strong>. This lesson covers the data model, but the real headline act is an unavoidable <strong>security</strong> topic: when the Action is a <strong>webhook</strong> (Langfuse's server fetches a <strong>user-supplied arbitrary URL</strong>), how do you stop <strong>SSRF</strong> — keeping users from turning your server into a springboard to hit the internal network and steal cloud credentials.
+<a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor alerts need to reach a human, a changed prompt needs to notify an external system, a new trace needs to kick off a downstream flow — all these "<strong>when X happens, do Y</strong>" linkages are driven by Langfuse <strong>Automations</strong>: a <strong>Trigger (when)</strong> bound to an <strong>Action (what to do)</strong>. This lesson covers the data model, but the real headline act is an unavoidable <strong>security</strong> topic: when the Action is a <strong>webhook</strong> (Langfuse's server fetches a <strong>user-supplied arbitrary URL</strong>), how do you stop <strong>SSRF</strong> — keeping users from turning your server into a springboard to hit the internal network and steal cloud credentials.
 You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlist, a port allowlist, an internal-IP blocklist, a cloud-metadata-address blocklist, fail-closed on unparseable hosts, plus timeouts, retries, signing, and auto-disable. "A user gives us a URL and we fetch it" is one of the most dangerous features in any web system — this lesson spells out how to do it safely.
 </p>
 
@@ -575,13 +578,13 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <text x="360" y="172" text-anchor="middle" font-size="8" fill="var(--faint)">An Automation binds one Trigger to one Action; this is exactly where Lesson 33's alert goes "after publishing to WebhookQueue" — delivered by some webhook Action</text>
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">AutomationExecution is like Lesson 30's JobExecution and Lesson 32's annotation item — yet another "persisted execution record" state machine</text>
 </svg>
-<div class="figcap"><b>The IFTTT Trigger → Action model</b>: <code>schema.prisma:1635</code> Trigger (eventSource/eventActions/filter/status), <code>:1613</code> Action (type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json), <code>:1659</code> Automation (binds the two), <code>:1690</code> AutomationExecution (PENDING/COMPLETED/ERROR/CANCELLED + input/output/error). Lesson 33's monitor alerts are delivered through exactly this path.</div>
+<div class="figcap"><b>The IFTTT Trigger → Action model</b>: <code>schema.prisma:1635</code> Trigger (eventSource/eventActions/filter/status), <code>:1613</code> Action (type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json), <code>:1659</code> Automation (binds the two), <code>:1690</code> AutomationExecution (PENDING/COMPLETED/ERROR/CANCELLED + input/output/error). <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor alerts are delivered through exactly this path.</div>
 </div>
 
 <div class="layers">
-  <div class="layer l-main"><div class="lh"><span class="badge">when</span><span class="name">Trigger</span></div><div class="ld">Watches the event stream: <code>eventSource</code> (which object class) + <code>eventActions</code> (which change) + <code>filter</code> (finer conditions, same filtering as Lesson 23). Only fires when <code>status=ACTIVE</code> — you can pause it anytime without deleting.</div></div>
-  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">Action</span></div><div class="ld">Three action types: <strong>WEBHOOK</strong> (call the user's URL, this lesson's focus), <strong>SLACK</strong> (post to a channel, Lesson 45), <strong>GITHUB_DISPATCH</strong> (trigger a GitHub workflow). <code>config</code> stores each one's params as structured JSON; <code>secretId</code> points to an encrypted-at-rest secret (Lesson 39).</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">audit</span><span class="name">AutomationExecution</span></div><div class="ld">Every firing writes a row: a state machine PENDING→COMPLETED/ERROR/CANCELLED, storing <code>input</code>/<code>output</code>/<code>error</code> too — the same kind of "stateful, traceable execution record" as Lesson 30's JobExecution and Lesson 32's annotation item.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">when</span><span class="name">Trigger</span></div><div class="ld">Watches the event stream: <code>eventSource</code> (which object class) + <code>eventActions</code> (which change) + <code>filter</code> (finer conditions, same filtering as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>). Only fires when <code>status=ACTIVE</code> — you can pause it anytime without deleting.</div></div>
+  <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">Action</span></div><div class="ld">Three action types: <strong>WEBHOOK</strong> (call the user's URL, this lesson's focus), <strong>SLACK</strong> (post to a channel, <a class="xref" href="45-slack-and-notifications.html">Lesson 45</a>), <strong>GITHUB_DISPATCH</strong> (trigger a GitHub workflow). <code>config</code> stores each one's params as structured JSON; <code>secretId</code> points to an encrypted-at-rest secret (<a class="xref" href="39-playground-llm-connections.html">Lesson 39</a>).</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">audit</span><span class="name">AutomationExecution</span></div><div class="ld">Every firing writes a row: a state machine PENDING→COMPLETED/ERROR/CANCELLED, storing <code>input</code>/<code>output</code>/<code>error</code> too — the same kind of "stateful, traceable execution record" as <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s JobExecution and <a class="xref" href="32-human-annotation.html">Lesson 32</a>'s annotation item.</div></div>
 </div>
 
 
@@ -688,7 +691,7 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li><strong>Automation = Trigger → Action</strong>: the classic IFTTT model. A <code>Trigger</code> (eventSource/eventActions/filter defines "when") binds an <code>Action</code> (WEBHOOK/SLACK/GITHUB_DISPATCH defines "what"); <code>AutomationExecution</code> keeps a status record of each run. Lesson 33's monitor alerts are delivered through this.</li>
+    <li><strong>Automation = Trigger → Action</strong>: the classic IFTTT model. A <code>Trigger</code> (eventSource/eventActions/filter defines "when") binds an <code>Action</code> (WEBHOOK/SLACK/GITHUB_DISPATCH defines "what"); <code>AutomationExecution</code> keeps a status record of each run. <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor alerts are delivered through this.</li>
     <li><strong>The webhook's Achilles heel is SSRF</strong>: making the server fetch a user-supplied URL lets an attacker hit the internal net and steal <code>169.254.169.254</code>'s cloud credentials — "user gives a URL, we fetch it" is one of the most dangerous web features.</li>
     <li><strong>Defense in depth stops SSRF</strong>: protocol allowlist (http/https) + port allowlist (80/443) + hostname blocklist (localhost/metadata) + IP CIDR blocklist (private/loopback/link-local) + <strong>fail-closed</strong> (can't resolve → block). Any one gate may be the lifesaver.</li>
     <li><strong>Check at request time</strong>: judge the actually-resolved real IP to defeat DNS-rebinding (resolve to a legit IP at creation, switch to internal at request). Security checks hug the moment the danger happens.</li>
@@ -726,14 +729,14 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
 <div class="quiz">
   <div class="qn">3. The automation data model is Trigger → Action, and each run writes an AutomationExecution record. AutomationExecution is 'the same kind of thing' as designs from which earlier lessons?</div>
   <ol class="opts">
-    <li>the same 'persisted, stateful, traceable execution record' as Lesson 30's eval JobExecution and Lesson 32's annotation queue item—a state machine PENDING→COMPLETED/ERROR, storing input/output/error too, for debugging and retry</li>
+    <li>the same 'persisted, stateful, traceable execution record' as <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s eval JobExecution and <a class="xref" href="32-human-annotation.html">Lesson 32</a>'s annotation queue item—a state machine PENDING→COMPLETED/ERROR, storing input/output/error too, for debugging and retry</li>
     <li>the same as the ClickHouse trace table</li>
     <li>the same as the Redis cache</li>
     <li>the same as a Prompt's version number</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Langfuse reuses the same pattern: any 'async, possibly-failing, must-be-debuggable' action gets a table, a state machine, and an input/output/error trail. eval's JobExecution (Lesson 30), the annotation item (Lesson 32), and AutomationExecution here are all 'stateful, traceable execution records'. Recognizing this recurring skeleton makes new features unsurprising: first ask 'what does its execution record look like, how does the state machine flow'.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: A</strong>. Langfuse reuses the same pattern: any 'async, possibly-failing, must-be-debuggable' action gets a table, a state machine, and an input/output/error trail. eval's JobExecution (<a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>), the annotation item (<a class="xref" href="32-human-annotation.html">Lesson 32</a>), and AutomationExecution here are all 'stateful, traceable execution records'. Recognizing this recurring skeleton makes new features unsurprising: first ask 'what does its execution record look like, how does the state machine flow'.</div></div></div>
   </details>
 </div>
 <div class="card spark">

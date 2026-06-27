@@ -332,6 +332,9 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 .fig svg text:not([fill]) { fill: var(--ink); }
 .fig .figcap { margin: .72rem auto 0; font-size: .8rem; color: var(--muted); line-height: 1.55; max-width: 46rem; }
 .fig .figcap b { color: var(--accent-ink); font-weight: 700; }
+/* inter-lesson cross-reference links (第N课 / Lesson N / LNN), added at build time */
+.xref { color: var(--accent-ink); text-decoration: none; border-bottom: 1px dotted var(--accent); white-space: nowrap; }
+.xref:hover { border-bottom-style: solid; background: var(--accent-soft); }
 </style>
 </head><body>
 <div class="topbar">
@@ -351,13 +354,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-zh">
 <p class="lead">
 前七部分让你能<strong>看清单条</strong>——一条 trace、一个 score、一次实验。但运营一个 LLM 应用，你更常问的是<strong>全局</strong>的问题：这周成本涨了没？哪个模型最慢？平均有用性的走势如何？错误率有没有抬头？这些答案藏在成千上万条数据的<strong>聚合</strong>里——把它们汇成一张张图，就是<strong>仪表盘（dashboard）</strong>和它的积木 <strong>widget（图件）</strong>。
-这一课讲它们的数据模型，重点是一个会反复回响的设计：一个 widget 把「<strong>要算什么</strong>」声明成 <code>view + dimensions + metrics + filters</code> 这样一套<strong>查询形状</strong>——而这套形状，正是第 33 课监控器复用的、也是下一课查询引擎要编译成 SQL 的。<strong>画一张图、盯一个指标、跑一个聚合，背后是同一种声明。</strong>
+这一课讲它们的数据模型，重点是一个会反复回响的设计：一个 widget 把「<strong>要算什么</strong>」声明成 <code>view + dimensions + metrics + filters</code> 这样一套<strong>查询形状</strong>——而这套形状，正是<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控器复用的、也是下一课查询引擎要编译成 SQL 的。<strong>画一张图、盯一个指标、跑一个聚合，背后是同一种声明。</strong>
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
   仪表盘就像汽车驾驶舱的那块<strong>仪表板</strong>：一块板上摆着一排<strong>表</strong>（widget）——油量表、转速表、时速表、水温灯。每块表只管一件事：<strong>读哪个量、画成什么样</strong>（指针？数字？柱状？），它<strong>不关心</strong>这个数到底是怎么从引擎、油箱里采集上来的。
-  你能自由地往板上<strong>增删、挪动</strong>这些表，拼出最适合你的那套布局。而真正决定「这块表<strong>测什么、按什么分组</strong>」的，是一张<strong>声明</strong>（「测：平均时速；按：每分钟分组」），而不是焊死在表里的电路。于是同一份「测什么」的声明，既能驱动这块指针表，也能驱动旁边那盏「超速就亮」的警示灯（第 33 课监控）——<strong>测量与展示，是分开的两件事。</strong>
+  你能自由地往板上<strong>增删、挪动</strong>这些表，拼出最适合你的那套布局。而真正决定「这块表<strong>测什么、按什么分组</strong>」的，是一张<strong>声明</strong>（「测：平均时速；按：每分钟分组」），而不是焊死在表里的电路。于是同一份「测什么」的声明，既能驱动这块指针表，也能驱动旁边那盏「超速就亮」的警示灯（<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控）——<strong>测量与展示，是分开的两件事。</strong>
 </div>
 
 
@@ -381,7 +384,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">板</span><span class="name">Dashboard</span></div><div class="ld">一块画布：<code>definition</code> 是 JSON 布局（哪些 widget、各占什么格子），<code>filters</code> 是板级全局过滤。projectId 可空——Langfuse 还内置了一批「托管仪表盘」开箱即用。你能像摆桌面小组件一样自由编排。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">表</span><span class="name">DashboardWidget</span></div><div class="ld">一块表 = 一份<strong>声明式查询</strong>（<code>view</code> 看什么数据 + <code>dimensions</code> 按什么分组 + <code>metrics</code> 算什么 + <code>filters</code>）<strong>加</strong>一种<strong>图表呈现</strong>（<code>chartType</code> + <code>chartConfig</code>）。查询定义「算什么」，图表定义「怎么画」——下一节细看。</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">复用</span><span class="name">同一份指标，多处消费</span></div><div class="ld">widget 的查询形状不是仪表盘私有的：第 33 课的监控器直接<strong>复用</strong>它（注释原文「mirrors DashboardWidget」），下一课的查询引擎负责把它<strong>编译成 ClickHouse SQL</strong>。一份「算什么」，画图、告警、聚合三处共享。</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">复用</span><span class="name">同一份指标，多处消费</span></div><div class="ld">widget 的查询形状不是仪表盘私有的：<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>的监控器直接<strong>复用</strong>它（注释原文「mirrors DashboardWidget」），下一课的查询引擎负责把它<strong>编译成 ClickHouse SQL</strong>。一份「算什么」，画图、告警、聚合三处共享。</div></div>
 </div>
 
 
@@ -439,7 +442,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>一份查询形状，三处复用</h2>
-<p>widget 这套 <code>view + dimensions + metrics + filters</code> 的声明，最妙的不是它能画图，而是它<strong>不只用来画图</strong>。同一套声明被三个地方共享：仪表盘拿它<strong>画成图表</strong>、第 33 课的监控器拿它<strong>定时算并比阈值</strong>、下一课的查询引擎拿它<strong>编译成 ClickHouse SQL</strong>。一个例证就藏在枚举里：监控器的 <code>MonitorView</code> 恰好是 <code>DashboardWidgetViews</code> <strong>去掉 TRACES</strong>（源码注释原文「mirrors DashboardWidget, minus TRACES」）。</p>
+<p>widget 这套 <code>view + dimensions + metrics + filters</code> 的声明，最妙的不是它能画图，而是它<strong>不只用来画图</strong>。同一套声明被三个地方共享：仪表盘拿它<strong>画成图表</strong>、<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>的监控器拿它<strong>定时算并比阈值</strong>、下一课的查询引擎拿它<strong>编译成 ClickHouse SQL</strong>。一个例证就藏在枚举里：监控器的 <code>MonitorView</code> 恰好是 <code>DashboardWidgetViews</code> <strong>去掉 TRACES</strong>（源码注释原文「mirrors DashboardWidget, minus TRACES」）。</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="一份查询形状三处复用：同一套 view+dimensions+metrics+filters 声明，被仪表盘用来画图表、被第33课监控器用来定时比阈值、被第41课查询引擎用来编译成 ClickHouse SQL">
@@ -453,12 +456,12 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="400" y1="90" x2="560" y2="128" stroke="var(--teal)" stroke-width="1.4"/><polygon points="560,128 551,120 555,124" fill="var(--teal)"/>
   <text x="360" y="116" text-anchor="middle" font-size="7" fill="var(--faint)">MonitorView = DashboardWidgetViews 去掉 TRACES（源码注释 mirrors DashboardWidget, minus TRACES）</text>
 </svg>
-<div class="figcap"><b>声明一次，处处复用</b>：能在仪表盘上画出的任何曲线，都能一键变成一个监控告警（第 33 课），也都由同一个查询引擎（第 41 课）落成 SQL。<b>pull</b>（仪表盘你来看）与 <b>push</b>（监控它来喊）共享同一个指标定义——这正是第 33 课能「复用 DashboardWidget」的根因。</div>
+<div class="figcap"><b>声明一次，处处复用</b>：能在仪表盘上画出的任何曲线，都能一键变成一个监控告警（<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>），也都由同一个查询引擎（<a class="xref" href="41-query-engine.html">第 41 课</a>）落成 SQL。<b>pull</b>（仪表盘你来看）与 <b>push</b>（监控它来喊）共享同一个指标定义——这正是<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>能「复用 DashboardWidget」的根因。</div>
 </div>
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
-  <strong>为什么 widget 要把「算什么」和「怎么画」分开声明，而不是直接写死一段「画某张图」的代码？</strong> 因为这是两个<strong>正交</strong>的维度，强行耦合只会两头受限。把它们分开，你立刻得到三重自由：同一份查询<strong>换个 chartType</strong> 就从折线变柱状（探索数据时极有用）；同一种图表<strong>换个 metric</strong> 就从看成本变看延迟；更关键的是，那份纯粹的「算什么」声明，因为<strong>不掺任何展示逻辑</strong>，才能被监控器、查询引擎原样借走。<strong>声明式的威力，正在于它描述「意图」而非「步骤」</strong>——意图可以被任意多个执行者以不同方式实现。这和第 23 课 FilterState、第 21 课 tRPC 契约是同一种信念：把「想要什么」从「怎么做到」里剥离，复用与演进的空间就此打开。<br><br>
+  <strong>为什么 widget 要把「算什么」和「怎么画」分开声明，而不是直接写死一段「画某张图」的代码？</strong> 因为这是两个<strong>正交</strong>的维度，强行耦合只会两头受限。把它们分开，你立刻得到三重自由：同一份查询<strong>换个 chartType</strong> 就从折线变柱状（探索数据时极有用）；同一种图表<strong>换个 metric</strong> 就从看成本变看延迟；更关键的是，那份纯粹的「算什么」声明，因为<strong>不掺任何展示逻辑</strong>，才能被监控器、查询引擎原样借走。<strong>声明式的威力，正在于它描述「意图」而非「步骤」</strong>——意图可以被任意多个执行者以不同方式实现。这和<a class="xref" href="23-filtering-search-bar.html">第 23 课</a> FilterState、<a class="xref" href="21-trpc-backbone.html">第 21 课</a> tRPC 契约是同一种信念：把「想要什么」从「怎么做到」里剥离，复用与演进的空间就此打开。<br><br>
   <strong>为什么这套查询形状值得被三处共用，而不是各写各的？</strong> 因为「指标」这个概念在产品里本就该<strong>统一</strong>。如果仪表盘上的「平均有用性」和监控器里的「平均有用性」是两段独立实现，它们迟早会<strong>算出不同的数</strong>——口径漂移是数据产品的慢性毒药。让三处共享同一份声明、同一个查询引擎，等于钉死了「这个指标全公司只有一种算法」。你在图上看到的、和告警依据的、和 API 取到的，<strong>永远是同一个数</strong>。一致性不是靠纪律维持，而是靠架构<strong>从根上保证</strong>。
 </div>
 
@@ -469,7 +472,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li><strong>两层模型</strong>：<code>Dashboard</code>（<code>definition</code> 布局 + 板级 <code>filters</code>）装一排 <code>DashboardWidget</code>；每个 widget 是一份保存好的「查询 + 图表」。</li>
     <li><strong>widget = 声明式查询 + 图表</strong>：查询四件套 <code>view</code>（数据源）+ <code>dimensions</code>（分组）+ <code>metrics</code>（聚合）+ <code>filters</code>；呈现是 <code>chartType</code>（9 种图）+ <code>chartConfig</code>。算什么与怎么画，干净分家。</li>
     <li><strong>查询/呈现解耦</strong>：换图不动查询、换指标不动画法；纯粹的「算什么」声明才能被原样复用——声明式描述意图而非步骤。</li>
-    <li><strong>一份查询形状三处复用</strong>：仪表盘画图、第 33 课监控比阈值、第 41 课引擎编译 SQL，共享同一声明（<code>MonitorView</code> = <code>DashboardWidgetViews</code> 去掉 TRACES）。指标全公司一种算法，pull 与 push 永远同一个数。</li>
+    <li><strong>一份查询形状三处复用</strong>：仪表盘画图、<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控比阈值、<a class="xref" href="41-query-engine.html">第 41 课</a>引擎编译 SQL，共享同一声明（<code>MonitorView</code> = <code>DashboardWidgetViews</code> 去掉 TRACES）。指标全公司一种算法，pull 与 push 永远同一个数。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -484,11 +487,11 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。查询(算什么)与图表(怎么画)是两个正交维度，强耦合两头受限。分开后：同查询换 chartType 从折线变柱状、同图换 metric 从看成本变看延迟；更关键的是那份纯粹「算什么」声明不掺展示逻辑，才能被第33课监控器、第41课查询引擎原样借走。声明式描述意图而非步骤——和第23课 FilterState、第21课 tRPC 契约同一种信念。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。查询(算什么)与图表(怎么画)是两个正交维度，强耦合两头受限。分开后：同查询换 chartType 从折线变柱状、同图换 metric 从看成本变看延迟；更关键的是那份纯粹「算什么」声明不掺展示逻辑，才能被<a class="xref" href="33-monitors-and-alerting.html">第33课</a>监控器、<a class="xref" href="41-query-engine.html">第41课</a>查询引擎原样借走。声明式描述意图而非步骤——和<a class="xref" href="23-filtering-search-bar.html">第23课</a> FilterState、<a class="xref" href="21-trpc-backbone.html">第21课</a> tRPC 契约同一种信念。</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. 第 33 课的监控器源码注释说它「mirrors DashboardWidget, minus TRACES」，且 MonitorView 恰好是 DashboardWidgetViews 去掉 TRACES。这个复用透露了什么设计意图？</div>
+  <div class="qn">2. <a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>的监控器源码注释说它「mirrors DashboardWidget, minus TRACES」，且 MonitorView 恰好是 DashboardWidgetViews 去掉 TRACES。这个复用透露了什么设计意图？</div>
   <ol class="opts">
     <li>为了节省存储</li>
     <li>TRACES 数据不能被监控</li>
@@ -523,13 +526,13 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="lang-en">
 <p class="lead">
 The first seven parts let you <strong>see one thing clearly</strong>—one trace, one score, one experiment. But operating an LLM app, you more often ask <strong>global</strong> questions: did cost rise this week? which model is slowest? how is average helpfulness trending? is the error rate creeping up? These answers hide in the <strong>aggregation</strong> of thousands of records—rolling them into charts is the <strong>dashboard</strong> and its building block, the <strong>widget</strong>.
-This lesson covers their data model, focusing on a design that will echo repeatedly: a widget declares "<strong>what to compute</strong>" as a <code>view + dimensions + metrics + filters</code> <strong>query shape</strong>—and this shape is the very one Lesson 33's monitor reuses, and the one the next lesson's query engine compiles to SQL. <strong>Drawing a chart, watching a metric, running an aggregation—behind them is the same declaration.</strong>
+This lesson covers their data model, focusing on a design that will echo repeatedly: a widget declares "<strong>what to compute</strong>" as a <code>view + dimensions + metrics + filters</code> <strong>query shape</strong>—and this shape is the very one <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor reuses, and the one the next lesson's query engine compiles to SQL. <strong>Drawing a chart, watching a metric, running an aggregation—behind them is the same declaration.</strong>
 </p>
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
   A dashboard is like a car's cockpit <strong>instrument panel</strong>: a board with a row of <strong>gauges</strong> (widgets)—fuel gauge, tachometer, speedometer, temperature light. Each gauge cares about one thing: <strong>which quantity to read, and how to draw it</strong> (needle? number? bar?); it <strong>doesn't care</strong> how that number was actually gathered from the engine or tank.
-  You can freely <strong>add, remove, rearrange</strong> these gauges into the layout that suits you. And what truly decides "what this gauge <strong>measures, grouped by what</strong>" is a <strong>declaration</strong> ("measure: average speed; group by: per minute"), not circuitry welded into the gauge. So the same "what to measure" declaration can drive both this needle gauge and the "blinks when over-speeding" warning light next to it (Lesson 33's monitor)—<strong>measurement and display are two separate things.</strong>
+  You can freely <strong>add, remove, rearrange</strong> these gauges into the layout that suits you. And what truly decides "what this gauge <strong>measures, grouped by what</strong>" is a <strong>declaration</strong> ("measure: average speed; group by: per minute"), not circuitry welded into the gauge. So the same "what to measure" declaration can drive both this needle gauge and the "blinks when over-speeding" warning light next to it (<a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor)—<strong>measurement and display are two separate things.</strong>
 </div>
 
 
@@ -553,7 +556,7 @@ This lesson covers their data model, focusing on a design that will echo repeate
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">board</span><span class="name">Dashboard</span></div><div class="ld">A canvas: <code>definition</code> is a JSON layout (which widgets, what grid cells), <code>filters</code> are board-level global filters. projectId is optional—Langfuse ships a set of "managed dashboards" ready out of the box. You arrange it freely like desktop widgets.</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">gauge</span><span class="name">DashboardWidget</span></div><div class="ld">A gauge = a <strong>declarative query</strong> (<code>view</code> what data + <code>dimensions</code> group by what + <code>metrics</code> compute what + <code>filters</code>) <strong>plus</strong> a <strong>chart presentation</strong> (<code>chartType</code> + <code>chartConfig</code>). The query defines "what to compute", the chart defines "how to draw"—detailed next.</div></div>
-  <div class="layer l-part"><div class="lh"><span class="badge">reuse</span><span class="name">one metric, many consumers</span></div><div class="ld">The widget's query shape isn't dashboard-private: Lesson 33's monitor directly <strong>reuses</strong> it (the source comment "mirrors DashboardWidget"), and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One "what to compute" is shared by charting, alerting, and aggregation.</div></div>
+  <div class="layer l-part"><div class="lh"><span class="badge">reuse</span><span class="name">one metric, many consumers</span></div><div class="ld">The widget's query shape isn't dashboard-private: <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor directly <strong>reuses</strong> it (the source comment "mirrors DashboardWidget"), and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One "what to compute" is shared by charting, alerting, and aggregation.</div></div>
 </div>
 
 
@@ -611,7 +614,7 @@ This lesson covers their data model, focusing on a design that will echo repeate
 
 
 <h2>One query shape, three reuses</h2>
-<p>The widget's <code>view + dimensions + metrics + filters</code> declaration—the neat part isn't that it can draw charts, it's that it's <strong>not only for drawing charts</strong>. The same declaration is shared by three places: the dashboard <strong>draws it as a chart</strong>, Lesson 33's monitor <strong>periodically computes it and compares to thresholds</strong>, and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One proof hides in the enums: the monitor's <code>MonitorView</code> is exactly <code>DashboardWidgetViews</code> <strong>minus TRACES</strong> (the source comment literally says "mirrors DashboardWidget, minus TRACES").</p>
+<p>The widget's <code>view + dimensions + metrics + filters</code> declaration—the neat part isn't that it can draw charts, it's that it's <strong>not only for drawing charts</strong>. The same declaration is shared by three places: the dashboard <strong>draws it as a chart</strong>, <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor <strong>periodically computes it and compares to thresholds</strong>, and the next lesson's query engine <strong>compiles it to ClickHouse SQL</strong>. One proof hides in the enums: the monitor's <code>MonitorView</code> is exactly <code>DashboardWidgetViews</code> <strong>minus TRACES</strong> (the source comment literally says "mirrors DashboardWidget, minus TRACES").</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="One query shape, three reuses: the same view+dimensions+metrics+filters declaration is used by the dashboard to draw charts, by Lesson 33's monitor to periodically compare thresholds, and by Lesson 41's query engine to compile ClickHouse SQL">
@@ -625,12 +628,12 @@ This lesson covers their data model, focusing on a design that will echo repeate
   <line x1="400" y1="90" x2="560" y2="128" stroke="var(--teal)" stroke-width="1.4"/><polygon points="560,128 551,120 555,124" fill="var(--teal)"/>
   <text x="360" y="116" text-anchor="middle" font-size="7" fill="var(--faint)">MonitorView = DashboardWidgetViews minus TRACES (source comment: mirrors DashboardWidget, minus TRACES)</text>
 </svg>
-<div class="figcap"><b>declare once, reuse everywhere</b>: any curve you can draw on a dashboard can become a monitor alert in one click (Lesson 33), and is compiled to SQL by the same query engine (Lesson 41). <b>Pull</b> (you look at a dashboard) and <b>push</b> (a monitor calls you) share one metric definition—the very reason Lesson 33 can "reuse DashboardWidget".</div>
+<div class="figcap"><b>declare once, reuse everywhere</b>: any curve you can draw on a dashboard can become a monitor alert in one click (<a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>), and is compiled to SQL by the same query engine (<a class="xref" href="41-query-engine.html">Lesson 41</a>). <b>Pull</b> (you look at a dashboard) and <b>push</b> (a monitor calls you) share one metric definition—the very reason <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a> can "reuse DashboardWidget".</div>
 </div>
 
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
-  <strong>Why does a widget declare "what to compute" and "how to draw" separately rather than just write code that "draws some chart"?</strong> Because these are two <strong>orthogonal</strong> dimensions, and forcing them together limits both. Splitting them, you instantly get triple freedom: the same query <strong>swaps a chartType</strong> to go from line to bar (great for exploring data); the same chart <strong>swaps a metric</strong> to go from cost to latency; and crucially, that pure "what to compute" declaration, <strong>untainted by any presentation logic</strong>, can be borrowed verbatim by the monitor and the query engine. <strong>The power of declarative is that it describes "intent" not "steps"</strong>—intent can be realized by arbitrarily many executors in different ways. Same belief as Lesson 23's FilterState and Lesson 21's tRPC contract: lift "what you want" out of "how to do it", and the room for reuse and evolution opens up.<br><br>
+  <strong>Why does a widget declare "what to compute" and "how to draw" separately rather than just write code that "draws some chart"?</strong> Because these are two <strong>orthogonal</strong> dimensions, and forcing them together limits both. Splitting them, you instantly get triple freedom: the same query <strong>swaps a chartType</strong> to go from line to bar (great for exploring data); the same chart <strong>swaps a metric</strong> to go from cost to latency; and crucially, that pure "what to compute" declaration, <strong>untainted by any presentation logic</strong>, can be borrowed verbatim by the monitor and the query engine. <strong>The power of declarative is that it describes "intent" not "steps"</strong>—intent can be realized by arbitrarily many executors in different ways. Same belief as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState and <a class="xref" href="21-trpc-backbone.html">Lesson 21</a>'s tRPC contract: lift "what you want" out of "how to do it", and the room for reuse and evolution opens up.<br><br>
   <strong>Why is this query shape worth sharing across three places rather than each writing its own?</strong> Because "a metric" as a product concept should be <strong>unified</strong>. If the dashboard's "average helpfulness" and the monitor's "average helpfulness" are two separate implementations, they will eventually <strong>compute different numbers</strong>—definition drift is a slow poison for data products. Having three places share one declaration and one query engine nails down "this metric has exactly one algorithm company-wide". What you see on the chart, what alerts are based on, and what the API returns are <strong>always the same number</strong>. Consistency isn't maintained by discipline but <strong>guaranteed at the root by architecture</strong>.
 </div>
 
@@ -641,7 +644,7 @@ This lesson covers their data model, focusing on a design that will echo repeate
     <li><strong>Two-layer model</strong>: <code>Dashboard</code> (<code>definition</code> layout + board-level <code>filters</code>) holds a row of <code>DashboardWidget</code>s; each widget is a saved "query + chart".</li>
     <li><strong>A widget = declarative query + chart</strong>: the query quartet <code>view</code> (source) + <code>dimensions</code> (group) + <code>metrics</code> (aggregate) + <code>filters</code>; presentation is <code>chartType</code> (9 charts) + <code>chartConfig</code>. What to compute and how to draw, cleanly split.</li>
     <li><strong>Query/presentation decoupled</strong>: swap the chart without the query, swap the metric without the drawing; a pure "what to compute" declaration can be reused verbatim—declarative describes intent not steps.</li>
-    <li><strong>One query shape, three reuses</strong>: dashboard charts, Lesson 33 monitor thresholds, Lesson 41 engine SQL share one declaration (<code>MonitorView</code> = <code>DashboardWidgetViews</code> minus TRACES). One algorithm per metric company-wide; pull and push always the same number.</li>
+    <li><strong>One query shape, three reuses</strong>: dashboard charts, <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a> monitor thresholds, <a class="xref" href="41-query-engine.html">Lesson 41</a> engine SQL share one declaration (<code>MonitorView</code> = <code>DashboardWidgetViews</code> minus TRACES). One algorithm per metric company-wide; pull and push always the same number.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -656,11 +659,11 @@ This lesson covers their data model, focusing on a design that will echo repeate
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Query (what to compute) and chart (how to draw) are two orthogonal dimensions; tight coupling limits both. Split: same query swaps chartType from line to bar, same chart swaps metric from cost to latency; crucially that pure 'what to compute' declaration, untainted by presentation, can be borrowed verbatim by Lesson 33's monitor and Lesson 41's query engine. Declarative describes intent not steps—same belief as Lesson 23's FilterState and Lesson 21's tRPC contract.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Query (what to compute) and chart (how to draw) are two orthogonal dimensions; tight coupling limits both. Split: same query swaps chartType from line to bar, same chart swaps metric from cost to latency; crucially that pure 'what to compute' declaration, untainted by presentation, can be borrowed verbatim by <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor and <a class="xref" href="41-query-engine.html">Lesson 41</a>'s query engine. Declarative describes intent not steps—same belief as <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s FilterState and <a class="xref" href="21-trpc-backbone.html">Lesson 21</a>'s tRPC contract.</div></div></div>
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Lesson 33's monitor source comment says it 'mirrors DashboardWidget, minus TRACES', and MonitorView is exactly DashboardWidgetViews minus TRACES. What design intent does this reuse reveal?</div>
+  <div class="qn">2. <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor source comment says it 'mirrors DashboardWidget, minus TRACES', and MonitorView is exactly DashboardWidgetViews minus TRACES. What design intent does this reuse reveal?</div>
   <ol class="opts">
     <li>to save storage</li>
     <li>TRACES data can't be monitored</li>
