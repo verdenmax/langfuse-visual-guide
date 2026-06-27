@@ -407,6 +407,21 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 worker 必须把它们<strong>合并成同一条最终记录</strong>。这就是为什么要回 S3 取「这个 id 的历史事件」——把先后到达的碎片拼成完整的一行。理解了这一点，你就明白第 3 课说的
 「observation 靠 parentObservationId 乱序到达也没关系」是怎么在摄取里真正实现的：<strong>事件可以分多次、乱序到，worker 负责把它们收敛成一致的最终态。</strong></p>
 
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="同一个 observation 的多次事件乱序到达：observation-create(开始,模型gpt-4o)与observation-update(输出X,1240token)分别到达，worker 回S3取这个id的历史事件，按id分组合并、冲突以更晚timestamp为准，收敛成一条最终ClickHouse行">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">分多次、乱序到达 → worker 收敛成一行最终态</text>
+  <rect x="24" y="44" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="60" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">事件1 observation-create</text><text x="114" y="74" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, 开始, model:gpt-4o}</text>
+  <rect x="24" y="96" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="112" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">事件2 observation-update</text><text x="114" y="126" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, output:X, 1240 token}</text>
+  <text x="114" y="156" text-anchor="middle" font-size="6.4" fill="var(--faint)">两条分别到达、可能乱序</text>
+  <rect x="266" y="62" width="180" height="74" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="356" y="82" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">worker 合并</text><text x="356" y="99" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">回 S3 取 id=obs-42 历史</text><text x="356" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">按 id 分组、字段取有值方</text><text x="356" y="127" text-anchor="middle" font-size="6.4" fill="var(--muted)">冲突以更晚 timestamp 为准</text>
+  <rect x="508" y="68" width="188" height="62" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="602" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">一条最终行</text><text x="602" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">obs-42：gpt-4o + output:X</text><text x="602" y="119" text-anchor="middle" font-size="6.4" fill="var(--muted)">+ 1240 token，写进 ClickHouse</text>
+  <line x1="204" y1="64" x2="264" y2="88" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,88 255,85 256,93" fill="var(--blue)"/><line x1="204" y1="116" x2="264" y2="100" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,100 255,100 258,108" fill="var(--blue)"/>
+  <line x1="446" y1="99" x2="506" y2="99" stroke="var(--accent)" stroke-width="1.4"/><polygon points="506,99 497,95 497,103" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">这正是第3课「乱序到达也没关系」在摄取里的实现，也是第13/15课要细讲的合并逻辑</text>
+</svg>
+<div class="figcap"><b>乱序事件 → 一条最终态</b>：同一 observation 的 create/update 分多次、可能乱序到达；worker 回 S3 取该 id 的历史事件，按 id 分组合并（冲突以更晚 <code>timestamp</code> 为准），收敛成一条最终行写入 ClickHouse。细节见第 13·15 课。</div>
+</div>
+
 
 <h2>下行 · 读：从 UI 回到 ClickHouse</h2>
 <p>数据落库后，你在浏览器里看到它，走的是另一条更<strong>实时</strong>的链路——你点一下，它就去查：</p>
@@ -605,6 +620,21 @@ separately</strong>, and the worker must <strong>merge them into one final recor
 prior events" — stitching the fragments that arrived at different times into one complete row. Grasp this and you see how Lesson 3's
 "observations can arrive out of order via parentObservationId" is actually realized in ingestion: <strong>events may come in multiple
 pieces, out of order, and the worker converges them into a consistent final state.</strong></p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Multiple events for the same observation arrive out of order: observation-create (started, model gpt-4o) and observation-update (output X, 1240 tokens) arrive separately, the worker fetches this id's history from S3, groups and merges by id with the later timestamp winning conflicts, converging into one final ClickHouse row">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Arrive in pieces, out of order → worker converges to one final row</text>
+  <rect x="24" y="44" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="60" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">event1 observation-create</text><text x="114" y="74" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, started, model:gpt-4o}</text>
+  <rect x="24" y="96" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="112" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">event2 observation-update</text><text x="114" y="126" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, output:X, 1240 tokens}</text>
+  <text x="114" y="156" text-anchor="middle" font-size="6.4" fill="var(--faint)">arrive separately, possibly out of order</text>
+  <rect x="266" y="62" width="180" height="74" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="356" y="82" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">worker merges</text><text x="356" y="99" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">fetch id=obs-42 history from S3</text><text x="356" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">group by id, each field takes the value side</text><text x="356" y="127" text-anchor="middle" font-size="6.4" fill="var(--muted)">conflicts: later timestamp wins</text>
+  <rect x="508" y="68" width="188" height="62" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="602" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">one final row</text><text x="602" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">obs-42: gpt-4o + output:X</text><text x="602" y="119" text-anchor="middle" font-size="6.4" fill="var(--muted)">+ 1240 tokens, written to ClickHouse</text>
+  <line x1="204" y1="64" x2="264" y2="88" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,88 255,85 256,93" fill="var(--blue)"/><line x1="204" y1="116" x2="264" y2="100" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,100 255,100 258,108" fill="var(--blue)"/>
+  <line x1="446" y1="99" x2="506" y2="99" stroke="var(--accent)" stroke-width="1.4"/><polygon points="506,99 497,95 497,103" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">This is exactly how Lesson 3's "out-of-order arrival is fine" is realized in ingestion, and the merge logic Lessons 13/15 detail</text>
+</svg>
+<div class="figcap"><b>Out-of-order events → one final state</b>: the same observation's create/update arrive in multiple pieces, possibly out of order; the worker fetches that id's history from S3, groups and merges by id (conflicts resolved by the later <code>timestamp</code>), converging into one final row written to ClickHouse. Details in Lessons 13·15.</div>
+</div>
 
 
 <h2>Bottom half · read: from UI back to ClickHouse</h2>

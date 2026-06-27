@@ -434,6 +434,35 @@ observation 行上，让「按模型 / 按用户 / 按时间」这些高频查�
   </div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="一条宽 observation 行的解剖：同一行里塞进三类字段——关联字段(id/traceId/parentObservationId 拼调用树)、数字字段(latency/usageDetails/costDetails 可聚合)、业务字段(model/userId/metadata/tags 可过滤分组)，于是按模型/用户/时间提问都是同一张宽表的列查询，无需JOIN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">一条 observation = 三类字段塞进同一行</text>
+  <rect x="24" y="38" width="672" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="57" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">observations 宽表的一行（ObservationSchema）</text>
+  <rect x="24" y="80" width="216" height="118" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="132" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① 关联字段（拼调用树）</text><text x="132" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">id · traceId · projectId</text><text x="132" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">parentObservationId</text><text x="132" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">type · startTime/endTime</text><text x="132" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">让它既是「链路节点」</text><text x="132" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">又能独立查询</text>
+  <rect x="252" y="80" width="216" height="118" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">② 数字字段（可聚合）</text><text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">latency · timeToFirstToken</text><text x="360" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">usageDetails（token 用量）</text><text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">costDetails · totalCost</text><text x="360" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">直接 sum/avg/p95，</text><text x="360" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">不必从日志里 parse</text>
+  <rect x="480" y="80" width="216" height="118" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="588" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ 业务字段（可过滤分组）</text><text x="588" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">model · internalModelId</text><text x="588" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">metadata · environment</text><text x="588" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">promptName/Version</text><text x="588" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">「按模型 / 按环境」</text><text x="588" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">退化成列谓词</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">三类字段同处一行 → 「按模型看 p95 延迟」「按用户看花费」都是对这张宽表的普通列查询，无需 JOIN</text>
+</svg>
+<div class="figcap"><b>宽 observation 的解剖</b>：<code>packages/shared/src/domain/observations.ts:55 ObservationSchema</code> 把<b>关联</b>（id/traceId/parentObservationId）、<b>数字</b>（latency/usageDetails/costDetails）、<b>业务</b>（model/metadata/environment/promptName）三类字段塞进同一行。这就是「宽」的字面含义——也是「下钻=查这张表、聚合=也查这张表」的根。</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/observations.ts:55</span><span class="ln">一条 observation 的真实结构</span></div>
+  <pre class="code"><span class="kw">export const</span> ObservationSchema = z.<span class="fn">object</span>({
+  <span class="cm">// ① 关联字段：拼出调用树，也让本行能独立查询</span>
+  id: z.<span class="fn">string</span>(),  traceId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  projectId: z.<span class="fn">string</span>(),
+  parentObservationId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  type: ObservationTypeDomain,
+  <span class="cm">// ② 数字字段：可直接 sum/avg/p95，无需从日志 parse</span>
+  latency: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  timeToFirstToken: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  usageDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),  costDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),
+  totalCost: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  totalUsage: z.<span class="fn">number</span>(),
+  <span class="cm">// ③ 业务字段：让「按模型 / 按环境 / 按 prompt」变成列谓词</span>
+  model: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  environment: z.<span class="fn">string</span>(),  metadata: MetadataDomain,
+  promptName: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  promptVersion: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  input: jsonSchema.<span class="fn">nullable</span>(),  output: jsonSchema.<span class="fn">nullable</span>(),  <span class="cm">// 大字段，详情页才读（第24课）</span>
+});</pre>
+</div>
+
 <h2>这套原则如何贯穿 Langfuse</h2>
 <p><code>ARCHITECTURE_PRINCIPLES.md</code> 里的每一条，都能在后面的课里找到对应的工程落点。下表是「原则 → 它换来什么 → 哪一课展开」：</p>
 
@@ -668,6 +697,35 @@ redundancy for not joining at query time.</p>
     <h4>😀 2.0: one row holds it</h4>
     <p>One observation carries numbers, structure and business fields at once. <strong>Slice, group and filter are all queries over one wide table</strong>; ask anything later. Cost: wider rows, more storage.</p>
   </div>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="Anatomy of one wide observation row: three kinds of fields on the same row — link fields (id/traceId/parentObservationId building the call tree), numeric fields (latency/usageDetails/costDetails, aggregatable), business fields (model/userId/metadata/tags, filterable/groupable), so asking by model/user/time is a column query over one wide table, no JOIN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One observation = three kinds of fields on one row</text>
+  <rect x="24" y="38" width="672" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="57" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">one row of the observations wide table (ObservationSchema)</text>
+  <rect x="24" y="80" width="216" height="118" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="132" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① link fields (build call tree)</text><text x="132" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">id · traceId · projectId</text><text x="132" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">parentObservationId</text><text x="132" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">type · startTime/endTime</text><text x="132" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">makes it a "call-tree node"</text><text x="132" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">AND independently queryable</text>
+  <rect x="252" y="80" width="216" height="118" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">② numeric fields (aggregatable)</text><text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">latency · timeToFirstToken</text><text x="360" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">usageDetails (token usage)</text><text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">costDetails · totalCost</text><text x="360" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">sum/avg/p95 directly,</text><text x="360" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">no parsing from logs</text>
+  <rect x="480" y="80" width="216" height="118" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="588" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ business fields (filter/group)</text><text x="588" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">model · internalModelId</text><text x="588" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">metadata · environment</text><text x="588" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">promptName/Version</text><text x="588" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">"by model / by env"</text><text x="588" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">collapses to a column predicate</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">Three kinds of fields on one row → "p95 latency by model", "cost by user" are ordinary column queries over this wide table, no JOIN</text>
+</svg>
+<div class="figcap"><b>Anatomy of a wide observation</b>: <code>packages/shared/src/domain/observations.ts:55 ObservationSchema</code> packs <b>link</b> (id/traceId/parentObservationId), <b>numeric</b> (latency/usageDetails/costDetails), and <b>business</b> (model/metadata/environment/promptName) fields onto one row. That's the literal meaning of "wide" — and the root of "drill-down = query this table, aggregate = also query this table".</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/observations.ts:55</span><span class="ln">the real shape of one observation</span></div>
+  <pre class="code"><span class="kw">export const</span> ObservationSchema = z.<span class="fn">object</span>({
+  <span class="cm">// ① link fields: build the call tree, and let this row be queried alone</span>
+  id: z.<span class="fn">string</span>(),  traceId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  projectId: z.<span class="fn">string</span>(),
+  parentObservationId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  type: ObservationTypeDomain,
+  <span class="cm">// ② numeric fields: sum/avg/p95 directly, no parsing from logs</span>
+  latency: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  timeToFirstToken: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  usageDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),  costDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),
+  totalCost: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  totalUsage: z.<span class="fn">number</span>(),
+  <span class="cm">// ③ business fields: make "by model / by env / by prompt" a column predicate</span>
+  model: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  environment: z.<span class="fn">string</span>(),  metadata: MetadataDomain,
+  promptName: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  promptVersion: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  input: jsonSchema.<span class="fn">nullable</span>(),  output: jsonSchema.<span class="fn">nullable</span>(),  <span class="cm">// big fields, read on the detail page (Lesson 24)</span>
+});</pre>
 </div>
 
 <h2>How the principles thread through Langfuse</h2>

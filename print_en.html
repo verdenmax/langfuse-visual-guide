@@ -866,6 +866,35 @@ redundancy for not joining at query time.</p>
   </div>
 </div>
 
+<div class="fig">
+<svg viewBox="0 0 720 220" role="img" aria-label="Anatomy of one wide observation row: three kinds of fields on the same row — link fields (id/traceId/parentObservationId building the call tree), numeric fields (latency/usageDetails/costDetails, aggregatable), business fields (model/userId/metadata/tags, filterable/groupable), so asking by model/user/time is a column query over one wide table, no JOIN">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One observation = three kinds of fields on one row</text>
+  <rect x="24" y="38" width="672" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="57" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">one row of the observations wide table (ObservationSchema)</text>
+  <rect x="24" y="80" width="216" height="118" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="132" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">① link fields (build call tree)</text><text x="132" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">id · traceId · projectId</text><text x="132" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">parentObservationId</text><text x="132" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">type · startTime/endTime</text><text x="132" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">makes it a "call-tree node"</text><text x="132" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">AND independently queryable</text>
+  <rect x="252" y="80" width="216" height="118" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="360" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">② numeric fields (aggregatable)</text><text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">latency · timeToFirstToken</text><text x="360" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">usageDetails (token usage)</text><text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">costDetails · totalCost</text><text x="360" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">sum/avg/p95 directly,</text><text x="360" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">no parsing from logs</text>
+  <rect x="480" y="80" width="216" height="118" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="588" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ business fields (filter/group)</text><text x="588" y="120" text-anchor="middle" font-size="7" fill="var(--muted)">model · internalModelId</text><text x="588" y="135" text-anchor="middle" font-size="7" fill="var(--muted)">metadata · environment</text><text x="588" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">promptName/Version</text><text x="588" y="172" text-anchor="middle" font-size="6.4" fill="var(--faint)">"by model / by env"</text><text x="588" y="185" text-anchor="middle" font-size="6.4" fill="var(--faint)">collapses to a column predicate</text>
+  <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">Three kinds of fields on one row → "p95 latency by model", "cost by user" are ordinary column queries over this wide table, no JOIN</text>
+</svg>
+<div class="figcap"><b>Anatomy of a wide observation</b>: <code>packages/shared/src/domain/observations.ts:55 ObservationSchema</code> packs <b>link</b> (id/traceId/parentObservationId), <b>numeric</b> (latency/usageDetails/costDetails), and <b>business</b> (model/metadata/environment/promptName) fields onto one row. That's the literal meaning of "wide" — and the root of "drill-down = query this table, aggregate = also query this table".</div>
+</div>
+
+<div class="codefile">
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/observations.ts:55</span><span class="ln">the real shape of one observation</span></div>
+  <pre class="code"><span class="kw">export const</span> ObservationSchema = z.<span class="fn">object</span>({
+  <span class="cm">// ① link fields: build the call tree, and let this row be queried alone</span>
+  id: z.<span class="fn">string</span>(),  traceId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  projectId: z.<span class="fn">string</span>(),
+  parentObservationId: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  type: ObservationTypeDomain,
+  <span class="cm">// ② numeric fields: sum/avg/p95 directly, no parsing from logs</span>
+  latency: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  timeToFirstToken: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  usageDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),  costDetails: z.<span class="fn">record</span>(z.<span class="fn">string</span>(), z.<span class="fn">number</span>()),
+  totalCost: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),  totalUsage: z.<span class="fn">number</span>(),
+  <span class="cm">// ③ business fields: make "by model / by env / by prompt" a column predicate</span>
+  model: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  environment: z.<span class="fn">string</span>(),  metadata: MetadataDomain,
+  promptName: z.<span class="fn">string</span>().<span class="fn">nullable</span>(),  promptVersion: z.<span class="fn">number</span>().<span class="fn">nullable</span>(),
+  input: jsonSchema.<span class="fn">nullable</span>(),  output: jsonSchema.<span class="fn">nullable</span>(),  <span class="cm">// big fields, read on the detail page (Lesson 24)</span>
+});</pre>
+</div>
+
 <h2>How the principles thread through Langfuse</h2>
 <p>Every line in <code>ARCHITECTURE_PRINCIPLES.md</code> has an engineering landing spot in a later lesson. Below: "principle → what it buys → where".</p>
 
@@ -1207,6 +1236,19 @@ shouldn't be impersonated from outside. This little "permission by source" desig
 trace/observation association; traces sit in the middle as the list-page entry point. Separate tables let each use the
 <strong>ordering key and partitioning best for itself</strong> (L08) without dragging on the others. This is again "choose storage by
 access pattern" — the same idea as "why Postgres + ClickHouse coexist" (L07), just at finer granularity.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 190" role="img" aria-label="Three pillars land in three separate ClickHouse tables: trace (list main entry, medium volume), observation (largest volume, widest fields, most-queried), score (low volume, queried by relation), each a table because access patterns differ, each using its best ordering key and partitioning, no mutual drag; score relates via traceId/observationId, observation via traceId">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Three pillars → three tables: different access patterns, stored apart</text>
+  <rect x="40" y="44" width="190" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="135" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">traces table</text><text x="135" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">list-page main entry</text><text x="135" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">medium volume</text><text x="135" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">ordering/partition</text><text x="135" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for "list by time"</text>
+  <rect x="265" y="44" width="190" height="120" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">observations table</text><text x="360" y="84" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">largest · widest fields</text><text x="360" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">most-queried</text><text x="360" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">home of wide events</text><text x="360" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for aggregate/filter</text>
+  <rect x="490" y="44" width="190" height="120" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="585" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">scores table</text><text x="585" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">lowest volume</text><text x="585" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">queried by relation</text><text x="585" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for "fetch by trace/obs"</text>
+  <line x1="265" y1="150" x2="230" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="247" y="146" text-anchor="middle" font-size="5.6" fill="var(--faint)">traceId</text><polygon points="230,150 239,146 239,154" fill="var(--faint)"/>
+  <line x1="490" y1="150" x2="455" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="472" y="146" text-anchor="middle" font-size="5.4" fill="var(--faint)">traceId/obsId</text><polygon points="455,150 464,146 464,154" fill="var(--faint)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">Same lineage as "Postgres+ClickHouse coexist" (L07): choose storage by access pattern, just finer — "one pillar, one table"</text>
+</svg>
+<div class="figcap"><b>Three pillars → three tables</b>: observation (largest, widest, most-queried), trace (list main entry), score (low volume, queried by relation) have different access patterns, so three tables each with its best ordering key/partition (L08), no mutual drag. score relates back via traceId/observationId.</div>
+</div>
 
 <h2>How the three land in ClickHouse and sessions</h2>
 <p>These three domain objects map <strong>one-to-one to three ClickHouse tables</strong> in analytical storage (detailed in L08). Keep
@@ -1645,6 +1687,21 @@ separately</strong>, and the worker must <strong>merge them into one final recor
 prior events" — stitching the fragments that arrived at different times into one complete row. Grasp this and you see how Lesson 3's
 "observations can arrive out of order via parentObservationId" is actually realized in ingestion: <strong>events may come in multiple
 pieces, out of order, and the worker converges them into a consistent final state.</strong></p>
+
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Multiple events for the same observation arrive out of order: observation-create (started, model gpt-4o) and observation-update (output X, 1240 tokens) arrive separately, the worker fetches this id's history from S3, groups and merges by id with the later timestamp winning conflicts, converging into one final ClickHouse row">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Arrive in pieces, out of order → worker converges to one final row</text>
+  <rect x="24" y="44" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="60" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">event1 observation-create</text><text x="114" y="74" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, started, model:gpt-4o}</text>
+  <rect x="24" y="96" width="180" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="114" y="112" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--ink)">event2 observation-update</text><text x="114" y="126" text-anchor="middle" font-size="6.2" fill="var(--muted)">{id:obs-42, output:X, 1240 tokens}</text>
+  <text x="114" y="156" text-anchor="middle" font-size="6.4" fill="var(--faint)">arrive separately, possibly out of order</text>
+  <rect x="266" y="62" width="180" height="74" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="356" y="82" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">worker merges</text><text x="356" y="99" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">fetch id=obs-42 history from S3</text><text x="356" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">group by id, each field takes the value side</text><text x="356" y="127" text-anchor="middle" font-size="6.4" fill="var(--muted)">conflicts: later timestamp wins</text>
+  <rect x="508" y="68" width="188" height="62" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="602" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">one final row</text><text x="602" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">obs-42: gpt-4o + output:X</text><text x="602" y="119" text-anchor="middle" font-size="6.4" fill="var(--muted)">+ 1240 tokens, written to ClickHouse</text>
+  <line x1="204" y1="64" x2="264" y2="88" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,88 255,85 256,93" fill="var(--blue)"/><line x1="204" y1="116" x2="264" y2="100" stroke="var(--blue)" stroke-width="1.3"/><polygon points="264,100 255,100 258,108" fill="var(--blue)"/>
+  <line x1="446" y1="99" x2="506" y2="99" stroke="var(--accent)" stroke-width="1.4"/><polygon points="506,99 497,95 497,103" fill="var(--accent)"/>
+  <text x="360" y="184" text-anchor="middle" font-size="8" fill="var(--faint)">This is exactly how Lesson 3's "out-of-order arrival is fine" is realized in ingestion, and the merge logic Lessons 13/15 detail</text>
+</svg>
+<div class="figcap"><b>Out-of-order events → one final state</b>: the same observation's create/update arrive in multiple pieces, possibly out of order; the worker fetches that id's history from S3, groups and merges by id (conflicts resolved by the later <code>timestamp</code>), converging into one final row written to ClickHouse. Details in Lessons 13·15.</div>
+</div>
 
 
 <h2>Bottom half · read: from UI back to ClickHouse</h2>

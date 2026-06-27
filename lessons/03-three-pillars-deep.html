@@ -522,6 +522,19 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 score 数量少、常按 trace/observation 关联查；trace 居中、是列表页的主入口。分表能让每张表用<strong>最适合自己的排序键与分区</strong>（第 8 课），
 互不拖累。这又是一次「按访问模式选存储」的体现——和「为什么 Postgres + ClickHouse 并存」（第 7 课）是同一种思路，只是粒度更细。</p>
 
+<div class="fig">
+<svg viewBox="0 0 720 190" role="img" aria-label="三支柱落到三张分开的ClickHouse表：trace(列表主入口,量居中)、observation(量最大字段最宽查询最频繁)、score(量少常按关联查)各一张表，因访问模式不同而分表，各用最适合的排序键与分区，互不拖累；score 通过 traceId/observationId 关联，observation 通过 traceId 关联">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">三支柱 → 三张表：访问模式不同，所以分开存</text>
+  <rect x="40" y="44" width="190" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="135" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">traces 表</text><text x="135" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">列表页主入口</text><text x="135" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">量居中</text><text x="135" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">排序键/分区</text><text x="135" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">为「按时间列表」优化</text>
+  <rect x="265" y="44" width="190" height="120" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">observations 表</text><text x="360" y="84" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">量最大·字段最宽</text><text x="360" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">查询最频繁</text><text x="360" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">宽事件主场</text><text x="360" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">为聚合/过滤优化</text>
+  <rect x="490" y="44" width="190" height="120" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="585" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">scores 表</text><text x="585" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">量最少</text><text x="585" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">常按关联查</text><text x="585" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">为「按 trace/obs 取分」优化</text>
+  <line x1="265" y1="150" x2="230" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="247" y="146" text-anchor="middle" font-size="5.6" fill="var(--faint)">traceId</text><polygon points="230,150 239,146 239,154" fill="var(--faint)"/>
+  <line x1="490" y1="150" x2="455" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="472" y="146" text-anchor="middle" font-size="5.4" fill="var(--faint)">traceId/obsId</text><polygon points="455,150 464,146 464,154" fill="var(--faint)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">同「Postgres+ClickHouse 并存」（第7课）一脉：按访问模式选存储，只是粒度更细到「一支柱一张表」</text>
+</svg>
+<div class="figcap"><b>三支柱 → 三张表</b>：observation（量最大、字段最宽、查询最频繁）、trace（列表主入口）、score（量少、常按关联查）访问模式各异，分三张表各用最适合的排序键/分区（第 8 课），互不拖累。score 经 traceId/observationId 关联回去。</div>
+</div>
+
 <h2>三者如何落到 ClickHouse 与 sessions</h2>
 <p>这三个领域对象，在分析存储里<strong>一一对应三张 ClickHouse 表</strong>（第 8 课细讲）。要区分两个层次：<code>domain/*.ts</code> 里的 Zod schema 是
 <strong>「形状契约」</strong>——前端、后端、SDK 都按它理解数据；而 ClickHouse 的建表 SQL 是<strong>「物理存储」</strong>——决定数据在磁盘上怎么排、怎么压、怎么扫。
@@ -809,6 +822,19 @@ shouldn't be impersonated from outside. This little "permission by source" desig
 trace/observation association; traces sit in the middle as the list-page entry point. Separate tables let each use the
 <strong>ordering key and partitioning best for itself</strong> (L08) without dragging on the others. This is again "choose storage by
 access pattern" — the same idea as "why Postgres + ClickHouse coexist" (L07), just at finer granularity.</p>
+
+<div class="fig">
+<svg viewBox="0 0 720 190" role="img" aria-label="Three pillars land in three separate ClickHouse tables: trace (list main entry, medium volume), observation (largest volume, widest fields, most-queried), score (low volume, queried by relation), each a table because access patterns differ, each using its best ordering key and partitioning, no mutual drag; score relates via traceId/observationId, observation via traceId">
+  <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Three pillars → three tables: different access patterns, stored apart</text>
+  <rect x="40" y="44" width="190" height="120" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="135" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">traces table</text><text x="135" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">list-page main entry</text><text x="135" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">medium volume</text><text x="135" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">ordering/partition</text><text x="135" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for "list by time"</text>
+  <rect x="265" y="44" width="190" height="120" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="360" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">observations table</text><text x="360" y="84" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">largest · widest fields</text><text x="360" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">most-queried</text><text x="360" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">home of wide events</text><text x="360" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for aggregate/filter</text>
+  <rect x="490" y="44" width="190" height="120" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="585" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">scores table</text><text x="585" y="84" text-anchor="middle" font-size="6.6" fill="var(--muted)">lowest volume</text><text x="585" y="98" text-anchor="middle" font-size="6.6" fill="var(--muted)">queried by relation</text><text x="585" y="118" text-anchor="middle" font-size="6.2" fill="var(--faint)">optimized for "fetch by trace/obs"</text>
+  <line x1="265" y1="150" x2="230" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="247" y="146" text-anchor="middle" font-size="5.6" fill="var(--faint)">traceId</text><polygon points="230,150 239,146 239,154" fill="var(--faint)"/>
+  <line x1="490" y1="150" x2="455" y2="150" stroke="var(--faint)" stroke-width="1.2"/><text x="472" y="146" text-anchor="middle" font-size="5.4" fill="var(--faint)">traceId/obsId</text><polygon points="455,150 464,146 464,154" fill="var(--faint)"/>
+  <text x="360" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">Same lineage as "Postgres+ClickHouse coexist" (L07): choose storage by access pattern, just finer — "one pillar, one table"</text>
+</svg>
+<div class="figcap"><b>Three pillars → three tables</b>: observation (largest, widest, most-queried), trace (list main entry), score (low volume, queried by relation) have different access patterns, so three tables each with its best ordering key/partition (L08), no mutual drag. score relates back via traceId/observationId.</div>
+</div>
 
 <h2>How the three land in ClickHouse and sessions</h2>
 <p>These three domain objects map <strong>one-to-one to three ClickHouse tables</strong> in analytical storage (detailed in L08). Keep
