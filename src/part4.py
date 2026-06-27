@@ -1272,6 +1272,30 @@ _ZH24.append(r"""
 <h2>表格状态：URL 是真源，三层持久化</h2>
 <p>列表不只是「画一堆行」。你调了列顺序、设了过滤、排了序、存成一个「视图预设」——这些<strong>表格状态</strong>该存哪？Langfuse 的答案是<strong>分三层、以 URL 为真源</strong>：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="表格状态分三层按时效递增：URL 是真源与分享层(过滤排序搜索视图id编码进链接,发链接即复现)、session 存储是本次导航记忆(列宽可见列滚动,关标签即清)、数据库是永久预设saved view(跨设备团队共享,失效则优雅降级)">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="44" width="204" height="122" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="126" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">URL · 真源</text>
+  <text x="126" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">分享 + 深度链接</text>
+  <text x="126" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">过滤/排序/搜索/视图id</text>
+  <text x="126" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ 发链接即原样复现</text>
+  <text x="126" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">时效：此刻可分享</text>
+  <rect x="258" y="44" width="204" height="122" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">session 存储</text>
+  <text x="360" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">导航记忆</text>
+  <text x="360" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">列宽/可见列/滚动位置</text>
+  <text x="360" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ 跳转间不丢</text>
+  <text x="360" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">时效：关标签即清</text>
+  <rect x="492" y="44" width="204" height="122" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="594" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">数据库</text>
+  <text x="594" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">永久预设 saved view</text>
+  <text x="594" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">跨设备 · 团队共享</text>
+  <text x="594" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ 失效则优雅降级</text>
+  <text x="594" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">时效：永久沉淀</text>
+  <line x1="24" y1="194" x2="696" y2="194" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">时效递增 →：URL（此刻可分享）· session（这次导航）· DB（永久沉淀）</text>
+</svg>
+
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">分享与真源</span></div><div class="ld">过滤、排序、搜索、当前视图 id 都编码进 <strong>URL</strong>。于是你把链接发给同事，他打开看到的<strong>和你一模一样</strong>——URL 是「此刻这张表长什么样」的单一真源（呼应第 23 课 FilterState）。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">session 存储</span><span class="name">导航记忆</span></div><div class="ld">在表之间来回跳时，用<strong>会话存储</strong>记住你刚才的列宽、可见列、滚动位置等，免得每次回来都被重置——只在本次浏览会话内有效，关掉标签页即清。</div></div>
@@ -1401,6 +1425,30 @@ correct but <strong>slow</strong>. Langfuse's tradeoff: <strong>avoid FINAL when
 <h2>Table state: URL is the source of truth, three layers of persistence</h2>
 <p>A list isn't just "draw some rows". You tweaked column order, set filters, sorted, saved a "view preset" — where should this <strong>table state</strong> live?
 Langfuse's answer is <strong>three layers, with the URL as the source of truth</strong>:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="table state has three layers by increasing lifetime: the URL is source-of-truth and sharing (filters/sort/search/view id encoded into the link, send it to reproduce), session storage is this-navigation memory (column widths/visible columns/scroll, cleared when the tab closes), and the database holds permanent saved views (cross-device, team-shared, gracefully degrading when stale)">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="44" width="204" height="122" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="126" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">URL · source of truth</text>
+  <text x="126" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">sharing + deep link</text>
+  <text x="126" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">filter/sort/search/view id</text>
+  <text x="126" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ send link, reproduce</text>
+  <text x="126" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">scope: shareable now</text>
+  <rect x="258" y="44" width="204" height="122" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">session storage</text>
+  <text x="360" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">navigation memory</text>
+  <text x="360" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">widths/columns/scroll</text>
+  <text x="360" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ kept across jumps</text>
+  <text x="360" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">scope: cleared on close</text>
+  <rect x="492" y="44" width="204" height="122" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="594" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">database</text>
+  <text x="594" y="90" font-size="10.5" text-anchor="middle" fill="var(--muted)">permanent saved view</text>
+  <text x="594" y="114" font-size="10" text-anchor="middle" fill="var(--ink)">cross-device · team-shared</text>
+  <text x="594" y="138" font-size="10" text-anchor="middle" fill="var(--ink)">→ graceful degrade</text>
+  <text x="594" y="158" font-size="9.5" text-anchor="middle" fill="var(--muted)">scope: kept forever</text>
+  <line x1="24" y1="194" x2="696" y2="194" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="360" y="216" font-size="11" text-anchor="middle" fill="var(--muted)">increasing lifetime →: URL (shareable now) · session (this navigation) · DB (permanent)</text>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">URL</span><span class="name">sharing &amp; source of truth</span></div><div class="ld">Filters, sort, search, current view id are all encoded into the <strong>URL</strong>. So you send a colleague the link and they see <strong>exactly the same thing</strong> — the URL is the single source of truth for "what this table looks like right now" (echoing Lesson 23's FilterState).</div></div>
@@ -1816,6 +1864,32 @@ _ZH26.append(r"""
 <p>点开一个会话，看到的是它含的那些 trace<strong>按时间排成一条对话时间线</strong>——第一轮、第二轮……每一轮点进去又是第 25 课那棵观测树。从列表到详情，会话只是在 trace 之上加了一层「对话」的视角，
 让你不再孤立地看单条调用，而是看清「一整段交互」的来龙去脉。这对调试多轮 agent 尤其重要：很多问题不在某一轮，而在<strong>轮与轮之间</strong>——上一轮的输出怎样影响了下一轮、对话从哪里开始跑偏。</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="会话详情把一个 session 含的多条 trace 按时间排成对话时间线：第1轮、第2轮、第3轮依次排开，点进任一轮就是第25课的观测树（trace 根挂 span 与 generation，IO 懒加载），让你看清一整段多轮交互怎么演进、在哪轮变贵或出错">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="30" width="672" height="38" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="54" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">会话 = 多条 trace 按 session_id 分组 · 按时间排成一条对话时间线</text>
+  <line x1="40" y1="104" x2="680" y2="104" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="668" y="96" font-size="10" text-anchor="end" fill="var(--muted)">时间 →</text>
+  <rect x="64" y="84" width="120" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="124" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">第 1 轮 trace</text>
+  <rect x="300" y="84" width="120" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">第 2 轮 trace</text>
+  <rect x="536" y="84" width="120" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="596" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">第 3 轮 trace</text>
+  <line x1="184" y1="104" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="420" y1="104" x2="536" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="360" y1="124" x2="360" y2="150" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <rect x="300" y="150" width="120" height="26" rx="6" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="167" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">trace 根（第 25 课）</text>
+  <rect x="270" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="318" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">span</text>
+  <rect x="378" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="426" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">generation</text>
+  <line x1="330" y1="176" x2="318" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="390" y1="176" x2="426" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="540" y="200" font-size="10.5" fill="var(--muted)">点进任一轮 → 观测树（IO 懒加载）</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>会话列表</h4><p>每行一个会话：谁参与、几轮、多久、花了多少（聚合指标后补，同第 24 课）。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>点开某会话</h4><p>用该会话的 <code>trace_ids</code> 把它含的 traces 取回，<strong>按时间排序</strong>成一条时间线。</p></div></div>
@@ -1965,6 +2039,32 @@ observation tree. From list to detail, a session just adds a "conversation" lens
 interaction. This matters especially for debugging multi-turn agents: many problems aren't in one round but <strong>between rounds</strong> — how the previous output
 shaped the next, where the conversation started to go off the rails.</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="session detail lays a session's traces into a conversation timeline: round 1, round 2, round 3 in time order, and clicking any round opens Lesson 25's observation tree (a trace root with span and generation children, IO lazy-loaded), so you can see how a multi-round interaction evolves and where it gets expensive or fails">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="24" y="30" width="672" height="38" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="54" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">session = traces grouped by session_id · laid out as one conversation timeline</text>
+  <line x1="40" y1="104" x2="680" y2="104" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="668" y="96" font-size="10" text-anchor="end" fill="var(--muted)">time →</text>
+  <rect x="64" y="84" width="120" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="124" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">round 1 trace</text>
+  <rect x="300" y="84" width="120" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">round 2 trace</text>
+  <rect x="536" y="84" width="120" height="40" rx="8" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="596" y="108" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">round 3 trace</text>
+  <line x1="184" y1="104" x2="300" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="420" y1="104" x2="536" y2="104" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="360" y1="124" x2="360" y2="150" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+  <rect x="300" y="150" width="120" height="26" rx="6" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="360" y="167" font-size="10.5" text-anchor="middle" fill="var(--accent-ink)">trace root (Lesson 25)</text>
+  <rect x="270" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="318" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">span</text>
+  <rect x="378" y="186" width="96" height="24" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="426" y="202" font-size="10" text-anchor="middle" fill="var(--ink)">generation</text>
+  <line x1="330" y1="176" x2="318" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="390" y1="176" x2="426" y2="186" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="540" y="200" font-size="10.5" fill="var(--muted)">click any round → observation tree (lazy IO)</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>session list</h4><p>One session per row: who took part, how many rounds, how long, how much spent (aggregates filled later, same as Lesson 24).</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>open a session</h4><p>Use the session's <code>trace_ids</code> to fetch its traces, <strong>ordered by time</strong> into a timeline.</p></div></div>
@@ -2105,6 +2205,33 @@ _ZH27.append(r"""
 <h2>版本靠文件夹，契约靠 Fern</h2>
 <p>对外 API 一旦发布就不能随意改——可需求总在变，怎么办？Langfuse 的两招：<strong>用文件夹做版本</strong>、<strong>用 Fern 生成 SDK</strong>。</p>
 
+<svg viewBox="0 0 720 240" role="img" aria-label="两招：① 版本是文件夹，v1 在 public 根、新版进 v2/ v3/ 子文件夹，老路径永不改，v3 还能做减法改用游标分页；② 契约是 Fern，一份手写 YAML 生成 Python SDK、TypeScript SDK 并导出 OpenAPI，一处定义处处一致">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">① 版本 = 文件夹（老路径永不改）</text>
+  <rect x="24" y="38" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="140" y="62" font-size="11" text-anchor="middle" fill="var(--ink)">public/ (v1) · 默认在根</text>
+  <rect x="48" y="90" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="114" font-size="11" text-anchor="middle" fill="var(--ink)">public/v2/</text>
+  <rect x="72" y="142" width="244" height="44" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="162" font-size="11" text-anchor="middle" fill="var(--ink)">public/v3/ · 可做减法</text>
+  <text x="194" y="178" font-size="9.5" text-anchor="middle" fill="var(--muted)">如 v3/scores 改用游标分页</text>
+  <line x1="350" y1="34" x2="350" y2="192" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 4"></line>
+  <text x="392" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">② 契约 = Fern（一处定义）</text>
+  <rect x="392" y="68" width="150" height="72" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="467" y="98" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Fern YAML</text>
+  <text x="467" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">fern/apis/{server,client}</text>
+  <rect x="576" y="44" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="66" font-size="10.5" text-anchor="middle" fill="var(--ink)">Python SDK</text>
+  <rect x="576" y="92" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="114" font-size="10.5" text-anchor="middle" fill="var(--ink)">TypeScript SDK</text>
+  <rect x="576" y="140" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="162" font-size="10.5" text-anchor="middle" fill="var(--ink)">OpenAPI 导出</text>
+  <line x1="542" y1="96" x2="576" y2="62" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="104" x2="576" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="112" x2="576" y2="158" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="220" font-size="11" text-anchor="middle" fill="var(--muted)">版本化保证「旧的不破」，Fern 生成保证「多语言一致、契约即文档」</text>
+</svg>
+
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">版本=文件夹</span><span class="name">v1 在根，v2/、v3/…</span></div><div class="ld">默认 v1 在 <code>public/</code> 根，新版放进 <code>v2/</code>、<code>v3/</code> 子文件夹。<strong>老路径永不改</strong>，你两年前的集成今天照跑；想要新能力就显式切到新版本。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">新版可做减法</span><span class="name">去掉昂贵特性</span></div><div class="ld">新版本不只是加功能，也能<strong>砍掉代价大的旧设计</strong>：比如 <code>v3/scores</code> 去掉了需要 JOIN trace 的 userId/traceTags 过滤、改用<strong>游标分页</strong>——把「该用 v2」的话直接写进文档。</div></div>
@@ -2243,6 +2370,33 @@ _EN27.append(r"""
 <h2>Versions by folder, contracts by Fern</h2>
 <p>An external API, once published, can't change freely — but needs keep evolving, so what? Langfuse's two moves: <strong>version by folder</strong>, <strong>generate SDKs
 with Fern</strong>.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="two moves: (1) version is a folder, v1 at the public root and new versions in v2/ v3/ subfolders, old paths never change and v3 can even drop features like switching to cursor pagination; (2) the contract is Fern, one hand-written YAML generates the Python SDK and TypeScript SDK and exports OpenAPI, defined once and consistent everywhere">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">(1) version = folder (old paths never change)</text>
+  <rect x="24" y="38" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="140" y="62" font-size="11" text-anchor="middle" fill="var(--ink)">public/ (v1) · default at root</text>
+  <rect x="48" y="90" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="114" font-size="11" text-anchor="middle" fill="var(--ink)">public/v2/</text>
+  <rect x="72" y="142" width="244" height="44" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="162" font-size="11" text-anchor="middle" fill="var(--ink)">public/v3/ · can subtract</text>
+  <text x="194" y="178" font-size="9.5" text-anchor="middle" fill="var(--muted)">e.g. v3/scores uses cursor paging</text>
+  <line x1="350" y1="34" x2="350" y2="192" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 4"></line>
+  <text x="392" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">(2) contract = Fern (define once)</text>
+  <rect x="392" y="68" width="150" height="72" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="467" y="98" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Fern YAML</text>
+  <text x="467" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">fern/apis/{server,client}</text>
+  <rect x="576" y="44" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="66" font-size="10.5" text-anchor="middle" fill="var(--ink)">Python SDK</text>
+  <rect x="576" y="92" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="114" font-size="10.5" text-anchor="middle" fill="var(--ink)">TypeScript SDK</text>
+  <rect x="576" y="140" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="162" font-size="10.5" text-anchor="middle" fill="var(--ink)">OpenAPI export</text>
+  <line x1="542" y1="96" x2="576" y2="62" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="104" x2="576" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="112" x2="576" y2="158" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="220" font-size="11" text-anchor="middle" fill="var(--muted)">versioning keeps "the old unbroken"; Fern generation keeps "multi-language consistent, contract is the doc"</text>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">version = folder</span><span class="name">v1 at root, v2/, v3/…</span></div><div class="ld">v1 sits at the <code>public/</code> root by default, new versions in <code>v2/</code>, <code>v3/</code> subfolders. <strong>Old paths never change</strong>, so your two-year-old integration still runs today; opt into new capability by explicitly switching version.</div></div>

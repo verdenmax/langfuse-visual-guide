@@ -437,6 +437,33 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>版本靠文件夹，契约靠 Fern</h2>
 <p>对外 API 一旦发布就不能随意改——可需求总在变，怎么办？Langfuse 的两招：<strong>用文件夹做版本</strong>、<strong>用 Fern 生成 SDK</strong>。</p>
 
+<svg viewBox="0 0 720 240" role="img" aria-label="两招：① 版本是文件夹，v1 在 public 根、新版进 v2/ v3/ 子文件夹，老路径永不改，v3 还能做减法改用游标分页；② 契约是 Fern，一份手写 YAML 生成 Python SDK、TypeScript SDK 并导出 OpenAPI，一处定义处处一致">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">① 版本 = 文件夹（老路径永不改）</text>
+  <rect x="24" y="38" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="140" y="62" font-size="11" text-anchor="middle" fill="var(--ink)">public/ (v1) · 默认在根</text>
+  <rect x="48" y="90" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="114" font-size="11" text-anchor="middle" fill="var(--ink)">public/v2/</text>
+  <rect x="72" y="142" width="244" height="44" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="162" font-size="11" text-anchor="middle" fill="var(--ink)">public/v3/ · 可做减法</text>
+  <text x="194" y="178" font-size="9.5" text-anchor="middle" fill="var(--muted)">如 v3/scores 改用游标分页</text>
+  <line x1="350" y1="34" x2="350" y2="192" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 4"></line>
+  <text x="392" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">② 契约 = Fern（一处定义）</text>
+  <rect x="392" y="68" width="150" height="72" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="467" y="98" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Fern YAML</text>
+  <text x="467" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">fern/apis/{server,client}</text>
+  <rect x="576" y="44" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="66" font-size="10.5" text-anchor="middle" fill="var(--ink)">Python SDK</text>
+  <rect x="576" y="92" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="114" font-size="10.5" text-anchor="middle" fill="var(--ink)">TypeScript SDK</text>
+  <rect x="576" y="140" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="162" font-size="10.5" text-anchor="middle" fill="var(--ink)">OpenAPI 导出</text>
+  <line x1="542" y1="96" x2="576" y2="62" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="104" x2="576" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="112" x2="576" y2="158" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="220" font-size="11" text-anchor="middle" fill="var(--muted)">版本化保证「旧的不破」，Fern 生成保证「多语言一致、契约即文档」</text>
+</svg>
+
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">版本=文件夹</span><span class="name">v1 在根，v2/、v3/…</span></div><div class="ld">默认 v1 在 <code>public/</code> 根，新版放进 <code>v2/</code>、<code>v3/</code> 子文件夹。<strong>老路径永不改</strong>，你两年前的集成今天照跑；想要新能力就显式切到新版本。</div></div>
   <div class="layer l-main"><div class="lh"><span class="badge">新版可做减法</span><span class="name">去掉昂贵特性</span></div><div class="ld">新版本不只是加功能，也能<strong>砍掉代价大的旧设计</strong>：比如 <code>v3/scores</code> 去掉了需要 JOIN trace 的 userId/traceTags 过滤、改用<strong>游标分页</strong>——把「该用 v2」的话直接写进文档。</div></div>
@@ -616,6 +643,33 @@ needs.</p>
 <h2>Versions by folder, contracts by Fern</h2>
 <p>An external API, once published, can't change freely — but needs keep evolving, so what? Langfuse's two moves: <strong>version by folder</strong>, <strong>generate SDKs
 with Fern</strong>.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="two moves: (1) version is a folder, v1 at the public root and new versions in v2/ v3/ subfolders, old paths never change and v3 can even drop features like switching to cursor pagination; (2) the contract is Fern, one hand-written YAML generates the Python SDK and TypeScript SDK and exports OpenAPI, defined once and consistent everywhere">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <text x="24" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">(1) version = folder (old paths never change)</text>
+  <rect x="24" y="38" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="140" y="62" font-size="11" text-anchor="middle" fill="var(--ink)">public/ (v1) · default at root</text>
+  <rect x="48" y="90" width="232" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="114" font-size="11" text-anchor="middle" fill="var(--ink)">public/v2/</text>
+  <rect x="72" y="142" width="244" height="44" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="194" y="162" font-size="11" text-anchor="middle" fill="var(--ink)">public/v3/ · can subtract</text>
+  <text x="194" y="178" font-size="9.5" text-anchor="middle" fill="var(--muted)">e.g. v3/scores uses cursor paging</text>
+  <line x1="350" y1="34" x2="350" y2="192" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 4"></line>
+  <text x="392" y="26" font-size="12" font-weight="700" fill="var(--accent-ink)">(2) contract = Fern (define once)</text>
+  <rect x="392" y="68" width="150" height="72" rx="10" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="467" y="98" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">Fern YAML</text>
+  <text x="467" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">fern/apis/{server,client}</text>
+  <rect x="576" y="44" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="66" font-size="10.5" text-anchor="middle" fill="var(--ink)">Python SDK</text>
+  <rect x="576" y="92" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="114" font-size="10.5" text-anchor="middle" fill="var(--ink)">TypeScript SDK</text>
+  <rect x="576" y="140" width="128" height="36" rx="8" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="640" y="162" font-size="10.5" text-anchor="middle" fill="var(--ink)">OpenAPI export</text>
+  <line x1="542" y1="96" x2="576" y2="62" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="104" x2="576" y2="110" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="542" y1="112" x2="576" y2="158" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="220" font-size="11" text-anchor="middle" fill="var(--muted)">versioning keeps "the old unbroken"; Fern generation keeps "multi-language consistent, contract is the doc"</text>
+</svg>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">version = folder</span><span class="name">v1 at root, v2/, v3/…</span></div><div class="ld">v1 sits at the <code>public/</code> root by default, new versions in <code>v2/</code>, <code>v3/</code> subfolders. <strong>Old paths never change</strong>, so your two-year-old integration still runs today; opt into new capability by explicitly switching version.</div></div>
