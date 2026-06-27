@@ -108,6 +108,34 @@ _ZH54.append(r"""
 
 <p><strong>成本（cost）</strong>是把前五个主题「管住」的那条约束。架构原则里写得很直白：<strong>把成本与运维简单性当作架构约束</strong>——「额外的数据库、队列、物化视图、迁移，都必须挣回它们的长期运维负担」。这解释了很多克制的选择：API 契约要求时间窗口、暴露字段选择、用 token 分页、不给「能扫全部历史」的危险默认（第27课）；模型与用量成本被显式计量（第42/43课）。<strong>不是「能加就加」，而是「每一个新增的活动部件，都要先证明自己值这份维护成本」</strong>——这份克制，恰恰是系统能长期简单、可维护的根。</p>
 
+<svg viewBox="0 0 720 240" role="img" aria-label="六个设计主题都从同一目标逼出：在宽的结构化事件上做高吞吐、探索式可观测且是平台；探索式前提逼出①宽事件保高基数，高吞吐与横向扩展前提逼出②不可变查时去重、③异步削峰解耦、④双存储按形状分引擎，平台与长期前提逼出⑤多租户处处带projectId、⑥成本每个部件须挣回运维负担">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="12" y="32" width="696" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="49" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">目标：在宽的结构化事件上做高吞吐、探索式可观测（且是平台）</text>
+  <rect x="20" y="66" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="91" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">前提：探索式</text>
+  <rect x="20" y="118" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="143" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">前提：高吞吐+扩展</text>
+  <rect x="20" y="170" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="195" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">前提：平台+长期</text>
+  <rect x="220" y="66" width="480" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="91" font-size="9.5" fill="var(--accent-ink)">① 宽事件：保住高基数，调查 unknown unknowns</text>
+  <rect x="220" y="118" width="156" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="298" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">② 不可变（查时去重）</text>
+  <rect x="384" y="118" width="140" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="454" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">③ 异步（削峰）</text>
+  <rect x="532" y="118" width="168" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="616" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">④ 双存储（按形状）</text>
+  <rect x="220" y="170" width="230" height="40" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="335" y="195" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">⑤ 多租户（处处 projectId）</text>
+  <rect x="460" y="170" width="240" height="40" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="580" y="195" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">⑥ 成本（部件须挣回运维）</text>
+  <line x1="170" y1="86" x2="220" y2="86" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="170" y1="138" x2="220" y2="138" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="170" y1="190" x2="220" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="232" font-size="10" text-anchor="middle" fill="var(--muted)">拆开任一个，其余都显别扭——架构是一组彼此印证、共同服务于同一目标的取舍</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>主题</th><th>一句话</th><th>在哪些课见过</th></tr></thead>
   <tbody>
@@ -228,6 +256,34 @@ _EN54.append(r"""
 <p><strong>Multi-tenancy</strong> is a hidden thread running full-stack: <strong>nearly every table, every query, every queue message carries a projectId</strong>. From Lesson 48's login (session injecting org/project memberships), to Lesson 49's RBAC scopes and API-key scopes, to Lesson 50's plan-based entitlements, they form layer-upon-layer narrowing isolation; Lesson 46's analytics integrations and Lesson 52's deletion both <strong>fan out per project</strong>. Multi-tenancy isn't a feature in one place but a discipline of "<strong>every datum has a clear owner, every access has clear authorization</strong>" — it decides whether a platform can safely let thousands of mutually-untrusting tenants share one infrastructure.</p>
 
 <p><strong>Cost</strong> is the constraint that "reins in" the first five themes. The architecture principles say it bluntly: <strong>treat cost and operational simplicity as architectural constraints</strong> — "extra databases, queues, materialized views, and migrations must earn their long-term operational burden." This explains many restrained choices: API contracts require time windows, expose field selection, use token pagination, give no dangerous "can scan all history" defaults (Lesson 27); model and usage cost are explicitly metered (Lessons 42/43). <strong>Not "add it because you can," but "every new moving part must first prove it's worth its maintenance cost"</strong> — this restraint is precisely the root of a system staying simple and maintainable long-term.</p>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="all six design themes derive from one goal: high-throughput, exploratory observability over wide structured events, on a platform; the exploratory premise forces 1 wide events to preserve high cardinality, the high-throughput and scale premise forces 2 immutability with read-time dedup, 3 async to absorb spikes, 4 dual storage by access shape, and the platform and long-term premise forces 5 multi-tenancy with projectId everywhere and 6 cost where every moving part must earn its maintenance">
+  <rect x="0" y="0" width="720" height="240" fill="var(--bg)"></rect>
+  <rect x="12" y="32" width="696" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="360" y="49" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">goal: high-throughput, exploratory observability over wide structured events (a platform)</text>
+  <rect x="20" y="66" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="91" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">premise: exploratory</text>
+  <rect x="20" y="118" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="143" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">premise: throughput+scale</text>
+  <rect x="20" y="170" width="150" height="40" rx="8" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="95" y="195" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">premise: platform+long-term</text>
+  <rect x="220" y="66" width="480" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="234" y="91" font-size="9.5" fill="var(--accent-ink)">1 wide events: keep high cardinality, investigate unknown unknowns</text>
+  <rect x="220" y="118" width="156" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="298" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">2 immutable (dedup)</text>
+  <rect x="384" y="118" width="140" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="454" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">3 async (absorb)</text>
+  <rect x="532" y="118" width="168" height="40" rx="8" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="616" y="143" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">4 dual store (by shape)</text>
+  <rect x="220" y="170" width="230" height="40" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="335" y="195" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">5 multi-tenancy (projectId)</text>
+  <rect x="460" y="170" width="240" height="40" rx="8" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="580" y="195" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">6 cost (parts earn maintenance)</text>
+  <line x1="170" y1="86" x2="220" y2="86" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="170" y1="138" x2="220" y2="138" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="170" y1="190" x2="220" y2="190" stroke="var(--accent)" stroke-width="2"></line>
+  <text x="360" y="232" font-size="10" text-anchor="middle" fill="var(--muted)">remove any one and the rest feel off — architecture is a set of mutually-reinforcing tradeoffs for one goal</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>Theme</th><th>In a sentence</th><th>Seen in lessons</th></tr></thead>
@@ -362,6 +418,34 @@ _ZH55.append(r"""
 
 <p>而这整段旅程，始终被<strong>三条隐线</strong>笼罩：① 它从生到死的每一步，都被平台<strong>自己的 OTel/日志观测着</strong>（第51课，dogfooding——观测工具观测自己）；② 它能用到的每个功能，都被这个组织的 <strong>plan/entitlement 默默门控</strong>（第50课）；③ 它的每一次读、写、删，都被严格<strong>按 projectId 隔离</strong>（多租户），别的租户碰不到。<strong>七个驿站串起骨架，三条隐线织成底色</strong>——这，就是 Langfuse 这台机器的全貌。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="一条 trace 的第三程：⑥ 被作用，落库的活跃 trace 触发下游行动——webhook（L44）、Slack（L45）、分析集成导进 PostHog/S3（L46）、批量导出 CSV（L47）；⑦ 退场，保留期到后跨三存储一处不漏地删除，先 ClickHouse 加 S3 再 Postgres 并留重试锚点；全程被自观测 L51、plan 门控 L50、projectId 隔离三条隐线笼罩">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="20" font-size="11" font-weight="700" fill="var(--accent-ink)">被作用：触发下游行动；退场：跨三存储删干净</text>
+  <rect x="16" y="84" width="140" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="86" y="108" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">落库的 trace</text>
+  <text x="86" y="125" font-size="8.5" text-anchor="middle" fill="var(--muted)">活跃期</text>
+  <text x="240" y="38" font-size="9.5" font-weight="700" fill="var(--accent-ink)">⑥ 被作用（触发下游）</text>
+  <rect x="180" y="44" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="63" font-size="9" text-anchor="middle" fill="var(--ink)">webhook（L44，SSRF 纵深）</text>
+  <rect x="180" y="80" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="99" font-size="9" text-anchor="middle" fill="var(--ink)">Slack 富消息（L45）</text>
+  <rect x="180" y="116" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">分析集成 → PostHog/S3（L46）</text>
+  <rect x="180" y="152" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="171" font-size="9" text-anchor="middle" fill="var(--ink)">批量导出 CSV（L47）</text>
+  <line x1="156" y1="106" x2="180" y2="59" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="110" x2="180" y2="95" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="118" x2="180" y2="131" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="124" x2="180" y2="167" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="420" y="92" width="284" height="64" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="562" y="114" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑦ 退场（L52）保留期到</text>
+  <text x="562" y="132" font-size="9" text-anchor="middle" fill="var(--ink)">跨三存储删除：CH + S3 → PG</text>
+  <text x="562" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">（PG 留到最后，留重试锚点）</text>
+  <line x1="370" y1="124" x2="420" y2="124" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <text x="395" y="118" font-size="8" text-anchor="middle" fill="var(--muted)">活跃期结束</text>
+  <text x="360" y="204" font-size="9.5" text-anchor="middle" fill="var(--muted)">三条隐线全程笼罩：自观测(L51) · plan 门控(L50) · projectId 隔离</text>
+</svg>
+
 <table class="t">
   <thead><tr><th>一生的驿站</th><th>发生了什么</th><th>课</th><th>主导主题</th></tr></thead>
   <tbody>
@@ -479,6 +563,34 @@ _EN55.append(r"""
 <p><strong>⑥ Acted on (Lessons 44-47).</strong> The trace doesn't just lie there being viewed — it can <strong>trigger action</strong>. Some change in it (or an alert it raised) matches an <strong>automation</strong>'s trigger, delivering a <strong>webhook</strong> (Lesson 44, with full SSRF defense in depth) or posting to <strong>Slack</strong> (Lesson 45); it's continuously exported into your own PostHog/S3 by <strong>analytics integrations</strong> (Lesson 46, two-level fan-out + incremental watermark); you can also <strong>batch-export</strong> it together with a filtered set of traces to CSV (Lesson 47). <strong>⑦ Retired (Lesson 52).</strong> Data isn't immortal: when the retention period expires, it's <strong>deleted across all three stores missing none</strong> (ClickHouse + S3 first, Postgres last, keeping the retry anchor). A trace's life thus comes to a complete close.</p>
 
 <p>And this whole journey is always wrapped in <strong>three hidden threads</strong>: ① every step from birth to death is <strong>observed by the platform's own OTel/logs</strong> (Lesson 51, dogfooding — the observability tool observing itself); ② every feature it can use is <strong>silently gated by the org's plan/entitlement</strong> (Lesson 50); ③ its every read, write, delete is strictly <strong>isolated by projectId</strong> (multi-tenancy), untouchable by other tenants. <strong>Seven stations string the skeleton, three hidden threads weave the background</strong> — this is the full picture of the Langfuse machine.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="a trace's third leg: 6 acted on, the active stored trace triggers downstream actions — webhook (L44), Slack (L45), analytics integration into PostHog/S3 (L46), batch export to CSV (L47); 7 retired, when retention expires it is deleted across all three stores missing none, ClickHouse plus S3 first then Postgres, keeping the retry anchor; the whole journey is wrapped by three hidden threads: self-observability L51, plan gating L50, projectId isolation">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="20" font-size="11" font-weight="700" fill="var(--accent-ink)">acted on: trigger downstream actions; retired: deleted across all three stores</text>
+  <rect x="16" y="84" width="140" height="56" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="86" y="108" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">stored trace</text>
+  <text x="86" y="125" font-size="8.5" text-anchor="middle" fill="var(--muted)">active life</text>
+  <text x="240" y="38" font-size="9.5" font-weight="700" fill="var(--accent-ink)">6 acted on (trigger downstream)</text>
+  <rect x="180" y="44" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="63" font-size="9" text-anchor="middle" fill="var(--ink)">webhook (L44, SSRF depth)</text>
+  <rect x="180" y="80" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="99" font-size="9" text-anchor="middle" fill="var(--ink)">Slack rich message (L45)</text>
+  <rect x="180" y="116" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="135" font-size="9" text-anchor="middle" fill="var(--ink)">analytics → PostHog/S3 (L46)</text>
+  <rect x="180" y="152" width="190" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="275" y="171" font-size="9" text-anchor="middle" fill="var(--ink)">batch export to CSV (L47)</text>
+  <line x1="156" y1="106" x2="180" y2="59" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="110" x2="180" y2="95" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="118" x2="180" y2="131" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="156" y1="124" x2="180" y2="167" stroke="var(--blue)" stroke-width="1.5"></line>
+  <rect x="420" y="92" width="284" height="64" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="562" y="114" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">7 retired (L52) on retention expiry</text>
+  <text x="562" y="132" font-size="9" text-anchor="middle" fill="var(--ink)">delete across stores: CH + S3 → PG</text>
+  <text x="562" y="148" font-size="8.5" text-anchor="middle" fill="var(--muted)">(PG last, keep the retry anchor)</text>
+  <line x1="370" y1="124" x2="420" y2="124" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"></line>
+  <text x="395" y="118" font-size="8" text-anchor="middle" fill="var(--muted)">life ends</text>
+  <text x="360" y="204" font-size="9.5" text-anchor="middle" fill="var(--muted)">three hidden threads throughout: self-observability (L51) · plan gating (L50) · projectId isolation</text>
+</svg>
 
 <table class="t">
   <thead><tr><th>Life station</th><th>What happened</th><th>Lesson</th><th>Lead theme</th></tr></thead>

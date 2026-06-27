@@ -63,6 +63,37 @@ _ZH6.append(r"""
 应用把这些事件<strong>攒成一批</strong>，一次 HTTP 请求发给摄取 API，服务端再去合并。所以你在 SDK 里写的 <code>langfuse.trace(...)</code>、<code>span.end()</code>，
 本质上就是在<strong>生成这些事件</strong>。</p>
 
+<svg viewBox="0 0 720 210" role="img" aria-label="SDK 调用如何变成事件再攒批上报：langfuse.trace() 生成 TRACE_CREATE、.generation() 生成 GENERATION_CREATE、gen.end() 生成 OBSERVATION_UPDATE，这些事件攒成一批 events 数组，由一次 HTTP POST 发给摄取 API；CREATE 与 UPDATE 并存正是第 5 课合并的来源">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SDK 调用 → 事件 → 攒批 → 一次 POST</text>
+  <rect x="16" y="44" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="66" font-size="9.5" text-anchor="middle" fill="var(--ink)">langfuse.trace()</text>
+  <rect x="16" y="90" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="112" font-size="9.5" text-anchor="middle" fill="var(--ink)">.generation()</text>
+  <rect x="16" y="136" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="158" font-size="9.5" text-anchor="middle" fill="var(--ink)">gen.end()</text>
+  <rect x="232" y="44" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="66" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">TRACE_CREATE</text>
+  <rect x="232" y="90" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="112" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">GENERATION_CREATE</text>
+  <rect x="232" y="136" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="158" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">OBSERVATION_UPDATE</text>
+  <rect x="470" y="66" width="110" height="92" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="525" y="106" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">攒成一批</text>
+  <text x="525" y="124" font-size="9" text-anchor="middle" fill="var(--muted)">events[]</text>
+  <rect x="600" y="84" width="104" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="652" y="108" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 次 POST</text>
+  <text x="652" y="124" font-size="8.5" text-anchor="middle" fill="var(--muted)">→ 摄取 API</text>
+  <line x1="192" y1="62" x2="232" y2="62" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="108" x2="232" y2="108" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="154" x2="232" y2="154" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="428" y1="62" x2="470" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="428" y1="108" x2="470" y2="112" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="428" y1="154" x2="470" y2="124" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="580" y1="112" x2="600" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">CREATE 与 UPDATE 并存 → 正是第 5 课「合并」的来源</text>
+</svg>
+
 <p>概念上，你在应用里写的埋点代码大致长这样（不同语言 SDK 形态略有差异，这里只示意「调用 → 事件」的对应关系）：</p>
 
 <pre class="code"><span class="cm"># 创建一个 trace（发出 TRACE_CREATE）</span>
@@ -219,6 +250,37 @@ object</strong>":</p>
 <code>SPAN_CREATE</code> and ends with <code>SPAN_UPDATE</code> (adding duration, output). The app <strong>batches</strong> these events
 into one HTTP request to the ingestion API, and the server merges them. So your <code>langfuse.trace(...)</code> and
 <code>span.end()</code> calls are essentially <strong>generating these events</strong>.</p>
+
+<svg viewBox="0 0 720 210" role="img" aria-label="how SDK calls become events and get batched: langfuse.trace() generates TRACE_CREATE, .generation() generates GENERATION_CREATE, gen.end() generates OBSERVATION_UPDATE; these events are batched into one events array and sent by a single HTTP POST to the ingestion API; CREATE and UPDATE coexisting is exactly the source of Lesson 5's merge">
+  <rect x="0" y="0" width="720" height="210" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">SDK call → event → batch → one POST</text>
+  <rect x="16" y="44" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="66" font-size="9.5" text-anchor="middle" fill="var(--ink)">langfuse.trace()</text>
+  <rect x="16" y="90" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="112" font-size="9.5" text-anchor="middle" fill="var(--ink)">.generation()</text>
+  <rect x="16" y="136" width="176" height="36" rx="7" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="104" y="158" font-size="9.5" text-anchor="middle" fill="var(--ink)">gen.end()</text>
+  <rect x="232" y="44" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="66" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">TRACE_CREATE</text>
+  <rect x="232" y="90" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="112" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">GENERATION_CREATE</text>
+  <rect x="232" y="136" width="196" height="36" rx="7" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="330" y="158" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">OBSERVATION_UPDATE</text>
+  <rect x="470" y="66" width="110" height="92" rx="9" fill="var(--bg)" stroke="var(--blue)"></rect>
+  <text x="525" y="106" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">batched</text>
+  <text x="525" y="124" font-size="9" text-anchor="middle" fill="var(--muted)">events[]</text>
+  <rect x="600" y="84" width="104" height="56" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="652" y="108" font-size="9.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 POST</text>
+  <text x="652" y="124" font-size="8.5" text-anchor="middle" fill="var(--muted)">→ ingestion API</text>
+  <line x1="192" y1="62" x2="232" y2="62" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="108" x2="232" y2="108" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="192" y1="154" x2="232" y2="154" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="428" y1="62" x2="470" y2="100" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="428" y1="108" x2="470" y2="112" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="428" y1="154" x2="470" y2="124" stroke="var(--accent)" stroke-width="1.5"></line>
+  <line x1="580" y1="112" x2="600" y2="112" stroke="var(--teal)" stroke-width="2"></line>
+  <text x="360" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">CREATE and UPDATE coexisting → exactly the source of Lesson 5's merge</text>
+</svg>
 
 <p>Conceptually, your instrumentation code looks roughly like this (SDK shapes differ by language; this just shows the "call →
 event" mapping):</p>
@@ -1770,6 +1832,33 @@ _ZH11.append(r"""
 以及针对特定云的变体（如 Azure）。这种「<strong>一份编排管全栈、按场景给变体</strong>」的安排，正是把前面说的「四依赖的复杂度」收进了几个 yml 文件里——
 你不需要手动一个个装数据库、配网络，compose 替你把这些都串好了。理解了这张拓扑，你不仅会「跑起来」，遇到问题也知道该去哪个容器看日志。</p>
 
+<svg viewBox="0 0 720 200" role="img" aria-label="12-factor 配置外置：同一个 langfuse/langfuse:3 镜像，配上不同的 .env 模板就成为不同环境——.env.dev 对应本地 localhost 加 MinIO 替身、.env.staging 对应预发、.env.prod 对应生产托管 PG/CH 加真 S3；env 经 Zod 启动即校验，配错或漏填进程直接启动失败并指明哪个变量">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">同一镜像 + 不同 .env = 不同环境（配置外置）</text>
+  <rect x="16" y="76" width="170" height="58" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="101" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">langfuse/langfuse:3</text>
+  <text x="101" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">同一个镜像</text>
+  <rect x="210" y="44" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="65" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.dev</text>
+  <rect x="210" y="90" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="111" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.staging</text>
+  <rect x="210" y="136" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="157" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.prod</text>
+  <rect x="350" y="44" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="364" y="65" font-size="9.5" fill="var(--ink)">本地 dev：localhost · MinIO 替身</text>
+  <rect x="350" y="90" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="364" y="111" font-size="9.5" fill="var(--ink)">预发 staging</text>
+  <rect x="350" y="136" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="364" y="157" font-size="9.5" fill="var(--ink)">生产 prod：托管 PG/CH · 真 S3</text>
+  <line x1="186" y1="100" x2="210" y2="61" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="186" y1="105" x2="210" y2="107" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="186" y1="110" x2="210" y2="153" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="334" y1="61" x2="350" y2="61" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="334" y1="107" x2="350" y2="107" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="334" y1="153" x2="350" y2="153" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="190" font-size="9.5" text-anchor="middle" fill="var(--muted)">env 经 Zod 启动即校验：配错/漏填 → 进程直接启动失败并指明哪个变量</text>
+</svg>
+
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example（节选，按「4 基础设施 + 认证」分组）</span><span class="ln">配置即接线</span></div>
   <pre class="code"><span class="cm"># ① Postgres —— 配置/用户/权限等元数据（第7课 OLTP）</span>
@@ -1922,6 +2011,33 @@ open a browser to the Langfuse UI. The repo also ships <strong>several compose f
 stack, variants per scenario</strong>" is exactly how the earlier "four-dependency complexity" gets folded into a few yml files — you needn't
 hand-install each database or wire the network; compose strings it all together. Grasp this topology and you'll not only "get it running" but
 also know which container's logs to check when something breaks.</p>
+
+<svg viewBox="0 0 720 200" role="img" aria-label="12-factor externalized config: the same langfuse/langfuse:3 image paired with different .env templates becomes different environments — .env.dev maps to local localhost plus MinIO stand-in, .env.staging to staging, .env.prod to production with managed PG/CH and real S3; env is validated by Zod at boot, so a misconfig or missing var fails startup and names the offending variable">
+  <rect x="0" y="0" width="720" height="200" fill="var(--bg)"></rect>
+  <text x="24" y="22" font-size="11.5" font-weight="700" fill="var(--accent-ink)">same image + different .env = different environment (externalized config)</text>
+  <rect x="16" y="76" width="170" height="58" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
+  <text x="101" y="100" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">langfuse/langfuse:3</text>
+  <text x="101" y="118" font-size="9" text-anchor="middle" fill="var(--muted)">one image</text>
+  <rect x="210" y="44" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="65" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.dev</text>
+  <rect x="210" y="90" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="111" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.staging</text>
+  <rect x="210" y="136" width="124" height="34" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="272" y="157" font-size="9.5" text-anchor="middle" fill="var(--ink)">.env.prod</text>
+  <rect x="350" y="44" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="364" y="65" font-size="9.5" fill="var(--ink)">local dev: localhost · MinIO stand-in</text>
+  <rect x="350" y="90" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="364" y="111" font-size="9.5" fill="var(--ink)">staging</text>
+  <rect x="350" y="136" width="350" height="34" rx="6" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="364" y="157" font-size="9.5" fill="var(--ink)">production: managed PG/CH · real S3</text>
+  <line x1="186" y1="100" x2="210" y2="61" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="186" y1="105" x2="210" y2="107" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="186" y1="110" x2="210" y2="153" stroke="var(--blue)" stroke-width="1.5"></line>
+  <line x1="334" y1="61" x2="350" y2="61" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="334" y1="107" x2="350" y2="107" stroke="var(--faint)" stroke-width="1.5"></line>
+  <line x1="334" y1="153" x2="350" y2="153" stroke="var(--teal)" stroke-width="1.5"></line>
+  <text x="360" y="190" font-size="9.5" text-anchor="middle" fill="var(--muted)">env validated by Zod at boot: a misconfig/missing var fails startup and names the variable</text>
+</svg>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">.env.dev.example (excerpt, grouped by "4 infra + auth")</span><span class="ln">config = wiring</span></div>
