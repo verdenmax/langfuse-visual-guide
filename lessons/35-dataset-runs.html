@@ -427,6 +427,33 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
 <p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="跑一场实验的聚合链路：数据集 N 道题，run 逐题跑应用各产出一条 trace，自动评分（L29-32）给每条 trace 挂上 score，再按 run 聚合 JOIN scores 对每个 score 名求平均得到 agg_scores_avg，例如 helpfulness 0.82、toxicity 0.03，交给 L36 做实验对比">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="14" y="52" width="150" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">数据集</text>
+  <text x="89" y="98" font-size="9.5" text-anchor="middle" fill="var(--muted)">N 道题 item</text>
+  <rect x="182" y="52" width="164" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="264" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">run（一场考试）</text>
+  <text x="264" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">逐题跑应用</text>
+  <text x="264" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ 每题一条 trace</text>
+  <rect x="364" y="52" width="164" height="72" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="446" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">自动评分</text>
+  <text x="446" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">L29–32 评出 score</text>
+  <text x="446" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ 挂回这条 trace</text>
+  <rect x="546" y="52" width="158" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="625" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">按 run 聚合</text>
+  <text x="625" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">JOIN scores</text>
+  <text x="625" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">avg(value) by name</text>
+  <line x1="164" y1="88" x2="182" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="346" y1="88" x2="364" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="528" y1="88" x2="546" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="180" y="156" width="320" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">agg_scores_avg</text>
+  <text x="340" y="194" font-size="9.5" text-anchor="middle" fill="var(--ink)">[[helpfulness, 0.82], [toxicity, 0.03]]</text>
+  <line x1="625" y1="124" x2="440" y2="156" stroke="var(--accent)" stroke-width="1.5"></line>
+  <text x="560" y="184" font-size="10" fill="var(--muted)">→ 交给 L36 对比</text>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>建 run + 逐题执行</h4><p>新建一场 run（<code>createOrFetchDatasetRun</code>），对每道 item 用目标配置跑一次应用，产出一条 trace。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>建 run item（钉住版本）</h4><p>记下 run×item→traceId，并钉住该 item 的 <code>validFrom</code>（第34课）。镜像进 CH，快照题面。</p></div></div>
@@ -597,6 +624,33 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
 
 <h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
 <p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="the experiment aggregation chain: a dataset of N questions, a run executes the app per item producing one trace each, auto-scoring (L29-32) attaches a score to each trace, then per-run aggregation JOINs scores and averages by name into agg_scores_avg, e.g. helpfulness 0.82 and toxicity 0.03, handed to L36 for experiment comparison">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="14" y="52" width="150" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">dataset</text>
+  <text x="89" y="98" font-size="9.5" text-anchor="middle" fill="var(--muted)">N items</text>
+  <rect x="182" y="52" width="164" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="264" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">run (one exam)</text>
+  <text x="264" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">app per item</text>
+  <text x="264" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ one trace each</text>
+  <rect x="364" y="52" width="164" height="72" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="446" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">auto-scoring</text>
+  <text x="446" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">L29–32 → score</text>
+  <text x="446" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ back onto trace</text>
+  <rect x="546" y="52" width="158" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="625" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">aggregate per run</text>
+  <text x="625" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">JOIN scores</text>
+  <text x="625" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">avg(value) by name</text>
+  <line x1="164" y1="88" x2="182" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="346" y1="88" x2="364" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="528" y1="88" x2="546" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="180" y="156" width="320" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">agg_scores_avg</text>
+  <text x="340" y="194" font-size="9.5" text-anchor="middle" fill="var(--ink)">[[helpfulness, 0.82], [toxicity, 0.03]]</text>
+  <line x1="625" y1="124" x2="440" y2="156" stroke="var(--accent)" stroke-width="1.5"></line>
+  <text x="556" y="184" font-size="10" fill="var(--muted)">→ to L36 compare</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>

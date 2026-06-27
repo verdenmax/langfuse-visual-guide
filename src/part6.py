@@ -109,6 +109,29 @@ _ZH34.append(r"""
   </tbody>
 </table>
 <p>三行<strong>同一个 id</strong>、不同 <code>validFrom</code>，靠 <code>validTo</code> 是否为空区分「当前 vs 历史」。查「现在这道题长啥样」就 <code>WHERE validTo IS NULL</code>；查「t2 那次实验用的是啥」就找 <code>validFrom ≤ t2 &lt; validTo</code> 的那行——一张表同时回答「现在」和「任意历史时刻」两个问题，这就是双时态的威力。</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="同一个 id item-42 的三个版本在时间轴上各占一个有效区间：v1 从 t1 到 t2、v2 从 t2 到 t3、v3 从 t3 起 validTo 为 null 是当前版；查现在就 WHERE validTo IS NULL 得 v3，查 t2 时刻就找 validFrom 小于等于 t2 小于 validTo 得 v2，历史可复现">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">同一个 id 三版，靠 validTo 是否为空分「当前 vs 历史」</text>
+  <line x1="70" y1="126" x2="680" y2="126" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="676" y="120" font-size="9.5" text-anchor="end" fill="var(--muted)">时间 →</text>
+  <rect x="90" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="168" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">题干 v1（历史）</text>
+  <rect x="250" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="328" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">题干 v2（历史）</text>
+  <rect x="410" y="72" width="240" height="32" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="92" font-size="10" text-anchor="middle" fill="var(--accent-ink)">题干 v3 · validTo=null ✓ 当前</text>
+  <line x1="90" y1="66" x2="90" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="250" y1="66" x2="250" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="410" y1="66" x2="410" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="650" y1="66" x2="650" y2="132" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <text x="90" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t1</text>
+  <text x="250" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t2</text>
+  <text x="410" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t3</text>
+  <text x="650" y="146" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">现在</text>
+  <text x="70" y="176" font-size="10" fill="var(--ink)">查「现在」：WHERE validTo IS NULL → v3</text>
+  <text x="70" y="198" font-size="10" fill="var(--ink)">查「t2 时刻」：validFrom ≤ t2 &lt; validTo → v2（历史可复现）</text>
+</svg>
 """)
 
 # (L34 spark+key below)
@@ -228,6 +251,29 @@ _EN34.append(r"""
   </tbody>
 </table>
 <p>Three rows with the <strong>same id</strong>, different <code>validFrom</code>, distinguished as "current vs history" by whether <code>validTo</code> is null. To ask "what does this question look like now", <code>WHERE validTo IS NULL</code>; to ask "what did the t2 experiment use", find the row where <code>validFrom ≤ t2 &lt; validTo</code>—one table answers both "now" and "any historical moment", the power of bitemporal.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="the same id item-42 has three versions each occupying a valid interval on the time axis: v1 from t1 to t2, v2 from t2 to t3, and v3 from t3 onward with validTo null as the current version; to ask now use WHERE validTo IS NULL to get v3, to ask at t2 find validFrom less than or equal to t2 less than validTo to get v2, so history is reproducible">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">same id, three versions; current vs history by whether validTo is null</text>
+  <line x1="70" y1="126" x2="680" y2="126" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="676" y="120" font-size="9.5" text-anchor="end" fill="var(--muted)">time →</text>
+  <rect x="90" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="168" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">question v1 (history)</text>
+  <rect x="250" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="328" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">question v2 (history)</text>
+  <rect x="410" y="72" width="240" height="32" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="92" font-size="10" text-anchor="middle" fill="var(--accent-ink)">question v3 · validTo=null ✓ current</text>
+  <line x1="90" y1="66" x2="90" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="250" y1="66" x2="250" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="410" y1="66" x2="410" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="650" y1="66" x2="650" y2="132" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <text x="90" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t1</text>
+  <text x="250" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t2</text>
+  <text x="410" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t3</text>
+  <text x="650" y="146" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">now</text>
+  <text x="70" y="176" font-size="10" fill="var(--ink)">ask "now": WHERE validTo IS NULL → v3</text>
+  <text x="70" y="198" font-size="10" fill="var(--ink)">ask "at t2": validFrom ≤ t2 &lt; validTo → v2 (reproducible history)</text>
+</svg>
 """)
 
 _EN34.append(r"""
@@ -348,6 +394,33 @@ _ZH35.append(r"""
 _ZH35.append(r"""
 <h2>跑一场实验，分数自动评出：run 级聚合</h2>
 <p>run item 指向 trace，trace 上挂着 score（第 28 课）。把这条链走完，就能算出<strong>每场 run 的平均分</strong>——这正是 <code>dataset-run-items.ts</code> 在做的：JOIN scores 表，按 score 名求平均（<code>agg_scores_avg</code>）。而分数是<strong>怎么来的</strong>？回想第 30 课：创建 run item 会发出 <code>dataset-run-item-upsert</code> 事件，自动触发评估器给这条 run 的 trace 打分。于是<strong>跑一场实验，分数会自动评出来</strong>，无需手动。</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="跑一场实验的聚合链路：数据集 N 道题，run 逐题跑应用各产出一条 trace，自动评分（L29-32）给每条 trace 挂上 score，再按 run 聚合 JOIN scores 对每个 score 名求平均得到 agg_scores_avg，例如 helpfulness 0.82、toxicity 0.03，交给 L36 做实验对比">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="14" y="52" width="150" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">数据集</text>
+  <text x="89" y="98" font-size="9.5" text-anchor="middle" fill="var(--muted)">N 道题 item</text>
+  <rect x="182" y="52" width="164" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="264" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">run（一场考试）</text>
+  <text x="264" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">逐题跑应用</text>
+  <text x="264" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ 每题一条 trace</text>
+  <rect x="364" y="52" width="164" height="72" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="446" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">自动评分</text>
+  <text x="446" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">L29–32 评出 score</text>
+  <text x="446" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ 挂回这条 trace</text>
+  <rect x="546" y="52" width="158" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="625" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">按 run 聚合</text>
+  <text x="625" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">JOIN scores</text>
+  <text x="625" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">avg(value) by name</text>
+  <line x1="164" y1="88" x2="182" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="346" y1="88" x2="364" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="528" y1="88" x2="546" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="180" y="156" width="320" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">agg_scores_avg</text>
+  <text x="340" y="194" font-size="9.5" text-anchor="middle" fill="var(--ink)">[[helpfulness, 0.82], [toxicity, 0.03]]</text>
+  <line x1="625" y1="124" x2="440" y2="156" stroke="var(--accent)" stroke-width="1.5"></line>
+  <text x="560" y="184" font-size="10" fill="var(--muted)">→ 交给 L36 对比</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>建 run + 逐题执行</h4><p>新建一场 run（<code>createOrFetchDatasetRun</code>），对每道 item 用目标配置跑一次应用，产出一条 trace。</p></div></div>
@@ -481,6 +554,33 @@ _EN35.append(r"""
 _EN35.append(r"""
 <h2>Run an experiment, scores compute themselves: run-level aggregation</h2>
 <p>A run item points to a trace, the trace carries scores (Lesson 28). Walk that chain and you can compute <strong>each run's average score</strong>—exactly what <code>dataset-run-items.ts</code> does: JOIN the scores table, average by score name (<code>agg_scores_avg</code>). And where do the scores come from? Recall Lesson 30: creating a run item emits a <code>dataset-run-item-upsert</code> event, automatically triggering evaluators to score this run's traces. So <strong>run an experiment and the scores compute themselves</strong>, no manual work.</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="the experiment aggregation chain: a dataset of N questions, a run executes the app per item producing one trace each, auto-scoring (L29-32) attaches a score to each trace, then per-run aggregation JOINs scores and averages by name into agg_scores_avg, e.g. helpfulness 0.82 and toxicity 0.03, handed to L36 for experiment comparison">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <rect x="14" y="52" width="150" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="89" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">dataset</text>
+  <text x="89" y="98" font-size="9.5" text-anchor="middle" fill="var(--muted)">N items</text>
+  <rect x="182" y="52" width="164" height="72" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="264" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">run (one exam)</text>
+  <text x="264" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">app per item</text>
+  <text x="264" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ one trace each</text>
+  <rect x="364" y="52" width="164" height="72" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="446" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">auto-scoring</text>
+  <text x="446" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">L29–32 → score</text>
+  <text x="446" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">→ back onto trace</text>
+  <rect x="546" y="52" width="158" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"></rect>
+  <text x="625" y="76" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">aggregate per run</text>
+  <text x="625" y="96" font-size="9.5" text-anchor="middle" fill="var(--muted)">JOIN scores</text>
+  <text x="625" y="112" font-size="9.5" text-anchor="middle" fill="var(--muted)">avg(value) by name</text>
+  <line x1="164" y1="88" x2="182" y2="88" stroke="var(--blue)" stroke-width="2"></line>
+  <line x1="346" y1="88" x2="364" y2="88" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="528" y1="88" x2="546" y2="88" stroke="var(--teal)" stroke-width="2"></line>
+  <rect x="180" y="156" width="320" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="340" y="176" font-size="10" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">agg_scores_avg</text>
+  <text x="340" y="194" font-size="9.5" text-anchor="middle" fill="var(--ink)">[[helpfulness, 0.82], [toxicity, 0.03]]</text>
+  <line x1="625" y1="124" x2="440" y2="156" stroke="var(--accent)" stroke-width="1.5"></line>
+  <text x="556" y="184" font-size="10" fill="var(--muted)">→ to L36 compare</text>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>create run + execute per question</h4><p>Create a run (<code>createOrFetchDatasetRun</code>), run the app once per item with the target config, producing a trace.</p></div></div>
@@ -628,6 +728,32 @@ _ZH36.append(r"""
 <h2>闭环：一套科学的「改前先验证」方法</h2>
 <p>把 Part 6 三课串起来，你得到的是一台<strong>持续改进的飞轮</strong>。它让「优化 LLM 应用」这件本来很玄的事，落地成一个可重复、有数据支撑的工程流程：</p>
 
+<svg viewBox="0 0 720 230" role="img" aria-label="持续改进飞轮五步循环：① 攒数据集（L34 把生产里答砸的 case 提拔成测试题）→ ② 跑实验（本课服务端 run）→ ③ 自动评分（L30/35 聚合成绩单）→ ④ 对比决策（baseline 加增量，更好才上线）→ ⑤ 上线遇新难 case 回流第 1 步，飞轮越转应用越稳">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="360" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">持续改进飞轮</text>
+  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">把「能打分」升级成「能用分做决策」</text>
+  <rect x="282" y="31" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="50" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 攒数据集</text>
+  <text x="360" y="67" font-size="9" text-anchor="middle" fill="var(--muted)">L34 提拔生产 case</text>
+  <rect x="478" y="75" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="556" y="94" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">② 跑实验</text>
+  <text x="556" y="111" font-size="9" text-anchor="middle" fill="var(--muted)">本课 · 服务端 run</text>
+  <rect x="396" y="173" width="156" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="474" y="192" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">③ 自动评分</text>
+  <text x="474" y="209" font-size="9" text-anchor="middle" fill="var(--muted)">L30/35 聚合成绩单</text>
+  <rect x="168" y="173" width="156" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="246" y="192" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">④ 对比决策</text>
+  <text x="246" y="209" font-size="9" text-anchor="middle" fill="var(--muted)">baseline + 增量</text>
+  <rect x="86" y="75" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="94" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">⑤ 遇新难 case</text>
+  <text x="164" y="111" font-size="9" text-anchor="middle" fill="var(--muted)">回流第 1 步</text>
+  <line x1="438" y1="58" x2="478" y2="86" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="520" y1="121" x2="498" y2="173" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="396" y1="196" x2="324" y2="196" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="200" y1="173" x2="176" y2="121" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="224" y1="86" x2="282" y2="60" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
+
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>攒数据集</h4><p>把真实生产里答砸的 case 提拔成测试题（第34课），让考卷紧贴真实分布。</p></div></div>
   <div class="step"><div class="num">2</div><div class="sc"><h4>跑实验</h4><p>对一个候选 prompt/模型配置，服务端在整套题上跑一场 run（本课），产出一批 trace。</p></div></div>
@@ -750,6 +876,32 @@ _EN36.append(r"""
 _EN36.append(r"""
 <h2>The loop: a scientific "verify before you change" method</h2>
 <p>String Part 6's three lessons together and you get a <strong>continuous-improvement flywheel</strong>. It turns "optimizing an LLM app"—usually mystical—into a repeatable, data-backed engineering process:</p>
+
+<svg viewBox="0 0 720 230" role="img" aria-label="the continuous-improvement flywheel, a five-step cycle: 1 build a dataset (L34, promote botched production cases into test questions) → 2 run an experiment (this lesson, server-side run) → 3 auto-score (L30/35 aggregate a scorecard) → 4 compare and decide (baseline plus deltas, ship only if better) → 5 hit new hard cases in production and feed them back to step 1, the flywheel making the app steadier each turn">
+  <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
+  <text x="360" y="112" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">continuous-improvement flywheel</text>
+  <text x="360" y="132" font-size="9.5" text-anchor="middle" fill="var(--muted)">upgrades "can score" into "can decide with scores"</text>
+  <rect x="282" y="31" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="360" y="50" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 build dataset</text>
+  <text x="360" y="67" font-size="9" text-anchor="middle" fill="var(--muted)">L34 promote prod cases</text>
+  <rect x="478" y="75" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="556" y="94" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">2 run experiment</text>
+  <text x="556" y="111" font-size="9" text-anchor="middle" fill="var(--muted)">this lesson · server run</text>
+  <rect x="396" y="173" width="156" height="46" rx="9" fill="var(--purple-soft)" stroke="var(--accent)"></rect>
+  <text x="474" y="192" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">3 auto-score</text>
+  <text x="474" y="209" font-size="9" text-anchor="middle" fill="var(--muted)">L30/35 scorecard</text>
+  <rect x="168" y="173" width="156" height="46" rx="9" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="246" y="192" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">4 compare + decide</text>
+  <text x="246" y="209" font-size="9" text-anchor="middle" fill="var(--muted)">baseline + deltas</text>
+  <rect x="86" y="75" width="156" height="46" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"></rect>
+  <text x="164" y="94" font-size="10.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">5 new hard cases</text>
+  <text x="164" y="111" font-size="9" text-anchor="middle" fill="var(--muted)">feed back to step 1</text>
+  <line x1="438" y1="58" x2="478" y2="86" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="520" y1="121" x2="498" y2="173" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="396" y1="196" x2="324" y2="196" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="200" y1="173" x2="176" y2="121" stroke="var(--accent)" stroke-width="2"></line>
+  <line x1="224" y1="86" x2="282" y2="60" stroke="var(--accent)" stroke-width="2"></line>
+</svg>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>build a dataset</h4><p>Promote real botched production cases into test questions (L34), keeping the exam close to the real distribution.</p></div></div>

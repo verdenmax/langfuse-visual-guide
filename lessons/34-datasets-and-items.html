@@ -436,6 +436,29 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </table>
 <p>三行<strong>同一个 id</strong>、不同 <code>validFrom</code>，靠 <code>validTo</code> 是否为空区分「当前 vs 历史」。查「现在这道题长啥样」就 <code>WHERE validTo IS NULL</code>；查「t2 那次实验用的是啥」就找 <code>validFrom ≤ t2 &lt; validTo</code> 的那行——一张表同时回答「现在」和「任意历史时刻」两个问题，这就是双时态的威力。</p>
 
+<svg viewBox="0 0 720 220" role="img" aria-label="同一个 id item-42 的三个版本在时间轴上各占一个有效区间：v1 从 t1 到 t2、v2 从 t2 到 t3、v3 从 t3 起 validTo 为 null 是当前版；查现在就 WHERE validTo IS NULL 得 v3，查 t2 时刻就找 validFrom 小于等于 t2 小于 validTo 得 v2，历史可复现">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">同一个 id 三版，靠 validTo 是否为空分「当前 vs 历史」</text>
+  <line x1="70" y1="126" x2="680" y2="126" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="676" y="120" font-size="9.5" text-anchor="end" fill="var(--muted)">时间 →</text>
+  <rect x="90" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="168" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">题干 v1（历史）</text>
+  <rect x="250" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="328" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">题干 v2（历史）</text>
+  <rect x="410" y="72" width="240" height="32" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="92" font-size="10" text-anchor="middle" fill="var(--accent-ink)">题干 v3 · validTo=null ✓ 当前</text>
+  <line x1="90" y1="66" x2="90" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="250" y1="66" x2="250" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="410" y1="66" x2="410" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="650" y1="66" x2="650" y2="132" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <text x="90" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t1</text>
+  <text x="250" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t2</text>
+  <text x="410" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t3</text>
+  <text x="650" y="146" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">现在</text>
+  <text x="70" y="176" font-size="10" fill="var(--ink)">查「现在」：WHERE validTo IS NULL → v3</text>
+  <text x="70" y="198" font-size="10" fill="var(--ink)">查「t2 时刻」：validFrom ≤ t2 &lt; validTo → v2（历史可复现）</text>
+</svg>
+
 
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
@@ -593,6 +616,29 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   </tbody>
 </table>
 <p>Three rows with the <strong>same id</strong>, different <code>validFrom</code>, distinguished as "current vs history" by whether <code>validTo</code> is null. To ask "what does this question look like now", <code>WHERE validTo IS NULL</code>; to ask "what did the t2 experiment use", find the row where <code>validFrom ≤ t2 &lt; validTo</code>—one table answers both "now" and "any historical moment", the power of bitemporal.</p>
+
+<svg viewBox="0 0 720 220" role="img" aria-label="the same id item-42 has three versions each occupying a valid interval on the time axis: v1 from t1 to t2, v2 from t2 to t3, and v3 from t3 onward with validTo null as the current version; to ask now use WHERE validTo IS NULL to get v3, to ask at t2 find validFrom less than or equal to t2 less than validTo to get v2, so history is reproducible">
+  <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
+  <text x="24" y="24" font-size="11.5" font-weight="700" fill="var(--accent-ink)">same id, three versions; current vs history by whether validTo is null</text>
+  <line x1="70" y1="126" x2="680" y2="126" stroke="var(--faint)" stroke-width="1.5"></line>
+  <text x="676" y="120" font-size="9.5" text-anchor="end" fill="var(--muted)">time →</text>
+  <rect x="90" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="168" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">question v1 (history)</text>
+  <rect x="250" y="72" width="156" height="32" rx="6" fill="var(--bg)" stroke="var(--faint)"></rect>
+  <text x="328" y="92" font-size="10" text-anchor="middle" fill="var(--muted)">question v2 (history)</text>
+  <rect x="410" y="72" width="240" height="32" rx="6" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
+  <text x="530" y="92" font-size="10" text-anchor="middle" fill="var(--accent-ink)">question v3 · validTo=null ✓ current</text>
+  <line x1="90" y1="66" x2="90" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="250" y1="66" x2="250" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="410" y1="66" x2="410" y2="132" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <line x1="650" y1="66" x2="650" y2="132" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 3"></line>
+  <text x="90" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t1</text>
+  <text x="250" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t2</text>
+  <text x="410" y="146" font-size="9.5" text-anchor="middle" fill="var(--ink)">t3</text>
+  <text x="650" y="146" font-size="9.5" text-anchor="middle" fill="var(--accent-ink)">now</text>
+  <text x="70" y="176" font-size="10" fill="var(--ink)">ask "now": WHERE validTo IS NULL → v3</text>
+  <text x="70" y="198" font-size="10" fill="var(--ink)">ask "at t2": validFrom ≤ t2 &lt; validTo → v2 (reproducible history)</text>
+</svg>
 
 
 <div class="card spark">
