@@ -406,6 +406,7 @@ details[open] > summary { list-style: none; }
 <section class="lesson-print">
 <h1>What is Langfuse</h1>
 
+
 <p class="lead">
 The hardest thing about LLM apps is <strong>non-determinism</strong>: the same input can give different
 answers today and tomorrow; and inside one multi-step agent run, figuring out <strong>which step</strong>
@@ -819,6 +820,7 @@ ten paragraphs of explanation.</p>
 <section class="lesson-print">
 <h1>Observability 2.0 & wide events</h1>
 
+
 <p class="lead">
 Last lesson called Langfuse's "design soul" <strong>wide events / Observability 2.0</strong>. This lesson makes the slogan
 concrete — it is <strong>not</strong> marketing; it's a <strong>first principle</strong> written into
@@ -1122,6 +1124,7 @@ This is why Langfuse's ingestion, though <strong>async</strong>, keeps processin
 </section>
 <section class="lesson-print">
 <h1>The three pillars in depth</h1>
+
 
 <p class="lead">
 Lesson 1 introduced the names trace / observation / score; this lesson <strong>opens them up</strong>: exactly which fields each
@@ -1453,6 +1456,7 @@ mind now and the rest gets much easier.</p>
 <section class="lesson-print">
 <h1>Project map (monorepo & narrow waist)</h1>
 
+
 <p class="lead">
 The first three lessons covered "what the data looks like"; this one switches axes: <strong>where the code lives</strong>. Langfuse
 is a <strong>monorepo</strong> (one repo, many projects) — everything sits in the single <code>langfuse/langfuse</code> repo, split
@@ -1770,6 +1774,7 @@ the server, and the per-language SDKs always in sync.</p>
 </section>
 <section class="lesson-print">
 <h1>Life of a trace (bird's-eye)</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 摸清 trace / observation / score 三件套，本课才好把它们串成一条端到端流水线。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> to nail down trace / observation / score first; this lesson strings them into one end-to-end pipeline.</div></div>
 
 <p class="lead">
 Part 1 is nearly done. You now know <strong>what the data looks like</strong> (trace/observation/score), <strong>where the code
@@ -2031,6 +2036,7 @@ this boundary and the lag won't surprise you — you'll appreciate the "<strong>
 </section>
 <section class="lesson-print">
 <h1>Instrumenting an LLM app</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 理解三大支柱，本课讲如何用 SDK 把它们埋进真实应用。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> on the three pillars; this lesson shows how to instrument them into a real app via the SDK.</div></div>
 
 <p class="lead">
 In Lesson 5's pipeline, the first leg was "SDK creates events". This lesson focuses on that first leg: how, before data ever leaves
@@ -2308,6 +2314,7 @@ observability.</p>
 </section>
 <section class="lesson-print">
 <h1>The dual-store architecture</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="02-observability-2-and-wide-events.html">第2课</a> 的宽事件理念，本课讲为什么要 Postgres + ClickHouse 双存储。</div><div class="lang-en">Read <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a> on wide events; this lesson explains why there are two stores — Postgres + ClickHouse.</div></div>
 
 <p class="lead">
 Last lesson, data left your app as "events". This lesson is about <strong>where it lands</strong>. Many assume one database suffices,
@@ -2552,6 +2559,7 @@ of every later path lesson.</p>
 </section>
 <section class="lesson-print">
 <h1>ClickHouse & the wide-event tables</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的双存储分工，本课深入 ClickHouse 的三张宽事件表。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> on the dual-store split; this lesson dives into ClickHouse's three wide-event tables.</div></div>
 
 <p class="lead">
 Last lesson said telemetry goes to ClickHouse. This lesson opens the hood on how the three wide-event tables (traces / observations /
@@ -2746,6 +2754,7 @@ isolation = ordering-key prefix" idea:</p>
 </section>
 <section class="lesson-print">
 <h1>The metadata schema (Postgres)</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 知道 Postgres 管配置元数据，本课细看它的 Prisma schema。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> — Postgres holds config metadata; this lesson details its Prisma schema.</div></div>
 
 <p class="lead">
 The last two lessons starred ClickHouse (massive telemetry). This one switches to the other half: <strong>Postgres</strong>. If ClickHouse
@@ -2996,6 +3005,7 @@ scope                <span class="cm">// ApiKeyScope, default PROJECT</span></pr
 </section>
 <section class="lesson-print">
 <h1>Multi-tenancy</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="09-postgres-metadata-schema.html">第9课</a> 的元数据 schema，本课讲 org → project → environment 如何隔离。</div><div class="lang-en">Read <a class="xref" href="09-postgres-metadata-schema.html">Lesson 9</a> on the metadata schema; this lesson covers org → project → environment isolation.</div></div>
 
 <p class="lead">
 Last lesson called <code>project</code> the hub and the "data boundary". This lesson makes that concrete: Langfuse is a
@@ -3239,6 +3249,7 @@ ordering key.</p>
 </section>
 <section class="lesson-print">
 <h1>Deployment topology</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的四存储分工，本课讲它们如何在容器拓扑里部署与互相依赖。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> on the four stores; this lesson covers how they deploy and depend on each other in the container topology.</div></div>
 
 <p class="lead">
 Part 2 covered <strong>what</strong> the data model and storage are. This lesson closes it with <strong>what it takes to run</strong> — to
@@ -3490,6 +3501,7 @@ SALT=<span class="st">"salt"</span>   <span class="cm">// salt for API-key hashi
 </section>
 <section class="lesson-print">
 <h1>The ingestion API</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="06-instrumenting-an-llm-app.html">第6课</a> 的埋点入口，本课讲数据进平台的第一站——摄取 API。</div><div class="lang-en">Read <a class="xref" href="06-instrumenting-an-llm-app.html">Lesson 6</a> on instrumentation entry points; this lesson covers the first stop into the platform — the ingestion API.</div></div>
 
 <p class="lead">
 Part 2 finished "what the data looks like and where it lives". From here we walk the <strong>ingestion path</strong> — the close-up of
@@ -3749,6 +3761,7 @@ no full-batch retry.</p>
 </section>
 <section class="lesson-print">
 <h1>Event types & merge semantics</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="12-ingestion-api.html">第12课</a> 摄取 API 与 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 的 observation 类型，本课讲事件如何合并。</div><div class="lang-en">Read <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion API) and <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> (observation types); this lesson covers how events merge.</div></div>
 
 <p class="lead">
 Last lesson the API accepted <strong>a batch of events</strong> and enqueued them. Now we zoom into a <strong>single event</strong>: what does it
@@ -4038,6 +4051,7 @@ hundred times still counts once. Two ids, two purposes, fitting together seamles
 </section>
 <section class="lesson-print">
 <h1>The ingestion queue</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="12-ingestion-api.html">第12课</a> 摄取 API 与 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 里 Redis 的角色，本课讲摄取队列如何削峰。</div><div class="lang-en">Read <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion API) and Redis's role in <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>; this lesson covers how the ingestion queue absorbs spikes.</div></div>
 
 <p class="lead">
 Lesson 12 had the API "enqueue" and vanish; Lesson 13 explained what "event" it enqueues. The star of this lesson is the <strong>queue</strong>
@@ -4287,6 +4301,7 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
 </section>
 <section class="lesson-print">
 <h1>IngestionService: the merge heart</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="13-event-types-merge.html">第13课</a> 的合并语义与 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列，本课进入合并的心脏 IngestionService。</div><div class="lang-en">Read <a class="xref" href="13-event-types-merge.html">Lesson 13</a> (merge semantics) and <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue); this lesson enters the merge heart, IngestionService.</div></div>
 
 <p class="lead">
 Lesson 14's worker took the job and read the events back from S3 by fileKey. This lesson is the <strong>heart</strong> of the whole write path: how
@@ -4548,6 +4563,7 @@ columnar store; Lesson 17 shows how the writer batches per table and flushes on 
 </section>
 <section class="lesson-print">
 <h1>Token counting & cost</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="13-event-types-merge.html">第13课</a> 的事件字段，本课讲 token 计数与成本是怎么算出来的。</div><div class="lang-en">Read <a class="xref" href="13-event-types-merge.html">Lesson 13</a> on event fields; this lesson covers how token counts and cost are computed.</div></div>
 
 <p class="lead">
 At step 6 of Lesson 15's merge we said in passing: "compute tokens & cost". This lesson unfolds that step. The core is a principle running through all
@@ -4785,6 +4801,7 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
 </section>
 <section class="lesson-print">
 <h1>ClickhouseWriter: batched persistence</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列与 <a class="xref" href="08-clickhouse-wide-events.html">第8课</a> 的 CH 表，本课讲 ClickhouseWriter 如何批量落盘。</div><div class="lang-en">Read <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue) and <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> (the CH tables); this lesson covers how ClickhouseWriter batches to disk.</div></div>
 
 <p class="lead">
 Lesson 15's merge ended with <code>clickhouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
@@ -5023,6 +5040,7 @@ every layer the system tries to be <strong>fault-tolerant without collateral dam
 </section>
 <section class="lesson-print">
 <h1>OpenTelemetry ingestion</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="12-ingestion-api.html">第12课</a> 的原生摄取 API，本课讲 OpenTelemetry 这条并行入口。</div><div class="lang-en">Read <a class="xref" href="12-ingestion-api.html">Lesson 12</a> on the native ingestion API; this lesson covers OpenTelemetry as a parallel entry point.</div></div>
 
 <p class="lead">
 The last six lessons covered Langfuse's <strong>native ingestion</strong> — you use its own SDK, report in its own event schema. But in reality, many teams
@@ -5272,6 +5290,7 @@ time.</p>
 </section>
 <section class="lesson-print">
 <h1>Media & blob storage</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="12-ingestion-api.html">第12课</a> 摄取与 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 里 S3 的角色，本课讲媒体与大块 blob 怎么存。</div><div class="lang-en">Read <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion) and S3's role in <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a>; this lesson covers how media and large blobs are stored.</div></div>
 
 <p class="lead">
 In the multimodal era, an LLM call's input/output may carry <strong>an image, an audio clip, a PDF</strong> — binaries of several MB. Write those verbatim
@@ -5502,6 +5521,7 @@ reference string — exactly what keeps bulky payloads off the hot path.</p>
 </section>
 <section class="lesson-print">
 <h1>The web app architecture</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="04-project-map-monorepo.html">第4课</a> 的 monorepo 全景，本课聚焦 web 这个工作区的内部架构。</div><div class="lang-en">Read <a class="xref" href="04-project-map-monorepo.html">Lesson 4</a> on the monorepo map; this lesson zooms into the web workspace's architecture.</div></div>
 
 <p class="lead">
 The first three parts followed the <strong>write</strong> direction: how data comes in, where it's stored, how it's merged and persisted. From this part on
@@ -5733,6 +5753,7 @@ other. This is the master plan of Part 4's read path.</p>
 </section>
 <section class="lesson-print">
 <h1>The tRPC backbone</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="20-web-app-architecture.html">第20课</a> 的 web 架构，本课讲贯穿前后端的 tRPC 骨架。</div><div class="lang-en">Read <a class="xref" href="20-web-app-architecture.html">Lesson 20</a> on the web architecture; this lesson covers the tRPC backbone spanning front and back.</div></div>
 
 <p class="lead">
 Last lesson named the three doors; this one pushes open the "staff entrance" — <strong>tRPC</strong> — and shows its skeleton. tRPC is the <strong>type-safe
@@ -5995,6 +6016,7 @@ isolation key"):</p>
 </section>
 <section class="lesson-print">
 <h1>The repository layer</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="08-clickhouse-wide-events.html">第8课</a> 的 CH 表与 <a class="xref" href="21-trpc-backbone.html">第21课</a> 的 tRPC，本课讲仓储层如何从 ClickHouse 读。</div><div class="lang-en">Read <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> (the CH tables) and <a class="xref" href="21-trpc-backbone.html">Lesson 21</a> (tRPC); this lesson covers how the repository layer reads from ClickHouse.</div></div>
 
 <p class="lead">
 The last lesson ended at "the resolver calls a <code>@langfuse/shared</code> repository to read". This lesson opens that <strong>repository layer</strong> door and
@@ -6223,6 +6245,7 @@ is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny lon
 </section>
 <section class="lesson-print">
 <h1>Filtering & the search bar</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="22-repository-layer.html">第22课</a> 的仓储层，本课讲过滤、搜索栏与查询如何一步步构建。</div><div class="lang-en">Read <a class="xref" href="22-repository-layer.html">Lesson 22</a> on the repository layer; this lesson covers filtering, the search bar, and how queries are built.</div></div>
 
 <p class="lead">
 Lesson 22's executor "sends queries out", but <strong>who builds those queries' WHERE clauses</strong>? This lesson is about filtering. The key insight: users filter in
@@ -6454,6 +6477,7 @@ calls an LLM (Bedrock) to turn it into filters. But what if the model <strong>ha
 </section>
 <section class="lesson-print">
 <h1>Lists & tables</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="22-repository-layer.html">第22课</a> 仓储层与 <a class="xref" href="23-filtering-search-bar.html">第23课</a> 的过滤，本课讲列表与表格如何高效渲染。</div><div class="lang-en">Read <a class="xref" href="22-repository-layer.html">Lesson 22</a> (repository) and <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a> (filtering); this lesson covers how lists and tables render efficiently.</div></div>
 
 <p class="lead">
 The last two lessons covered how queries are built and run. This one looks at Langfuse's <strong>flagship list</strong> — the trace table — and how it
@@ -6703,6 +6727,7 @@ the other half of a big list's craft beyond "fast" — "stable" (no loss across 
 </section>
 <section class="lesson-print">
 <h1>Trace detail & the observation tree</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 的 observation 树与 <a class="xref" href="19-media-blob-storage.html">第19课</a> 的媒体存储，本课讲 trace 详情页怎么拼出来。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> (the observation tree) and <a class="xref" href="19-media-blob-storage.html">Lesson 19</a> (media storage); this lesson covers how the trace detail page is assembled.</div></div>
 
 <p class="lead">
 Lesson 24 was the <strong>list</strong> — fetch one compact row each for thousands of traces, defer everything expensive. This lesson is its <strong>opposite</strong>:
@@ -6932,6 +6957,7 @@ unbounded one</strong>:</p>
 </section>
 <section class="lesson-print">
 <h1>Sessions</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="25-trace-detail-tree.html">第25课</a> 的 trace 详情，本课讲多条 trace 聚成的 session 视图。</div><div class="lang-en">Read <a class="xref" href="25-trace-detail-tree.html">Lesson 25</a> on trace detail; this lesson covers the session view that groups multiple traces.</div></div>
 
 <p class="lead">
 Lessons 24 and 25 covered the list and detail of a single trace. But a real conversation is often <strong>multi-turn</strong> — the user asks, the AI answers,
@@ -7167,6 +7193,7 @@ shaped the next, where the conversation started to go off the rails.</p>
 </section>
 <section class="lesson-print">
 <h1>The public REST API</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="21-trpc-backbone.html">第21课</a> 的 tRPC 与 <a class="xref" href="12-ingestion-api.html">第12课</a> 的摄取，本课讲对外的公共 REST API。</div><div class="lang-en">Read <a class="xref" href="21-trpc-backbone.html">Lesson 21</a> (tRPC) and <a class="xref" href="12-ingestion-api.html">Lesson 12</a> (ingestion); this lesson covers the outward-facing public REST API.</div></div>
 
 <p class="lead">
 Lesson 21 opened the "staff entrance" for the in-house UI (tRPC). This lesson opens <strong>the third and last door</strong> — the <strong>public REST API</strong> for
@@ -7399,6 +7426,7 @@ silently drifting from the Fern contract), the whole external channel stays stab
 </section>
 <section class="lesson-print">
 <h1>The scoring model</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 的 score 维度，本课深入评分模型的数据结构。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> on the score dimensions; this lesson dives into the scoring model's data structures.</div></div>
 
 <p class="lead">
 The first four parts let you <strong>see</strong> what happened on every LLM call. But "what happened" is not the same as "<strong>how good was it</strong>". This part is about <strong>evaluation</strong>—how to put a number on a trace. And the atomic unit of all of it is the <strong>score</strong>.
@@ -7609,6 +7637,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 </section>
 <section class="lesson-print">
 <h1>LLM-as-a-judge</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="28-scoring-model.html">第28课</a> 的评分模型，本课讲用 LLM 当裁判自动评分。</div><div class="lang-en">Read <a class="xref" href="28-scoring-model.html">Lesson 28</a> on the scoring model; this lesson covers using an LLM as a judge to score automatically.</div></div>
 
 <p class="lead">
 Last lesson said a score is evaluation's atomic unit, and that it has three sources. This lesson covers the most interesting source: <strong>EVAL—using one LLM to score another LLM's output</strong>, known industry-wide as <strong>LLM-as-a-judge</strong>.
@@ -7852,6 +7881,7 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
 </section>
 <section class="lesson-print">
 <h1>The eval execution pipeline</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="29-llm-as-a-judge.html">第29课</a> 的 LLM 裁判与 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列，本课讲 eval 执行流水线。</div><div class="lang-en">Read <a class="xref" href="29-llm-as-a-judge.html">Lesson 29</a> (LLM judge) and <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue); this lesson covers the eval execution pipeline.</div></div>
 
 <p class="lead">
 Last lesson covered "how one verdict runs", but left a big question: <strong>who triggers it? when? which traces get evaluated?</strong> You can't click "evaluate" on every trace by hand. This lesson is the <strong>scheduling pipeline</strong>—how a trace event automatically fans out into "which evaluators should judge it", opens a <strong>work ticket</strong> (JobExecution) for each, queues it, and finally produces a score.
@@ -8101,6 +8131,7 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
 </section>
 <section class="lesson-print">
 <h1>Code-based evaluation</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的 eval 流水线，本课讲用代码而非 LLM 来评估。</div><div class="lang-en">Read <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> on the eval pipeline; this lesson covers evaluating with code instead of an LLM.</div></div>
 
 <p class="lead">
 Not every "is it good" needs an LLM to judge. Many quality signals are <strong>objective and deterministic</strong>: is the answer valid JSON? did it leak an email address? is it over the length limit? are the fields complete? These need no daydreaming judge—just <strong>a piece of code</strong> to compute, deterministic, fast, and free of LLM cost. This is <strong>code-based evaluation</strong>.
@@ -8342,6 +8373,7 @@ vm.runInContext(<span class="st">"evaluate(payload)"</span>, context, { timeout 
 </section>
 <section class="lesson-print">
 <h1>Human annotation</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="28-scoring-model.html">第28课</a> 的评分模型，本课讲人工标注如何产出 score。</div><div class="lang-en">Read <a class="xref" href="28-scoring-model.html">Lesson 28</a> on the scoring model; this lesson covers how human annotation produces scores.</div></div>
 
 <p class="lead">
 The last three lessons let machines score automatically—an LLM as judge, code for deterministic checks. But some judgments <strong>require a human</strong>: establishing trustworthy ground truth, auditing "is the AI actually right", handling edge cases the AI is unsure about, collecting human preferences for training/alignment. This lesson covers the <strong>third score source planted in Lesson 28—human annotation (source=ANNOTATION)</strong>, and the tool that turns the inherently <strong>unordered and collision-prone</strong> act of "asking people to review" into an orderly process: the <strong>annotation queue</strong>.
@@ -8579,6 +8611,7 @@ createAnnotationScore({ source: <span class="st">"ANNOTATION"</span>, authorUser
 </section>
 <section class="lesson-print">
 <h1>Monitors & alerting</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="28-scoring-model.html">第28课</a> 的 score 与 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的 eval，本课讲监控器与告警怎么联动。</div><div class="lang-en">Read <a class="xref" href="28-scoring-model.html">Lesson 28</a> (scores) and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (eval); this lesson covers how monitors and alerting tie together.</div></div>
 
 <p class="lead">
 Part 5 let you <strong>score</strong> quality—but scores sit in a database, and you can't watch them forever. This lesson caps Part 5 and adds the last link that makes evaluation <strong>actually act</strong>: the <strong>monitor</strong>. It's the "active" half—watching a metric or score on a fixed cadence, and when it <strong>crosses a line you set</strong>, raising an alert on its own. In one phrase: turn quality monitoring from "<strong>you pull</strong>" (look at a dashboard) into "<strong>it pushes</strong>" (alert on anomaly).
@@ -8803,6 +8836,7 @@ We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget 
 </section>
 <section class="lesson-print">
 <h1>Datasets & items</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="03-three-pillars-deep.html">第3课</a> 的三大支柱，本课讲数据集与数据项的结构。</div><div class="lang-en">Read <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> on the three pillars; this lesson covers the structure of datasets and items.</div></div>
 
 <p class="lead">
 Evaluation needs "exam questions". To know whether your app got better or worse after you changed a prompt or swapped a model, you need a <strong>fixed set of test cases</strong> to quiz it on repeatedly. That set is a <strong>dataset</strong>; each question in it is a <strong>dataset item</strong>: one input + one expected output.
@@ -9009,6 +9043,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
 </section>
 <section class="lesson-print">
 <h1>Dataset runs & run items</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="34-datasets-and-items.html">第34课</a> 的数据集与 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的 eval，本课讲数据集运行与运行项。</div><div class="lang-en">Read <a class="xref" href="34-datasets-and-items.html">Lesson 34</a> (datasets) and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (eval); this lesson covers dataset runs and run items.</div></div>
 
 <p class="lead">
 The last lesson built the "exam paper" (the dataset). This lesson is about how to "<strong>sit an exam</strong>"—a <strong>dataset run</strong> takes the whole set and quizzes the app end to end. Two focuses: each question, run once, produces <strong>a real trace</strong>, and a <strong>dataset run item</strong> is the record that pins "which exam × which question → which answer sheet (trace)" together; and these run items are <strong>mirrored to ClickHouse</strong>, <strong>snapshotting</strong> the question text along with them, so that "aggregate all questions' scores for this exam" is both fast and reproducible.
@@ -9242,6 +9277,7 @@ WITH scores_aggregated AS ( SELECT …, avg(value) AS scores_avg … GROUP BY na
 </section>
 <section class="lesson-print">
 <h1>Experiments & comparison</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="35-dataset-runs.html">第35课</a> 的数据集运行，本课讲多次运行如何对比成实验。</div><div class="lang-en">Read <a class="xref" href="35-dataset-runs.html">Lesson 35</a> on dataset runs; this lesson covers how multiple runs compare into experiments.</div></div>
 
 <p class="lead">
 The last two lessons built the "exam paper" (the dataset) and the "exam mechanism" (the run). This lesson is about using them to <strong>make decisions</strong>—that's an <strong>experiment</strong>. One experiment takes a specific <strong>prompt + model</strong> config, runs it automatically over the whole dataset (producing one run), then places <strong>multiple runs side by side</strong> to pick the best. It turns "is changing this prompt or model actually better" from <strong>gut feeling</strong> into <strong>data</strong>—the closest thing to the "scientific method" in LLM engineering.
@@ -9453,6 +9489,7 @@ modelParams = { provider: config.provider, model: config.model,
 </section>
 <section class="lesson-print">
 <h1>Prompt management</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="09-postgres-metadata-schema.html">第9课</a> 的元数据 schema，本课讲 prompt 如何版本化管理。</div><div class="lang-en">Read <a class="xref" href="09-postgres-metadata-schema.html">Lesson 9</a> on the metadata schema; this lesson covers how prompts are versioned and managed.</div></div>
 
 <p class="lead">
 The previous part kept "examining" one thing—the <strong>prompt</strong>. It's the "script" of your conversation with the model, the <strong>most frequently changed</strong> part of an LLM app: rewording one word, adding or removing one instruction, can swing the outcome wildly. This lesson is about how Langfuse manages prompts like <strong>git manages code</strong>: <strong>immutable versions</strong>, <strong>movable labels</strong>, a commit message per change, plus dependency composition that lets one prompt <strong>reference another</strong>.
@@ -9670,6 +9707,7 @@ version: latestPrompt?.version ? latestPrompt.version + 1 : 1,
 </section>
 <section class="lesson-print">
 <h1>Prompt serving & caching</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="37-prompt-management.html">第37课</a> 的 prompt 管理，本课讲服务端如何缓存与下发 prompt。</div><div class="lang-en">Read <a class="xref" href="37-prompt-management.html">Lesson 37</a> on prompt management; this lesson covers how the server caches and serves prompts.</div></div>
 
 <p class="lead">
 The last lesson let you <strong>manage</strong> prompts safely. But production has a real problem: an app may <strong>fetch a prompt before every single LLM call</strong> ("give me the production one"). Hitting Postgres each time is slow and crushes the database. This lesson is about how <strong>PromptService</strong> uses Redis to make prompt serving fast and steady, focusing on two mechanisms: the classic <strong>read-through cache</strong>, and an exceptionally elegant <strong>"swap the namespace, don't delete keys one by one"</strong> epoch invalidation strategy.
@@ -9887,6 +9925,7 @@ getEpochKey = `prompt_cache_epoch:${projectId}`;</pre>
 </section>
 <section class="lesson-print">
 <h1>Playground & LLM connections</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="37-prompt-management.html">第37课</a> 的 prompt 管理，本课讲 Playground 与 LLM 连接如何配置。</div><div class="lang-en">Read <a class="xref" href="37-prompt-management.html">Lesson 37</a> on prompt management; this lesson covers the Playground and LLM connection config.</div></div>
 
 <p class="lead">
 This lesson caps Part 7 and the whole "developer workflow" arc. The <strong>Playground</strong> is where you <strong>interactively test a prompt</strong>—type a few messages, pick a model, hit run, see the response, and once satisfied, go version it (Lesson 37) and run an experiment (Lesson 36). But for any <strong>server-side LLM call</strong> to happen, two things must exist behind the scenes: a <strong>safely stored LLM connection</strong> (your provider credentials), and a set of defined <strong>structured-output schemas and tools</strong>.
@@ -10126,6 +10165,7 @@ This lesson covers them, focusing on an unavoidable security topic: a provider's
 </section>
 <section class="lesson-print">
 <h1>Dashboards & widgets</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="08-clickhouse-wide-events.html">第8课</a> 的宽事件表，本课讲仪表盘与 widget 如何聚合展示。</div><div class="lang-en">Read <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> on the wide-event tables; this lesson covers how dashboards and widgets aggregate and display.</div></div>
 
 <p class="lead">
 The first seven parts let you <strong>see one thing clearly</strong>—one trace, one score, one experiment. But operating an LLM app, you more often ask <strong>global</strong> questions: did cost rise this week? which model is slowest? how is average helpfulness trending? is the error rate creeping up? These answers hide in the <strong>aggregation</strong> of thousands of records—rolling them into charts is the <strong>dashboard</strong> and its building block, the <strong>widget</strong>.
@@ -10351,6 +10391,7 @@ This lesson covers their data model, focusing on a design that will echo repeate
 </section>
 <section class="lesson-print">
 <h1>The query engine</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="08-clickhouse-wide-events.html">第8课</a> 的 CH 表与 <a class="xref" href="22-repository-layer.html">第22课</a> 的仓储层，本课讲通用查询引擎。</div><div class="lang-en">Read <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> (the CH tables) and <a class="xref" href="22-repository-layer.html">Lesson 22</a> (the repository layer); this lesson covers the general query engine.</div></div>
 
 <p class="lead">
 The last lesson's widget declared <code>view + dimensions + metrics + filters</code>. But ClickHouse only understands <strong>SQL</strong>—it knows nothing of these declarations. The bridge between them is the <strong>query engine</strong>—it <strong>compiles</strong> that declaration <strong>into SQL</strong> and runs it. This lesson takes it apart, revealing two core parts: a <strong>semantic layer</strong> (the data model, mapping friendly logical names like "cost" and "by model" to real ClickHouse columns and expressions), and a <strong>compiler</strong> (<code>QueryBuilder.build()</code>, assembling the declaration into <strong>parameterized</strong> SQL).
@@ -10599,6 +10640,7 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
 </section>
 <section class="lesson-print">
 <h1>Models & pricing</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="16-token-counting-cost.html">第16课</a> 的 token 与成本，本课讲模型与定价表如何配置。</div><div class="lang-en">Read <a class="xref" href="16-token-counting-cost.html">Lesson 16</a> on tokens and cost; this lesson covers how models and the pricing table are configured.</div></div>
 
 <p class="lead">
 Lesson 16 said "cost = usage × price", but left a cliffhanger: <strong>where does the price come from, and how does a wildly-named model name match its price list?</strong> This lesson fills that piece—Langfuse's <strong>pricing data model</strong>. Three focuses: <code>matchPattern</code> uses <strong>one regex</strong> to recognize the same model under every platform's quirky naming; <code>pricingTiers</code> uses <strong>"a default tier + conditional tiers"</strong> to support <strong>tiered pricing</strong> by usage / context window; and <code>prices</code> is a fine price list "<strong>per usage type, per token</strong>" (input, output, cache reads… each with its own price).
@@ -10843,6 +10885,7 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 </section>
 <section class="lesson-print">
 <h1>Cloud usage metering & spend</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="16-token-counting-cost.html">第16课</a> 的成本计算与 <a class="xref" href="42-models-and-pricing.html">第42课</a> 的定价，本课讲云用量计量与花费。</div><div class="lang-en">Read <a class="xref" href="16-token-counting-cost.html">Lesson 16</a> (cost) and <a class="xref" href="42-models-and-pricing.html">Lesson 42</a> (pricing); this lesson covers cloud usage metering and spend.</div></div>
 
 <p class="lead">
 The "cost" discussed earlier (Lessons 16, 42) is <strong>how much your LLM spent</strong>. This lesson is about <strong>a different ledger</strong>: how the Langfuse <strong>platform itself</strong> <strong>meters and charges</strong> you for using it. This is <strong>Langfuse Cloud-specific</strong>—the self-hosted version <strong>does not charge you</strong>, so you can read this lesson as "a look at how a managed service's billing is built".
@@ -11075,6 +11118,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 </section>
 <section class="lesson-print">
 <h1>Automations & webhooks</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的执行流水线与 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列，本课讲自动化与 webhook（含 SSRF 防护）。</div><div class="lang-en">Read <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (the execution pipeline) and <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue); this lesson covers automations and webhooks (incl. SSRF defense).</div></div>
 
 <p class="lead">
 Lesson 33's monitor alerts need to reach a human, a changed prompt needs to notify an external system, a new trace needs to kick off a downstream flow — all these "<strong>when X happens, do Y</strong>" linkages are driven by Langfuse <strong>Automations</strong>: a <strong>Trigger (when)</strong> bound to an <strong>Action (what to do)</strong>. This lesson covers the data model, but the real headline act is an unavoidable <strong>security</strong> topic: when the Action is a <strong>webhook</strong> (Langfuse's server fetches a <strong>user-supplied arbitrary URL</strong>), how do you stop <strong>SSRF</strong> — keeping users from turning your server into a springboard to hit the internal network and steal cloud credentials.
@@ -11309,6 +11353,7 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
 </section>
 <section class="lesson-print">
 <h1>Slack & notifications</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="44-automations-webhooks.html">第44课</a> 的自动化，本课讲 Slack 与通知这一具体落地。</div><div class="lang-en">Read <a class="xref" href="44-automations-webhooks.html">Lesson 44</a> on automations; this lesson covers Slack and notifications as a concrete landing.</div></div>
 
 <p class="lead">
 The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it. But many teams don't want one HTTP request — they want <strong>"a nicely-formatted, button-clickable alert popping up in our Slack channel"</strong>. This lesson covers how Langfuse makes <strong>Slack a first-class delivery channel</strong>: not just filling in a Slack webhook URL, but a full <strong>OAuth install</strong>, storing the workspace's <strong>bot token encrypted</strong>, channel-targeted delivery, and rich <strong>Block Kit</strong> messages with colors and buttons. You'll see Lesson 39's <strong>encryption</strong> reused to safeguard the token, and a separate <strong>notificationQueue</strong> handling in-app notifications (e.g. a comment @-mentioning you).
@@ -11530,6 +11575,7 @@ storeInstallation: <span class="kw">async</span> (installation) =&gt; {
 </section>
 <section class="lesson-print">
 <h1>Analytics integrations</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的存储与 <a class="xref" href="19-media-blob-storage.html">第19课</a> 的媒体导出，本课讲分析集成（PostHog / S3 等）。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> (storage) and <a class="xref" href="19-media-blob-storage.html">Lesson 19</a> (media export); this lesson covers analytics integrations (PostHog / S3, etc.).</div></div>
 
 <p class="lead">
 Lesson 43 was "the platform charging you"; this lesson is the reverse: <strong>sending your data, continuously, back to your own turf</strong>. The traces, observations, and scores Langfuse accumulates — you may want to pull them into your own <strong>PostHog / Mixpanel</strong> for product analytics, or land them in <strong>S3 / GCS / Azure</strong> object storage for long-term archival and feeding a data warehouse. This lesson covers how that "<strong>your data, your destinations</strong>" analytics integration works — three nearly-identical integrations (PostHog, Mixpanel, Blob Storage) sharing one elegant engineering skeleton: a <strong>two-level fan-out queue</strong> (scheduled dispatch → per-project processing), <strong>incremental sync via a lastSyncAt watermark</strong> (only new data, no-dup-no-miss), and <strong>streaming</strong> for blob export (no memory blowup no matter the volume).
@@ -11733,6 +11779,7 @@ By the end you'll see: a mature platform "exporting data out" is far more than "
 </section>
 <section class="lesson-print">
 <h1>Batch exports & actions</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="46-analytics-integrations.html">第46课</a> 的集成与 <a class="xref" href="30-eval-execution-pipeline.html">第30课</a> 的状态机，本课讲批量导出与批量操作（幂等）。</div><div class="lang-en">Read <a class="xref" href="46-analytics-integrations.html">Lesson 46</a> (integrations) and <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a> (the state machine); this lesson covers batch exports and actions (idempotency).</div></div>
 
 <p class="lead">
 In the trace list you filter down to "the past 7 days, errored, from a certain user" — 50,000 traces — and want to <strong>export them all to CSV</strong> in one go, or <strong>delete them all</strong> with one click. This "do one thing to a whole batch of filtered data" need is this lesson's lead: <strong>Batch Export</strong> and <strong>Batch Action</strong>. They look different — one read-only produces a file, the other dangerously mutates data in bulk — but at heart they share one engineering posture: both built on a <strong>query/filter that may match a huge number of rows</strong>, both thrown onto a queue to run async because they're <strong>too slow to block a request</strong>, both using <strong>streaming + chunking</strong> to avoid stuffing tens of thousands of rows into memory at once.
@@ -11960,6 +12007,7 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
 </section>
 <section class="lesson-print">
 <h1>Auth & sessions</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="20-web-app-architecture.html">第20课</a> 的 web 架构，本课讲鉴权与会话（NextAuth / JWT）。</div><div class="lang-en">Read <a class="xref" href="20-web-app-architecture.html">Lesson 20</a> on the web architecture; this lesson covers auth and sessions (NextAuth / JWT).</div></div>
 
 <p class="lead">
 From this part on, we put on the <strong>operator's</strong> hat and look at how the platform itself is "managed." The first question is the most fundamental: <strong>who gets in?</strong> This lesson covers authentication ("who are you") and the session ("once in, how is that identity credential issued and carried"). Langfuse uses <strong>NextAuth</strong> to host login, giving you two ways in: <strong>email + password</strong>, or a dozen-plus <strong>SSO (single sign-on)</strong> providers (Google, GitHub, Okta, Azure AD, Keycloak, WorkOS…). Once in, it issues not a database session id but a <strong>JWT</strong> — a "credential" carrying its own signature and identity info.
@@ -12204,6 +12252,7 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
 </section>
 <section class="lesson-print">
 <h1>RBAC, API keys & SCIM</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="48-auth-and-sessions.html">第48课</a> 的鉴权与 <a class="xref" href="10-multi-tenancy.html">第10课</a> 的多租户，本课讲 RBAC、API key 与 SCIM。</div><div class="lang-en">Read <a class="xref" href="48-auth-and-sessions.html">Lesson 48</a> (auth) and <a class="xref" href="10-multi-tenancy.html">Lesson 10</a> (multi-tenancy); this lesson covers RBAC, API keys, and SCIM.</div></div>
 
 <p class="lead">
 The previous lesson settled "who you are"; this one settles "<strong>what you can do</strong>" — authorization. Langfuse has <strong>two kinds of "guests"</strong> to authorize: <strong>humans</strong> (users clicking around the UI) and <strong>machines</strong> (programs reporting data via SDK, calling the API). The two take two authorization mechanisms: humans rely on <strong>RBAC (role-based access control)</strong> — packaging fine-grained <strong>permission points (scopes)</strong> into <strong>roles (OWNER/ADMIN/MEMBER/VIEWER)</strong>, then checking your role in a given project; machines rely on <strong>API keys</strong> — a <code>pk-lf-…</code>/<code>sk-lf-…</code> key pair backed by a rather thoughtful <strong>two-tier hash</strong> design (one tier for "fast lookup," one for "secure storage"). Finally a glance at <strong>SCIM</strong>: letting an enterprise's identity system <strong>auto-provision/deprovision</strong> Langfuse users.
@@ -12486,6 +12535,7 @@ You'll repeatedly see two security creeds here: <strong>least privilege</strong>
 </section>
 <section class="lesson-print">
 <h1>Open-core & entitlements</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="10-multi-tenancy.html">第10课</a> 的多租户，本课讲开源核与商业权益的边界。</div><div class="lang-en">Read <a class="xref" href="10-multi-tenancy.html">Lesson 10</a> on multi-tenancy; this lesson covers the open-core / commercial entitlement boundary.</div></div>
 
 <p class="lead">
 Langfuse is <strong>open source</strong> — the source you're reading, from ingestion to query, from evaluation to automation, is <strong>all laid out in a public repo</strong>. Yet it's also a <strong>company</strong> that must sell something to survive. How do these coexist? The answer is the <strong>open-core</strong> business model: the core is free and open, while a few <strong>enterprise features</strong> (audit logs, data-retention policy, multi-tenant SSO, admin API…) require a <strong>paid plan or enterprise license</strong> to enable. The clever part: the code for these "paid features" is <strong>also open, right here in this repo</strong> — you can read and learn it, but to use it in production you need the corresponding <strong>plan</strong>.
@@ -12733,6 +12783,7 @@ This lesson shows how that "ticket system" is implemented with very little code:
 </section>
 <section class="lesson-print">
 <h1>Self-observability & config</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="18-opentelemetry-ingestion.html">第18课</a> 的 OTel 摄取，本课讲 Langfuse 如何自我观测与配置。</div><div class="lang-en">Read <a class="xref" href="18-opentelemetry-ingestion.html">Lesson 18</a> on OTel ingestion; this lesson covers how Langfuse observes and configures itself.</div></div>
 
 <p class="lead">
 Langfuse is a tool that <strong>helps you observe LLM applications</strong>. So when it itself has a problem, how does it observe <strong>itself</strong>? The answer is fittingly self-consistent: it uses the <strong>same observability means</strong> to observe itself — <strong>OpenTelemetry (OTel) distributed tracing + structured logging + metrics</strong>. This lesson covers two things that make the platform "transparent to operators": ① <strong>self-observability</strong> — the <code>instrumentAsync</code> you've long seen (Lesson 30 eval, Lesson 33 alerts, Lesson 46 integrations, Lesson 48 login all use it) is actually an OTel span wrapper turning every key operation into a traceable span; and its logging is cleverer still, <strong>auto-stamping each line with the current trace_id/span_id</strong>, so "logs" and "traces" jump to each other in one click. ② <strong>config as validation</strong> — all environment variables pass through <strong>Zod</strong> validation, so a misconfiguration <strong>errors out at boot, on the spot</strong>, rather than crashing mysteriously mid-run.
@@ -12959,6 +13010,7 @@ In a sentence: a mature platform is not only observable but <strong>eats its own
 </section>
 <section class="lesson-print">
 <h1>Data lifecycle & deletion</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的四存储与 <a class="xref" href="19-media-blob-storage.html">第19课</a> 的媒体，本课讲数据保留期与跨存储删除。</div><div class="lang-en">Read <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> (the four stores) and <a class="xref" href="19-media-blob-storage.html">Lesson 19</a> (media); this lesson covers retention and cross-store deletion.</div></div>
 
 <p class="lead">
 Data has a <strong>lifetime</strong>: ingested and written (born), queried and analyzed (alive), finally deleted (curtain call). Earlier lessons covered "write" and "read" thoroughly; this one covers <strong>"delete"</strong> — and an easily-overlooked but crucial fact: in Langfuse, <strong>one trace isn't one row but three copies scattered across three stores</strong>: metadata in <strong>Postgres</strong>, massive events in <strong>ClickHouse</strong>, bulky inputs/outputs/media in <strong>object storage (S3)</strong>. So "delete a trace / delete a project / clean old data by retention period" is never as simple as deleting one row — it requires <strong>coordinated, consistent deletion across all three stores</strong>; missing any one leaves data residue (a compliance and privacy hazard).
@@ -13175,6 +13227,7 @@ This lesson covers three deletions (auto-clean by retention period, on-demand tr
 </section>
 <section class="lesson-print">
 <h1>Build, test & dev workflow</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="04-project-map-monorepo.html">第4课</a> 的 monorepo 全景，本课讲构建、测试与开发流。</div><div class="lang-en">Read <a class="xref" href="04-project-map-monorepo.html">Lesson 4</a> on the monorepo map; this lesson covers the build, test, and dev workflow.</div></div>
 
 <p class="lead">
 You've seen Langfuse from ingestion to operations. The last lesson takes a different angle: how is the platform <strong>itself built, tested, and iterated</strong>? The answer hides in three things. ① <strong>pnpm monorepo</strong> — the four packages web, worker, shared, ee live in <strong>one repo</strong>, sharing code with a tool-enforced dependency direction. ② <strong>Turborepo</strong> — a <strong>task pipeline + content-hash cache</strong> that makes "change one package, rebuild only that package" possible, turning dozens of packages' builds/CI from "full every time, slow to a crawl" into "seconds, incremental." ③ <strong>one-command dev workflow</strong> — a single <code>dx</code> command spins up a full local environment from scratch (install deps → bring up Docker infra → reset DBs → seed data → run), plus a <strong>seed CLI</strong> for realistic test data in one command.
@@ -13423,6 +13476,7 @@ As the close of Part 10 (Platform & Operations), this lesson is about the <stron
 </section>
 <section class="lesson-print">
 <h1>Design themes synthesis</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先回顾 <a class="xref" href="02-observability-2-and-wide-events.html">第2课</a> 的宽事件与 <a class="xref" href="07-dual-store-architecture.html">第7课</a> 的双存储两大基石，本课把六大设计专题综合起来。</div><div class="lang-en">Revisit <a class="xref" href="02-observability-2-and-wide-events.html">Lesson 2</a> (wide events) and <a class="xref" href="07-dual-store-architecture.html">Lesson 7</a> (dual storage); this lesson synthesizes the six design themes.</div></div>
 
 <p class="lead">
 By now you've followed a trace from birth to curtain call, from front-end clicks to background queues. This lesson takes a step back to do one thing: <strong>gather the design decisions that kept recurring across 53 lessons into six names</strong>. You'll find that the seemingly-separate implementations — why ClickHouse uses columnar storage, why queues, why deletion spans three stores, why projectId is everywhere — are <strong>actually one worldview landing over and over</strong>. Langfuse's official <code>ARCHITECTURE_PRINCIPLES.md</code> states it in a sentence: optimize for <strong>high-scale, exploratory observability on wide, structured event data</strong>.
@@ -13654,6 +13708,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
 </section>
 <section class="lesson-print">
 <h1>Capstone: the full life of a trace</h1>
+<div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="05-life-of-a-trace.html">第5课</a> 的一生鸟瞰，本课跟一条 trace 走完贯穿 55 课的完整旅程。</div><div class="lang-en">Read <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a> for the bird's-eye life; this capstone follows one trace through the full journey across all 55 lessons.</div></div>
 
 <p class="lead">
 For the last lesson, we do something romantic: <strong>follow one trace through its whole life</strong>. The previous 54 lessons each dissected an organ — this one brings the trace <strong>alive</strong>, from the millisecond it's <strong>born</strong> in your app, to being ingested, stored, viewed, scored, triggering automations, and finally <strong>taking its bow</strong> when the retention period expires. Along the way, we mark each station with "this is the lesson that covered it," so you see with your own eyes how the parts you learned lesson by lesson <strong>mesh seamlessly into one complete machine</strong>.

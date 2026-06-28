@@ -72,6 +72,7 @@ src/            generators + tooling (pure Python 3, no dependencies)
   check_links.py internal link validation
 lessons/        generated lesson pages (committed, kept in sync)
 index.html      generated table of contents (committed)
+glossary.html   generated concept index (committed)
 print_*.html    generated print editions (committed)
 docs/superpowers/   design spec, roadmap, per-milestone specs/plans + source maps
 ```

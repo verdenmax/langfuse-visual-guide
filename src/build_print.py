@@ -65,14 +65,16 @@ def build_lang(lang):
         toc.append(f"  <li>{title}</li>")
     toc.append("</ol></div>")
     parts.append("\n".join(toc))
-    for page in shell.PAGES:
+    page_order = [p[0] for p in shell.PAGES]
+    for idx, page in enumerate(shell.PAGES):
         fname = page[0]
         if fname not in CONTENT:
             sys.exit(f"build_print error: no registry.CONTENT entry for {fname!r} (declared in shell.PAGES)")
         title = page[1] if lang == "zh" else page[2]
+        prereq = shell._prereq_card(fname, idx + 1, page_order)
         body = _expand_details(shell.add_part_finale(CONTENT[fname][lang], fname, lang))
         quiz = _expand_details(quizzes.render(fname, lang))
-        parts.append(f'<section class="lesson-print">\n<h1>{title}</h1>\n{body}\n{quiz}\n</section>')
+        parts.append(f'<section class="lesson-print">\n<h1>{title}</h1>\n{prereq}\n{body}\n{quiz}\n</section>')
     return head + "\n".join(parts) + "\n</body>\n</html>\n"
 
 
