@@ -2068,7 +2068,7 @@ _EN4.append(r"""
   <rect x="150" y="150" width="420" height="78" rx="11" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="2"/>
   <text x="360" y="174" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--purple)">packages/shared/ · shared core (narrow waist)</text>
   <text x="360" y="194" text-anchor="middle" font-size="9.5" fill="var(--muted)">domain models · server repos/CH/queues · prisma schema · clickhouse migrations</text>
-  <text x="360" y="212" text-anchor="middle" font-size="9.5" fill="var(--muted)">used by web & worker; depends on neither</text>
+  <text x="360" y="212" text-anchor="middle" font-size="9.5" fill="var(--muted)">used by web &amp; worker; depends on neither</text>
   <line x1="140" y1="114" x2="300" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="300,148 289,146 293,154" fill="var(--purple)"/>
   <line x1="360" y1="114" x2="360" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="360,148 355,138 365,138" fill="var(--purple)"/>
   <line x1="580" y1="114" x2="420" y2="148" stroke="var(--purple)" stroke-width="1.6"/><polygon points="420,148 431,146 427,154" fill="var(--purple)"/>
