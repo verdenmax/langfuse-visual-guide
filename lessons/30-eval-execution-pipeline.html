@@ -390,6 +390,22 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>创建与执行分离</b>：<code>worker/src/queues/evalQueue.ts</code> 里，<code>TraceUpsert</code>（:25）/<code>CreateEvalQueue</code>（:98）触发 <code>createEvalJobs</code>；它产出 PENDING 工单并入 <code>EvaluationExecution</code> 队列（:126 消费）。大项目还可分流到 <code>EvaluationExecutionSecondaryQueue</code>（:151）隔离。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 218" role="img" aria-label="eval 执行状态机：JobExecution 从 PENDING 入队开始，worker 处理后转 COMPLETED（写回 score）或 ERROR（失败）；DELAYED 表示延后稍后再回 PENDING；CANCELLED 表示配置被删/停用。状态枚举取自 prisma 的 JobExecutionStatus，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 eval 任务的状态机</text>
+  <text x="40" y="48" font-size="7.5" fill="var(--muted)">入队 →</text>
+  <ellipse cx="160" cy="110" rx="58" ry="30" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="160" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">PENDING</text><text x="160" y="122" text-anchor="middle" font-size="6.5" fill="var(--muted)">在队列里等</text>
+  <ellipse cx="430" cy="58" rx="62" ry="28" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="430" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">COMPLETED</text><text x="430" y="70" text-anchor="middle" font-size="6.5" fill="var(--muted)">score 已写回</text>
+  <ellipse cx="430" cy="138" rx="58" ry="28" fill="var(--red-soft)" stroke="var(--red)" stroke-width="2"/><text x="430" y="136" text-anchor="middle" font-size="10" font-weight="700" fill="var(--red)">ERROR</text><text x="430" y="150" text-anchor="middle" font-size="6.5" fill="var(--muted)">裁判/解析失败</text>
+  <ellipse cx="160" cy="186" rx="56" ry="24" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="160" y="184" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--amber)">DELAYED</text><text x="160" y="197" text-anchor="middle" font-size="6.5" fill="var(--muted)">延后，稍后回 PENDING</text>
+  <ellipse cx="610" cy="98" rx="56" ry="26" fill="var(--panel-2)" stroke="var(--faint)" stroke-width="1.6"/><text x="610" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="610" y="109" text-anchor="middle" font-size="6.5" fill="var(--muted)">配置被删/停用</text>
+  <line x1="216" y1="98" x2="370" y2="66" stroke="var(--accent)" stroke-width="1.5"/><polygon points="370,66 360,64 363,72" fill="var(--accent)"/><text x="290" y="74" text-anchor="middle" font-size="7" fill="var(--accent-ink)">worker 处理 ✓</text>
+  <line x1="216" y1="120" x2="372" y2="134" stroke="var(--red)" stroke-width="1.5"/><polygon points="372,134 362,130 362,138" fill="var(--red)"/><text x="290" y="132" text-anchor="middle" font-size="7" fill="var(--red)">worker 处理 ✗</text>
+  <path d="M120 138 q-26 40 28 46 q40 4 12 -34" fill="none" stroke="var(--amber)" stroke-width="1.4"/><polygon points="160,150 154,158 164,158" fill="var(--amber)"/>
+  <line x1="216" y1="104" x2="556" y2="98" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="556,98 547,94 547,102" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>任务的一生就是几个状态</b>（状态枚举取自 prisma 的 <code>JobExecutionStatus</code>；<b>值为示例</b>）：一个 <code>JobExecution</code> 从 <code>PENDING</code>（入队）开始，worker 处理后落到 <code>COMPLETED</code>（score 写回）或 <code>ERROR</code>（失败）；<code>DELAYED</code> 是延后稍后再回 <code>PENDING</code>，<code>CANCELLED</code> 是配置被删/停用。把「评估有没有跑、跑成没成」变成可查询、可重试的明确状态。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">扇出</span><span class="name">取出所有启用的评估器</span></div><div class="ld"><code>createEvalJobs</code> 先查这个项目下所有 <code>jobType=EVAL</code>、<code>status=ACTIVE</code>、未被 <code>blockedAt</code> 的 JobConfiguration。一条 trace 可能同时命中多个评估器（如「有用性」+「毒性」），所以是一对多的扇出。若一个都没有，还会<strong>缓存「本项目无评估器」</strong>，省掉后续每条 trace 的空查。</div></div>
@@ -618,6 +634,22 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
   <text x="360" y="242" text-anchor="middle" font-size="8" fill="var(--faint)">two-stage split = decouple "scheduling" from "doing the work", each scaling/retrying/rate-limiting independently</text>
 </svg>
 <div class="figcap"><b>Creation and execution split</b>: in <code>worker/src/queues/evalQueue.ts</code>, <code>TraceUpsert</code> (:25)/<code>CreateEvalQueue</code> (:98) trigger <code>createEvalJobs</code>; it emits PENDING tickets into the <code>EvaluationExecution</code> queue (consumed at :126). Large projects can also offload to <code>EvaluationExecutionSecondaryQueue</code> (:151) for isolation.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 218" role="img" aria-label="Eval execution state machine: a JobExecution starts PENDING (enqueued); after the worker processes it, it goes COMPLETED (score written) or ERROR (failed); DELAYED means scheduled later and returns to PENDING; CANCELLED means the config was removed/disabled. Status enum from prisma JobExecutionStatus, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an eval job's state machine</text>
+  <text x="40" y="48" font-size="7.5" fill="var(--muted)">enqueue →</text>
+  <ellipse cx="160" cy="110" rx="58" ry="30" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="160" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">PENDING</text><text x="160" y="122" text-anchor="middle" font-size="6.5" fill="var(--muted)">waiting in queue</text>
+  <ellipse cx="430" cy="58" rx="62" ry="28" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="430" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">COMPLETED</text><text x="430" y="70" text-anchor="middle" font-size="6.5" fill="var(--muted)">score written</text>
+  <ellipse cx="430" cy="138" rx="58" ry="28" fill="var(--red-soft)" stroke="var(--red)" stroke-width="2"/><text x="430" y="136" text-anchor="middle" font-size="10" font-weight="700" fill="var(--red)">ERROR</text><text x="430" y="150" text-anchor="middle" font-size="6.5" fill="var(--muted)">judge/parse failed</text>
+  <ellipse cx="160" cy="186" rx="56" ry="24" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="160" y="184" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--amber)">DELAYED</text><text x="160" y="197" text-anchor="middle" font-size="6.5" fill="var(--muted)">scheduled, back to PENDING</text>
+  <ellipse cx="610" cy="98" rx="56" ry="26" fill="var(--panel-2)" stroke="var(--faint)" stroke-width="1.6"/><text x="610" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="610" y="109" text-anchor="middle" font-size="6.5" fill="var(--muted)">config removed/disabled</text>
+  <line x1="216" y1="98" x2="370" y2="66" stroke="var(--accent)" stroke-width="1.5"/><polygon points="370,66 360,64 363,72" fill="var(--accent)"/><text x="290" y="74" text-anchor="middle" font-size="7" fill="var(--accent-ink)">worker processes ✓</text>
+  <line x1="216" y1="120" x2="372" y2="134" stroke="var(--red)" stroke-width="1.5"/><polygon points="372,134 362,130 362,138" fill="var(--red)"/><text x="290" y="132" text-anchor="middle" font-size="7" fill="var(--red)">worker processes ✗</text>
+  <path d="M120 138 q-26 40 28 46 q40 4 12 -34" fill="none" stroke="var(--amber)" stroke-width="1.4"/><polygon points="160,150 154,158 164,158" fill="var(--amber)"/>
+  <line x1="216" y1="104" x2="556" y2="98" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="556,98 547,94 547,102" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>A job's life is a few states</b> (status enum from prisma <code>JobExecutionStatus</code>; <b>values illustrative</b>): a <code>JobExecution</code> starts <code>PENDING</code> (enqueued); after the worker runs it lands on <code>COMPLETED</code> (score written) or <code>ERROR</code> (failed); <code>DELAYED</code> reschedules back to <code>PENDING</code>, and <code>CANCELLED</code> means the config was removed/disabled. It turns "did the eval run, did it succeed" into an explicit, queryable, retryable state.</div>
 </div>
 
 <div class="layers">

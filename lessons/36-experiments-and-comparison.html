@@ -388,6 +388,24 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processLLMCall</code>（由 <code>processItem</code> 委派）调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="实验对比真实例子：同一个数据集项（input/expected）跑两次 run（如换了 prompt 或 model），把两边的 output 与各自 score 并排，右上角一个 delta 徽章显示分数变化。基于 dataset-run-items 的 scores，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：同一道题，两次 run 并排比</text>
+  <rect x="20" y="32" width="680" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="34" y="49" font-size="8" font-weight="700" fill="var(--ink)">数据集项 · input：退款政策？ · expected：30 天内</text>
+  <rect x="20" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="34" y="84" font-size="9" font-weight="700" fill="var(--blue)">Run A · prompt v1</text>
+  <rect x="34" y="92" width="302" height="40" rx="6" fill="var(--panel-2)"/><text x="44" y="115" font-size="7.6" fill="var(--ink)">「我们支持退款。」</text>
+  <rect x="34" y="140" width="92" height="18" rx="9" fill="var(--blue-soft)"/><text x="80" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">helpfulness 0.6</text>
+  <rect x="132" y="140" width="80" height="18" rx="9" fill="var(--blue-soft)"/><text x="172" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">exact 0</text>
+  <text x="34" y="176" font-size="7" fill="var(--muted)">较笼统</text>
+  <rect x="370" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="384" y="84" font-size="9" font-weight="700" fill="var(--accent-ink)">Run B · prompt v2</text>
+  <rect x="384" y="92" width="302" height="40" rx="6" fill="var(--accent-soft)"/><text x="394" y="115" font-size="7.6" fill="var(--ink)">「30 天内可全额退款，逾期不退。」</text>
+  <rect x="384" y="140" width="92" height="18" rx="9" fill="var(--accent-soft)"/><text x="430" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">helpfulness 0.9</text>
+  <rect x="482" y="140" width="80" height="18" rx="9" fill="var(--accent-soft)"/><text x="522" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">exact 1</text>
+  <rect x="592" y="138" width="94" height="22" rx="11" fill="var(--accent)" opacity="0.5"/><text x="639" y="153" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Δ +0.3 ▲</text>
+  <text x="34" y="200" font-size="7.8" fill="var(--accent-ink)">→ 用分数做决策：B 更好，把 production 切到 v2（第 37 课）</text>
+</svg>
+<div class="figcap"><b>把「能评分」升级成「能用分做决策」</b>（基于 <code>dataset-run-items</code> 的 scores；<b>值为示例</b>）：同一道题（数据集项）跑两次 run——比如换了 prompt 或 model——把两边 output 与各自 score <b>并排</b>，一个 <code>Δ</code> 徽章告诉你升降。于是「改一版到底有没有更好」从凭感觉变成<b>有分可依</b>：B 的 helpfulness/exact 都更高，就把 production 切到 v2。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall 核心（processItem 委派）</span></div>
@@ -576,6 +594,24 @@ Three focuses: how an experiment <strong>runs server-side automatically</strong>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
 <div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Experiment comparison real example: the same dataset item (input/expected) is run twice (e.g. a different prompt or model); the two outputs and their scores sit side by side, with a delta badge showing the score change. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: same item, two runs side by side</text>
+  <rect x="20" y="32" width="680" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="34" y="49" font-size="8" font-weight="700" fill="var(--ink)">dataset item · input: refund policy? · expected: within 30 days</text>
+  <rect x="20" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="34" y="84" font-size="9" font-weight="700" fill="var(--blue)">Run A · prompt v1</text>
+  <rect x="34" y="92" width="302" height="40" rx="6" fill="var(--panel-2)"/><text x="44" y="115" font-size="7.6" fill="var(--ink)">"We support refunds."</text>
+  <rect x="34" y="140" width="92" height="18" rx="9" fill="var(--blue-soft)"/><text x="80" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">helpfulness 0.6</text>
+  <rect x="132" y="140" width="80" height="18" rx="9" fill="var(--blue-soft)"/><text x="172" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">exact 0</text>
+  <text x="34" y="176" font-size="7" fill="var(--muted)">rather generic</text>
+  <rect x="370" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="384" y="84" font-size="9" font-weight="700" fill="var(--accent-ink)">Run B · prompt v2</text>
+  <rect x="384" y="92" width="302" height="40" rx="6" fill="var(--accent-soft)"/><text x="394" y="115" font-size="7.6" fill="var(--ink)">"Full refund within 30 days; none after."</text>
+  <rect x="384" y="140" width="92" height="18" rx="9" fill="var(--accent-soft)"/><text x="430" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">helpfulness 0.9</text>
+  <rect x="482" y="140" width="80" height="18" rx="9" fill="var(--accent-soft)"/><text x="522" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">exact 1</text>
+  <rect x="592" y="138" width="94" height="22" rx="11" fill="var(--accent)" opacity="0.5"/><text x="639" y="153" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Δ +0.3 ▲</text>
+  <text x="34" y="200" font-size="7.8" fill="var(--accent-ink)">→ decide by score: B is better, point production to v2 (Lesson 37)</text>
+</svg>
+<div class="figcap"><b>Upgrading "able to score" into "able to decide by score"</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): the same item is run twice — say a different prompt or model — with both outputs and their scores <b>side by side</b> and a <code>Δ</code> badge for the change. So "did this revision actually help" stops being a hunch and becomes <b>evidence</b>: B's helpfulness and exact are both higher, so point production to v2.</div>
 </div>
 
 <div class="codefile">

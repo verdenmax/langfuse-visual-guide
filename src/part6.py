@@ -44,6 +44,27 @@ _ZH34.append(r"""
 </svg>
 <div class="figcap"><b>题从哪来</b>：<code>schema.prisma:685</code> 的 DatasetItem 有 <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>，外加 <code>sourceTraceId</code>/<code>sourceObservationId</code>——后两者让你把一条真实 trace（第 13 课）<b>提拔</b>成测试用例。Dataset（<code>:661</code>）还能用 <code>inputSchema</code>/<code>expectedOutputSchema</code> 约束题目格式。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="数据集真实例子：数据集 support-qa 含若干 item，每项有 input、expectedOutput、metadata 三列；其中一项标注为已被某次 run 引用。字段取自 domain/dataset-items.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个数据集和它的数据项</text>
+  <rect x="20" y="30" width="680" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="47" font-size="9.5" font-weight="700" fill="var(--accent-ink)">dataset · name=support-qa · 4 items</text>
+  <rect x="20" y="60" width="680" height="22" fill="var(--panel-2)"/>
+  <text x="40" y="75" font-size="8" font-weight="700" fill="var(--ink)">input</text>
+  <text x="250" y="75" font-size="8" font-weight="700" fill="var(--ink)">expectedOutput</text>
+  <text x="520" y="75" font-size="8" font-weight="700" fill="var(--ink)">metadata</text>
+  <rect x="20" y="82" width="680" height="26" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="99" font-size="7.6" fill="var(--ink)">退款政策是什么？</text><text x="250" y="99" font-size="7.6" fill="var(--accent-ink)">30 天内可全额退款</text><text x="520" y="99" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="694" y="99" text-anchor="end" font-size="6.8" fill="var(--accent)">← 已被某次 run 引用</text>
+  <rect x="20" y="108" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="125" font-size="7.6" fill="var(--ink)">如何重置密码？</text><text x="250" y="125" font-size="7.6" fill="var(--accent-ink)">设置→安全→重置</text><text x="520" y="125" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: account}</text>
+  <rect x="20" y="134" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="151" font-size="7.6" fill="var(--ink)">支持哪些语言？</text><text x="250" y="151" font-size="7.6" fill="var(--accent-ink)">中/英/日/德</text><text x="520" y="151" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: product}</text>
+  <rect x="20" y="160" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="177" font-size="7.6" fill="var(--ink)">发票在哪下载？</text><text x="250" y="177" font-size="7.6" fill="var(--accent-ink)">账户→账单→发票</text><text x="520" y="177" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="34" y="202" font-size="7.6" fill="var(--muted)">每个 item = 一道「题 + 参考答案」；run 拿 input 跑应用，再和 expectedOutput 比</text>
+</svg>
+<div class="figcap"><b>数据集 = 一组「题 + 参考答案」</b>（字段取自 <code>domain/dataset-items.ts</code>；<b>值为示例</b>）：每个 <code>item</code> 有 <code>input</code>（喂给应用的输入）、<code>expectedOutput</code>（参考答案）、<code>metadata</code>。一次 <b>run</b> 就是拿这些 <code>input</code> 跑一遍当前应用，把产出和 <code>expectedOutput</code> 比、评分（第 35 课）。于是「改一版好不好」有了固定考卷，可复现、可对比。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">题干 + 答案</span><span class="name">input / expectedOutput</span></div><div class="ld">一个 item 的本体：<code>input</code> 喂给应用的输入、<code>expectedOutput</code> 你期望它给出的参考答案。评估时就拿应用的真实输出和 expectedOutput 对照（或交给第 29–31 课的评判）。<code>metadata</code> 放标签、难度等旁注。</div></div>
@@ -185,6 +206,27 @@ _EN34.append(r"""
   <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">"production as test source": capture a real botched case into a question, keeping regression tests close to the real distribution</text>
 </svg>
 <div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (Lesson 13) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Dataset real example: dataset support-qa with several items, each with input, expectedOutput and metadata columns; one item marked as referenced by a run. Fields from domain/dataset-items.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset and its items</text>
+  <rect x="20" y="30" width="680" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="47" font-size="9.5" font-weight="700" fill="var(--accent-ink)">dataset · name=support-qa · 4 items</text>
+  <rect x="20" y="60" width="680" height="22" fill="var(--panel-2)"/>
+  <text x="40" y="75" font-size="8" font-weight="700" fill="var(--ink)">input</text>
+  <text x="250" y="75" font-size="8" font-weight="700" fill="var(--ink)">expectedOutput</text>
+  <text x="520" y="75" font-size="8" font-weight="700" fill="var(--ink)">metadata</text>
+  <rect x="20" y="82" width="680" height="26" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="99" font-size="7.6" fill="var(--ink)">what is the refund policy?</text><text x="250" y="99" font-size="7.6" fill="var(--accent-ink)">full refund within 30 days</text><text x="520" y="99" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="694" y="99" text-anchor="end" font-size="6.8" fill="var(--accent)">← referenced by a run</text>
+  <rect x="20" y="108" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="125" font-size="7.6" fill="var(--ink)">how to reset password?</text><text x="250" y="125" font-size="7.6" fill="var(--accent-ink)">Settings → Security → Reset</text><text x="520" y="125" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: account}</text>
+  <rect x="20" y="134" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="151" font-size="7.6" fill="var(--ink)">which languages?</text><text x="250" y="151" font-size="7.6" fill="var(--accent-ink)">zh/en/ja/de</text><text x="520" y="151" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: product}</text>
+  <rect x="20" y="160" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="177" font-size="7.6" fill="var(--ink)">where to download invoices?</text><text x="250" y="177" font-size="7.6" fill="var(--accent-ink)">Account → Billing → Invoices</text><text x="520" y="177" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="34" y="202" font-size="7.6" fill="var(--muted)">each item = a question + reference answer; a run feeds input to the app, then compares to expectedOutput</text>
+</svg>
+<div class="figcap"><b>A dataset = a set of "question + reference answer"</b> (fields from <code>domain/dataset-items.ts</code>; <b>values illustrative</b>): each <code>item</code> has <code>input</code> (fed to the app), <code>expectedOutput</code> (the reference), and <code>metadata</code>. A <b>run</b> feeds these <code>input</code>s through the current app and compares the output to <code>expectedOutput</code>, scoring it (Lesson 35). So "is this revision better" gets a fixed exam — reproducible and comparable.</div>
 </div>
 
 <div class="layers">
@@ -336,6 +378,37 @@ _ZH35.append(r"""
   <text x="360" y="222" text-anchor="middle" font-size="8" fill="var(--faint)">run item 不存答案本身，只存「run×item→trace」的三元对应——答案在它指向的那条 trace 里</text>
 </svg>
 <div class="figcap"><b>run item = 三元链接的载体</b>：<code>schema.prisma:719</code> DatasetRuns（[datasetId, projectId, name] 唯一），<code>:739</code> DatasetRunItems 把 <code>datasetRunId</code>+<code>datasetItemId</code> 连到 <code>traceId</code>(+observationId)。一次 run 把整套题各执行一次，每次产出一条真实 trace；run item 记下「哪场×哪题→哪条 trace」。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="数据集运行热力图：行是数据集项，列是若干次 run，每个格子按该项在该次 run 的分数着色（低红中黄高绿），底部一行是每次 run 的平均分。一眼看出哪次 run 整体更好、哪个项在退步。基于 dataset-run-items 的 scores，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：数据集项 × 运行 的分数热力图</text>
+  <text x="245" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run A (v1)</text>
+  <text x="395" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run B (v2)</text>
+  <text x="545" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run C (v3)</text>
+  <text x="40" y="66" font-size="8" font-weight="700" fill="var(--muted)">item 1</text>
+  <rect x="170" y="46" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="242" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.6</text>
+  <rect x="320" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="470" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="98" font-size="8" font-weight="700" fill="var(--muted)">item 2</text>
+  <rect x="170" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="320" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="470" y="78" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="542" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.4</text>
+  <text x="40" y="130" font-size="8" font-weight="700" fill="var(--muted)">item 3</text>
+  <rect x="170" y="110" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="242" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.3</text>
+  <rect x="320" y="110" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="392" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.7</text>
+  <rect x="470" y="110" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="162" font-size="8" font-weight="700" fill="var(--muted)">item 4</text>
+  <rect x="170" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="320" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <rect x="470" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <line x1="36" y1="176" x2="684" y2="176" stroke="var(--line)"/>
+  <text x="40" y="196" font-size="8" font-weight="700" fill="var(--accent-ink)">均值 (scores_avg)</text>
+  <text x="242" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.65</text>
+  <text x="392" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.85</text>
+  <text x="542" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="360" y="220" text-anchor="middle" font-size="7.6" fill="var(--muted)">一眼看出：B 整体最稳；item 2 在 run C 退步（绿→红）</text>
+</svg>
+<div class="figcap"><b>热力图让回归一眼可见</b>（基于 <code>dataset-run-items</code> 的 scores；<b>值为示例</b>）：行是数据集项、列是历次 run，格子按分数着色（红低、黄中、绿高），底部一行是每次 run 的 <code>scores_avg</code>。不用逐条读数，<b>哪次 run 整体更好、哪个项在退步</b>一眼就看出来——这里 <code>item 2</code> 在 <code>run C</code> 从绿掉到红，就是一次需要排查的回归。</div>
 </div>
 
 <div class="layers">
@@ -496,6 +569,37 @@ _EN35.append(r"""
   <text x="360" y="222" text-anchor="middle" font-size="8" fill="var(--faint)">a run item stores no answer—only the "run×item→trace" correspondence; the answer is in the trace it points to</text>
 </svg>
 <div class="figcap"><b>run item = carrier of the three-way link</b>: <code>schema.prisma:719</code> DatasetRuns (unique [datasetId, projectId, name]), <code>:739</code> DatasetRunItems links <code>datasetRunId</code>+<code>datasetItemId</code> to <code>traceId</code>(+observationId). A run executes the whole set once, each producing a real trace; the run item records "which exam × which question → which trace".</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Dataset-run heatmap: rows are dataset items, columns are runs, each cell colored by that item's score in that run (low red, mid amber, high green); the bottom row is each run's average. See at a glance which run is better overall and which item regressed. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset-item x run score heatmap</text>
+  <text x="245" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run A (v1)</text>
+  <text x="395" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run B (v2)</text>
+  <text x="545" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run C (v3)</text>
+  <text x="40" y="66" font-size="8" font-weight="700" fill="var(--muted)">item 1</text>
+  <rect x="170" y="46" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="242" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.6</text>
+  <rect x="320" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="470" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="98" font-size="8" font-weight="700" fill="var(--muted)">item 2</text>
+  <rect x="170" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="320" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="470" y="78" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="542" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.4</text>
+  <text x="40" y="130" font-size="8" font-weight="700" fill="var(--muted)">item 3</text>
+  <rect x="170" y="110" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="242" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.3</text>
+  <rect x="320" y="110" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="392" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.7</text>
+  <rect x="470" y="110" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="162" font-size="8" font-weight="700" fill="var(--muted)">item 4</text>
+  <rect x="170" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="320" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <rect x="470" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <line x1="36" y1="176" x2="684" y2="176" stroke="var(--line)"/>
+  <text x="40" y="196" font-size="8" font-weight="700" fill="var(--accent-ink)">avg (scores_avg)</text>
+  <text x="242" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.65</text>
+  <text x="392" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.85</text>
+  <text x="542" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="360" y="220" text-anchor="middle" font-size="7.6" fill="var(--muted)">at a glance: B is most consistent; item 2 regressed in run C (green→red)</text>
+</svg>
+<div class="figcap"><b>The heatmap makes regressions obvious</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): rows are items, columns are runs, cells colored by score (red low, amber mid, green high), with each run's <code>scores_avg</code> at the bottom. Without reading numbers one by one, you see <b>which run is better overall and which item regressed</b> — here <code>item 2</code> drops green→red in <code>run C</code>, a regression worth investigating.</div>
 </div>
 
 <div class="layers">
@@ -670,6 +774,24 @@ _ZH36.append(r"""
 </svg>
 <div class="figcap"><b>实验 = 服务端逐题跑 prompt</b>：<code>processLLMCall</code>（由 <code>processItem</code> 委派）调 <code>replaceVariablesInPrompt(prompt, item.input, …)</code> 填变量，用 <code>config.provider/model</code> 调 LLM，写出 trace（<code>environment=PromptExperiments</code>，链接 <code>prompt</code>，metadata 含 <code>itemVersion=item.validFrom</code>）。源码：<code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="实验对比真实例子：同一个数据集项（input/expected）跑两次 run（如换了 prompt 或 model），把两边的 output 与各自 score 并排，右上角一个 delta 徽章显示分数变化。基于 dataset-run-items 的 scores，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：同一道题，两次 run 并排比</text>
+  <rect x="20" y="32" width="680" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="34" y="49" font-size="8" font-weight="700" fill="var(--ink)">数据集项 · input：退款政策？ · expected：30 天内</text>
+  <rect x="20" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="34" y="84" font-size="9" font-weight="700" fill="var(--blue)">Run A · prompt v1</text>
+  <rect x="34" y="92" width="302" height="40" rx="6" fill="var(--panel-2)"/><text x="44" y="115" font-size="7.6" fill="var(--ink)">「我们支持退款。」</text>
+  <rect x="34" y="140" width="92" height="18" rx="9" fill="var(--blue-soft)"/><text x="80" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">helpfulness 0.6</text>
+  <rect x="132" y="140" width="80" height="18" rx="9" fill="var(--blue-soft)"/><text x="172" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">exact 0</text>
+  <text x="34" y="176" font-size="7" fill="var(--muted)">较笼统</text>
+  <rect x="370" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="384" y="84" font-size="9" font-weight="700" fill="var(--accent-ink)">Run B · prompt v2</text>
+  <rect x="384" y="92" width="302" height="40" rx="6" fill="var(--accent-soft)"/><text x="394" y="115" font-size="7.6" fill="var(--ink)">「30 天内可全额退款，逾期不退。」</text>
+  <rect x="384" y="140" width="92" height="18" rx="9" fill="var(--accent-soft)"/><text x="430" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">helpfulness 0.9</text>
+  <rect x="482" y="140" width="80" height="18" rx="9" fill="var(--accent-soft)"/><text x="522" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">exact 1</text>
+  <rect x="592" y="138" width="94" height="22" rx="11" fill="var(--accent)" opacity="0.5"/><text x="639" y="153" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Δ +0.3 ▲</text>
+  <text x="34" y="200" font-size="7.8" fill="var(--accent-ink)">→ 用分数做决策：B 更好，把 production 切到 v2（第 37 课）</text>
+</svg>
+<div class="figcap"><b>把「能评分」升级成「能用分做决策」</b>（基于 <code>dataset-run-items</code> 的 scores；<b>值为示例</b>）：同一道题（数据集项）跑两次 run——比如换了 prompt 或 model——把两边 output 与各自 score <b>并排</b>，一个 <code>Δ</code> 徽章告诉你升降。于是「改一版到底有没有更好」从凭感觉变成<b>有分可依</b>：B 的 helpfulness/exact 都更高，就把 production 切到 v2。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/features/experiments/experimentServiceClickhouse.ts</span><span class="ln">processLLMCall 核心（processItem 委派）</span></div>
@@ -818,6 +940,24 @@ _EN36.append(r"""
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
 <div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Experiment comparison real example: the same dataset item (input/expected) is run twice (e.g. a different prompt or model); the two outputs and their scores sit side by side, with a delta badge showing the score change. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: same item, two runs side by side</text>
+  <rect x="20" y="32" width="680" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="34" y="49" font-size="8" font-weight="700" fill="var(--ink)">dataset item · input: refund policy? · expected: within 30 days</text>
+  <rect x="20" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="34" y="84" font-size="9" font-weight="700" fill="var(--blue)">Run A · prompt v1</text>
+  <rect x="34" y="92" width="302" height="40" rx="6" fill="var(--panel-2)"/><text x="44" y="115" font-size="7.6" fill="var(--ink)">"We support refunds."</text>
+  <rect x="34" y="140" width="92" height="18" rx="9" fill="var(--blue-soft)"/><text x="80" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">helpfulness 0.6</text>
+  <rect x="132" y="140" width="80" height="18" rx="9" fill="var(--blue-soft)"/><text x="172" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">exact 0</text>
+  <text x="34" y="176" font-size="7" fill="var(--muted)">rather generic</text>
+  <rect x="370" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="384" y="84" font-size="9" font-weight="700" fill="var(--accent-ink)">Run B · prompt v2</text>
+  <rect x="384" y="92" width="302" height="40" rx="6" fill="var(--accent-soft)"/><text x="394" y="115" font-size="7.6" fill="var(--ink)">"Full refund within 30 days; none after."</text>
+  <rect x="384" y="140" width="92" height="18" rx="9" fill="var(--accent-soft)"/><text x="430" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">helpfulness 0.9</text>
+  <rect x="482" y="140" width="80" height="18" rx="9" fill="var(--accent-soft)"/><text x="522" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">exact 1</text>
+  <rect x="592" y="138" width="94" height="22" rx="11" fill="var(--accent)" opacity="0.5"/><text x="639" y="153" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Δ +0.3 ▲</text>
+  <text x="34" y="200" font-size="7.8" fill="var(--accent-ink)">→ decide by score: B is better, point production to v2 (Lesson 37)</text>
+</svg>
+<div class="figcap"><b>Upgrading "able to score" into "able to decide by score"</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): the same item is run twice — say a different prompt or model — with both outputs and their scores <b>side by side</b> and a <code>Δ</code> badge for the change. So "did this revision actually help" stops being a hunch and becomes <b>evidence</b>: B's helpfulness and exact are both higher, so point production to v2.</div>
 </div>
 
 <div class="codefile">

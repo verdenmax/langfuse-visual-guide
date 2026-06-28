@@ -391,6 +391,30 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>三件套 + 六步</b>：模板与评估器是<b>配置</b>（一次），提取变量/编译提示/调裁判/产出分数/回流摄取是<b>执行</b>（每条 trace 一次）。源码：<code>worker/src/features/evaluation/evalService.ts</code> 的 <code>runLLMAsJudgeEvaluation</code>（:735）串起④⑤，<code>createEvalJobs</code>（:180，下一课）负责①②③ 的调度。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 202" role="img" aria-label="LLM 裁判真实例子：把被评 trace 的 input/output 填进裁判模板，发给裁判模型；模型必须返回规整的结构化结果 score 加 reasoning，再以 source 为 EVAL 写回 scores 表。结构化输出是关键，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：LLM 当裁判，返回结构化分数</text>
+  <rect x="20" y="34" width="300" height="160" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">裁判模板（prompt）</text>
+  <text x="34" y="72" font-size="7.6" fill="var(--ink)">给「有用性」打 0–1 分：</text>
+  <rect x="34" y="80" width="272" height="40" rx="6" fill="var(--panel-2)" stroke="var(--faint)"/><text x="44" y="96" font-size="7.2" fill="var(--muted)">user 问：{trace.input}</text><text x="44" y="110" font-size="7.2" fill="var(--muted)">ai 答：{trace.output}</text>
+  <text x="34" y="138" font-size="7.6" fill="var(--ink)">只返回 JSON：</text>
+  <text x="34" y="154" font-size="7.4" font-family="monospace" fill="var(--accent)">{ &quot;score&quot;:_, &quot;reasoning&quot;:_ }</text>
+  <text x="34" y="180" font-size="7" fill="var(--faint)">把被评 trace 的字段填进去</text>
+  <line x1="322" y1="100" x2="356" y2="100" stroke="var(--purple)" stroke-width="1.6"/><polygon points="356,100 347,95 347,105" fill="var(--purple)"/>
+  <rect x="358" y="74" width="80" height="52" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="398" y="98" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">裁判 LLM</text><text x="398" y="112" text-anchor="middle" font-size="6.6" fill="var(--muted)">便宜模型即可</text>
+  <line x1="440" y1="100" x2="474" y2="100" stroke="var(--accent)" stroke-width="1.6"/><polygon points="474,100 465,95 465,105" fill="var(--accent)"/>
+  <rect x="478" y="34" width="222" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="492" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">结构化输出（必须规整）</text>
+  <text x="492" y="74" font-size="8" font-family="monospace" fill="var(--ink)">{</text>
+  <text x="504" y="90" font-size="8" font-family="monospace" fill="var(--accent-ink)">&quot;score&quot;: 0.8,</text>
+  <text x="504" y="106" font-size="8" font-family="monospace" fill="var(--ink)">&quot;reasoning&quot;:</text>
+  <text x="504" y="120" font-size="7.4" font-family="monospace" fill="var(--muted)">&quot;切题但略啰嗦…&quot;</text>
+  <text x="492" y="134" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <line x1="492" y1="144" x2="686" y2="144" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="492" y="160" font-size="8" font-family="monospace" fill="var(--blue)">→ score: source=EVAL</text>
+  <text x="492" y="176" font-size="7.4" fill="var(--muted)">规整 → 才能进 scores 表聚合</text>
+</svg>
+<div class="figcap"><b>裁判必须返回「规整的分」</b>（<b>值为示例</b>）：把被评 trace 的 <code>input/output</code> 填进一个裁判模板，发给一个（通常更便宜的）<b>裁判模型</b>，并强制它<b>只返回结构化 JSON</b>（<code>score</code> + <code>reasoning</code>）。结构化是关键——只有规整的分才能以 <code>source=EVAL</code> 写回 scores 表、被聚合比较。理由（reasoning）则让你知道「为什么是这分」。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">①</span><span class="name">模板 Eval Template</span></div><div class="ld">可复用的「评分标准」：一段带 <code>{{变量}}</code> 的 prompt（如「就有用性给 0–1 分并说明理由」）、一个<strong>输出定义</strong>（产出 NUMERIC/CATEGORICAL/BOOLEAN 哪种分、范围多少），外加用哪个 provider/model 当裁判。模板只描述「怎么评」，不绑定具体数据。</div></div>
@@ -605,6 +629,30 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
   <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">configure once (①②) and ③④⑤⑥ run automatically per matching trace—evaluation is "continuous", not "one-off"</text>
 </svg>
 <div class="figcap"><b>Three pieces + six steps</b>: template and evaluator are <b>config</b> (once); extract/compile/judge/produce/flow-back are <b>execution</b> (once per trace). Source: <code>worker/src/features/evaluation/evalService.ts</code>'s <code>runLLMAsJudgeEvaluation</code> (:735) wires ④⑤; <code>createEvalJobs</code> (:180, next lesson) schedules ①②③.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 202" role="img" aria-label="LLM-as-judge real example: the evaluated trace's input/output are filled into a judge template and sent to a judge model; the model must return a structured result score plus reasoning, written back to the scores table with source EVAL. Structured output is the key, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an LLM judge returns a structured score</text>
+  <rect x="20" y="34" width="300" height="160" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">judge template (prompt)</text>
+  <text x="34" y="72" font-size="7.6" fill="var(--ink)">Rate helpfulness 0–1:</text>
+  <rect x="34" y="80" width="272" height="40" rx="6" fill="var(--panel-2)" stroke="var(--faint)"/><text x="44" y="96" font-size="7.2" fill="var(--muted)">user: {trace.input}</text><text x="44" y="110" font-size="7.2" fill="var(--muted)">ai: {trace.output}</text>
+  <text x="34" y="138" font-size="7.6" fill="var(--ink)">Return only JSON:</text>
+  <text x="34" y="154" font-size="7.4" font-family="monospace" fill="var(--accent)">{ &quot;score&quot;:_, &quot;reasoning&quot;:_ }</text>
+  <text x="34" y="180" font-size="7" fill="var(--faint)">fill in the evaluated trace's fields</text>
+  <line x1="322" y1="100" x2="356" y2="100" stroke="var(--purple)" stroke-width="1.6"/><polygon points="356,100 347,95 347,105" fill="var(--purple)"/>
+  <rect x="358" y="74" width="80" height="52" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="398" y="98" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">judge LLM</text><text x="398" y="112" text-anchor="middle" font-size="6.6" fill="var(--muted)">a cheap model is fine</text>
+  <line x1="440" y1="100" x2="474" y2="100" stroke="var(--accent)" stroke-width="1.6"/><polygon points="474,100 465,95 465,105" fill="var(--accent)"/>
+  <rect x="478" y="34" width="222" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="492" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">structured output (must be regular)</text>
+  <text x="492" y="74" font-size="8" font-family="monospace" fill="var(--ink)">{</text>
+  <text x="504" y="90" font-size="8" font-family="monospace" fill="var(--accent-ink)">&quot;score&quot;: 0.8,</text>
+  <text x="504" y="106" font-size="8" font-family="monospace" fill="var(--ink)">&quot;reasoning&quot;:</text>
+  <text x="504" y="120" font-size="7.4" font-family="monospace" fill="var(--muted)">&quot;on-topic but verbose…&quot;</text>
+  <text x="492" y="134" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <line x1="492" y1="144" x2="686" y2="144" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="492" y="160" font-size="8" font-family="monospace" fill="var(--blue)">→ score: source=EVAL</text>
+  <text x="492" y="176" font-size="7.4" fill="var(--muted)">regular → can enter the scores table</text>
+</svg>
+<div class="figcap"><b>The judge must return a "regular score"</b> (<b>values illustrative</b>): the evaluated trace's <code>input/output</code> are filled into a judge template and sent to a (usually cheaper) <b>judge model</b>, forced to <b>return only structured JSON</b> (<code>score</code> + <code>reasoning</code>). Structure is the point — only a regular score can be written back with <code>source=EVAL</code> and aggregated. The reasoning tells you why it scored that way.</div>
 </div>
 
 <div class="layers">

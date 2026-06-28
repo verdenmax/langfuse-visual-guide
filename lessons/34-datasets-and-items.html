@@ -384,6 +384,27 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>题从哪来</b>：<code>schema.prisma:685</code> 的 DatasetItem 有 <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>，外加 <code>sourceTraceId</code>/<code>sourceObservationId</code>——后两者让你把一条真实 trace（<a class="xref" href="13-event-types-merge.html">第 13 课</a>）<b>提拔</b>成测试用例。Dataset（<code>:661</code>）还能用 <code>inputSchema</code>/<code>expectedOutputSchema</code> 约束题目格式。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="数据集真实例子：数据集 support-qa 含若干 item，每项有 input、expectedOutput、metadata 三列；其中一项标注为已被某次 run 引用。字段取自 domain/dataset-items.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个数据集和它的数据项</text>
+  <rect x="20" y="30" width="680" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="47" font-size="9.5" font-weight="700" fill="var(--accent-ink)">dataset · name=support-qa · 4 items</text>
+  <rect x="20" y="60" width="680" height="22" fill="var(--panel-2)"/>
+  <text x="40" y="75" font-size="8" font-weight="700" fill="var(--ink)">input</text>
+  <text x="250" y="75" font-size="8" font-weight="700" fill="var(--ink)">expectedOutput</text>
+  <text x="520" y="75" font-size="8" font-weight="700" fill="var(--ink)">metadata</text>
+  <rect x="20" y="82" width="680" height="26" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="99" font-size="7.6" fill="var(--ink)">退款政策是什么？</text><text x="250" y="99" font-size="7.6" fill="var(--accent-ink)">30 天内可全额退款</text><text x="520" y="99" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="694" y="99" text-anchor="end" font-size="6.8" fill="var(--accent)">← 已被某次 run 引用</text>
+  <rect x="20" y="108" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="125" font-size="7.6" fill="var(--ink)">如何重置密码？</text><text x="250" y="125" font-size="7.6" fill="var(--accent-ink)">设置→安全→重置</text><text x="520" y="125" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: account}</text>
+  <rect x="20" y="134" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="151" font-size="7.6" fill="var(--ink)">支持哪些语言？</text><text x="250" y="151" font-size="7.6" fill="var(--accent-ink)">中/英/日/德</text><text x="520" y="151" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: product}</text>
+  <rect x="20" y="160" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="177" font-size="7.6" fill="var(--ink)">发票在哪下载？</text><text x="250" y="177" font-size="7.6" fill="var(--accent-ink)">账户→账单→发票</text><text x="520" y="177" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="34" y="202" font-size="7.6" fill="var(--muted)">每个 item = 一道「题 + 参考答案」；run 拿 input 跑应用，再和 expectedOutput 比</text>
+</svg>
+<div class="figcap"><b>数据集 = 一组「题 + 参考答案」</b>（字段取自 <code>domain/dataset-items.ts</code>；<b>值为示例</b>）：每个 <code>item</code> 有 <code>input</code>（喂给应用的输入）、<code>expectedOutput</code>（参考答案）、<code>metadata</code>。一次 <b>run</b> 就是拿这些 <code>input</code> 跑一遍当前应用，把产出和 <code>expectedOutput</code> 比、评分（<a class="xref" href="35-dataset-runs.html">第 35 课</a>）。于是「改一版好不好」有了固定考卷，可复现、可对比。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">题干 + 答案</span><span class="name">input / expectedOutput</span></div><div class="ld">一个 item 的本体：<code>input</code> 喂给应用的输入、<code>expectedOutput</code> 你期望它给出的参考答案。评估时就拿应用的真实输出和 expectedOutput 对照（或交给第 29–31 课的评判）。<code>metadata</code> 放标签、难度等旁注。</div></div>
@@ -564,6 +585,27 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
   <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">"production as test source": capture a real botched case into a question, keeping regression tests close to the real distribution</text>
 </svg>
 <div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (<a class="xref" href="13-event-types-merge.html">Lesson 13</a>) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Dataset real example: dataset support-qa with several items, each with input, expectedOutput and metadata columns; one item marked as referenced by a run. Fields from domain/dataset-items.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset and its items</text>
+  <rect x="20" y="30" width="680" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="47" font-size="9.5" font-weight="700" fill="var(--accent-ink)">dataset · name=support-qa · 4 items</text>
+  <rect x="20" y="60" width="680" height="22" fill="var(--panel-2)"/>
+  <text x="40" y="75" font-size="8" font-weight="700" fill="var(--ink)">input</text>
+  <text x="250" y="75" font-size="8" font-weight="700" fill="var(--ink)">expectedOutput</text>
+  <text x="520" y="75" font-size="8" font-weight="700" fill="var(--ink)">metadata</text>
+  <rect x="20" y="82" width="680" height="26" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="99" font-size="7.6" fill="var(--ink)">what is the refund policy?</text><text x="250" y="99" font-size="7.6" fill="var(--accent-ink)">full refund within 30 days</text><text x="520" y="99" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="694" y="99" text-anchor="end" font-size="6.8" fill="var(--accent)">← referenced by a run</text>
+  <rect x="20" y="108" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="125" font-size="7.6" fill="var(--ink)">how to reset password?</text><text x="250" y="125" font-size="7.6" fill="var(--accent-ink)">Settings → Security → Reset</text><text x="520" y="125" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: account}</text>
+  <rect x="20" y="134" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="151" font-size="7.6" fill="var(--ink)">which languages?</text><text x="250" y="151" font-size="7.6" fill="var(--accent-ink)">zh/en/ja/de</text><text x="520" y="151" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: product}</text>
+  <rect x="20" y="160" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="177" font-size="7.6" fill="var(--ink)">where to download invoices?</text><text x="250" y="177" font-size="7.6" fill="var(--accent-ink)">Account → Billing → Invoices</text><text x="520" y="177" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="34" y="202" font-size="7.6" fill="var(--muted)">each item = a question + reference answer; a run feeds input to the app, then compares to expectedOutput</text>
+</svg>
+<div class="figcap"><b>A dataset = a set of "question + reference answer"</b> (fields from <code>domain/dataset-items.ts</code>; <b>values illustrative</b>): each <code>item</code> has <code>input</code> (fed to the app), <code>expectedOutput</code> (the reference), and <code>metadata</code>. A <b>run</b> feeds these <code>input</code>s through the current app and compares the output to <code>expectedOutput</code>, scoring it (<a class="xref" href="35-dataset-runs.html">Lesson 35</a>). So "is this revision better" gets a fixed exam — reproducible and comparable.</div>
 </div>
 
 <div class="layers">

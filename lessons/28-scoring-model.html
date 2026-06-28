@@ -381,6 +381,28 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>三种刻度，各有所长</b>：<b>NUMERIC</b>（数，带可选 min/max，能求平均/排序）、<b>CATEGORICAL</b>（标签↔值的固定集合，标签与值都唯一，能计数/分组）、<b>BOOLEAN</b>（固定为 <code>True=1 / False=0</code> 的特殊分类，能算通过率）。源码：<code>packages/shared/src/domain/score-configs.ts:18-80</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="三种 score 来源汇入同一张 scores 表：API（程序上报）、EVAL（LLM 裁判/代码评估）、ANNOTATION（人工标注）各自产生 score，但都落进同一张表、共享同一形状 name/value 或 stringValue/dataType/source。来源枚举取自 domain/scores.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">三种来源，一张 scores 表</text>
+  <circle cx="120" cy="64" r="40" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="120" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--blue)">API</text><text x="120" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">程序直接上报</text>
+  <circle cx="120" cy="130" r="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="120" y="126" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">EVAL</text><text x="120" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">LLM 裁判/代码评估</text>
+  <circle cx="120" cy="196" r="40" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="120" y="192" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--purple)">ANNOTATION</text><text x="120" y="206" text-anchor="middle" font-size="6.6" fill="var(--muted)">人工标注</text>
+  <line x1="160" y1="72" x2="356" y2="118" stroke="var(--blue)" stroke-width="1.3"/><polygon points="356,118 347,114 348,122" fill="var(--blue)"/>
+  <line x1="160" y1="130" x2="356" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="356,130 347,126 347,134" fill="var(--accent)"/>
+  <line x1="160" y1="188" x2="356" y2="142" stroke="var(--purple)" stroke-width="1.3"/><polygon points="356,142 347,138 348,146" fill="var(--purple)"/>
+  <rect x="360" y="56" width="340" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="374" y="76" font-size="10" font-weight="700" fill="var(--accent-ink)">scores 表（同一形状）</text>
+  <text x="374" y="96" font-size="8" font-family="monospace" fill="var(--ink)">name: &quot;helpfulness&quot;</text>
+  <text x="374" y="112" font-size="8" font-family="monospace" fill="var(--ink)">value: 0.9   <tspan fill="var(--muted)">// 或 stringValue（分类）</tspan></text>
+  <text x="374" y="128" font-size="8" font-family="monospace" fill="var(--ink)">dataType: NUMERIC | CATEGORICAL | BOOLEAN</text>
+  <text x="374" y="144" font-size="8" font-family="monospace" fill="var(--blue)">source: API | EVAL | ANNOTATION</text>
+  <text x="374" y="160" font-size="8" font-family="monospace" fill="var(--ink)">traceId / observationId · comment</text>
+  <line x1="374" y1="170" x2="686" y2="170" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="374" y="186" font-size="7.6" fill="var(--accent-ink)">→ 同名同尺度才可比：不管谁打的，都进同一空间聚合</text>
+  <text x="374" y="199" font-size="7" fill="var(--muted)">这也是 source 字段的意义：留住「这分谁打的」</text>
+</svg>
+<div class="figcap"><b>三源同表</b>（来源枚举取自 <code>domain/scores.ts</code>；<b>值为示例</b>）：score 有三种来源——<code>API</code>（程序上报）、<code>EVAL</code>（LLM 裁判或代码评估）、<code>ANNOTATION</code>（人工标注），但它们都落进<b>同一张 <code>scores</code> 表、共享同一形状</b>（<code>name / value 或 stringValue / dataType / source</code>）。于是「机器打的」「人审的」「API 报的」活在一个空间里，<b>同名同尺度即可比</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
@@ -564,6 +586,28 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
   <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a special category</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">locked: True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. contains toxic words?</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">pass-rate computable</text>
 </svg>
 <div class="figcap"><b>Three scales, each with a strength</b>: <b>NUMERIC</b> (a number with optional min/max, averageable/sortable), <b>CATEGORICAL</b> (a fixed set of label↔value, both unique, countable/groupable), <b>BOOLEAN</b> (a special category locked to <code>True=1 / False=0</code>, pass-rate computable). Source: <code>packages/shared/src/domain/score-configs.ts:18-80</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="Three score sources converge into one scores table: API (reported by code), EVAL (LLM judge / code eval), ANNOTATION (human) each produce a score, but all land in one table sharing one shape name/value or stringValue/dataType/source. Source enum from domain/scores.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Three sources, one scores table</text>
+  <circle cx="120" cy="64" r="40" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="120" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--blue)">API</text><text x="120" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">reported by code</text>
+  <circle cx="120" cy="130" r="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="120" y="126" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">EVAL</text><text x="120" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">LLM judge / code eval</text>
+  <circle cx="120" cy="196" r="40" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="120" y="192" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--purple)">ANNOTATION</text><text x="120" y="206" text-anchor="middle" font-size="6.6" fill="var(--muted)">human</text>
+  <line x1="160" y1="72" x2="356" y2="118" stroke="var(--blue)" stroke-width="1.3"/><polygon points="356,118 347,114 348,122" fill="var(--blue)"/>
+  <line x1="160" y1="130" x2="356" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="356,130 347,126 347,134" fill="var(--accent)"/>
+  <line x1="160" y1="188" x2="356" y2="142" stroke="var(--purple)" stroke-width="1.3"/><polygon points="356,142 347,138 348,146" fill="var(--purple)"/>
+  <rect x="360" y="56" width="340" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="374" y="76" font-size="10" font-weight="700" fill="var(--accent-ink)">scores table (one shape)</text>
+  <text x="374" y="96" font-size="8" font-family="monospace" fill="var(--ink)">name: &quot;helpfulness&quot;</text>
+  <text x="374" y="112" font-size="8" font-family="monospace" fill="var(--ink)">value: 0.9   <tspan fill="var(--muted)">// or stringValue (categorical)</tspan></text>
+  <text x="374" y="128" font-size="8" font-family="monospace" fill="var(--ink)">dataType: NUMERIC | CATEGORICAL | BOOLEAN</text>
+  <text x="374" y="144" font-size="8" font-family="monospace" fill="var(--blue)">source: API | EVAL | ANNOTATION</text>
+  <text x="374" y="160" font-size="8" font-family="monospace" fill="var(--ink)">traceId / observationId · comment</text>
+  <line x1="374" y1="170" x2="686" y2="170" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="374" y="186" font-size="7.6" fill="var(--accent-ink)">→ comparable only at same name+scale: whoever scored, one space</text>
+  <text x="374" y="199" font-size="7" fill="var(--muted)">that is what source is for: keep "who scored this"</text>
+</svg>
+<div class="figcap"><b>Three sources, one table</b> (source enum from <code>domain/scores.ts</code>; <b>values illustrative</b>): a score has three sources — <code>API</code> (reported by code), <code>EVAL</code> (an LLM judge or code eval), <code>ANNOTATION</code> (human) — yet all land in <b>one <code>scores</code> table sharing one shape</b> (<code>name / value or stringValue / dataType / source</code>). So "machine-scored", "human-reviewed" and "API-reported" live in one space, <b>comparable at the same name and scale</b>.</div>
 </div>
 
 <div class="codefile">

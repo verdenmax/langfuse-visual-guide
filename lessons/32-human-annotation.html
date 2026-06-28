@@ -388,6 +388,25 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>第三种来源，闭合<a class="xref" href="28-scoring-model.html">第 28 课</a>的环</b>：人工分与 API、EVAL 分写进同一张 scores 表（<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>，<code>scores.ts:4</code>），享受同一 config 校验。它最大的价值是当 <b>ground truth</b>——在同一批对象上和 AI 裁判分对照，量出裁判的可信度。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="人工标注 UI 真实例子：左边是待标注的 trace 输出，右边是 score-config 驱动的标注控件——NUMERIC 滑杆 0 到 1 或 CATEGORICAL 好/中/差，加标注人与评语；提交后写一条 source 为 ANNOTATION 的 score。控件由 score-config 决定，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：标注队列里的一张卡</text>
+  <rect x="20" y="34" width="300" height="186" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--muted)">待标注（trace 输出）</text>
+  <rect x="34" y="62" width="272" height="86" rx="7" fill="var(--panel-2)" stroke="var(--faint)"/><text x="46" y="80" font-size="7.5" fill="var(--ink)">trace · chat-support · obs answer</text><text x="46" y="100" font-size="7.5" fill="var(--ink)">「要退款的话，请在 30 天内…」</text><text x="46" y="120" font-size="7" fill="var(--faint)">model gpt-4o · latency 1.8s</text>
+  <text x="34" y="170" font-size="7.5" fill="var(--muted)">人来读、来判断 ——</text><text x="34" y="186" font-size="7.5" fill="var(--muted)">机器算不出的「价值/语气/边界」</text>
+  <rect x="334" y="34" width="366" height="186" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="348" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">score-config 决定控件</text>
+  <text x="348" y="72" font-size="8" font-weight="700" fill="var(--ink)">helpfulness (NUMERIC)</text>
+  <line x1="348" y1="80" x2="560" y2="80" stroke="var(--faint)" stroke-width="3" stroke-linecap="round"/><line x1="348" y1="80" x2="520" y2="80" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="520" cy="80" r="5" fill="var(--accent)"/><text x="572" y="83" font-size="8" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="348" y="104" font-size="8" font-weight="700" fill="var(--ink)">tone (CATEGORICAL)</text>
+  <rect x="348" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="379" y="123" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">好</text>
+  <rect x="416" y="110" width="62" height="18" rx="9" fill="var(--accent)" opacity="0.5"/><text x="447" y="123" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">中</text>
+  <rect x="484" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="515" y="123" text-anchor="middle" font-size="7.5" fill="var(--muted)">差</text>
+  <text x="348" y="148" font-size="7.5" fill="var(--muted)">标注人 alice · 评语：清楚但啰嗦</text>
+  <rect x="348" y="158" width="338" height="26" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="362" y="175" font-size="8.5" font-weight="700" fill="var(--accent-ink)">提交 → 写一条 score</text>
+  <text x="348" y="200" font-size="7.5" font-family="monospace" fill="var(--blue)">{name:&quot;helpfulness&quot;, value:0.8, source:&quot;ANNOTATION&quot;, configId}</text>
+</svg>
+<div class="figcap"><b>人来打机器打不了的分</b>（控件由 <code>score-config</code> 决定；<b>值为示例</b>）：标注队列把待评的 trace 一张张推到人面前；<code>score-config</code> 决定用什么控件——<code>NUMERIC</code> 滑杆、<code>CATEGORICAL</code> 好/中/差、或 <code>BOOLEAN</code>。提交后写一条 <code>source=ANNOTATION</code> 的 score，和 API/EVAL 的分进同一张表（<a class="xref" href="28-scoring-model.html">第 28 课</a>），于是「人审」也能和「机器评」并排比较。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">建基准</span><span class="name">ground truth</span></div><div class="ld">很多评估要有「标准答案」才谈得上准不准。人类专家在一小撮代表性样本上打的分，就是这把<strong>金标准</strong>——AI 裁判、回归测试、模型对比都拿它当参照系。</div></div>
@@ -601,6 +620,25 @@ Three focuses: the queue's <strong>data model</strong> (bound to a set of score 
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">three sources, each its strength: API flexible, EVAL scalable, ANNOTATION most authoritative</text>
 </svg>
 <div class="figcap"><b>The third source, closing <a class="xref" href="28-scoring-model.html">Lesson 28</a>'s loop</b>: human scores join API and EVAL scores in the same scores table (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>, <code>scores.ts:4</code>), validated by the same config. Their biggest value is as <b>ground truth</b>—compared against AI-judge scores on the same objects to measure the judge's trustworthiness.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Human-annotation UI real example: left is the trace output to annotate, right is a score-config-driven widget — a NUMERIC slider 0 to 1 or CATEGORICAL good/ok/bad, plus annotator and comment; submit writes a score with source ANNOTATION. The widget is driven by the score-config, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one card in the annotation queue</text>
+  <rect x="20" y="34" width="300" height="186" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--muted)">to annotate (trace output)</text>
+  <rect x="34" y="62" width="272" height="86" rx="7" fill="var(--panel-2)" stroke="var(--faint)"/><text x="46" y="80" font-size="7.5" fill="var(--ink)">trace · chat-support · obs answer</text><text x="46" y="100" font-size="7.5" fill="var(--ink)">"For a refund, within 30 days please…"</text><text x="46" y="120" font-size="7" fill="var(--faint)">model gpt-4o · latency 1.8s</text>
+  <text x="34" y="170" font-size="7.5" fill="var(--muted)">a human reads and judges —</text><text x="34" y="186" font-size="7.5" fill="var(--muted)">value/tone/boundaries a machine can't score</text>
+  <rect x="334" y="34" width="366" height="186" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="348" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">score-config drives the widget</text>
+  <text x="348" y="72" font-size="8" font-weight="700" fill="var(--ink)">helpfulness (NUMERIC)</text>
+  <line x1="348" y1="80" x2="560" y2="80" stroke="var(--faint)" stroke-width="3" stroke-linecap="round"/><line x1="348" y1="80" x2="520" y2="80" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="520" cy="80" r="5" fill="var(--accent)"/><text x="572" y="83" font-size="8" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="348" y="104" font-size="8" font-weight="700" fill="var(--ink)">tone (CATEGORICAL)</text>
+  <rect x="348" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="379" y="123" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">good</text>
+  <rect x="416" y="110" width="62" height="18" rx="9" fill="var(--accent)" opacity="0.5"/><text x="447" y="123" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">ok</text>
+  <rect x="484" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="515" y="123" text-anchor="middle" font-size="7.5" fill="var(--muted)">bad</text>
+  <text x="348" y="148" font-size="7.5" fill="var(--muted)">annotator alice · comment: clear but verbose</text>
+  <rect x="348" y="158" width="338" height="26" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="362" y="175" font-size="8.5" font-weight="700" fill="var(--accent-ink)">submit → writes a score</text>
+  <text x="348" y="200" font-size="7.5" font-family="monospace" fill="var(--blue)">{name:&quot;helpfulness&quot;, value:0.8, source:&quot;ANNOTATION&quot;, configId}</text>
+</svg>
+<div class="figcap"><b>Humans score what machines can't</b> (the widget is driven by the <code>score-config</code>; <b>values illustrative</b>): the annotation queue pushes traces to a person one card at a time; the <code>score-config</code> picks the widget — a <code>NUMERIC</code> slider, <code>CATEGORICAL</code> good/ok/bad, or <code>BOOLEAN</code>. Submitting writes a <code>source=ANNOTATION</code> score into the same table as API/EVAL scores (<a class="xref" href="28-scoring-model.html">Lesson 28</a>), so human review sits side by side with machine eval.</div>
 </div>
 
 <div class="layers">

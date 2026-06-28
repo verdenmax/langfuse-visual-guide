@@ -384,6 +384,37 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>run item = 三元链接的载体</b>：<code>schema.prisma:719</code> DatasetRuns（[datasetId, projectId, name] 唯一），<code>:739</code> DatasetRunItems 把 <code>datasetRunId</code>+<code>datasetItemId</code> 连到 <code>traceId</code>(+observationId)。一次 run 把整套题各执行一次，每次产出一条真实 trace；run item 记下「哪场×哪题→哪条 trace」。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="数据集运行热力图：行是数据集项，列是若干次 run，每个格子按该项在该次 run 的分数着色（低红中黄高绿），底部一行是每次 run 的平均分。一眼看出哪次 run 整体更好、哪个项在退步。基于 dataset-run-items 的 scores，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：数据集项 × 运行 的分数热力图</text>
+  <text x="245" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run A (v1)</text>
+  <text x="395" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run B (v2)</text>
+  <text x="545" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run C (v3)</text>
+  <text x="40" y="66" font-size="8" font-weight="700" fill="var(--muted)">item 1</text>
+  <rect x="170" y="46" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="242" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.6</text>
+  <rect x="320" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="470" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="98" font-size="8" font-weight="700" fill="var(--muted)">item 2</text>
+  <rect x="170" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="320" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="470" y="78" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="542" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.4</text>
+  <text x="40" y="130" font-size="8" font-weight="700" fill="var(--muted)">item 3</text>
+  <rect x="170" y="110" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="242" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.3</text>
+  <rect x="320" y="110" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="392" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.7</text>
+  <rect x="470" y="110" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="162" font-size="8" font-weight="700" fill="var(--muted)">item 4</text>
+  <rect x="170" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="320" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <rect x="470" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <line x1="36" y1="176" x2="684" y2="176" stroke="var(--line)"/>
+  <text x="40" y="196" font-size="8" font-weight="700" fill="var(--accent-ink)">均值 (scores_avg)</text>
+  <text x="242" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.65</text>
+  <text x="392" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.85</text>
+  <text x="542" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="360" y="220" text-anchor="middle" font-size="7.6" fill="var(--muted)">一眼看出：B 整体最稳；item 2 在 run C 退步（绿→红）</text>
+</svg>
+<div class="figcap"><b>热力图让回归一眼可见</b>（基于 <code>dataset-run-items</code> 的 scores；<b>值为示例</b>）：行是数据集项、列是历次 run，格子按分数着色（红低、黄中、绿高），底部一行是每次 run 的 <code>scores_avg</code>。不用逐条读数，<b>哪次 run 整体更好、哪个项在退步</b>一眼就看出来——这里 <code>item 2</code> 在 <code>run C</code> 从绿掉到红，就是一次需要排查的回归。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">一场考试</span><span class="name">DatasetRuns</span></div><div class="ld">一次 run 代表「用某套固定配置（模型/prompt/版本）把整个数据集跑一遍」。它有 name（如「gpt-4o-2025-baseline」）、description、metadata，归属一个 dataset。同一数据集下 run 名唯一，方便你按名字回溯每次实验。</div></div>
@@ -581,6 +612,37 @@ Once you grasp runs and run items, you connect to <a class="xref" href="30-eval-
   <text x="360" y="222" text-anchor="middle" font-size="8" fill="var(--faint)">a run item stores no answer—only the "run×item→trace" correspondence; the answer is in the trace it points to</text>
 </svg>
 <div class="figcap"><b>run item = carrier of the three-way link</b>: <code>schema.prisma:719</code> DatasetRuns (unique [datasetId, projectId, name]), <code>:739</code> DatasetRunItems links <code>datasetRunId</code>+<code>datasetItemId</code> to <code>traceId</code>(+observationId). A run executes the whole set once, each producing a real trace; the run item records "which exam × which question → which trace".</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Dataset-run heatmap: rows are dataset items, columns are runs, each cell colored by that item's score in that run (low red, mid amber, high green); the bottom row is each run's average. See at a glance which run is better overall and which item regressed. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset-item x run score heatmap</text>
+  <text x="245" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run A (v1)</text>
+  <text x="395" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run B (v2)</text>
+  <text x="545" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run C (v3)</text>
+  <text x="40" y="66" font-size="8" font-weight="700" fill="var(--muted)">item 1</text>
+  <rect x="170" y="46" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="242" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.6</text>
+  <rect x="320" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="470" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="98" font-size="8" font-weight="700" fill="var(--muted)">item 2</text>
+  <rect x="170" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="320" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="470" y="78" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="542" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.4</text>
+  <text x="40" y="130" font-size="8" font-weight="700" fill="var(--muted)">item 3</text>
+  <rect x="170" y="110" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="242" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.3</text>
+  <rect x="320" y="110" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="392" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.7</text>
+  <rect x="470" y="110" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="162" font-size="8" font-weight="700" fill="var(--muted)">item 4</text>
+  <rect x="170" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="320" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <rect x="470" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <line x1="36" y1="176" x2="684" y2="176" stroke="var(--line)"/>
+  <text x="40" y="196" font-size="8" font-weight="700" fill="var(--accent-ink)">avg (scores_avg)</text>
+  <text x="242" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.65</text>
+  <text x="392" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.85</text>
+  <text x="542" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="360" y="220" text-anchor="middle" font-size="7.6" fill="var(--muted)">at a glance: B is most consistent; item 2 regressed in run C (green→red)</text>
+</svg>
+<div class="figcap"><b>The heatmap makes regressions obvious</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): rows are items, columns are runs, cells colored by score (red low, amber mid, green high), with each run's <code>scores_avg</code> at the bottom. Without reading numbers one by one, you see <b>which run is better overall and which item regressed</b> — here <code>item 2</code> drops green→red in <code>run C</code>, a regression worth investigating.</div>
 </div>
 
 <div class="layers">

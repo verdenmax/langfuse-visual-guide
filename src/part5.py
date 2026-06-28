@@ -41,6 +41,28 @@ _ZH28.append(r"""
 </svg>
 <div class="figcap"><b>三种刻度，各有所长</b>：<b>NUMERIC</b>（数，带可选 min/max，能求平均/排序）、<b>CATEGORICAL</b>（标签↔值的固定集合，标签与值都唯一，能计数/分组）、<b>BOOLEAN</b>（固定为 <code>True=1 / False=0</code> 的特殊分类，能算通过率）。源码：<code>packages/shared/src/domain/score-configs.ts:18-80</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="三种 score 来源汇入同一张 scores 表：API（程序上报）、EVAL（LLM 裁判/代码评估）、ANNOTATION（人工标注）各自产生 score，但都落进同一张表、共享同一形状 name/value 或 stringValue/dataType/source。来源枚举取自 domain/scores.ts，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">三种来源，一张 scores 表</text>
+  <circle cx="120" cy="64" r="40" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="120" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--blue)">API</text><text x="120" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">程序直接上报</text>
+  <circle cx="120" cy="130" r="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="120" y="126" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">EVAL</text><text x="120" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">LLM 裁判/代码评估</text>
+  <circle cx="120" cy="196" r="40" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="120" y="192" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--purple)">ANNOTATION</text><text x="120" y="206" text-anchor="middle" font-size="6.6" fill="var(--muted)">人工标注</text>
+  <line x1="160" y1="72" x2="356" y2="118" stroke="var(--blue)" stroke-width="1.3"/><polygon points="356,118 347,114 348,122" fill="var(--blue)"/>
+  <line x1="160" y1="130" x2="356" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="356,130 347,126 347,134" fill="var(--accent)"/>
+  <line x1="160" y1="188" x2="356" y2="142" stroke="var(--purple)" stroke-width="1.3"/><polygon points="356,142 347,138 348,146" fill="var(--purple)"/>
+  <rect x="360" y="56" width="340" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="374" y="76" font-size="10" font-weight="700" fill="var(--accent-ink)">scores 表（同一形状）</text>
+  <text x="374" y="96" font-size="8" font-family="monospace" fill="var(--ink)">name: &quot;helpfulness&quot;</text>
+  <text x="374" y="112" font-size="8" font-family="monospace" fill="var(--ink)">value: 0.9   <tspan fill="var(--muted)">// 或 stringValue（分类）</tspan></text>
+  <text x="374" y="128" font-size="8" font-family="monospace" fill="var(--ink)">dataType: NUMERIC | CATEGORICAL | BOOLEAN</text>
+  <text x="374" y="144" font-size="8" font-family="monospace" fill="var(--blue)">source: API | EVAL | ANNOTATION</text>
+  <text x="374" y="160" font-size="8" font-family="monospace" fill="var(--ink)">traceId / observationId · comment</text>
+  <line x1="374" y1="170" x2="686" y2="170" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="374" y="186" font-size="7.6" fill="var(--accent-ink)">→ 同名同尺度才可比：不管谁打的，都进同一空间聚合</text>
+  <text x="374" y="199" font-size="7" fill="var(--muted)">这也是 source 字段的意义：留住「这分谁打的」</text>
+</svg>
+<div class="figcap"><b>三源同表</b>（来源枚举取自 <code>domain/scores.ts</code>；<b>值为示例</b>）：score 有三种来源——<code>API</code>（程序上报）、<code>EVAL</code>（LLM 裁判或代码评估）、<code>ANNOTATION</code>（人工标注），但它们都落进<b>同一张 <code>scores</code> 表、共享同一形状</b>（<code>name / value 或 stringValue / dataType / source</code>）。于是「机器打的」「人审的」「API 报的」活在一个空间里，<b>同名同尺度即可比</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
@@ -185,6 +207,28 @@ _EN28.append(r"""
   <rect x="484" y="40" width="216" height="160" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="592" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--teal)">BOOLEAN</text><text x="592" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a special category</text><text x="592" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">locked: True=1 / False=0</text><text x="592" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. contains toxic words?</text><rect x="504" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="592" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"is_toxic": False (0)</text><text x="592" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">pass-rate computable</text>
 </svg>
 <div class="figcap"><b>Three scales, each with a strength</b>: <b>NUMERIC</b> (a number with optional min/max, averageable/sortable), <b>CATEGORICAL</b> (a fixed set of label↔value, both unique, countable/groupable), <b>BOOLEAN</b> (a special category locked to <code>True=1 / False=0</code>, pass-rate computable). Source: <code>packages/shared/src/domain/score-configs.ts:18-80</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="Three score sources converge into one scores table: API (reported by code), EVAL (LLM judge / code eval), ANNOTATION (human) each produce a score, but all land in one table sharing one shape name/value or stringValue/dataType/source. Source enum from domain/scores.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Three sources, one scores table</text>
+  <circle cx="120" cy="64" r="40" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="120" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--blue)">API</text><text x="120" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">reported by code</text>
+  <circle cx="120" cy="130" r="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="120" y="126" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">EVAL</text><text x="120" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">LLM judge / code eval</text>
+  <circle cx="120" cy="196" r="40" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="120" y="192" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--purple)">ANNOTATION</text><text x="120" y="206" text-anchor="middle" font-size="6.6" fill="var(--muted)">human</text>
+  <line x1="160" y1="72" x2="356" y2="118" stroke="var(--blue)" stroke-width="1.3"/><polygon points="356,118 347,114 348,122" fill="var(--blue)"/>
+  <line x1="160" y1="130" x2="356" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="356,130 347,126 347,134" fill="var(--accent)"/>
+  <line x1="160" y1="188" x2="356" y2="142" stroke="var(--purple)" stroke-width="1.3"/><polygon points="356,142 347,138 348,146" fill="var(--purple)"/>
+  <rect x="360" y="56" width="340" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="374" y="76" font-size="10" font-weight="700" fill="var(--accent-ink)">scores table (one shape)</text>
+  <text x="374" y="96" font-size="8" font-family="monospace" fill="var(--ink)">name: &quot;helpfulness&quot;</text>
+  <text x="374" y="112" font-size="8" font-family="monospace" fill="var(--ink)">value: 0.9   <tspan fill="var(--muted)">// or stringValue (categorical)</tspan></text>
+  <text x="374" y="128" font-size="8" font-family="monospace" fill="var(--ink)">dataType: NUMERIC | CATEGORICAL | BOOLEAN</text>
+  <text x="374" y="144" font-size="8" font-family="monospace" fill="var(--blue)">source: API | EVAL | ANNOTATION</text>
+  <text x="374" y="160" font-size="8" font-family="monospace" fill="var(--ink)">traceId / observationId · comment</text>
+  <line x1="374" y1="170" x2="686" y2="170" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="374" y="186" font-size="7.6" fill="var(--accent-ink)">→ comparable only at same name+scale: whoever scored, one space</text>
+  <text x="374" y="199" font-size="7" fill="var(--muted)">that is what source is for: keep "who scored this"</text>
+</svg>
+<div class="figcap"><b>Three sources, one table</b> (source enum from <code>domain/scores.ts</code>; <b>values illustrative</b>): a score has three sources — <code>API</code> (reported by code), <code>EVAL</code> (an LLM judge or code eval), <code>ANNOTATION</code> (human) — yet all land in <b>one <code>scores</code> table sharing one shape</b> (<code>name / value or stringValue / dataType / source</code>). So "machine-scored", "human-reviewed" and "API-reported" live in one space, <b>comparable at the same name and scale</b>.</div>
 </div>
 
 <div class="codefile">
@@ -347,6 +391,30 @@ _ZH29.append(r"""
   <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">配置一次（①②），就对每条命中的 trace 自动跑③④⑤⑥——评估是「持续的」，不是「一次性的」</text>
 </svg>
 <div class="figcap"><b>三件套 + 六步</b>：模板与评估器是<b>配置</b>（一次），提取变量/编译提示/调裁判/产出分数/回流摄取是<b>执行</b>（每条 trace 一次）。源码：<code>worker/src/features/evaluation/evalService.ts</code> 的 <code>runLLMAsJudgeEvaluation</code>（:735）串起④⑤，<code>createEvalJobs</code>（:180，下一课）负责①②③ 的调度。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 202" role="img" aria-label="LLM 裁判真实例子：把被评 trace 的 input/output 填进裁判模板，发给裁判模型；模型必须返回规整的结构化结果 score 加 reasoning，再以 source 为 EVAL 写回 scores 表。结构化输出是关键，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：LLM 当裁判，返回结构化分数</text>
+  <rect x="20" y="34" width="300" height="160" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">裁判模板（prompt）</text>
+  <text x="34" y="72" font-size="7.6" fill="var(--ink)">给「有用性」打 0–1 分：</text>
+  <rect x="34" y="80" width="272" height="40" rx="6" fill="var(--panel-2)" stroke="var(--faint)"/><text x="44" y="96" font-size="7.2" fill="var(--muted)">user 问：{trace.input}</text><text x="44" y="110" font-size="7.2" fill="var(--muted)">ai 答：{trace.output}</text>
+  <text x="34" y="138" font-size="7.6" fill="var(--ink)">只返回 JSON：</text>
+  <text x="34" y="154" font-size="7.4" font-family="monospace" fill="var(--accent)">{ &quot;score&quot;:_, &quot;reasoning&quot;:_ }</text>
+  <text x="34" y="180" font-size="7" fill="var(--faint)">把被评 trace 的字段填进去</text>
+  <line x1="322" y1="100" x2="356" y2="100" stroke="var(--purple)" stroke-width="1.6"/><polygon points="356,100 347,95 347,105" fill="var(--purple)"/>
+  <rect x="358" y="74" width="80" height="52" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="398" y="98" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">裁判 LLM</text><text x="398" y="112" text-anchor="middle" font-size="6.6" fill="var(--muted)">便宜模型即可</text>
+  <line x1="440" y1="100" x2="474" y2="100" stroke="var(--accent)" stroke-width="1.6"/><polygon points="474,100 465,95 465,105" fill="var(--accent)"/>
+  <rect x="478" y="34" width="222" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="492" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">结构化输出（必须规整）</text>
+  <text x="492" y="74" font-size="8" font-family="monospace" fill="var(--ink)">{</text>
+  <text x="504" y="90" font-size="8" font-family="monospace" fill="var(--accent-ink)">&quot;score&quot;: 0.8,</text>
+  <text x="504" y="106" font-size="8" font-family="monospace" fill="var(--ink)">&quot;reasoning&quot;:</text>
+  <text x="504" y="120" font-size="7.4" font-family="monospace" fill="var(--muted)">&quot;切题但略啰嗦…&quot;</text>
+  <text x="492" y="134" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <line x1="492" y1="144" x2="686" y2="144" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="492" y="160" font-size="8" font-family="monospace" fill="var(--blue)">→ score: source=EVAL</text>
+  <text x="492" y="176" font-size="7.4" fill="var(--muted)">规整 → 才能进 scores 表聚合</text>
+</svg>
+<div class="figcap"><b>裁判必须返回「规整的分」</b>（<b>值为示例</b>）：把被评 trace 的 <code>input/output</code> 填进一个裁判模板，发给一个（通常更便宜的）<b>裁判模型</b>，并强制它<b>只返回结构化 JSON</b>（<code>score</code> + <code>reasoning</code>）。结构化是关键——只有规整的分才能以 <code>source=EVAL</code> 写回 scores 表、被聚合比较。理由（reasoning）则让你知道「为什么是这分」。</div>
 </div>
 
 <div class="layers">
@@ -524,6 +592,30 @@ _EN29.append(r"""
   <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">configure once (①②) and ③④⑤⑥ run automatically per matching trace—evaluation is "continuous", not "one-off"</text>
 </svg>
 <div class="figcap"><b>Three pieces + six steps</b>: template and evaluator are <b>config</b> (once); extract/compile/judge/produce/flow-back are <b>execution</b> (once per trace). Source: <code>worker/src/features/evaluation/evalService.ts</code>'s <code>runLLMAsJudgeEvaluation</code> (:735) wires ④⑤; <code>createEvalJobs</code> (:180, next lesson) schedules ①②③.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 202" role="img" aria-label="LLM-as-judge real example: the evaluated trace's input/output are filled into a judge template and sent to a judge model; the model must return a structured result score plus reasoning, written back to the scores table with source EVAL. Structured output is the key, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an LLM judge returns a structured score</text>
+  <rect x="20" y="34" width="300" height="160" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">judge template (prompt)</text>
+  <text x="34" y="72" font-size="7.6" fill="var(--ink)">Rate helpfulness 0–1:</text>
+  <rect x="34" y="80" width="272" height="40" rx="6" fill="var(--panel-2)" stroke="var(--faint)"/><text x="44" y="96" font-size="7.2" fill="var(--muted)">user: {trace.input}</text><text x="44" y="110" font-size="7.2" fill="var(--muted)">ai: {trace.output}</text>
+  <text x="34" y="138" font-size="7.6" fill="var(--ink)">Return only JSON:</text>
+  <text x="34" y="154" font-size="7.4" font-family="monospace" fill="var(--accent)">{ &quot;score&quot;:_, &quot;reasoning&quot;:_ }</text>
+  <text x="34" y="180" font-size="7" fill="var(--faint)">fill in the evaluated trace's fields</text>
+  <line x1="322" y1="100" x2="356" y2="100" stroke="var(--purple)" stroke-width="1.6"/><polygon points="356,100 347,95 347,105" fill="var(--purple)"/>
+  <rect x="358" y="74" width="80" height="52" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="398" y="98" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">judge LLM</text><text x="398" y="112" text-anchor="middle" font-size="6.6" fill="var(--muted)">a cheap model is fine</text>
+  <line x1="440" y1="100" x2="474" y2="100" stroke="var(--accent)" stroke-width="1.6"/><polygon points="474,100 465,95 465,105" fill="var(--accent)"/>
+  <rect x="478" y="34" width="222" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="492" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">structured output (must be regular)</text>
+  <text x="492" y="74" font-size="8" font-family="monospace" fill="var(--ink)">{</text>
+  <text x="504" y="90" font-size="8" font-family="monospace" fill="var(--accent-ink)">&quot;score&quot;: 0.8,</text>
+  <text x="504" y="106" font-size="8" font-family="monospace" fill="var(--ink)">&quot;reasoning&quot;:</text>
+  <text x="504" y="120" font-size="7.4" font-family="monospace" fill="var(--muted)">&quot;on-topic but verbose…&quot;</text>
+  <text x="492" y="134" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <line x1="492" y1="144" x2="686" y2="144" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="492" y="160" font-size="8" font-family="monospace" fill="var(--blue)">→ score: source=EVAL</text>
+  <text x="492" y="176" font-size="7.4" fill="var(--muted)">regular → can enter the scores table</text>
+</svg>
+<div class="figcap"><b>The judge must return a "regular score"</b> (<b>values illustrative</b>): the evaluated trace's <code>input/output</code> are filled into a judge template and sent to a (usually cheaper) <b>judge model</b>, forced to <b>return only structured JSON</b> (<code>score</code> + <code>reasoning</code>). Structure is the point — only a regular score can be written back with <code>source=EVAL</code> and aggregated. The reasoning tells you why it scored that way.</div>
 </div>
 
 <div class="layers">
@@ -706,6 +798,22 @@ _ZH30.append(r"""
   <text x="360" y="242" text-anchor="middle" font-size="8" fill="var(--faint)">两级分离 = 把「调度」与「干活」解耦，各自独立扩容、重试、限流</text>
 </svg>
 <div class="figcap"><b>创建与执行分离</b>：<code>worker/src/queues/evalQueue.ts</code> 里，<code>TraceUpsert</code>（:25）/<code>CreateEvalQueue</code>（:98）触发 <code>createEvalJobs</code>；它产出 PENDING 工单并入 <code>EvaluationExecution</code> 队列（:126 消费）。大项目还可分流到 <code>EvaluationExecutionSecondaryQueue</code>（:151）隔离。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 218" role="img" aria-label="eval 执行状态机：JobExecution 从 PENDING 入队开始，worker 处理后转 COMPLETED（写回 score）或 ERROR（失败）；DELAYED 表示延后稍后再回 PENDING；CANCELLED 表示配置被删/停用。状态枚举取自 prisma 的 JobExecutionStatus，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 eval 任务的状态机</text>
+  <text x="40" y="48" font-size="7.5" fill="var(--muted)">入队 →</text>
+  <ellipse cx="160" cy="110" rx="58" ry="30" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="160" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">PENDING</text><text x="160" y="122" text-anchor="middle" font-size="6.5" fill="var(--muted)">在队列里等</text>
+  <ellipse cx="430" cy="58" rx="62" ry="28" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="430" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">COMPLETED</text><text x="430" y="70" text-anchor="middle" font-size="6.5" fill="var(--muted)">score 已写回</text>
+  <ellipse cx="430" cy="138" rx="58" ry="28" fill="var(--red-soft)" stroke="var(--red)" stroke-width="2"/><text x="430" y="136" text-anchor="middle" font-size="10" font-weight="700" fill="var(--red)">ERROR</text><text x="430" y="150" text-anchor="middle" font-size="6.5" fill="var(--muted)">裁判/解析失败</text>
+  <ellipse cx="160" cy="186" rx="56" ry="24" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="160" y="184" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--amber)">DELAYED</text><text x="160" y="197" text-anchor="middle" font-size="6.5" fill="var(--muted)">延后，稍后回 PENDING</text>
+  <ellipse cx="610" cy="98" rx="56" ry="26" fill="var(--panel-2)" stroke="var(--faint)" stroke-width="1.6"/><text x="610" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="610" y="109" text-anchor="middle" font-size="6.5" fill="var(--muted)">配置被删/停用</text>
+  <line x1="216" y1="98" x2="370" y2="66" stroke="var(--accent)" stroke-width="1.5"/><polygon points="370,66 360,64 363,72" fill="var(--accent)"/><text x="290" y="74" text-anchor="middle" font-size="7" fill="var(--accent-ink)">worker 处理 ✓</text>
+  <line x1="216" y1="120" x2="372" y2="134" stroke="var(--red)" stroke-width="1.5"/><polygon points="372,134 362,130 362,138" fill="var(--red)"/><text x="290" y="132" text-anchor="middle" font-size="7" fill="var(--red)">worker 处理 ✗</text>
+  <path d="M120 138 q-26 40 28 46 q40 4 12 -34" fill="none" stroke="var(--amber)" stroke-width="1.4"/><polygon points="160,150 154,158 164,158" fill="var(--amber)"/>
+  <line x1="216" y1="104" x2="556" y2="98" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="556,98 547,94 547,102" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>任务的一生就是几个状态</b>（状态枚举取自 prisma 的 <code>JobExecutionStatus</code>；<b>值为示例</b>）：一个 <code>JobExecution</code> 从 <code>PENDING</code>（入队）开始，worker 处理后落到 <code>COMPLETED</code>（score 写回）或 <code>ERROR</code>（失败）；<code>DELAYED</code> 是延后稍后再回 <code>PENDING</code>，<code>CANCELLED</code> 是配置被删/停用。把「评估有没有跑、跑成没成」变成可查询、可重试的明确状态。</div>
 </div>
 
 <div class="layers">
@@ -900,6 +1008,22 @@ _EN30.append(r"""
 </svg>
 <div class="figcap"><b>Creation and execution split</b>: in <code>worker/src/queues/evalQueue.ts</code>, <code>TraceUpsert</code> (:25)/<code>CreateEvalQueue</code> (:98) trigger <code>createEvalJobs</code>; it emits PENDING tickets into the <code>EvaluationExecution</code> queue (consumed at :126). Large projects can also offload to <code>EvaluationExecutionSecondaryQueue</code> (:151) for isolation.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 218" role="img" aria-label="Eval execution state machine: a JobExecution starts PENDING (enqueued); after the worker processes it, it goes COMPLETED (score written) or ERROR (failed); DELAYED means scheduled later and returns to PENDING; CANCELLED means the config was removed/disabled. Status enum from prisma JobExecutionStatus, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an eval job's state machine</text>
+  <text x="40" y="48" font-size="7.5" fill="var(--muted)">enqueue →</text>
+  <ellipse cx="160" cy="110" rx="58" ry="30" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="160" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">PENDING</text><text x="160" y="122" text-anchor="middle" font-size="6.5" fill="var(--muted)">waiting in queue</text>
+  <ellipse cx="430" cy="58" rx="62" ry="28" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="430" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">COMPLETED</text><text x="430" y="70" text-anchor="middle" font-size="6.5" fill="var(--muted)">score written</text>
+  <ellipse cx="430" cy="138" rx="58" ry="28" fill="var(--red-soft)" stroke="var(--red)" stroke-width="2"/><text x="430" y="136" text-anchor="middle" font-size="10" font-weight="700" fill="var(--red)">ERROR</text><text x="430" y="150" text-anchor="middle" font-size="6.5" fill="var(--muted)">judge/parse failed</text>
+  <ellipse cx="160" cy="186" rx="56" ry="24" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="160" y="184" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--amber)">DELAYED</text><text x="160" y="197" text-anchor="middle" font-size="6.5" fill="var(--muted)">scheduled, back to PENDING</text>
+  <ellipse cx="610" cy="98" rx="56" ry="26" fill="var(--panel-2)" stroke="var(--faint)" stroke-width="1.6"/><text x="610" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="610" y="109" text-anchor="middle" font-size="6.5" fill="var(--muted)">config removed/disabled</text>
+  <line x1="216" y1="98" x2="370" y2="66" stroke="var(--accent)" stroke-width="1.5"/><polygon points="370,66 360,64 363,72" fill="var(--accent)"/><text x="290" y="74" text-anchor="middle" font-size="7" fill="var(--accent-ink)">worker processes ✓</text>
+  <line x1="216" y1="120" x2="372" y2="134" stroke="var(--red)" stroke-width="1.5"/><polygon points="372,134 362,130 362,138" fill="var(--red)"/><text x="290" y="132" text-anchor="middle" font-size="7" fill="var(--red)">worker processes ✗</text>
+  <path d="M120 138 q-26 40 28 46 q40 4 12 -34" fill="none" stroke="var(--amber)" stroke-width="1.4"/><polygon points="160,150 154,158 164,158" fill="var(--amber)"/>
+  <line x1="216" y1="104" x2="556" y2="98" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="556,98 547,94 547,102" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>A job's life is a few states</b> (status enum from prisma <code>JobExecutionStatus</code>; <b>values illustrative</b>): a <code>JobExecution</code> starts <code>PENDING</code> (enqueued); after the worker runs it lands on <code>COMPLETED</code> (score written) or <code>ERROR</code> (failed); <code>DELAYED</code> reschedules back to <code>PENDING</code>, and <code>CANCELLED</code> means the config was removed/disabled. It turns "did the eval run, did it succeed" into an explicit, queryable, retryable state.</div>
+</div>
 
 <div class="layers">
   <div class="layer l-part"><div class="lh"><span class="badge">fan-out</span><span class="name">pull all active evaluators</span></div><div class="ld"><code>createEvalJobs</code> first queries all JobConfigurations in this project with <code>jobType=EVAL</code>, <code>status=ACTIVE</code>, not <code>blockedAt</code>. One trace may hit several evaluators at once (e.g. "helpfulness" + "toxicity"), so it's a one-to-many fan-out. If there are none, it <strong>caches "no evaluators for this project"</strong> to skip the empty query on every future trace.</div></div>
@@ -1093,6 +1217,27 @@ _ZH31.append(r"""
 </svg>
 <div class="figcap"><b>互补，不是替代</b>：能用规则说清的（格式、长度、关键词、精确匹配）交给代码 eval——确定、快、免费；说不清、要语义理解的（有用性、语气、相关性）交给 LLM-as-judge。两者都接第 30 课调度流水线，只是「执行」步不同。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="代码评估真实例子：一段确定性函数（如精确匹配或 JSON 合法性检查）读取 output 与 expected，返回 0 或 1，写成一条 source 为 EVAL 的 score。无需 LLM、可复现、快且免费。值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个代码评估函数产出 score</text>
+  <rect x="20" y="34" width="386" height="160" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--purple)">def</text><text x="64" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">exact_match(output, expected):</text>
+  <text x="50" y="72" font-size="8.5" font-family="monospace" fill="var(--code-ink)">ok = output.strip() == expected.strip()</text>
+  <text x="50" y="90" font-size="8.5" font-family="monospace" fill="var(--purple)">return</text><text x="104" y="90" font-size="8.5" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="66" y="108" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;name&quot;: &quot;exact_match&quot;,</text>
+  <text x="66" y="124" font-size="8.5" font-family="monospace" fill="var(--accent)">&quot;value&quot;: 1 if ok else 0,</text>
+  <text x="66" y="140" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;dataType&quot;: &quot;NUMERIC&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="34" y="182" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># 也可：JSON 合法？正则匹配？长度阈值？</text>
+  <line x1="408" y1="114" x2="446" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="446,114 437,109 437,119" fill="var(--accent)"/>
+  <rect x="450" y="70" width="250" height="92" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="464" y="90" font-size="9" font-weight="700" fill="var(--accent-ink)">写回一条 score</text>
+  <text x="464" y="110" font-size="8" font-family="monospace" fill="var(--ink)">name=exact_match</text>
+  <text x="464" y="126" font-size="8" font-family="monospace" fill="var(--ink)">value=1 · dataType=NUMERIC</text>
+  <text x="464" y="142" font-size="8" font-family="monospace" fill="var(--blue)">source=EVAL</text>
+  <text x="464" y="186" font-size="7.5" fill="var(--muted)">确定性 · 可复现 · 免费 · 毫秒级</text>
+</svg>
+<div class="figcap"><b>不是所有评估都要 LLM</b>（<b>值为示例</b>）：很多判断是<b>确定性</b>的——精确匹配、JSON 是否合法、是否含某关键词、长度是否超限……一段普通代码就能算，返回 <code>{{name, value, dataType}}</code>，以 <code>source=EVAL</code> 写回。相比 LLM 裁判（第 29 课），代码 eval <b>可复现、免费、毫秒级</b>，适合有客观标准的题。</div>
+</div>
 
 <table class="t">
   <thead><tr><th>维度</th><th>LLM-as-judge（第 29 课）</th><th>代码 eval（本课）</th></tr></thead>
@@ -1272,6 +1417,27 @@ _EN31.append(r"""
   <line x1="540" y1="158" x2="420" y2="176" stroke="var(--faint)" stroke-width="1.3"/><polygon points="420,176 429,173 426,181" fill="var(--faint)"/>
 </svg>
 <div class="figcap"><b>Complementary, not substitutes</b>: what rules can express (format, length, keywords, exact match) goes to code eval—deterministic, fast, free; what needs semantic understanding (helpfulness, tone, relevance) goes to LLM-as-judge. Both attach to Lesson 30's scheduling pipeline, differing only at the "execution" step.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Code-based eval real example: a deterministic function (e.g. exact match or JSON-valid check) reads output and expected, returns 0 or 1, written as a score with source EVAL. No LLM, reproducible, fast and free. Values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a code eval function produces a score</text>
+  <rect x="20" y="34" width="386" height="160" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--purple)">def</text><text x="64" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">exact_match(output, expected):</text>
+  <text x="50" y="72" font-size="8.5" font-family="monospace" fill="var(--code-ink)">ok = output.strip() == expected.strip()</text>
+  <text x="50" y="90" font-size="8.5" font-family="monospace" fill="var(--purple)">return</text><text x="104" y="90" font-size="8.5" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="66" y="108" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;name&quot;: &quot;exact_match&quot;,</text>
+  <text x="66" y="124" font-size="8.5" font-family="monospace" fill="var(--accent)">&quot;value&quot;: 1 if ok else 0,</text>
+  <text x="66" y="140" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;dataType&quot;: &quot;NUMERIC&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="34" y="182" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># or: valid JSON? regex match? length threshold?</text>
+  <line x1="408" y1="114" x2="446" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="446,114 437,109 437,119" fill="var(--accent)"/>
+  <rect x="450" y="70" width="250" height="92" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="464" y="90" font-size="9" font-weight="700" fill="var(--accent-ink)">writes one score</text>
+  <text x="464" y="110" font-size="8" font-family="monospace" fill="var(--ink)">name=exact_match</text>
+  <text x="464" y="126" font-size="8" font-family="monospace" fill="var(--ink)">value=1 · dataType=NUMERIC</text>
+  <text x="464" y="142" font-size="8" font-family="monospace" fill="var(--blue)">source=EVAL</text>
+  <text x="464" y="186" font-size="7.5" fill="var(--muted)">deterministic · reproducible · free · milliseconds</text>
+</svg>
+<div class="figcap"><b>Not every eval needs an LLM</b> (<b>values illustrative</b>): many judgments are <b>deterministic</b> — exact match, valid JSON, contains a keyword, within a length limit… plain code computes them, returns <code>{{name, value, dataType}}</code>, written back with <code>source=EVAL</code>. Versus an LLM judge (Lesson 29), code eval is <b>reproducible, free and millisecond-fast</b> — ideal where there's an objective criterion.</div>
 </div>
 
 <table class="t">
@@ -1459,6 +1625,25 @@ _ZH32.append(r"""
 </svg>
 <div class="figcap"><b>第三种来源，闭合第 28 课的环</b>：人工分与 API、EVAL 分写进同一张 scores 表（<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>，<code>scores.ts:4</code>），享受同一 config 校验。它最大的价值是当 <b>ground truth</b>——在同一批对象上和 AI 裁判分对照，量出裁判的可信度。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="人工标注 UI 真实例子：左边是待标注的 trace 输出，右边是 score-config 驱动的标注控件——NUMERIC 滑杆 0 到 1 或 CATEGORICAL 好/中/差，加标注人与评语；提交后写一条 source 为 ANNOTATION 的 score。控件由 score-config 决定，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：标注队列里的一张卡</text>
+  <rect x="20" y="34" width="300" height="186" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--muted)">待标注（trace 输出）</text>
+  <rect x="34" y="62" width="272" height="86" rx="7" fill="var(--panel-2)" stroke="var(--faint)"/><text x="46" y="80" font-size="7.5" fill="var(--ink)">trace · chat-support · obs answer</text><text x="46" y="100" font-size="7.5" fill="var(--ink)">「要退款的话，请在 30 天内…」</text><text x="46" y="120" font-size="7" fill="var(--faint)">model gpt-4o · latency 1.8s</text>
+  <text x="34" y="170" font-size="7.5" fill="var(--muted)">人来读、来判断 ——</text><text x="34" y="186" font-size="7.5" fill="var(--muted)">机器算不出的「价值/语气/边界」</text>
+  <rect x="334" y="34" width="366" height="186" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="348" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">score-config 决定控件</text>
+  <text x="348" y="72" font-size="8" font-weight="700" fill="var(--ink)">helpfulness (NUMERIC)</text>
+  <line x1="348" y1="80" x2="560" y2="80" stroke="var(--faint)" stroke-width="3" stroke-linecap="round"/><line x1="348" y1="80" x2="520" y2="80" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="520" cy="80" r="5" fill="var(--accent)"/><text x="572" y="83" font-size="8" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="348" y="104" font-size="8" font-weight="700" fill="var(--ink)">tone (CATEGORICAL)</text>
+  <rect x="348" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="379" y="123" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">好</text>
+  <rect x="416" y="110" width="62" height="18" rx="9" fill="var(--accent)" opacity="0.5"/><text x="447" y="123" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">中</text>
+  <rect x="484" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="515" y="123" text-anchor="middle" font-size="7.5" fill="var(--muted)">差</text>
+  <text x="348" y="148" font-size="7.5" fill="var(--muted)">标注人 alice · 评语：清楚但啰嗦</text>
+  <rect x="348" y="158" width="338" height="26" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="362" y="175" font-size="8.5" font-weight="700" fill="var(--accent-ink)">提交 → 写一条 score</text>
+  <text x="348" y="200" font-size="7.5" font-family="monospace" fill="var(--blue)">{name:&quot;helpfulness&quot;, value:0.8, source:&quot;ANNOTATION&quot;, configId}</text>
+</svg>
+<div class="figcap"><b>人来打机器打不了的分</b>（控件由 <code>score-config</code> 决定；<b>值为示例</b>）：标注队列把待评的 trace 一张张推到人面前；<code>score-config</code> 决定用什么控件——<code>NUMERIC</code> 滑杆、<code>CATEGORICAL</code> 好/中/差、或 <code>BOOLEAN</code>。提交后写一条 <code>source=ANNOTATION</code> 的 score，和 API/EVAL 的分进同一张表（第 28 课），于是「人审」也能和「机器评」并排比较。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">建基准</span><span class="name">ground truth</span></div><div class="ld">很多评估要有「标准答案」才谈得上准不准。人类专家在一小撮代表性样本上打的分，就是这把<strong>金标准</strong>——AI 裁判、回归测试、模型对比都拿它当参照系。</div></div>
@@ -1636,6 +1821,25 @@ _EN32.append(r"""
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">three sources, each its strength: API flexible, EVAL scalable, ANNOTATION most authoritative</text>
 </svg>
 <div class="figcap"><b>The third source, closing Lesson 28's loop</b>: human scores join API and EVAL scores in the same scores table (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>, <code>scores.ts:4</code>), validated by the same config. Their biggest value is as <b>ground truth</b>—compared against AI-judge scores on the same objects to measure the judge's trustworthiness.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Human-annotation UI real example: left is the trace output to annotate, right is a score-config-driven widget — a NUMERIC slider 0 to 1 or CATEGORICAL good/ok/bad, plus annotator and comment; submit writes a score with source ANNOTATION. The widget is driven by the score-config, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one card in the annotation queue</text>
+  <rect x="20" y="34" width="300" height="186" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--muted)">to annotate (trace output)</text>
+  <rect x="34" y="62" width="272" height="86" rx="7" fill="var(--panel-2)" stroke="var(--faint)"/><text x="46" y="80" font-size="7.5" fill="var(--ink)">trace · chat-support · obs answer</text><text x="46" y="100" font-size="7.5" fill="var(--ink)">"For a refund, within 30 days please…"</text><text x="46" y="120" font-size="7" fill="var(--faint)">model gpt-4o · latency 1.8s</text>
+  <text x="34" y="170" font-size="7.5" fill="var(--muted)">a human reads and judges —</text><text x="34" y="186" font-size="7.5" fill="var(--muted)">value/tone/boundaries a machine can't score</text>
+  <rect x="334" y="34" width="366" height="186" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="348" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">score-config drives the widget</text>
+  <text x="348" y="72" font-size="8" font-weight="700" fill="var(--ink)">helpfulness (NUMERIC)</text>
+  <line x1="348" y1="80" x2="560" y2="80" stroke="var(--faint)" stroke-width="3" stroke-linecap="round"/><line x1="348" y1="80" x2="520" y2="80" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="520" cy="80" r="5" fill="var(--accent)"/><text x="572" y="83" font-size="8" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="348" y="104" font-size="8" font-weight="700" fill="var(--ink)">tone (CATEGORICAL)</text>
+  <rect x="348" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="379" y="123" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">good</text>
+  <rect x="416" y="110" width="62" height="18" rx="9" fill="var(--accent)" opacity="0.5"/><text x="447" y="123" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">ok</text>
+  <rect x="484" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="515" y="123" text-anchor="middle" font-size="7.5" fill="var(--muted)">bad</text>
+  <text x="348" y="148" font-size="7.5" fill="var(--muted)">annotator alice · comment: clear but verbose</text>
+  <rect x="348" y="158" width="338" height="26" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="362" y="175" font-size="8.5" font-weight="700" fill="var(--accent-ink)">submit → writes a score</text>
+  <text x="348" y="200" font-size="7.5" font-family="monospace" fill="var(--blue)">{name:&quot;helpfulness&quot;, value:0.8, source:&quot;ANNOTATION&quot;, configId}</text>
+</svg>
+<div class="figcap"><b>Humans score what machines can't</b> (the widget is driven by the <code>score-config</code>; <b>values illustrative</b>): the annotation queue pushes traces to a person one card at a time; the <code>score-config</code> picks the widget — a <code>NUMERIC</code> slider, <code>CATEGORICAL</code> good/ok/bad, or <code>BOOLEAN</code>. Submitting writes a <code>source=ANNOTATION</code> score into the same table as API/EVAL scores (Lesson 28), so human review sits side by side with machine eval.</div>
 </div>
 
 <div class="layers">
@@ -1820,6 +2024,23 @@ _ZH33.append(r"""
 </svg>
 <div class="figcap"><b>monitor = 自带调度与阈值的仪表盘组件</b>。<code>schema.prisma:1752</code> 的 Monitor 把 <code>view/filters/metric</code>（注释原文 <i>mirrors DashboardWidget</i>）和 <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code> 装在一起。worker 端 <code>monitorQueue.ts</code> 的 <code>MonitorProcessor.process</code> 跑②③④，越线才发⑤。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 216" role="img" aria-label="监控告警仪表盘：监控器在滚动窗口上聚合某指标（如每小时错误率），半圆仪表的指针落在红区即越过阈值，触发一条告警（webhook/Slack/GitHub dispatch）。阈值与窗口来自监控配置，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：聚合指标越过阈值就告警</text>
+  <path d="M70 170 A120 120 0 0 1 310 170" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M214 56 A120 120 0 0 1 310 170" fill="none" stroke="var(--amber)" stroke-width="14"/>
+  <path d="M270 92 A120 120 0 0 1 310 170" fill="none" stroke="var(--red)" stroke-width="14" stroke-linecap="round"/>
+  <line x1="190" y1="170" x2="286" y2="104" stroke="var(--ink)" stroke-width="2.4"/><circle cx="190" cy="170" r="6" fill="var(--ink)"/>
+  <line x1="262" y1="84" x2="278" y2="72" stroke="var(--red)" stroke-width="2" stroke-dasharray="2 2"/><text x="300" y="70" font-size="7.5" fill="var(--red)">阈值 5%</text>
+  <text x="190" y="192" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">指标：每小时错误率</text>
+  <text x="190" y="206" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">当前 7.2% · 已越线</text>
+  <text x="78" y="186" font-size="7" fill="var(--accent)">0%</text><text x="300" y="186" font-size="7" fill="var(--red)">10%+</text>
+  <line x1="320" y1="110" x2="372" y2="110" stroke="var(--red)" stroke-width="1.6"/><polygon points="372,110 363,105 363,115" fill="var(--red)"/>
+  <rect x="376" y="60" width="320" height="60" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="392" y="84" font-size="11" font-weight="700" fill="var(--red)">🔔 告警触发</text><text x="392" y="104" font-size="8" fill="var(--ink)">→ webhook（第44课）/ Slack（第45课）/ GitHub dispatch</text>
+  <rect x="376" y="130" width="320" height="58" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="392" y="150" font-size="8.5" font-weight="700" fill="var(--accent-ink)">监控器怎么工作</text><text x="392" y="166" font-size="7.5" fill="var(--ink)">在 trace/score 流上按窗口聚合</text><text x="392" y="180" font-size="7.5" fill="var(--muted)">越过你设的阈值 → 触发 Action</text>
+</svg>
+<div class="figcap"><b>盯聚合，越线才喊人</b>（阈值与窗口来自监控配置；<b>值为示例</b>）：监控器不盯单条 score，而是在<b>滚动窗口</b>上算某个聚合指标（错误率、平均成本、平均分……），<b>越过你设的阈值</b>才触发一条告警，去 webhook/Slack/GitHub dispatch。把「事后翻日志」变成「越线主动找你」——这正是第 5 部分「能评分」升级成「能盯着分做决策」的一环。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">看什么</span><span class="name">view / filters / metric</span></div><div class="ld">和仪表盘组件同款的查询三件套：<code>view</code> 决定盯 OBSERVATIONS 还是 SCORES_NUMERIC / SCORES_CATEGORICAL（<strong>能直接监控 Part 5 算出的分数</strong>），<code>filters</code> 圈定范围，<code>metric</code> 定义算什么（如平均分、错误率、P95 延迟）。一个 monitor 就是「一条仪表盘曲线 + 一条警戒线」。</div></div>
@@ -1984,6 +2205,23 @@ _EN33.append(r"""
   <text x="360" y="229" text-anchor="middle" font-size="8" fill="var(--faint)">one query mechanism, two postures: pull (dashboard) and push (monitor)</text>
 </svg>
 <div class="figcap"><b>monitor = a dashboard widget with built-in scheduling and thresholds</b>. <code>schema.prisma:1752</code>'s Monitor packs <code>view/filters/metric</code> (the comment literally says <i>mirrors DashboardWidget</i>) together with <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code>. On the worker, <code>monitorQueue.ts</code>'s <code>MonitorProcessor.process</code> runs ②③④ and only emits ⑤ when a line is crossed.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 216" role="img" aria-label="Monitor/alert gauge: a monitor aggregates a metric over a rolling window (e.g. hourly error rate); the semicircular gauge needle in the red zone has crossed the threshold and fires an alert (webhook/Slack/GitHub dispatch). Threshold and window from the monitor config, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an aggregate crosses the threshold, alert fires</text>
+  <path d="M70 170 A120 120 0 0 1 310 170" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M214 56 A120 120 0 0 1 310 170" fill="none" stroke="var(--amber)" stroke-width="14"/>
+  <path d="M270 92 A120 120 0 0 1 310 170" fill="none" stroke="var(--red)" stroke-width="14" stroke-linecap="round"/>
+  <line x1="190" y1="170" x2="286" y2="104" stroke="var(--ink)" stroke-width="2.4"/><circle cx="190" cy="170" r="6" fill="var(--ink)"/>
+  <line x1="262" y1="84" x2="278" y2="72" stroke="var(--red)" stroke-width="2" stroke-dasharray="2 2"/><text x="300" y="70" font-size="7.5" fill="var(--red)">threshold 5%</text>
+  <text x="190" y="192" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">metric: hourly error rate</text>
+  <text x="190" y="206" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">now 7.2% · over</text>
+  <text x="78" y="186" font-size="7" fill="var(--accent)">0%</text><text x="300" y="186" font-size="7" fill="var(--red)">10%+</text>
+  <line x1="320" y1="110" x2="372" y2="110" stroke="var(--red)" stroke-width="1.6"/><polygon points="372,110 363,105 363,115" fill="var(--red)"/>
+  <rect x="376" y="60" width="320" height="60" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="392" y="84" font-size="11" font-weight="700" fill="var(--red)">🔔 alert fires</text><text x="392" y="104" font-size="8" fill="var(--ink)">→ webhook (L44) / Slack (L45) / GitHub dispatch</text>
+  <rect x="376" y="130" width="320" height="58" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="392" y="150" font-size="8.5" font-weight="700" fill="var(--accent-ink)">how the monitor works</text><text x="392" y="166" font-size="7.5" fill="var(--ink)">aggregates the trace/score stream over a window</text><text x="392" y="180" font-size="7.5" fill="var(--muted)">crossing your threshold → triggers an Action</text>
+</svg>
+<div class="figcap"><b>Watch the aggregate, page only on crossing</b> (threshold and window from the monitor config; <b>values illustrative</b>): a monitor doesn't watch single scores; it aggregates a metric (error rate, avg cost, avg score…) over a <b>rolling window</b> and fires an alert only when it <b>crosses your threshold</b>, to webhook/Slack/GitHub dispatch. It turns "grep the logs later" into "it pages you on crossing" — part of how Part 5 upgrades "able to score" into "able to act on scores".</div>
 </div>
 
 <div class="layers">

@@ -7426,6 +7426,28 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
 </svg>
 <div class="figcap"><b>Three scales, each with a strength</b>: <b>NUMERIC</b> (a number with optional min/max, averageable/sortable), <b>CATEGORICAL</b> (a fixed set of label↔value, both unique, countable/groupable), <b>BOOLEAN</b> (a special category locked to <code>True=1 / False=0</code>, pass-rate computable). Source: <code>packages/shared/src/domain/score-configs.ts:18-80</code>.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 236" role="img" aria-label="Three score sources converge into one scores table: API (reported by code), EVAL (LLM judge / code eval), ANNOTATION (human) each produce a score, but all land in one table sharing one shape name/value or stringValue/dataType/source. Source enum from domain/scores.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Three sources, one scores table</text>
+  <circle cx="120" cy="64" r="40" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.6"/><text x="120" y="60" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--blue)">API</text><text x="120" y="74" text-anchor="middle" font-size="6.6" fill="var(--muted)">reported by code</text>
+  <circle cx="120" cy="130" r="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="120" y="126" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">EVAL</text><text x="120" y="140" text-anchor="middle" font-size="6.6" fill="var(--muted)">LLM judge / code eval</text>
+  <circle cx="120" cy="196" r="40" fill="var(--purple-soft)" stroke="var(--purple)" stroke-width="1.6"/><text x="120" y="192" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--purple)">ANNOTATION</text><text x="120" y="206" text-anchor="middle" font-size="6.6" fill="var(--muted)">human</text>
+  <line x1="160" y1="72" x2="356" y2="118" stroke="var(--blue)" stroke-width="1.3"/><polygon points="356,118 347,114 348,122" fill="var(--blue)"/>
+  <line x1="160" y1="130" x2="356" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="356,130 347,126 347,134" fill="var(--accent)"/>
+  <line x1="160" y1="188" x2="356" y2="142" stroke="var(--purple)" stroke-width="1.3"/><polygon points="356,142 347,138 348,146" fill="var(--purple)"/>
+  <rect x="360" y="56" width="340" height="148" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+  <text x="374" y="76" font-size="10" font-weight="700" fill="var(--accent-ink)">scores table (one shape)</text>
+  <text x="374" y="96" font-size="8" font-family="monospace" fill="var(--ink)">name: &quot;helpfulness&quot;</text>
+  <text x="374" y="112" font-size="8" font-family="monospace" fill="var(--ink)">value: 0.9   <tspan fill="var(--muted)">// or stringValue (categorical)</tspan></text>
+  <text x="374" y="128" font-size="8" font-family="monospace" fill="var(--ink)">dataType: NUMERIC | CATEGORICAL | BOOLEAN</text>
+  <text x="374" y="144" font-size="8" font-family="monospace" fill="var(--blue)">source: API | EVAL | ANNOTATION</text>
+  <text x="374" y="160" font-size="8" font-family="monospace" fill="var(--ink)">traceId / observationId · comment</text>
+  <line x1="374" y1="170" x2="686" y2="170" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="374" y="186" font-size="7.6" fill="var(--accent-ink)">→ comparable only at same name+scale: whoever scored, one space</text>
+  <text x="374" y="199" font-size="7" fill="var(--muted)">that is what source is for: keep "who scored this"</text>
+</svg>
+<div class="figcap"><b>Three sources, one table</b> (source enum from <code>domain/scores.ts</code>; <b>values illustrative</b>): a score has three sources — <code>API</code> (reported by code), <code>EVAL</code> (an LLM judge or code eval), <code>ANNOTATION</code> (human) — yet all land in <b>one <code>scores</code> table sharing one shape</b> (<code>name / value or stringValue / dataType / source</code>). So "machine-scored", "human-reviewed" and "API-reported" live in one space, <b>comparable at the same name and scale</b>.</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
@@ -7623,6 +7645,30 @@ the <strong>template</strong> (the rubric), the <strong>variable mapping</strong
   <text x="360" y="240" text-anchor="middle" font-size="8" fill="var(--faint)">configure once (①②) and ③④⑤⑥ run automatically per matching trace—evaluation is "continuous", not "one-off"</text>
 </svg>
 <div class="figcap"><b>Three pieces + six steps</b>: template and evaluator are <b>config</b> (once); extract/compile/judge/produce/flow-back are <b>execution</b> (once per trace). Source: <code>worker/src/features/evaluation/evalService.ts</code>'s <code>runLLMAsJudgeEvaluation</code> (:735) wires ④⑤; <code>createEvalJobs</code> (:180, next lesson) schedules ①②③.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 202" role="img" aria-label="LLM-as-judge real example: the evaluated trace's input/output are filled into a judge template and sent to a judge model; the model must return a structured result score plus reasoning, written back to the scores table with source EVAL. Structured output is the key, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an LLM judge returns a structured score</text>
+  <rect x="20" y="34" width="300" height="160" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">judge template (prompt)</text>
+  <text x="34" y="72" font-size="7.6" fill="var(--ink)">Rate helpfulness 0–1:</text>
+  <rect x="34" y="80" width="272" height="40" rx="6" fill="var(--panel-2)" stroke="var(--faint)"/><text x="44" y="96" font-size="7.2" fill="var(--muted)">user: {trace.input}</text><text x="44" y="110" font-size="7.2" fill="var(--muted)">ai: {trace.output}</text>
+  <text x="34" y="138" font-size="7.6" fill="var(--ink)">Return only JSON:</text>
+  <text x="34" y="154" font-size="7.4" font-family="monospace" fill="var(--accent)">{ &quot;score&quot;:_, &quot;reasoning&quot;:_ }</text>
+  <text x="34" y="180" font-size="7" fill="var(--faint)">fill in the evaluated trace's fields</text>
+  <line x1="322" y1="100" x2="356" y2="100" stroke="var(--purple)" stroke-width="1.6"/><polygon points="356,100 347,95 347,105" fill="var(--purple)"/>
+  <rect x="358" y="74" width="80" height="52" rx="9" fill="var(--purple-soft)" stroke="var(--purple)"/><text x="398" y="98" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">judge LLM</text><text x="398" y="112" text-anchor="middle" font-size="6.6" fill="var(--muted)">a cheap model is fine</text>
+  <line x1="440" y1="100" x2="474" y2="100" stroke="var(--accent)" stroke-width="1.6"/><polygon points="474,100 465,95 465,105" fill="var(--accent)"/>
+  <rect x="478" y="34" width="222" height="160" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="492" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">structured output (must be regular)</text>
+  <text x="492" y="74" font-size="8" font-family="monospace" fill="var(--ink)">{</text>
+  <text x="504" y="90" font-size="8" font-family="monospace" fill="var(--accent-ink)">&quot;score&quot;: 0.8,</text>
+  <text x="504" y="106" font-size="8" font-family="monospace" fill="var(--ink)">&quot;reasoning&quot;:</text>
+  <text x="504" y="120" font-size="7.4" font-family="monospace" fill="var(--muted)">&quot;on-topic but verbose…&quot;</text>
+  <text x="492" y="134" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
+  <line x1="492" y1="144" x2="686" y2="144" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/>
+  <text x="492" y="160" font-size="8" font-family="monospace" fill="var(--blue)">→ score: source=EVAL</text>
+  <text x="492" y="176" font-size="7.4" fill="var(--muted)">regular → can enter the scores table</text>
+</svg>
+<div class="figcap"><b>The judge must return a "regular score"</b> (<b>values illustrative</b>): the evaluated trace's <code>input/output</code> are filled into a judge template and sent to a (usually cheaper) <b>judge model</b>, forced to <b>return only structured JSON</b> (<code>score</code> + <code>reasoning</code>). Structure is the point — only a regular score can be written back with <code>source=EVAL</code> and aggregated. The reasoning tells you why it scored that way.</div>
 </div>
 
 <div class="layers">
@@ -7841,6 +7887,22 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
   <text x="360" y="242" text-anchor="middle" font-size="8" fill="var(--faint)">two-stage split = decouple "scheduling" from "doing the work", each scaling/retrying/rate-limiting independently</text>
 </svg>
 <div class="figcap"><b>Creation and execution split</b>: in <code>worker/src/queues/evalQueue.ts</code>, <code>TraceUpsert</code> (:25)/<code>CreateEvalQueue</code> (:98) trigger <code>createEvalJobs</code>; it emits PENDING tickets into the <code>EvaluationExecution</code> queue (consumed at :126). Large projects can also offload to <code>EvaluationExecutionSecondaryQueue</code> (:151) for isolation.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 218" role="img" aria-label="Eval execution state machine: a JobExecution starts PENDING (enqueued); after the worker processes it, it goes COMPLETED (score written) or ERROR (failed); DELAYED means scheduled later and returns to PENDING; CANCELLED means the config was removed/disabled. Status enum from prisma JobExecutionStatus, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an eval job's state machine</text>
+  <text x="40" y="48" font-size="7.5" fill="var(--muted)">enqueue →</text>
+  <ellipse cx="160" cy="110" rx="58" ry="30" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="160" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="var(--blue)">PENDING</text><text x="160" y="122" text-anchor="middle" font-size="6.5" fill="var(--muted)">waiting in queue</text>
+  <ellipse cx="430" cy="58" rx="62" ry="28" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="430" y="56" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">COMPLETED</text><text x="430" y="70" text-anchor="middle" font-size="6.5" fill="var(--muted)">score written</text>
+  <ellipse cx="430" cy="138" rx="58" ry="28" fill="var(--red-soft)" stroke="var(--red)" stroke-width="2"/><text x="430" y="136" text-anchor="middle" font-size="10" font-weight="700" fill="var(--red)">ERROR</text><text x="430" y="150" text-anchor="middle" font-size="6.5" fill="var(--muted)">judge/parse failed</text>
+  <ellipse cx="160" cy="186" rx="56" ry="24" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="160" y="184" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--amber)">DELAYED</text><text x="160" y="197" text-anchor="middle" font-size="6.5" fill="var(--muted)">scheduled, back to PENDING</text>
+  <ellipse cx="610" cy="98" rx="56" ry="26" fill="var(--panel-2)" stroke="var(--faint)" stroke-width="1.6"/><text x="610" y="96" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--muted)">CANCELLED</text><text x="610" y="109" text-anchor="middle" font-size="6.5" fill="var(--muted)">config removed/disabled</text>
+  <line x1="216" y1="98" x2="370" y2="66" stroke="var(--accent)" stroke-width="1.5"/><polygon points="370,66 360,64 363,72" fill="var(--accent)"/><text x="290" y="74" text-anchor="middle" font-size="7" fill="var(--accent-ink)">worker processes ✓</text>
+  <line x1="216" y1="120" x2="372" y2="134" stroke="var(--red)" stroke-width="1.5"/><polygon points="372,134 362,130 362,138" fill="var(--red)"/><text x="290" y="132" text-anchor="middle" font-size="7" fill="var(--red)">worker processes ✗</text>
+  <path d="M120 138 q-26 40 28 46 q40 4 12 -34" fill="none" stroke="var(--amber)" stroke-width="1.4"/><polygon points="160,150 154,158 164,158" fill="var(--amber)"/>
+  <line x1="216" y1="104" x2="556" y2="98" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="556,98 547,94 547,102" fill="var(--faint)"/>
+</svg>
+<div class="figcap"><b>A job's life is a few states</b> (status enum from prisma <code>JobExecutionStatus</code>; <b>values illustrative</b>): a <code>JobExecution</code> starts <code>PENDING</code> (enqueued); after the worker runs it lands on <code>COMPLETED</code> (score written) or <code>ERROR</code> (failed); <code>DELAYED</code> reschedules back to <code>PENDING</code>, and <code>CANCELLED</code> means the config was removed/disabled. It turns "did the eval run, did it succeed" into an explicit, queryable, retryable state.</div>
 </div>
 
 <div class="layers">
@@ -8070,6 +8132,27 @@ But there's a sharp problem here: the evaluator code is <strong>written by users
 </svg>
 <div class="figcap"><b>Complementary, not substitutes</b>: what rules can express (format, length, keywords, exact match) goes to code eval—deterministic, fast, free; what needs semantic understanding (helpfulness, tone, relevance) goes to LLM-as-judge. Both attach to Lesson 30's scheduling pipeline, differing only at the "execution" step.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 200" role="img" aria-label="Code-based eval real example: a deterministic function (e.g. exact match or JSON-valid check) reads output and expected, returns 0 or 1, written as a score with source EVAL. No LLM, reproducible, fast and free. Values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a code eval function produces a score</text>
+  <rect x="20" y="34" width="386" height="160" rx="9" fill="var(--code-bg)" stroke="var(--code-line)"/>
+  <text x="34" y="54" font-size="8.5" font-family="monospace" fill="var(--purple)">def</text><text x="64" y="54" font-size="8.5" font-family="monospace" fill="var(--code-ink)">exact_match(output, expected):</text>
+  <text x="50" y="72" font-size="8.5" font-family="monospace" fill="var(--code-ink)">ok = output.strip() == expected.strip()</text>
+  <text x="50" y="90" font-size="8.5" font-family="monospace" fill="var(--purple)">return</text><text x="104" y="90" font-size="8.5" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="66" y="108" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;name&quot;: &quot;exact_match&quot;,</text>
+  <text x="66" y="124" font-size="8.5" font-family="monospace" fill="var(--accent)">&quot;value&quot;: 1 if ok else 0,</text>
+  <text x="66" y="140" font-size="8.5" font-family="monospace" fill="var(--code-ink)">&quot;dataType&quot;: &quot;NUMERIC&quot;,</text>
+  <text x="50" y="156" font-size="8.5" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="34" y="182" font-size="7.5" font-family="monospace" fill="var(--code-ink)" opacity="0.6"># or: valid JSON? regex match? length threshold?</text>
+  <line x1="408" y1="114" x2="446" y2="114" stroke="var(--accent)" stroke-width="1.6"/><polygon points="446,114 437,109 437,119" fill="var(--accent)"/>
+  <rect x="450" y="70" width="250" height="92" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="464" y="90" font-size="9" font-weight="700" fill="var(--accent-ink)">writes one score</text>
+  <text x="464" y="110" font-size="8" font-family="monospace" fill="var(--ink)">name=exact_match</text>
+  <text x="464" y="126" font-size="8" font-family="monospace" fill="var(--ink)">value=1 · dataType=NUMERIC</text>
+  <text x="464" y="142" font-size="8" font-family="monospace" fill="var(--blue)">source=EVAL</text>
+  <text x="464" y="186" font-size="7.5" fill="var(--muted)">deterministic · reproducible · free · milliseconds</text>
+</svg>
+<div class="figcap"><b>Not every eval needs an LLM</b> (<b>values illustrative</b>): many judgments are <b>deterministic</b> — exact match, valid JSON, contains a keyword, within a length limit… plain code computes them, returns <code>{{name, value, dataType}}</code>, written back with <code>source=EVAL</code>. Versus an LLM judge (Lesson 29), code eval is <b>reproducible, free and millisecond-fast</b> — ideal where there's an objective criterion.</div>
+</div>
 
 <table class="t">
   <thead><tr><th>dimension</th><th>LLM-as-judge (Lesson 29)</th><th>code eval (this lesson)</th></tr></thead>
@@ -8293,6 +8376,25 @@ Three focuses: the queue's <strong>data model</strong> (bound to a set of score 
 </svg>
 <div class="figcap"><b>The third source, closing Lesson 28's loop</b>: human scores join API and EVAL scores in the same scores table (<code>ScoreSourceArray=["API","EVAL","ANNOTATION"]</code>, <code>scores.ts:4</code>), validated by the same config. Their biggest value is as <b>ground truth</b>—compared against AI-judge scores on the same objects to measure the judge's trustworthiness.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Human-annotation UI real example: left is the trace output to annotate, right is a score-config-driven widget — a NUMERIC slider 0 to 1 or CATEGORICAL good/ok/bad, plus annotator and comment; submit writes a score with source ANNOTATION. The widget is driven by the score-config, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one card in the annotation queue</text>
+  <rect x="20" y="34" width="300" height="186" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="34" y="52" font-size="8.5" font-weight="700" fill="var(--muted)">to annotate (trace output)</text>
+  <rect x="34" y="62" width="272" height="86" rx="7" fill="var(--panel-2)" stroke="var(--faint)"/><text x="46" y="80" font-size="7.5" fill="var(--ink)">trace · chat-support · obs answer</text><text x="46" y="100" font-size="7.5" fill="var(--ink)">"For a refund, within 30 days please…"</text><text x="46" y="120" font-size="7" fill="var(--faint)">model gpt-4o · latency 1.8s</text>
+  <text x="34" y="170" font-size="7.5" fill="var(--muted)">a human reads and judges —</text><text x="34" y="186" font-size="7.5" fill="var(--muted)">value/tone/boundaries a machine can't score</text>
+  <rect x="334" y="34" width="366" height="186" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="348" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">score-config drives the widget</text>
+  <text x="348" y="72" font-size="8" font-weight="700" fill="var(--ink)">helpfulness (NUMERIC)</text>
+  <line x1="348" y1="80" x2="560" y2="80" stroke="var(--faint)" stroke-width="3" stroke-linecap="round"/><line x1="348" y1="80" x2="520" y2="80" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="520" cy="80" r="5" fill="var(--accent)"/><text x="572" y="83" font-size="8" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="348" y="104" font-size="8" font-weight="700" fill="var(--ink)">tone (CATEGORICAL)</text>
+  <rect x="348" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="379" y="123" text-anchor="middle" font-size="7.5" fill="var(--accent-ink)">good</text>
+  <rect x="416" y="110" width="62" height="18" rx="9" fill="var(--accent)" opacity="0.5"/><text x="447" y="123" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">ok</text>
+  <rect x="484" y="110" width="62" height="18" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="515" y="123" text-anchor="middle" font-size="7.5" fill="var(--muted)">bad</text>
+  <text x="348" y="148" font-size="7.5" fill="var(--muted)">annotator alice · comment: clear but verbose</text>
+  <rect x="348" y="158" width="338" height="26" rx="7" fill="var(--bg)" stroke="var(--accent)"/><text x="362" y="175" font-size="8.5" font-weight="700" fill="var(--accent-ink)">submit → writes a score</text>
+  <text x="348" y="200" font-size="7.5" font-family="monospace" fill="var(--blue)">{name:&quot;helpfulness&quot;, value:0.8, source:&quot;ANNOTATION&quot;, configId}</text>
+</svg>
+<div class="figcap"><b>Humans score what machines can't</b> (the widget is driven by the <code>score-config</code>; <b>values illustrative</b>): the annotation queue pushes traces to a person one card at a time; the <code>score-config</code> picks the widget — a <code>NUMERIC</code> slider, <code>CATEGORICAL</code> good/ok/bad, or <code>BOOLEAN</code>. Submitting writes a <code>source=ANNOTATION</code> score into the same table as API/EVAL scores (Lesson 28), so human review sits side by side with machine eval.</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">baseline</span><span class="name">ground truth</span></div><div class="ld">Many evaluations need a "correct answer" before "how accurate" means anything. Scores from human experts on a small representative sample are that <strong>gold standard</strong>—AI judges, regression tests, and model comparisons all use it as their frame of reference.</div></div>
@@ -8511,6 +8613,23 @@ We'll see an elegant reuse: <strong>a monitor is essentially a dashboard widget 
 </svg>
 <div class="figcap"><b>monitor = a dashboard widget with built-in scheduling and thresholds</b>. <code>schema.prisma:1752</code>'s Monitor packs <code>view/filters/metric</code> (the comment literally says <i>mirrors DashboardWidget</i>) together with <code>windowMs/cadenceMs/thresholdOperator/alertThreshold</code>. On the worker, <code>monitorQueue.ts</code>'s <code>MonitorProcessor.process</code> runs ②③④ and only emits ⑤ when a line is crossed.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 216" role="img" aria-label="Monitor/alert gauge: a monitor aggregates a metric over a rolling window (e.g. hourly error rate); the semicircular gauge needle in the red zone has crossed the threshold and fires an alert (webhook/Slack/GitHub dispatch). Threshold and window from the monitor config, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an aggregate crosses the threshold, alert fires</text>
+  <path d="M70 170 A120 120 0 0 1 310 170" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M214 56 A120 120 0 0 1 310 170" fill="none" stroke="var(--amber)" stroke-width="14"/>
+  <path d="M270 92 A120 120 0 0 1 310 170" fill="none" stroke="var(--red)" stroke-width="14" stroke-linecap="round"/>
+  <line x1="190" y1="170" x2="286" y2="104" stroke="var(--ink)" stroke-width="2.4"/><circle cx="190" cy="170" r="6" fill="var(--ink)"/>
+  <line x1="262" y1="84" x2="278" y2="72" stroke="var(--red)" stroke-width="2" stroke-dasharray="2 2"/><text x="300" y="70" font-size="7.5" fill="var(--red)">threshold 5%</text>
+  <text x="190" y="192" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">metric: hourly error rate</text>
+  <text x="190" y="206" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">now 7.2% · over</text>
+  <text x="78" y="186" font-size="7" fill="var(--accent)">0%</text><text x="300" y="186" font-size="7" fill="var(--red)">10%+</text>
+  <line x1="320" y1="110" x2="372" y2="110" stroke="var(--red)" stroke-width="1.6"/><polygon points="372,110 363,105 363,115" fill="var(--red)"/>
+  <rect x="376" y="60" width="320" height="60" rx="9" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.6"/><text x="392" y="84" font-size="11" font-weight="700" fill="var(--red)">🔔 alert fires</text><text x="392" y="104" font-size="8" fill="var(--ink)">→ webhook (L44) / Slack (L45) / GitHub dispatch</text>
+  <rect x="376" y="130" width="320" height="58" rx="9" fill="var(--bg)" stroke="var(--line)"/><text x="392" y="150" font-size="8.5" font-weight="700" fill="var(--accent-ink)">how the monitor works</text><text x="392" y="166" font-size="7.5" fill="var(--ink)">aggregates the trace/score stream over a window</text><text x="392" y="180" font-size="7.5" fill="var(--muted)">crossing your threshold → triggers an Action</text>
+</svg>
+<div class="figcap"><b>Watch the aggregate, page only on crossing</b> (threshold and window from the monitor config; <b>values illustrative</b>): a monitor doesn't watch single scores; it aggregates a metric (error rate, avg cost, avg score…) over a <b>rolling window</b> and fires an alert only when it <b>crosses your threshold</b>, to webhook/Slack/GitHub dispatch. It turns "grep the logs later" into "it pages you on crossing" — part of how Part 5 upgrades "able to score" into "able to act on scores".</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">what</span><span class="name">view / filters / metric</span></div><div class="ld">The same query trio as a dashboard widget: <code>view</code> decides whether to watch OBSERVATIONS or SCORES_NUMERIC / SCORES_CATEGORICAL (<strong>so it can directly monitor the scores Part 5 produced</strong>), <code>filters</code> scope the data, <code>metric</code> defines what to compute (avg score, error rate, P95 latency). A monitor is "one dashboard curve + one alarm line".</div></div>
@@ -8714,6 +8833,27 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
 </svg>
 <div class="figcap"><b>Where questions come from</b>: <code>schema.prisma:685</code>'s DatasetItem has <code>input</code>/<code>expectedOutput</code>/<code>metadata</code>, plus <code>sourceTraceId</code>/<code>sourceObservationId</code>—the latter let you <b>promote</b> a real trace (Lesson 13) into a test case. A Dataset (<code>:661</code>) can also constrain question format via <code>inputSchema</code>/<code>expectedOutputSchema</code>.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Dataset real example: dataset support-qa with several items, each with input, expectedOutput and metadata columns; one item marked as referenced by a run. Fields from domain/dataset-items.ts, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset and its items</text>
+  <rect x="20" y="30" width="680" height="26" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="47" font-size="9.5" font-weight="700" fill="var(--accent-ink)">dataset · name=support-qa · 4 items</text>
+  <rect x="20" y="60" width="680" height="22" fill="var(--panel-2)"/>
+  <text x="40" y="75" font-size="8" font-weight="700" fill="var(--ink)">input</text>
+  <text x="250" y="75" font-size="8" font-weight="700" fill="var(--ink)">expectedOutput</text>
+  <text x="520" y="75" font-size="8" font-weight="700" fill="var(--ink)">metadata</text>
+  <rect x="20" y="82" width="680" height="26" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="99" font-size="7.6" fill="var(--ink)">what is the refund policy?</text><text x="250" y="99" font-size="7.6" fill="var(--accent-ink)">full refund within 30 days</text><text x="520" y="99" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="694" y="99" text-anchor="end" font-size="6.8" fill="var(--accent)">← referenced by a run</text>
+  <rect x="20" y="108" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="125" font-size="7.6" fill="var(--ink)">how to reset password?</text><text x="250" y="125" font-size="7.6" fill="var(--accent-ink)">Settings → Security → Reset</text><text x="520" y="125" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: account}</text>
+  <rect x="20" y="134" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="151" font-size="7.6" fill="var(--ink)">which languages?</text><text x="250" y="151" font-size="7.6" fill="var(--accent-ink)">zh/en/ja/de</text><text x="520" y="151" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: product}</text>
+  <rect x="20" y="160" width="680" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="177" font-size="7.6" fill="var(--ink)">where to download invoices?</text><text x="250" y="177" font-size="7.6" fill="var(--accent-ink)">Account → Billing → Invoices</text><text x="520" y="177" font-size="7.4" font-family="monospace" fill="var(--muted)">{tag: billing}</text>
+  <text x="34" y="202" font-size="7.6" fill="var(--muted)">each item = a question + reference answer; a run feeds input to the app, then compares to expectedOutput</text>
+</svg>
+<div class="figcap"><b>A dataset = a set of "question + reference answer"</b> (fields from <code>domain/dataset-items.ts</code>; <b>values illustrative</b>): each <code>item</code> has <code>input</code> (fed to the app), <code>expectedOutput</code> (the reference), and <code>metadata</code>. A <b>run</b> feeds these <code>input</code>s through the current app and compares the output to <code>expectedOutput</code>, scoring it (Lesson 35). So "is this revision better" gets a fixed exam — reproducible and comparable.</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">prompt + answer</span><span class="name">input / expectedOutput</span></div><div class="ld">An item's body: <code>input</code> is fed to the app, <code>expectedOutput</code> is the reference answer you expect. Evaluation compares the app's real output against expectedOutput (or hands it to Lessons 29–31's judges). <code>metadata</code> holds tags, difficulty, and other notes.</div></div>
@@ -8898,6 +9038,37 @@ Once you grasp runs and run items, you connect to Lesson 30's <code>dataset-run-
   <text x="360" y="222" text-anchor="middle" font-size="8" fill="var(--faint)">a run item stores no answer—only the "run×item→trace" correspondence; the answer is in the trace it points to</text>
 </svg>
 <div class="figcap"><b>run item = carrier of the three-way link</b>: <code>schema.prisma:719</code> DatasetRuns (unique [datasetId, projectId, name]), <code>:739</code> DatasetRunItems links <code>datasetRunId</code>+<code>datasetItemId</code> to <code>traceId</code>(+observationId). A run executes the whole set once, each producing a real trace; the run item records "which exam × which question → which trace".</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 230" role="img" aria-label="Dataset-run heatmap: rows are dataset items, columns are runs, each cell colored by that item's score in that run (low red, mid amber, high green); the bottom row is each run's average. See at a glance which run is better overall and which item regressed. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a dataset-item x run score heatmap</text>
+  <text x="245" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run A (v1)</text>
+  <text x="395" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run B (v2)</text>
+  <text x="545" y="40" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">run C (v3)</text>
+  <text x="40" y="66" font-size="8" font-weight="700" fill="var(--muted)">item 1</text>
+  <rect x="170" y="46" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="242" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.6</text>
+  <rect x="320" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="470" y="46" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="64" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="98" font-size="8" font-weight="700" fill="var(--muted)">item 2</text>
+  <rect x="170" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="320" y="78" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.8</text>
+  <rect x="470" y="78" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="542" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.4</text>
+  <text x="40" y="130" font-size="8" font-weight="700" fill="var(--muted)">item 3</text>
+  <rect x="170" y="110" width="144" height="26" rx="5" fill="var(--red)" opacity="0.55"/><text x="242" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">0.3</text>
+  <rect x="320" y="110" width="144" height="26" rx="5" fill="var(--amber)" opacity="0.55"/><text x="392" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">0.7</text>
+  <rect x="470" y="110" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="128" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <text x="40" y="162" font-size="8" font-weight="700" fill="var(--muted)">item 4</text>
+  <rect x="170" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="242" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">0.9</text>
+  <rect x="320" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="392" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <rect x="470" y="142" width="144" height="26" rx="5" fill="var(--accent)" opacity="0.55"/><text x="542" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">1.0</text>
+  <line x1="36" y1="176" x2="684" y2="176" stroke="var(--line)"/>
+  <text x="40" y="196" font-size="8" font-weight="700" fill="var(--accent-ink)">avg (scores_avg)</text>
+  <text x="242" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.65</text>
+  <text x="392" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.85</text>
+  <text x="542" y="196" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">0.8</text>
+  <text x="360" y="220" text-anchor="middle" font-size="7.6" fill="var(--muted)">at a glance: B is most consistent; item 2 regressed in run C (green→red)</text>
+</svg>
+<div class="figcap"><b>The heatmap makes regressions obvious</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): rows are items, columns are runs, cells colored by score (red low, amber mid, green high), with each run's <code>scores_avg</code> at the bottom. Without reading numbers one by one, you see <b>which run is better overall and which item regressed</b> — here <code>item 2</code> drops green→red in <code>run C</code>, a regression worth investigating.</div>
 </div>
 
 <div class="layers">
@@ -9104,6 +9275,24 @@ Three focuses: how an experiment <strong>runs server-side automatically</strong>
   <text x="360" y="208" text-anchor="middle" font-size="8" fill="var(--faint)">environment tagged PromptExperiments — one of the internal envs Lesson 30's "langfuse- prefix loop guard" recognizes</text>
 </svg>
 <div class="figcap"><b>experiment = run a prompt server-side per question</b>: <code>processLLMCall</code> (delegated by <code>processItem</code>) calls <code>replaceVariablesInPrompt(prompt, item.input, …)</code> to fill variables, calls the LLM with <code>config.provider/model</code>, writes a trace (<code>environment=PromptExperiments</code>, linking <code>prompt</code>, metadata with <code>itemVersion=item.validFrom</code>). Source: <code>worker/src/features/experiments/experimentServiceClickhouse.ts:154-225,287</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Experiment comparison real example: the same dataset item (input/expected) is run twice (e.g. a different prompt or model); the two outputs and their scores sit side by side, with a delta badge showing the score change. Based on dataset-run-items scores, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: same item, two runs side by side</text>
+  <rect x="20" y="32" width="680" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/><text x="34" y="49" font-size="8" font-weight="700" fill="var(--ink)">dataset item · input: refund policy? · expected: within 30 days</text>
+  <rect x="20" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="34" y="84" font-size="9" font-weight="700" fill="var(--blue)">Run A · prompt v1</text>
+  <rect x="34" y="92" width="302" height="40" rx="6" fill="var(--panel-2)"/><text x="44" y="115" font-size="7.6" fill="var(--ink)">"We support refunds."</text>
+  <rect x="34" y="140" width="92" height="18" rx="9" fill="var(--blue-soft)"/><text x="80" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">helpfulness 0.6</text>
+  <rect x="132" y="140" width="80" height="18" rx="9" fill="var(--blue-soft)"/><text x="172" y="153" text-anchor="middle" font-size="7.5" fill="var(--blue)">exact 0</text>
+  <text x="34" y="176" font-size="7" fill="var(--muted)">rather generic</text>
+  <rect x="370" y="66" width="330" height="118" rx="9" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.6"/><text x="384" y="84" font-size="9" font-weight="700" fill="var(--accent-ink)">Run B · prompt v2</text>
+  <rect x="384" y="92" width="302" height="40" rx="6" fill="var(--accent-soft)"/><text x="394" y="115" font-size="7.6" fill="var(--ink)">"Full refund within 30 days; none after."</text>
+  <rect x="384" y="140" width="92" height="18" rx="9" fill="var(--accent-soft)"/><text x="430" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">helpfulness 0.9</text>
+  <rect x="482" y="140" width="80" height="18" rx="9" fill="var(--accent-soft)"/><text x="522" y="153" text-anchor="middle" font-size="7.5" font-weight="700" fill="var(--accent-ink)">exact 1</text>
+  <rect x="592" y="138" width="94" height="22" rx="11" fill="var(--accent)" opacity="0.5"/><text x="639" y="153" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">Δ +0.3 ▲</text>
+  <text x="34" y="200" font-size="7.8" fill="var(--accent-ink)">→ decide by score: B is better, point production to v2 (Lesson 37)</text>
+</svg>
+<div class="figcap"><b>Upgrading "able to score" into "able to decide by score"</b> (based on <code>dataset-run-items</code> scores; <b>values illustrative</b>): the same item is run twice — say a different prompt or model — with both outputs and their scores <b>side by side</b> and a <code>Δ</code> badge for the change. So "did this revision actually help" stops being a hunch and becomes <b>evidence</b>: B's helpfulness and exact are both higher, so point production to v2.</div>
 </div>
 
 <div class="codefile">
