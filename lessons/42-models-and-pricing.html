@@ -385,6 +385,49 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>一条正则，统一碎片化命名</b>：<code>default-model-prices.json</code> 的每个条目都带一条 <code>matchPattern</code>，如 gpt-4o 的 <code>(?i)^(openai/)?(gpt-4o)$</code>。它用 <code>(?i)</code> 不分大小写、<code>^…$</code> 全串匹配、可选的 provider/区域前缀与版本后缀，把同一模型在六大平台的所有写法<b>一网打尽</b>。源码：<code>worker/src/constants/default-model-prices.json</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 260" role="img" aria-label="模型定价真实例子：表格列出 gpt-4o、gpt-4o-mini、claude-3-5-sonnet、claude-3-haiku、gpt-4-turbo 五个真实模型的每百万 token 输入价与输出价，右侧用条形对比输出价（gpt-4-turbo 最贵 30 美元，gpt-4o-mini 最便宜 0.6 美元）；下方展示一次模型名经 matchPattern 正则匹配到价格行。数据取自 default-model-prices.json">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：模型定价表（每 1M token）</text>
+  <rect x="18" y="28" width="684" height="20" fill="var(--panel-2)"/>
+  <text x="30" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">modelName</text>
+  <text x="252" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">输入 $/1M</text>
+  <text x="348" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">输出 $/1M</text>
+  <text x="440" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">输出价对比</text>
+  <rect x="18" y="50" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="67" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o</text>
+  <text x="262" y="67" text-anchor="end" font-size="7.8" fill="var(--ink)">$2.50</text>
+  <text x="372" y="67" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$10.00</text>
+  <rect x="438" y="57" width="56" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="500" y="67" font-size="6.8" fill="var(--accent)">$10.00</text>
+  <rect x="18" y="76" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="93" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o-mini</text>
+  <text x="262" y="93" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.15</text>
+  <text x="372" y="93" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$0.60</text>
+  <rect x="438" y="83" width="3" height="12" rx="3" fill="var(--blue)" opacity="0.7"/><text x="447" y="93" font-size="6.8" fill="var(--blue)">$0.60</text>
+  <rect x="18" y="102" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="119" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-5-sonnet-20240620</text>
+  <text x="262" y="119" text-anchor="end" font-size="7.8" fill="var(--ink)">$3.00</text>
+  <text x="372" y="119" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$15.00</text>
+  <rect x="438" y="109" width="84" height="12" rx="3" fill="var(--purple)" opacity="0.7"/><text x="528" y="119" font-size="6.8" fill="var(--purple)">$15.00</text>
+  <rect x="18" y="128" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="145" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-haiku-20240307</text>
+  <text x="262" y="145" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.25</text>
+  <text x="372" y="145" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$1.25</text>
+  <rect x="438" y="135" width="7" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="451" y="145" font-size="6.8" fill="var(--accent)">$1.25</text>
+  <rect x="18" y="154" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="171" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4-turbo</text>
+  <text x="262" y="171" text-anchor="end" font-size="7.8" fill="var(--ink)">$10.00</text>
+  <text x="372" y="171" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$30.00</text>
+  <rect x="438" y="161" width="168" height="12" rx="3" fill="var(--amber)" opacity="0.7"/><text x="612" y="171" font-size="6.8" fill="var(--amber)">$30.00</text>
+  <rect x="18" y="188" width="684" height="58" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="204" font-size="7.6" font-weight="700" fill="var(--blue)">模型名怎么对上价格？matchPattern 正则</text>
+  <text x="30" y="221" font-size="7.2" font-family="monospace" fill="var(--code-ink)">usage.model = &quot;openai/gpt-4o&quot;</text>
+  <text x="250" y="221" font-size="7.2" font-family="monospace" fill="var(--muted)">──match──▶</text>
+  <text x="330" y="221" font-size="7" font-family="monospace" fill="var(--accent-ink)">(?i)^(openai/)?(gpt-4o)$</text>
+  <text x="560" y="221" font-size="7.2" font-family="monospace" fill="var(--accent)">✓ → gpt-4o</text>
+  <text x="30" y="238" font-size="6.8" fill="var(--faint)">价格按 token 存在 pricingTiers[].prices.{input,output}（图中已 ×1e6 换成每百万）；摄取时用正则把模型名匹配到价格行</text>
+</svg>
+<div class="figcap"><b>定价是「正则 → 每 token 价」的查找表</b>（数据取自 <code>worker/src/constants/default-model-prices.json</code>，<b>真实价</b>）：每个模型在 <code>pricingTiers[].prices</code> 里按 <b>token</b> 存 <code>input</code>/<code>output</code> 价（表中已 ×1e6 换成「每百万 token」更好读）。同是输出价，<code>gpt-4-turbo</code>（$30）是 <code>gpt-4o-mini</code>（$0.60）的 <b>50 倍</b>——选型即成本。模型名怎么对上价格？靠 <code>matchPattern</code> 正则：<code>&quot;openai/gpt-4o&quot;</code> 命中 <code>(?i)^(openai/)?(gpt-4o)$</code> 就用这行价，于是带不带 <code>openai/</code> 前缀都能正确计费（<a class="xref" href="12-ingestion-api.html">第 12 课</a>摄取算成本就用它）。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/constants/default-model-prices.json</span><span class="ln">一个模型条目（节选）</span></div>
@@ -582,6 +625,49 @@ It directly feeds <a class="xref" href="16-token-counting-cost.html">Lesson 16</
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">regex parts: (?i) case-insensitive · ^…$ full-string · (provider/)? optional prefix · (us.|eu.|apac.)? region · (:0)? / @date version</text>
 </svg>
 <div class="figcap"><b>one regex unifies fragmented naming</b>: each <code>default-model-prices.json</code> entry carries a <code>matchPattern</code>, e.g. gpt-4o's <code>(?i)^(openai/)?(gpt-4o)$</code>. With <code>(?i)</code> case-insensitive, <code>^…$</code> full-string, optional provider/region prefixes and version suffixes, it <b>catches all</b> spellings of one model across six platforms. Source: <code>worker/src/constants/default-model-prices.json</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 260" role="img" aria-label="Model pricing real example: the table lists five real models — gpt-4o, gpt-4o-mini, claude-3-5-sonnet, claude-3-haiku, gpt-4-turbo — with input and output price per million tokens, and bars on the right compare output price (gpt-4-turbo most expensive at $30, gpt-4o-mini cheapest at $0.60); below, a model name is matched to a price row via its matchPattern regex. Data from default-model-prices.json">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: model pricing (per 1M tokens)</text>
+  <rect x="18" y="28" width="684" height="20" fill="var(--panel-2)"/>
+  <text x="30" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">modelName</text>
+  <text x="252" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">input $/1M</text>
+  <text x="348" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">output $/1M</text>
+  <text x="440" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">output price</text>
+  <rect x="18" y="50" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="67" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o</text>
+  <text x="262" y="67" text-anchor="end" font-size="7.8" fill="var(--ink)">$2.50</text>
+  <text x="372" y="67" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$10.00</text>
+  <rect x="438" y="57" width="56" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="500" y="67" font-size="6.8" fill="var(--accent)">$10.00</text>
+  <rect x="18" y="76" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="93" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o-mini</text>
+  <text x="262" y="93" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.15</text>
+  <text x="372" y="93" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$0.60</text>
+  <rect x="438" y="83" width="3" height="12" rx="3" fill="var(--blue)" opacity="0.7"/><text x="447" y="93" font-size="6.8" fill="var(--blue)">$0.60</text>
+  <rect x="18" y="102" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="119" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-5-sonnet-20240620</text>
+  <text x="262" y="119" text-anchor="end" font-size="7.8" fill="var(--ink)">$3.00</text>
+  <text x="372" y="119" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$15.00</text>
+  <rect x="438" y="109" width="84" height="12" rx="3" fill="var(--purple)" opacity="0.7"/><text x="528" y="119" font-size="6.8" fill="var(--purple)">$15.00</text>
+  <rect x="18" y="128" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="145" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-haiku-20240307</text>
+  <text x="262" y="145" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.25</text>
+  <text x="372" y="145" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$1.25</text>
+  <rect x="438" y="135" width="7" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="451" y="145" font-size="6.8" fill="var(--accent)">$1.25</text>
+  <rect x="18" y="154" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="171" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4-turbo</text>
+  <text x="262" y="171" text-anchor="end" font-size="7.8" fill="var(--ink)">$10.00</text>
+  <text x="372" y="171" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$30.00</text>
+  <rect x="438" y="161" width="168" height="12" rx="3" fill="var(--amber)" opacity="0.7"/><text x="612" y="171" font-size="6.8" fill="var(--amber)">$30.00</text>
+  <rect x="18" y="188" width="684" height="58" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="204" font-size="7.6" font-weight="700" fill="var(--blue)">how a model maps to a price? the matchPattern regex</text>
+  <text x="30" y="221" font-size="7.2" font-family="monospace" fill="var(--code-ink)">usage.model = &quot;openai/gpt-4o&quot;</text>
+  <text x="250" y="221" font-size="7.2" font-family="monospace" fill="var(--muted)">──match──▶</text>
+  <text x="330" y="221" font-size="7" font-family="monospace" fill="var(--accent-ink)">(?i)^(openai/)?(gpt-4o)$</text>
+  <text x="560" y="221" font-size="7.2" font-family="monospace" fill="var(--accent)">✓ → gpt-4o</text>
+  <text x="30" y="238" font-size="6.8" fill="var(--faint)">prices stored per-token in pricingTiers[].prices.{input,output} (shown x1e6 as per-million); at ingestion the regex maps the model name to a price row</text>
+</svg>
+<div class="figcap"><b>Pricing is a "regex → per-token price" lookup table</b> (data from <code>worker/src/constants/default-model-prices.json</code>, <b>real prices</b>): each model stores <code>input</code>/<code>output</code> price <b>per token</b> under <code>pricingTiers[].prices</code> (shown x1e6 as "per million" for readability). On output price alone, <code>gpt-4-turbo</code> ($30) is <b>50x</b> <code>gpt-4o-mini</code> ($0.60) — model choice is a cost choice. How does a model name map to a price? Via the <code>matchPattern</code> regex: <code>&quot;openai/gpt-4o&quot;</code> matches <code>(?i)^(openai/)?(gpt-4o)$</code> and uses that row, so it bills correctly with or without the <code>openai/</code> prefix (used by <a class="xref" href="12-ingestion-api.html">Lesson 12</a>'s ingestion cost step).</div>
 </div>
 
 <div class="codefile">

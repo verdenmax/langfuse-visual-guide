@@ -385,6 +385,35 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>git 式版本控制</b>：version 自增不可变（<code>latestPrompt.version + 1</code>）；label 唯一、可移动——给新版打 <code>production</code> 会从旧版自动摘除该标签（<code>removeLabelsFromPreviousPromptVersions</code>）。新建版本默认带 <code>latest</code> 标签。源码：<code>createPrompt.ts:88-181</code>、<code>constants.ts:1-2</code>（<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 188" role="img" aria-label="prompt 版本历史真实例子：prompt support-reply 有 v1/v2/v3 三个不可变版本，最新在上；每行有 version、labels、commitMessage、创建者与时间；v3 钉着 production+latest 标签并高亮。字段取自 schema.prisma 的 Prompt，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 prompt 的版本历史</text>
+  <rect x="20" y="30" width="680" height="24" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="46" font-size="9" font-weight="700" fill="var(--accent-ink)">prompt · name=support-reply · type=text · 3 versions</text>
+  <rect x="20" y="58" width="680" height="20" fill="var(--panel-2)"/>
+  <text x="40" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">version</text>
+  <text x="120" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">labels</text>
+  <text x="330" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">commitMessage</text>
+  <text x="560" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">createdBy · createdAt</text>
+  <rect x="20" y="80" width="680" height="28" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="98" font-size="9" font-weight="700" fill="var(--accent-ink)">v3</text>
+  <rect x="120" y="85" width="70" height="17" rx="8" fill="var(--accent)" opacity="0.18"/><text x="155" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">production</text>
+  <rect x="196.0" y="85" width="48" height="17" rx="8" fill="var(--blue)" opacity="0.18"/><text x="220" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">latest</text>
+  <text x="330" y="98" font-size="7.6" fill="var(--ink)">收紧退款措辞</text>
+  <text x="560" y="98" font-size="7.2" fill="var(--muted)">alice · 2026-06-20</text>
+  <rect x="20" y="108" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="126" font-size="9" font-weight="700" fill="var(--accent-ink)">v2</text>
+  <rect x="120" y="113" width="53" height="17" rx="8" fill="var(--amber)" opacity="0.18"/><text x="147" y="125" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">staging</text>
+  <text x="330" y="126" font-size="7.6" fill="var(--ink)">加一句共情开场</text>
+  <text x="560" y="126" font-size="7.2" fill="var(--muted)">bob · 2026-06-12</text>
+  <rect x="20" y="136" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="154" font-size="9" font-weight="700" fill="var(--accent-ink)">v1</text>
+  <text x="120" y="154" font-size="7.4" fill="var(--faint)">（无）</text>
+  <text x="330" y="154" font-size="7.6" fill="var(--ink)">初版</text>
+  <text x="560" y="154" font-size="7.2" fill="var(--muted)">alice · 2026-06-01</text>
+  <text x="34" y="178" font-size="7.4" fill="var(--muted)">版本不可变递增（unique projectId+name+version）；production / latest 是可移动指针，现都指向 v3</text>
+</svg>
+<div class="figcap"><b>版本历史就是一段「prompt 的 git log」</b>（字段取自 <code>schema.prisma</code> 的 <code>Prompt</code>：<code>version</code>/<code>labels</code>/<code>commitMessage</code>/<code>createdBy</code>；<b>值为示例</b>）：每次保存生成一个<b>不可变</b>的新版本（<code>@@unique([projectId,name,version])</code>），最新在上。<code>production</code>、<code>latest</code> 不是版本号而是<b>可移动的标签指针</b>——发布＝把 <code>production</code> 移到某版，回滚＝移回去，应用代码只认标签。这张表正是上面「git 式模型」的<b>真实数据形态</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/prompts/server/actions/createPrompt.ts</span><span class="ln">版本自增 + label 移动</span></div>
@@ -568,6 +597,35 @@ Grasp this "version control" model and you hold the key to "<strong>changing pro
   <text x="360" y="196" text-anchor="middle" font-size="8" fill="var(--faint)">app code just says "give me the production one"—release = move the label to v3, rollback = move it back to v2, no code change</text>
 </svg>
 <div class="figcap"><b>git-style version control</b>: version auto-increments and is immutable (<code>latestPrompt.version + 1</code>); a label is unique and movable—tagging a new version with <code>production</code> auto-strips it from the old one (<code>removeLabelsFromPreviousPromptVersions</code>). A new version always gets the <code>latest</code> label. Source: <code>createPrompt.ts:88-181</code>, <code>constants.ts:1-2</code> (<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 188" role="img" aria-label="Prompt version-history real example: prompt support-reply has three immutable versions v1/v2/v3, newest on top; each row shows version, labels, commitMessage, author and time; v3 pins the production+latest labels and is highlighted. Fields from the Prompt model in schema.prisma, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a prompt's version history</text>
+  <rect x="20" y="30" width="680" height="24" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="46" font-size="9" font-weight="700" fill="var(--accent-ink)">prompt · name=support-reply · type=text · 3 versions</text>
+  <rect x="20" y="58" width="680" height="20" fill="var(--panel-2)"/>
+  <text x="40" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">version</text>
+  <text x="120" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">labels</text>
+  <text x="330" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">commitMessage</text>
+  <text x="560" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">createdBy · createdAt</text>
+  <rect x="20" y="80" width="680" height="28" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="98" font-size="9" font-weight="700" fill="var(--accent-ink)">v3</text>
+  <rect x="120" y="85" width="70" height="17" rx="8" fill="var(--accent)" opacity="0.18"/><text x="155" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">production</text>
+  <rect x="196.0" y="85" width="48" height="17" rx="8" fill="var(--blue)" opacity="0.18"/><text x="220" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">latest</text>
+  <text x="330" y="98" font-size="7.6" fill="var(--ink)">tighten refund wording</text>
+  <text x="560" y="98" font-size="7.2" fill="var(--muted)">alice · 2026-06-20</text>
+  <rect x="20" y="108" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="126" font-size="9" font-weight="700" fill="var(--accent-ink)">v2</text>
+  <rect x="120" y="113" width="53" height="17" rx="8" fill="var(--amber)" opacity="0.18"/><text x="147" y="125" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">staging</text>
+  <text x="330" y="126" font-size="7.6" fill="var(--ink)">add an empathy line</text>
+  <text x="560" y="126" font-size="7.2" fill="var(--muted)">bob · 2026-06-12</text>
+  <rect x="20" y="136" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="154" font-size="9" font-weight="700" fill="var(--accent-ink)">v1</text>
+  <text x="120" y="154" font-size="7.4" fill="var(--faint)">(none)</text>
+  <text x="330" y="154" font-size="7.6" fill="var(--ink)">initial version</text>
+  <text x="560" y="154" font-size="7.2" fill="var(--muted)">alice · 2026-06-01</text>
+  <text x="34" y="178" font-size="7.4" fill="var(--muted)">versions are immutable &amp; incrementing (unique projectId+name+version); production / latest are movable pointers, both on v3 now</text>
+</svg>
+<div class="figcap"><b>The version history is a "git log for your prompt"</b> (fields from the <code>Prompt</code> model in <code>schema.prisma</code>: <code>version</code>/<code>labels</code>/<code>commitMessage</code>/<code>createdBy</code>; <b>values illustrative</b>): each save creates a new <b>immutable</b> version (<code>@@unique([projectId,name,version])</code>), newest on top. <code>production</code> and <code>latest</code> are not version numbers but <b>movable label pointers</b> — a release moves <code>production</code> onto a version, a rollback moves it back, and app code only knows the label. This table is the <b>concrete data form</b> of the git-style model above.</div>
 </div>
 
 <div class="codefile">

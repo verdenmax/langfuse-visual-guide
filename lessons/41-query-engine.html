@@ -382,6 +382,44 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>语义层 = 一本逻辑名↔SQL 的字典</b>：<code>dataModel.ts</code> 为每个 view 声明 <code>dimensions</code> 与 <code>measures</code>，每项形如 <code>{ sql: "traces.name", alias: "name" }</code>（维度），时间维度甚至是 <code>formatDateTime(traces.timestamp, …)</code> 这样的表达式。源码：<code>packages/shared/src/features/query/dataModel.ts:10-70</code>、<code>types.ts:9</code>（viewDeclaration）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="查询引擎真实例子：左边是仪表盘提交的查询规格 JSON（view=observations、metrics 是 measure+aggregation 对象、dimensions 是 field 对象、timeDimension 的 granularity=day、filters），右边是 queryBuilder 编译出的 ClickHouse SQL（select provided_model_name、count()、sum(total_cost)、toStartOfDay(start_time)，from observations FINAL，where 带 project_id 与时间范围占位符，group by 维度与天）。规格形状取自 features/query/types.ts，列名取自 observations 迁移，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：查询规格 → 编译出的 ClickHouse SQL</text>
+  <rect x="16" y="30" width="340" height="248" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="46" font-size="8" font-weight="700" fill="var(--blue)">query spec (JSON) · 仪表盘提交</text>
+  <text x="30" y="62" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="77.4" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  view: &quot;observations&quot;,</text>
+  <text x="30" y="92.80000000000001" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  metrics: [</text>
+  <text x="30" y="108.20000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;count&quot;, aggregation:&quot;count&quot; },</text>
+  <text x="30" y="123.60000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;totalCost&quot;, aggregation:&quot;sum&quot; }</text>
+  <text x="30" y="139.00000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  ],</text>
+  <text x="30" y="154.40000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  dimensions: [{ field:&quot;providedModelName&quot; }],</text>
+  <text x="30" y="169.80000000000004" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  timeDimension: { granularity:&quot;day&quot; },</text>
+  <text x="30" y="185.20000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  filters: [{ column:&quot;environment&quot;,</text>
+  <text x="30" y="200.60000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    operator:&quot;=&quot;, value:&quot;production&quot; }],</text>
+  <text x="30" y="216.00000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  fromTimestamp:&quot;2026-06-01…&quot;,</text>
+  <text x="30" y="231.40000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  toTimestamp:&quot;2026-06-30…&quot;</text>
+  <text x="30" y="246.80000000000007" font-size="6.7" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">queryBuilder</text>
+  <path d="M357 158 L363 158 L363 164 L357 164 L363 161 Z" fill="var(--accent)"/><line x1="357" y1="155" x2="357" y2="167" stroke="var(--accent)" stroke-width="2"/><polygon points="362,161 354,156 354,166" fill="var(--accent)"/>
+  <rect x="372" y="30" width="332" height="248" rx="9" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="386" y="46" font-size="8" font-weight="700" fill="var(--accent-ink)">compiled ClickHouse SQL</text>
+  <text x="386" y="62" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">SELECT</text>
+  <text x="386" y="77.4" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  provided_model_name,</text>
+  <text x="386" y="92.80000000000001" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  count() AS count,</text>
+  <text x="386" y="108.20000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  sum(total_cost) AS sum_totalCost,</text>
+  <text x="386" y="123.60000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  toStartOfDay(start_time) AS day</text>
+  <text x="386" y="139.00000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">FROM observations FINAL</text>
+  <text x="386" y="154.40000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">WHERE project_id = {projectId}</text>
+  <text x="386" y="169.80000000000004" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND environment = 'production'</text>
+  <text x="386" y="185.20000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &gt;= {from}</text>
+  <text x="386" y="200.60000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &lt;  {to}</text>
+  <text x="386" y="216.00000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">GROUP BY provided_model_name, day</text>
+  <text x="386" y="231.40000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">ORDER BY day</text>
+  <text x="360" y="276" text-anchor="middle" font-size="6.6" fill="var(--faint)">参数化占位符（{projectId}/{from}/{to}）杜绝 SQL 注入</text>
+</svg>
+<div class="figcap"><b>一份声明式规格，引擎替你写 SQL</b>（规格形状取自 <code>features/query/types.ts</code>，列名取自 <code>observations</code> 迁移；<b>值为示例</b>）：你只描述<b>要什么</b>——<code>view</code> 选表、<code>metrics</code> 是 <code>{measure, aggregation}</code>、<code>dimensions</code> 是 <code>{field}</code>、<code>timeDimension.granularity</code> 定时间桶；<code>queryBuilder</code> 把它编译成真正的 ClickHouse SQL：度量变 <code>count()</code>/<code>sum(total_cost)</code>、维度进 <code>GROUP BY</code>、时间桶变 <code>toStartOfDay(start_time)</code>。所有用户值都走<b>参数化占位符</b>，从根上挡住 SQL 注入。换个 <code>view</code> 就查另一张表——同一套规格语言覆盖全部图表。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/features/query/dataModel.ts</span><span class="ln">一个 view 的声明</span></div>
@@ -588,6 +626,44 @@ Understanding it explains why <a class="xref" href="40-dashboards-and-widgets.ht
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the semantic layer isolates "what you say" from "what the kitchen knows": rename a physical column, only the dictionary changes, all widget/monitor/API queries go on</text>
 </svg>
 <div class="figcap"><b>semantic layer = a dictionary of logical name↔SQL</b>: <code>dataModel.ts</code> declares <code>dimensions</code> and <code>measures</code> per view, each shaped like <code>{ sql: "traces.name", alias: "name" }</code> (a dimension); a time dimension can even be an expression like <code>formatDateTime(traces.timestamp, …)</code>. Source: <code>packages/shared/src/features/query/dataModel.ts:10-70</code>, <code>types.ts:9</code> (viewDeclaration).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="Query-engine real example: left is the query spec JSON a dashboard submits (view=observations, metrics are measure+aggregation objects, dimensions are field objects, timeDimension granularity=day, filters); right is the ClickHouse SQL the queryBuilder compiles (select provided_model_name, count(), sum(total_cost), toStartOfDay(start_time), from observations FINAL, where with project_id and time-range placeholders, group by dimension and day). Spec shape from features/query/types.ts, column names from the observations migration, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a query spec → compiled ClickHouse SQL</text>
+  <rect x="16" y="30" width="340" height="248" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="46" font-size="8" font-weight="700" fill="var(--blue)">query spec (JSON) · dashboard submits</text>
+  <text x="30" y="62" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="77.4" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  view: &quot;observations&quot;,</text>
+  <text x="30" y="92.80000000000001" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  metrics: [</text>
+  <text x="30" y="108.20000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;count&quot;, aggregation:&quot;count&quot; },</text>
+  <text x="30" y="123.60000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;totalCost&quot;, aggregation:&quot;sum&quot; }</text>
+  <text x="30" y="139.00000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  ],</text>
+  <text x="30" y="154.40000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  dimensions: [{ field:&quot;providedModelName&quot; }],</text>
+  <text x="30" y="169.80000000000004" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  timeDimension: { granularity:&quot;day&quot; },</text>
+  <text x="30" y="185.20000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  filters: [{ column:&quot;environment&quot;,</text>
+  <text x="30" y="200.60000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    operator:&quot;=&quot;, value:&quot;production&quot; }],</text>
+  <text x="30" y="216.00000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  fromTimestamp:&quot;2026-06-01…&quot;,</text>
+  <text x="30" y="231.40000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  toTimestamp:&quot;2026-06-30…&quot;</text>
+  <text x="30" y="246.80000000000007" font-size="6.7" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">queryBuilder</text>
+  <path d="M357 158 L363 158 L363 164 L357 164 L363 161 Z" fill="var(--accent)"/><line x1="357" y1="155" x2="357" y2="167" stroke="var(--accent)" stroke-width="2"/><polygon points="362,161 354,156 354,166" fill="var(--accent)"/>
+  <rect x="372" y="30" width="332" height="248" rx="9" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="386" y="46" font-size="8" font-weight="700" fill="var(--accent-ink)">compiled ClickHouse SQL</text>
+  <text x="386" y="62" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">SELECT</text>
+  <text x="386" y="77.4" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  provided_model_name,</text>
+  <text x="386" y="92.80000000000001" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  count() AS count,</text>
+  <text x="386" y="108.20000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  sum(total_cost) AS sum_totalCost,</text>
+  <text x="386" y="123.60000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  toStartOfDay(start_time) AS day</text>
+  <text x="386" y="139.00000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">FROM observations FINAL</text>
+  <text x="386" y="154.40000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">WHERE project_id = {projectId}</text>
+  <text x="386" y="169.80000000000004" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND environment = 'production'</text>
+  <text x="386" y="185.20000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &gt;= {from}</text>
+  <text x="386" y="200.60000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &lt;  {to}</text>
+  <text x="386" y="216.00000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">GROUP BY provided_model_name, day</text>
+  <text x="386" y="231.40000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">ORDER BY day</text>
+  <text x="360" y="276" text-anchor="middle" font-size="6.6" fill="var(--faint)">parameterized placeholders ({projectId}/{from}/{to}) prevent SQL injection</text>
+</svg>
+<div class="figcap"><b>One declarative spec, the engine writes the SQL</b> (spec shape from <code>features/query/types.ts</code>, column names from the <code>observations</code> migration; <b>values illustrative</b>): you only describe <b>what you want</b> — <code>view</code> picks the table, <code>metrics</code> are <code>{measure, aggregation}</code>, <code>dimensions</code> are <code>{field}</code>, <code>timeDimension.granularity</code> sets the time bucket; <code>queryBuilder</code> compiles it into real ClickHouse SQL: measures become <code>count()</code>/<code>sum(total_cost)</code>, dimensions go into <code>GROUP BY</code>, the bucket becomes <code>toStartOfDay(start_time)</code>. Every user value flows through <b>parameterized placeholders</b>, blocking SQL injection at the root. Swap the <code>view</code> and you query a different table — one spec language covers every chart.</div>
 </div>
 
 <div class="codefile">

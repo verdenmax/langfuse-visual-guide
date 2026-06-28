@@ -9484,6 +9484,35 @@ Grasp this "version control" model and you hold the key to "<strong>changing pro
 </svg>
 <div class="figcap"><b>git-style version control</b>: version auto-increments and is immutable (<code>latestPrompt.version + 1</code>); a label is unique and movable—tagging a new version with <code>production</code> auto-strips it from the old one (<code>removeLabelsFromPreviousPromptVersions</code>). A new version always gets the <code>latest</code> label. Source: <code>createPrompt.ts:88-181</code>, <code>constants.ts:1-2</code> (<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>).</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 188" role="img" aria-label="Prompt version-history real example: prompt support-reply has three immutable versions v1/v2/v3, newest on top; each row shows version, labels, commitMessage, author and time; v3 pins the production+latest labels and is highlighted. Fields from the Prompt model in schema.prisma, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a prompt's version history</text>
+  <rect x="20" y="30" width="680" height="24" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="46" font-size="9" font-weight="700" fill="var(--accent-ink)">prompt · name=support-reply · type=text · 3 versions</text>
+  <rect x="20" y="58" width="680" height="20" fill="var(--panel-2)"/>
+  <text x="40" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">version</text>
+  <text x="120" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">labels</text>
+  <text x="330" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">commitMessage</text>
+  <text x="560" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">createdBy · createdAt</text>
+  <rect x="20" y="80" width="680" height="28" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="98" font-size="9" font-weight="700" fill="var(--accent-ink)">v3</text>
+  <rect x="120" y="85" width="70" height="17" rx="8" fill="var(--accent)" opacity="0.18"/><text x="155" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">production</text>
+  <rect x="196.0" y="85" width="48" height="17" rx="8" fill="var(--blue)" opacity="0.18"/><text x="220" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">latest</text>
+  <text x="330" y="98" font-size="7.6" fill="var(--ink)">tighten refund wording</text>
+  <text x="560" y="98" font-size="7.2" fill="var(--muted)">alice · 2026-06-20</text>
+  <rect x="20" y="108" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="126" font-size="9" font-weight="700" fill="var(--accent-ink)">v2</text>
+  <rect x="120" y="113" width="53" height="17" rx="8" fill="var(--amber)" opacity="0.18"/><text x="147" y="125" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">staging</text>
+  <text x="330" y="126" font-size="7.6" fill="var(--ink)">add an empathy line</text>
+  <text x="560" y="126" font-size="7.2" fill="var(--muted)">bob · 2026-06-12</text>
+  <rect x="20" y="136" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="154" font-size="9" font-weight="700" fill="var(--accent-ink)">v1</text>
+  <text x="120" y="154" font-size="7.4" fill="var(--faint)">(none)</text>
+  <text x="330" y="154" font-size="7.6" fill="var(--ink)">initial version</text>
+  <text x="560" y="154" font-size="7.2" fill="var(--muted)">alice · 2026-06-01</text>
+  <text x="34" y="178" font-size="7.4" fill="var(--muted)">versions are immutable &amp; incrementing (unique projectId+name+version); production / latest are movable pointers, both on v3 now</text>
+</svg>
+<div class="figcap"><b>The version history is a "git log for your prompt"</b> (fields from the <code>Prompt</code> model in <code>schema.prisma</code>: <code>version</code>/<code>labels</code>/<code>commitMessage</code>/<code>createdBy</code>; <b>values illustrative</b>): each save creates a new <b>immutable</b> version (<code>@@unique([projectId,name,version])</code>), newest on top. <code>production</code> and <code>latest</code> are not version numbers but <b>movable label pointers</b> — a release moves <code>production</code> onto a version, a rollback moves it back, and app code only knows the label. This table is the <b>concrete data form</b> of the git-style model above.</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/prompts/server/actions/createPrompt.ts</span><span class="ln">version increment + label move</span></div>
@@ -9671,6 +9700,21 @@ Along the way we'll see Lesson 37's dependencies' "second half": referenced chil
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the vast majority of requests take ① (millisecond, no DB); only the first after a cold/invalidated cache takes ②③—DB load is shielded behind the cache</text>
 </svg>
 <div class="figcap"><b>read-through + backfill</b>: <code>getPrompt</code> first <code>getCachedPrompt</code>, returns on a hit; on a miss runs <code>findPrompt</code> (DB) then <code>cachePrompt</code> (<code>redis.set(key, value, "EX", ttlSeconds)</code>). Toggle <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, duration <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>. Source: <code>PromptService/index.ts:49-86,166-173</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Cache hit vs miss latency real example: a hit goes to Redis in about 1 ms and returns instantly, a miss must query Postgres then backfill Redis in about 25 ms, roughly 25x slower; steady-state hit rate about 98%; TTL 3600 seconds, epoch rotation invalidates instantly. Latencies and hit rate illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: cache hit vs miss latency</text>
+  <text x="20" y="56" font-size="8.5" font-weight="700" fill="var(--accent-ink)">cache HIT</text><text x="20" y="68" font-size="7" fill="var(--muted)">Redis</text>
+  <rect x="210" y="46" width="18" height="22" rx="4" fill="var(--accent)" opacity="0.85"/><text x="236" y="61" font-size="8" font-weight="700" fill="var(--accent-ink)">~1 ms · instant</text>
+  <text x="20" y="98" font-size="8.5" font-weight="700" fill="var(--amber)">cache MISS</text><text x="20" y="110" font-size="7" fill="var(--muted)">PG+backfill</text>
+  <rect x="210" y="88" width="460" height="22" rx="4" fill="var(--amber)" opacity="0.8"/><text x="678" y="103" font-size="8" font-weight="700" fill="var(--amber)">~25 ms</text>
+  <rect x="210" y="120" width="150" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="285" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 25× faster</text>
+  <text x="20" y="166" font-size="8" font-weight="700" fill="var(--ink)">hit rate</text>
+  <rect x="210" y="156" width="460" height="16" rx="8" fill="var(--panel-2)"/><rect x="210" y="156" width="451" height="16" rx="8" fill="var(--accent)" opacity="0.55"/><text x="676" y="168" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 98%</text>
+  <line x1="20" y1="184" x2="700" y2="184" stroke="var(--line)"/>
+  <text x="20" y="200" font-size="7.4" fill="var(--muted)">TTL 3600s (1h, LANGFUSE_CACHE_PROMPT_TTL_SECONDS) · change a prompt → rotate the project epoch → old keys invalidate instantly, no per-key delete</text>
+</svg>
+<div class="figcap"><b>The cache turns "hit the DB every time" into "almost never"</b> (latency/hit-rate <b>illustrative</b>; mechanism from <code>PromptService</code>): a hit returns from Redis in about <code>1ms</code>, only a miss queries Postgres and backfills at about <code>25ms</code> — roughly <b>25x</b>. A high steady-state hit rate (≈98% here) means <b>the vast majority of prompt fetches never touch the database</b>. Two safeguards: <code>TTL 3600s</code> as a backstop, and <b>rotating the project epoch</b> on a prompt change to invalidate old keys instantly (the concrete payoff of the epoch figure above).</div>
 </div>
 
 <div class="codefile">
@@ -9876,6 +9920,29 @@ This lesson covers them, focusing on an unavoidable security topic: a provider's
   <text x="360" y="198" text-anchor="middle" font-size="8" fill="var(--faint)">one engine wraps it all: credential decryption, provider adaptation, structured output, tool calls, streaming—reused by three, no reinventing</text>
 </svg>
 <div class="figcap"><b>one core, three reuses</b>: <code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> directly calls <code>fetchLLMCompletion</code>, passing <code>tools</code> and <code>structuredOutputSchema</code>. This shares the <b>same engine</b> with Lesson 29's judge <code>callLLM</code> and Lesson 36's experiment model call—credential decryption and provider adaptation written once.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="Playground request real example: left is the LlmApiKeys connection (provider=openai, adapter=openai, masked displaySecretKey sk…a1b2, secretKey encrypted with AES-256-GCM), right is the request params (model=gpt-4o, temperature=0.2, maxTokens=512, system+user messages); both feed fetchLLMCompletion, which decrypts the credential only at call time and returns content and usage. Fields from the LlmApiKeys model, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one Playground request</text>
+  <rect x="18" y="32" width="330" height="126" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="32" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">LLM connection · LlmApiKeys</text>
+  <text x="32" y="68" font-size="7.6" fill="var(--muted)">provider</text><text x="170" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="86" font-size="7.6" fill="var(--muted)">adapter</text><text x="170" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="104" font-size="7.6" fill="var(--muted)">displaySecretKey</text><text x="170" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">sk-…a1b2</text>
+  <text x="32" y="122" font-size="7.6" fill="var(--muted)">baseURL</text><text x="170" y="122" font-size="7.6" font-family="monospace" fill="var(--ink)">(default)</text>
+  <rect x="30" y="138" width="306" height="14" rx="7" fill="var(--amber-soft)"/><text x="36" y="148" font-size="6.6" fill="var(--amber)">🔒 secretKey: AES-256-GCM encrypted, decrypted at call time</text>
+  <rect x="360" y="32" width="342" height="126" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="374" y="50" font-size="8.5" font-weight="700" fill="var(--accent-ink)">request params</text>
+  <text x="374" y="68" font-size="7.6" fill="var(--muted)">model</text><text x="500" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">gpt-4o</text>
+  <text x="374" y="86" font-size="7.6" fill="var(--muted)">temperature</text><text x="500" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">0.2</text>
+  <text x="374" y="104" font-size="7.6" fill="var(--muted)">maxTokens</text><text x="500" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">512</text>
+  <rect x="372" y="120" width="318" height="32" rx="6" fill="var(--code-bg)"/><text x="380" y="133" font-size="6.8" font-family="monospace" fill="var(--code-ink)">messages: [{role:&quot;system&quot;, …},</text><text x="380" y="146" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  {role:&quot;user&quot;, content:&quot;Refund?&quot;}]</text>
+  <path d="M360 175 L300 175 L300 185 L420 185" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="250" y="170" width="220" height="28" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="188" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion()</text>
+  <text x="360" y="212" text-anchor="middle" font-size="7.4" fill="var(--muted)">the same engine is reused by L29 judge and L36 experiments — define a connection once, reuse everywhere</text>
+  <rect x="490" y="170" width="212" height="28" rx="8" fill="var(--panel-2)" stroke="var(--accent)"/><text x="500" y="183" font-size="6.8" font-family="monospace" fill="var(--ink)">→ { content:&quot;30 days…&quot;,</text><text x="500" y="194" font-size="6.8" font-family="monospace" fill="var(--muted)">     usage:{ in:42,out:18 } }</text>
+</svg>
+<div class="figcap"><b>The Playground just feeds "connection + params" into one shared engine</b> (fields from the <code>LlmApiKeys</code> model; <b>values illustrative</b>): the <b>connection</b> on the left comes from <code>LlmApiKeys</code> — <code>provider</code>/<code>adapter</code> pick the interface, <code>secretKey</code> is stored <code>AES-256-GCM</code>-encrypted and decrypted only at call time, while the UI only ever sees the masked <code>displaySecretKey</code>; the <b>request params</b> on the right are <code>model</code>/<code>temperature</code>/<code>maxTokens</code> plus messages. Both flow into <code>fetchLLMCompletion()</code> — the <b>same engine</b> reused by Lesson 29's judge and Lesson 36's experiments.</div>
 </div>
 
 <div class="codefile">
@@ -10088,6 +10155,55 @@ This lesson covers their data model, focusing on a design that will echo repeate
 </svg>
 <div class="figcap"><b>Two-layer structure</b>: <code>schema.prisma:1494</code> Dashboard has a <code>definition</code> (layout JSON) and board-level <code>filters</code>; <code>:1536</code> DashboardWidget is one "query+chart". Multiple widgets on a board each show one angle, the board filter converging all at once—"globally scope first, then each shows its own metric".</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 368" role="img" aria-label="Dashboard real example: a filter bar on top (time range, env=production, model filter), then a 2x2 of widgets — a LINE_TIME_SERIES of traces per day, a VERTICAL_BAR of cost by model, a NUMBER big-stat of p95 latency, and a PIVOT_TABLE of top users; each widget is one saved query on the query engine. Widget types from DashboardService chartType, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one dashboard (4 widgets)</text>
+  <rect x="18" y="28" width="684" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/>
+  <rect x="28" y="34" width="92" height="14" rx="7" fill="var(--accent)" opacity="0.16"/><text x="74" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">📅 last 30 days</text>
+  <rect x="127.60000000000001" y="34" width="102" height="14" rx="7" fill="var(--blue)" opacity="0.16"/><text x="179" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">env = production</text>
+  <rect x="238.0" y="34" width="65" height="14" rx="7" fill="var(--purple)" opacity="0.16"/><text x="270" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">model = *</text>
+  <text x="694" y="44" text-anchor="end" font-size="7" fill="var(--muted)">+ add widget</text>
+  <rect x="18" y="62" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">traces / day</text>
+  <rect x="249" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">LINE_TIME_SERIES</text>
+  <line x1="38" y1="190" x2="340" y2="190" stroke="var(--line)"/>
+  <polyline points="40,180 82,168 124,172 166,150 208,140 250,120 292,108 334,92" fill="none" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="40" cy="180" r="2.2" fill="var(--accent)"/>
+  <circle cx="82" cy="168" r="2.2" fill="var(--accent)"/>
+  <circle cx="124" cy="172" r="2.2" fill="var(--accent)"/>
+  <circle cx="166" cy="150" r="2.2" fill="var(--accent)"/>
+  <circle cx="208" cy="140" r="2.2" fill="var(--accent)"/>
+  <circle cx="250" cy="120" r="2.2" fill="var(--accent)"/>
+  <circle cx="292" cy="108" r="2.2" fill="var(--accent)"/>
+  <circle cx="334" cy="92" r="2.2" fill="var(--accent)"/>
+  <text x="40" y="200" font-size="6.4" fill="var(--faint)">Jun 1</text><text x="318" y="200" font-size="6.4" fill="var(--faint)">Jun 30</text>
+  <rect x="366" y="62" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">cost by model (USD)</text>
+  <rect x="598" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">VERTICAL_BAR</text>
+  <rect x="392" y="120" width="44" height="70" rx="4" fill="var(--accent)" opacity="0.7"/><text x="414" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">gpt-4o</text><text x="414" y="116" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent)">$126</text>
+  <rect x="460" y="166" width="44" height="24" rx="4" fill="var(--blue)" opacity="0.7"/><text x="482" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">4o-mini</text><text x="482" y="162" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--blue)">$43</text>
+  <rect x="528" y="138" width="44" height="52" rx="4" fill="var(--purple)" opacity="0.7"/><text x="550" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">claude</text><text x="550" y="134" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--purple)">$94</text>
+  <rect x="596" y="176" width="44" height="14" rx="4" fill="var(--amber)" opacity="0.7"/><text x="618" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">llama</text><text x="618" y="172" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--amber)">$25</text>
+  <rect x="18" y="206" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">p95 latency</text>
+  <rect x="249" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">NUMBER</text>
+  <text x="60" y="290" font-size="46" font-weight="800" fill="var(--accent-ink)">1.8<tspan font-size="20"> s</tspan></text>
+  <rect x="60" y="300" width="120" height="16" rx="8" fill="var(--accent-soft)"/><text x="120" y="312" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent)">▼ 12% vs last wk</text>
+  <polyline points="210,318 232,312 254,316 276,300 298,304 320,290 340,286" fill="none" stroke="var(--blue)" stroke-width="1.6"/>
+  <rect x="366" y="206" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">top users</text>
+  <rect x="598" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">PIVOT_TABLE</text>
+  <rect x="380" y="232" width="308" height="16" fill="var(--panel-2)"/>
+  <text x="388" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">userId</text>
+  <text x="560" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">traces</text>
+  <text x="636" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">cost</text>
+  <rect x="380" y="248" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="261" font-size="7" font-family="monospace" fill="var(--ink)">u_8f3a</text><text x="560" y="261" font-size="7" fill="var(--muted)">1820</text><text x="636" y="261" font-size="7" fill="var(--accent-ink)">$58</text>
+  <rect x="380" y="268" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="281" font-size="7" font-family="monospace" fill="var(--ink)">u_2b71</text><text x="560" y="281" font-size="7" fill="var(--muted)">1340</text><text x="636" y="281" font-size="7" fill="var(--accent-ink)">$41</text>
+  <rect x="380" y="288" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="301" font-size="7" font-family="monospace" fill="var(--ink)">u_55c9</text><text x="560" y="301" font-size="7" fill="var(--muted)">980</text><text x="636" y="301" font-size="7" fill="var(--accent-ink)">$33</text>
+  <text x="360" y="358" text-anchor="middle" font-size="7.4" fill="var(--muted)">each widget = one saved query on the engine (view + metrics + dimensions), detailed in Lesson 41</text>
+</svg>
+<div class="figcap"><b>A dashboard = a set of widgets, each widget = one saved query</b> (widget types from <code>DashboardService</code>'s <code>chartType</code>; <b>data illustrative</b>): the filter bar on top applies to <b>the whole board</b>, and the four panels are <code>LINE_TIME_SERIES</code> (traces/day), <code>VERTICAL_BAR</code> (cost by model), <code>NUMBER</code> (p95 latency big-stat) and <code>PIVOT_TABLE</code> (top users). Same metrics, <b>different chart types read differently</b> — a line for trend, bars for composition, a big number for a single KPI, a pivot for detail. Every widget is backed by Lesson 41's query engine.</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">board</span><span class="name">Dashboard</span></div><div class="ld">A canvas: <code>definition</code> is a JSON layout (which widgets, what grid cells), <code>filters</code> are board-level global filters. projectId is optional—Langfuse ships a set of "managed dashboards" ready out of the box. You arrange it freely like desktop widgets.</div></div>
@@ -10262,6 +10378,44 @@ Understanding it explains why Lesson 40's dashboards, Lesson 33's monitors, and 
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the semantic layer isolates "what you say" from "what the kitchen knows": rename a physical column, only the dictionary changes, all widget/monitor/API queries go on</text>
 </svg>
 <div class="figcap"><b>semantic layer = a dictionary of logical name↔SQL</b>: <code>dataModel.ts</code> declares <code>dimensions</code> and <code>measures</code> per view, each shaped like <code>{ sql: "traces.name", alias: "name" }</code> (a dimension); a time dimension can even be an expression like <code>formatDateTime(traces.timestamp, …)</code>. Source: <code>packages/shared/src/features/query/dataModel.ts:10-70</code>, <code>types.ts:9</code> (viewDeclaration).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="Query-engine real example: left is the query spec JSON a dashboard submits (view=observations, metrics are measure+aggregation objects, dimensions are field objects, timeDimension granularity=day, filters); right is the ClickHouse SQL the queryBuilder compiles (select provided_model_name, count(), sum(total_cost), toStartOfDay(start_time), from observations FINAL, where with project_id and time-range placeholders, group by dimension and day). Spec shape from features/query/types.ts, column names from the observations migration, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a query spec → compiled ClickHouse SQL</text>
+  <rect x="16" y="30" width="340" height="248" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="46" font-size="8" font-weight="700" fill="var(--blue)">query spec (JSON) · dashboard submits</text>
+  <text x="30" y="62" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="77.4" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  view: &quot;observations&quot;,</text>
+  <text x="30" y="92.80000000000001" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  metrics: [</text>
+  <text x="30" y="108.20000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;count&quot;, aggregation:&quot;count&quot; },</text>
+  <text x="30" y="123.60000000000002" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    { measure:&quot;totalCost&quot;, aggregation:&quot;sum&quot; }</text>
+  <text x="30" y="139.00000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  ],</text>
+  <text x="30" y="154.40000000000003" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  dimensions: [{ field:&quot;providedModelName&quot; }],</text>
+  <text x="30" y="169.80000000000004" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  timeDimension: { granularity:&quot;day&quot; },</text>
+  <text x="30" y="185.20000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  filters: [{ column:&quot;environment&quot;,</text>
+  <text x="30" y="200.60000000000005" font-size="6.7" font-family="monospace" fill="var(--code-ink)">    operator:&quot;=&quot;, value:&quot;production&quot; }],</text>
+  <text x="30" y="216.00000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  fromTimestamp:&quot;2026-06-01…&quot;,</text>
+  <text x="30" y="231.40000000000006" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  toTimestamp:&quot;2026-06-30…&quot;</text>
+  <text x="30" y="246.80000000000007" font-size="6.7" font-family="monospace" fill="var(--code-ink)">}</text>
+  <text x="360" y="150" text-anchor="middle" font-size="7" fill="var(--muted)">queryBuilder</text>
+  <path d="M357 158 L363 158 L363 164 L357 164 L363 161 Z" fill="var(--accent)"/><line x1="357" y1="155" x2="357" y2="167" stroke="var(--accent)" stroke-width="2"/><polygon points="362,161 354,156 354,166" fill="var(--accent)"/>
+  <rect x="372" y="30" width="332" height="248" rx="9" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="386" y="46" font-size="8" font-weight="700" fill="var(--accent-ink)">compiled ClickHouse SQL</text>
+  <text x="386" y="62" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">SELECT</text>
+  <text x="386" y="77.4" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  provided_model_name,</text>
+  <text x="386" y="92.80000000000001" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  count() AS count,</text>
+  <text x="386" y="108.20000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  sum(total_cost) AS sum_totalCost,</text>
+  <text x="386" y="123.60000000000002" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--blue)">  toStartOfDay(start_time) AS day</text>
+  <text x="386" y="139.00000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">FROM observations FINAL</text>
+  <text x="386" y="154.40000000000003" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">WHERE project_id = {projectId}</text>
+  <text x="386" y="169.80000000000004" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND environment = 'production'</text>
+  <text x="386" y="185.20000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &gt;= {from}</text>
+  <text x="386" y="200.60000000000005" font-size="6.9" font-family="monospace" font-weight="400" fill="var(--code-ink)">  AND start_time &lt;  {to}</text>
+  <text x="386" y="216.00000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">GROUP BY provided_model_name, day</text>
+  <text x="386" y="231.40000000000006" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--accent-ink)">ORDER BY day</text>
+  <text x="360" y="276" text-anchor="middle" font-size="6.6" fill="var(--faint)">parameterized placeholders ({projectId}/{from}/{to}) prevent SQL injection</text>
+</svg>
+<div class="figcap"><b>One declarative spec, the engine writes the SQL</b> (spec shape from <code>features/query/types.ts</code>, column names from the <code>observations</code> migration; <b>values illustrative</b>): you only describe <b>what you want</b> — <code>view</code> picks the table, <code>metrics</code> are <code>{measure, aggregation}</code>, <code>dimensions</code> are <code>{field}</code>, <code>timeDimension.granularity</code> sets the time bucket; <code>queryBuilder</code> compiles it into real ClickHouse SQL: measures become <code>count()</code>/<code>sum(total_cost)</code>, dimensions go into <code>GROUP BY</code>, the bucket becomes <code>toStartOfDay(start_time)</code>. Every user value flows through <b>parameterized placeholders</b>, blocking SQL injection at the root. Swap the <code>view</code> and you query a different table — one spec language covers every chart.</div>
 </div>
 
 <div class="codefile">
@@ -10476,6 +10630,49 @@ It directly feeds Lesson 16's cost computation: take a call's model name, <stron
 </svg>
 <div class="figcap"><b>one regex unifies fragmented naming</b>: each <code>default-model-prices.json</code> entry carries a <code>matchPattern</code>, e.g. gpt-4o's <code>(?i)^(openai/)?(gpt-4o)$</code>. With <code>(?i)</code> case-insensitive, <code>^…$</code> full-string, optional provider/region prefixes and version suffixes, it <b>catches all</b> spellings of one model across six platforms. Source: <code>worker/src/constants/default-model-prices.json</code>.</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 260" role="img" aria-label="Model pricing real example: the table lists five real models — gpt-4o, gpt-4o-mini, claude-3-5-sonnet, claude-3-haiku, gpt-4-turbo — with input and output price per million tokens, and bars on the right compare output price (gpt-4-turbo most expensive at $30, gpt-4o-mini cheapest at $0.60); below, a model name is matched to a price row via its matchPattern regex. Data from default-model-prices.json">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: model pricing (per 1M tokens)</text>
+  <rect x="18" y="28" width="684" height="20" fill="var(--panel-2)"/>
+  <text x="30" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">modelName</text>
+  <text x="252" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">input $/1M</text>
+  <text x="348" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">output $/1M</text>
+  <text x="440" y="42" font-size="7.4" font-weight="700" fill="var(--ink)">output price</text>
+  <rect x="18" y="50" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="67" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o</text>
+  <text x="262" y="67" text-anchor="end" font-size="7.8" fill="var(--ink)">$2.50</text>
+  <text x="372" y="67" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$10.00</text>
+  <rect x="438" y="57" width="56" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="500" y="67" font-size="6.8" fill="var(--accent)">$10.00</text>
+  <rect x="18" y="76" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="93" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4o-mini</text>
+  <text x="262" y="93" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.15</text>
+  <text x="372" y="93" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$0.60</text>
+  <rect x="438" y="83" width="3" height="12" rx="3" fill="var(--blue)" opacity="0.7"/><text x="447" y="93" font-size="6.8" fill="var(--blue)">$0.60</text>
+  <rect x="18" y="102" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="119" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-5-sonnet-20240620</text>
+  <text x="262" y="119" text-anchor="end" font-size="7.8" fill="var(--ink)">$3.00</text>
+  <text x="372" y="119" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$15.00</text>
+  <rect x="438" y="109" width="84" height="12" rx="3" fill="var(--purple)" opacity="0.7"/><text x="528" y="119" font-size="6.8" fill="var(--purple)">$15.00</text>
+  <rect x="18" y="128" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="145" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">claude-3-haiku-20240307</text>
+  <text x="262" y="145" text-anchor="end" font-size="7.8" fill="var(--ink)">$0.25</text>
+  <text x="372" y="145" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$1.25</text>
+  <rect x="438" y="135" width="7" height="12" rx="3" fill="var(--accent)" opacity="0.7"/><text x="451" y="145" font-size="6.8" fill="var(--accent)">$1.25</text>
+  <rect x="18" y="154" width="684" height="26" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/>
+  <text x="30" y="171" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent-ink)">gpt-4-turbo</text>
+  <text x="262" y="171" text-anchor="end" font-size="7.8" fill="var(--ink)">$10.00</text>
+  <text x="372" y="171" text-anchor="end" font-size="7.8" font-weight="700" fill="var(--ink)">$30.00</text>
+  <rect x="438" y="161" width="168" height="12" rx="3" fill="var(--amber)" opacity="0.7"/><text x="612" y="171" font-size="6.8" fill="var(--amber)">$30.00</text>
+  <rect x="18" y="188" width="684" height="58" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="204" font-size="7.6" font-weight="700" fill="var(--blue)">how a model maps to a price? the matchPattern regex</text>
+  <text x="30" y="221" font-size="7.2" font-family="monospace" fill="var(--code-ink)">usage.model = &quot;openai/gpt-4o&quot;</text>
+  <text x="250" y="221" font-size="7.2" font-family="monospace" fill="var(--muted)">──match──▶</text>
+  <text x="330" y="221" font-size="7" font-family="monospace" fill="var(--accent-ink)">(?i)^(openai/)?(gpt-4o)$</text>
+  <text x="560" y="221" font-size="7.2" font-family="monospace" fill="var(--accent)">✓ → gpt-4o</text>
+  <text x="30" y="238" font-size="6.8" fill="var(--faint)">prices stored per-token in pricingTiers[].prices.{input,output} (shown x1e6 as per-million); at ingestion the regex maps the model name to a price row</text>
+</svg>
+<div class="figcap"><b>Pricing is a "regex → per-token price" lookup table</b> (data from <code>worker/src/constants/default-model-prices.json</code>, <b>real prices</b>): each model stores <code>input</code>/<code>output</code> price <b>per token</b> under <code>pricingTiers[].prices</code> (shown x1e6 as "per million" for readability). On output price alone, <code>gpt-4-turbo</code> ($30) is <b>50x</b> <code>gpt-4o-mini</code> ($0.60) — model choice is a cost choice. How does a model name map to a price? Via the <code>matchPattern</code> regex: <code>&quot;openai/gpt-4o&quot;</code> matches <code>(?i)^(openai/)?(gpt-4o)$</code> and uses that row, so it bills correctly with or without the <code>openai/</code> prefix (used by Lesson 12's ingestion cost step).</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/constants/default-model-prices.json</span><span class="ln">one model entry (excerpt)</span></div>
@@ -10676,6 +10873,33 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
 </svg>
 <div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="Cloud usage-metering real example: left is hourly metering accumulating (each project counts observations, aggregated per organization) into a monthly total; right is the month-end Stripe invoice broken into subscription (plan), usage (observations billing) and tax line items, summing to a total. Structure from billing getInvoices (subscription/usage/tax breakdown), observations as the billing unit, amounts illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: usage metering → month-end Stripe invoice</text>
+  <rect x="16" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="30" y="48" font-size="8.5" font-weight="700" fill="var(--blue)">usage metering · per project → per org</text>
+  <rect x="30" y="66" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="80" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 10:00</text><text x="308" y="80" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,240 obs</text>
+  <rect x="30" y="92" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="106" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 11:00</text><text x="308" y="106" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+980 obs</text>
+  <rect x="30" y="118" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="132" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 12:00</text><text x="308" y="132" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,510 obs</text>
+  <rect x="30" y="144" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="158" font-size="7" font-family="monospace" fill="var(--ink)">…</text><text x="308" y="158" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">… obs</text>
+  <rect x="30" y="170" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="184" font-size="7" font-family="monospace" fill="var(--ink)">Jun 30 23:00</text><text x="308" y="184" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,090 obs</text>
+  <line x1="30" y1="198" x2="318" y2="198" stroke="var(--line)"/>
+  <text x="40" y="216" font-size="8" font-weight="700" fill="var(--accent-ink)">Σ June</text><text x="308" y="216" text-anchor="end" font-size="9" font-weight="800" fill="var(--accent-ink)">1,240,000 obs</text>
+  <text x="352" y="120" text-anchor="middle" font-size="6.6" fill="var(--muted)">month end</text>
+  <line x1="336" y1="130" x2="372" y2="130" stroke="var(--accent)" stroke-width="2"/><polygon points="372,130 364,125 364,135" fill="var(--accent)"/>
+  <rect x="388" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · June 2026</text>
+  <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
+  <text x="402" y="72" font-size="7.8" fill="var(--ink)">subscription · Team plan</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="120" font-size="7.8" fill="var(--muted)">tax</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
+  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σobs × unit price (per plan tier; illustrative)</text>
+  <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
+  <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Total due</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">the platform only counts (observations per project, aggregated per org); Stripe does the actual invoicing, tax and charging</text>
+</svg>
+<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): the usage billing unit is <code>observations</code> — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σobs × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
 </div>
 
 <div class="codefile">

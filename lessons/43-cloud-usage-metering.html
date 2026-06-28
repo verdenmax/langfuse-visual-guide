@@ -385,6 +385,33 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>用量计量 → Stripe 出账</b>：<code>handleCloudUsageMeteringJob</code> 每小时对过去整点区间，用 <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> 从 ClickHouse 数量，按 org 汇总，对有 <code>cloudConfig.stripe.customerId</code> 的组织调 <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code>（<code>backOff</code> 重试）。源码：<code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="云用量计量真实例子：左边是按小时累计的计量（每个项目记 observations 数，按组织汇总），整月累计成一个总用量；右边是月末 Stripe 账单，分订阅(套餐)、用量(observations 计费)、税三类行项目，合计总额。结构取自 billing 的 getInvoices（subscription/usage/tax 分解），observations 为计费单位，金额为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：用量计量 → 月末 Stripe 账单</text>
+  <rect x="16" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="30" y="48" font-size="8.5" font-weight="700" fill="var(--blue)">用量计量 · per project → per org</text>
+  <rect x="30" y="66" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="80" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 10:00</text><text x="308" y="80" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,240 obs</text>
+  <rect x="30" y="92" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="106" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 11:00</text><text x="308" y="106" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+980 obs</text>
+  <rect x="30" y="118" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="132" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 12:00</text><text x="308" y="132" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,510 obs</text>
+  <rect x="30" y="144" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="158" font-size="7" font-family="monospace" fill="var(--ink)">…</text><text x="308" y="158" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">… obs</text>
+  <rect x="30" y="170" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="184" font-size="7" font-family="monospace" fill="var(--ink)">Jun 30 23:00</text><text x="308" y="184" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,090 obs</text>
+  <line x1="30" y1="198" x2="318" y2="198" stroke="var(--line)"/>
+  <text x="40" y="216" font-size="8" font-weight="700" fill="var(--accent-ink)">Σ 6 月</text><text x="308" y="216" text-anchor="end" font-size="9" font-weight="800" fill="var(--accent-ink)">1,240,000 obs</text>
+  <text x="352" y="120" text-anchor="middle" font-size="6.6" fill="var(--muted)">月末</text>
+  <line x1="336" y1="130" x2="372" y2="130" stroke="var(--accent)" stroke-width="2"/><polygon points="372,130 364,125 364,135" fill="var(--accent)"/>
+  <rect x="388" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · 2026 年 6 月</text>
+  <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
+  <text x="402" y="72" font-size="7.8" fill="var(--ink)">订阅 · Team 套餐</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">用量 · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="120" font-size="7.8" fill="var(--muted)">税 (tax)</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
+  <text x="402" y="142" font-size="6.6" fill="var(--faint)">用量 = Σobs × 单价（按套餐阶梯，金额为示例）</text>
+  <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
+  <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">合计 Total</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">平台只负责「数数」（每项目记 observations、按组织汇总）；真正开票、收税、扣款交给 Stripe</text>
+</svg>
+<div class="figcap"><b>平台数数，Stripe 开票</b>（结构取自 billing 的 <code>getInvoices</code>：subscription / usage / tax 分解；<b>金额为示例</b>）：用量的计费单位是 <code>observations</code>——每个<b>项目</b>按小时累计，再按<b>组织</b>汇总成整月总量（图左 1.24M）。月末 Stripe 出一张账单，拆成<b>订阅</b>（固定套餐费）、<b>用量</b>（Σobs × 阶梯单价）、<b>税</b>三类行项目，合计扣款。这条「<b>计量与计费分离</b>」的边界很关键：平台专心准确地数数，发票、税务、支付这些又重又合规的事全甩给 Stripe。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</span><span class="ln">数量 + 上报 Stripe</span></div>
@@ -580,6 +607,33 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
 </svg>
 <div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="Cloud usage-metering real example: left is hourly metering accumulating (each project counts observations, aggregated per organization) into a monthly total; right is the month-end Stripe invoice broken into subscription (plan), usage (observations billing) and tax line items, summing to a total. Structure from billing getInvoices (subscription/usage/tax breakdown), observations as the billing unit, amounts illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: usage metering → month-end Stripe invoice</text>
+  <rect x="16" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="30" y="48" font-size="8.5" font-weight="700" fill="var(--blue)">usage metering · per project → per org</text>
+  <rect x="30" y="66" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="80" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 10:00</text><text x="308" y="80" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,240 obs</text>
+  <rect x="30" y="92" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="106" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 11:00</text><text x="308" y="106" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+980 obs</text>
+  <rect x="30" y="118" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="132" font-size="7" font-family="monospace" fill="var(--ink)">Jun 1 12:00</text><text x="308" y="132" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,510 obs</text>
+  <rect x="30" y="144" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="158" font-size="7" font-family="monospace" fill="var(--ink)">…</text><text x="308" y="158" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">… obs</text>
+  <rect x="30" y="170" width="288" height="20" rx="5" fill="var(--panel-2)"/><text x="40" y="184" font-size="7" font-family="monospace" fill="var(--ink)">Jun 30 23:00</text><text x="308" y="184" text-anchor="end" font-size="7" font-weight="700" fill="var(--blue)">+1,090 obs</text>
+  <line x1="30" y1="198" x2="318" y2="198" stroke="var(--line)"/>
+  <text x="40" y="216" font-size="8" font-weight="700" fill="var(--accent-ink)">Σ June</text><text x="308" y="216" text-anchor="end" font-size="9" font-weight="800" fill="var(--accent-ink)">1,240,000 obs</text>
+  <text x="352" y="120" text-anchor="middle" font-size="6.6" fill="var(--muted)">month end</text>
+  <line x1="336" y1="130" x2="372" y2="130" stroke="var(--accent)" stroke-width="2"/><polygon points="372,130 364,125 364,135" fill="var(--accent)"/>
+  <rect x="388" y="30" width="316" height="210" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · June 2026</text>
+  <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
+  <text x="402" y="72" font-size="7.8" fill="var(--ink)">subscription · Team plan</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="120" font-size="7.8" fill="var(--muted)">tax</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
+  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σobs × unit price (per plan tier; illustrative)</text>
+  <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
+  <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Total due</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">the platform only counts (observations per project, aggregated per org); Stripe does the actual invoicing, tax and charging</text>
+</svg>
+<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): the usage billing unit is <code>observations</code> — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σobs × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
 </div>
 
 <div class="codefile">

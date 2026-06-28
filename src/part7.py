@@ -45,6 +45,35 @@ _ZH37.append(r"""
 </svg>
 <div class="figcap"><b>git 式版本控制</b>：version 自增不可变（<code>latestPrompt.version + 1</code>）；label 唯一、可移动——给新版打 <code>production</code> 会从旧版自动摘除该标签（<code>removeLabelsFromPreviousPromptVersions</code>）。新建版本默认带 <code>latest</code> 标签。源码：<code>createPrompt.ts:88-181</code>、<code>constants.ts:1-2</code>（<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 188" role="img" aria-label="prompt 版本历史真实例子：prompt support-reply 有 v1/v2/v3 三个不可变版本，最新在上；每行有 version、labels、commitMessage、创建者与时间；v3 钉着 production+latest 标签并高亮。字段取自 schema.prisma 的 Prompt，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个 prompt 的版本历史</text>
+  <rect x="20" y="30" width="680" height="24" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="46" font-size="9" font-weight="700" fill="var(--accent-ink)">prompt · name=support-reply · type=text · 3 versions</text>
+  <rect x="20" y="58" width="680" height="20" fill="var(--panel-2)"/>
+  <text x="40" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">version</text>
+  <text x="120" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">labels</text>
+  <text x="330" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">commitMessage</text>
+  <text x="560" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">createdBy · createdAt</text>
+  <rect x="20" y="80" width="680" height="28" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="98" font-size="9" font-weight="700" fill="var(--accent-ink)">v3</text>
+  <rect x="120" y="85" width="70" height="17" rx="8" fill="var(--accent)" opacity="0.18"/><text x="155" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">production</text>
+  <rect x="196.0" y="85" width="48" height="17" rx="8" fill="var(--blue)" opacity="0.18"/><text x="220" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">latest</text>
+  <text x="330" y="98" font-size="7.6" fill="var(--ink)">收紧退款措辞</text>
+  <text x="560" y="98" font-size="7.2" fill="var(--muted)">alice · 2026-06-20</text>
+  <rect x="20" y="108" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="126" font-size="9" font-weight="700" fill="var(--accent-ink)">v2</text>
+  <rect x="120" y="113" width="53" height="17" rx="8" fill="var(--amber)" opacity="0.18"/><text x="147" y="125" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">staging</text>
+  <text x="330" y="126" font-size="7.6" fill="var(--ink)">加一句共情开场</text>
+  <text x="560" y="126" font-size="7.2" fill="var(--muted)">bob · 2026-06-12</text>
+  <rect x="20" y="136" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="154" font-size="9" font-weight="700" fill="var(--accent-ink)">v1</text>
+  <text x="120" y="154" font-size="7.4" fill="var(--faint)">（无）</text>
+  <text x="330" y="154" font-size="7.6" fill="var(--ink)">初版</text>
+  <text x="560" y="154" font-size="7.2" fill="var(--muted)">alice · 2026-06-01</text>
+  <text x="34" y="178" font-size="7.4" fill="var(--muted)">版本不可变递增（unique projectId+name+version）；production / latest 是可移动指针，现都指向 v3</text>
+</svg>
+<div class="figcap"><b>版本历史就是一段「prompt 的 git log」</b>（字段取自 <code>schema.prisma</code> 的 <code>Prompt</code>：<code>version</code>/<code>labels</code>/<code>commitMessage</code>/<code>createdBy</code>；<b>值为示例</b>）：每次保存生成一个<b>不可变</b>的新版本（<code>@@unique([projectId,name,version])</code>），最新在上。<code>production</code>、<code>latest</code> 不是版本号而是<b>可移动的标签指针</b>——发布＝把 <code>production</code> 移到某版，回滚＝移回去，应用代码只认标签。这张表正是上面「git 式模型」的<b>真实数据形态</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/prompts/server/actions/createPrompt.ts</span><span class="ln">版本自增 + label 移动</span></div>
@@ -188,6 +217,35 @@ _EN37.append(r"""
   <text x="360" y="196" text-anchor="middle" font-size="8" fill="var(--faint)">app code just says "give me the production one"—release = move the label to v3, rollback = move it back to v2, no code change</text>
 </svg>
 <div class="figcap"><b>git-style version control</b>: version auto-increments and is immutable (<code>latestPrompt.version + 1</code>); a label is unique and movable—tagging a new version with <code>production</code> auto-strips it from the old one (<code>removeLabelsFromPreviousPromptVersions</code>). A new version always gets the <code>latest</code> label. Source: <code>createPrompt.ts:88-181</code>, <code>constants.ts:1-2</code> (<code>PRODUCTION_LABEL/LATEST_PROMPT_LABEL</code>).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 188" role="img" aria-label="Prompt version-history real example: prompt support-reply has three immutable versions v1/v2/v3, newest on top; each row shows version, labels, commitMessage, author and time; v3 pins the production+latest labels and is highlighted. Fields from the Prompt model in schema.prisma, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a prompt's version history</text>
+  <rect x="20" y="30" width="680" height="24" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="34" y="46" font-size="9" font-weight="700" fill="var(--accent-ink)">prompt · name=support-reply · type=text · 3 versions</text>
+  <rect x="20" y="58" width="680" height="20" fill="var(--panel-2)"/>
+  <text x="40" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">version</text>
+  <text x="120" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">labels</text>
+  <text x="330" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">commitMessage</text>
+  <text x="560" y="72" font-size="7.6" font-weight="700" fill="var(--ink)">createdBy · createdAt</text>
+  <rect x="20" y="80" width="680" height="28" fill="var(--accent-soft)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="98" font-size="9" font-weight="700" fill="var(--accent-ink)">v3</text>
+  <rect x="120" y="85" width="70" height="17" rx="8" fill="var(--accent)" opacity="0.18"/><text x="155" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">production</text>
+  <rect x="196.0" y="85" width="48" height="17" rx="8" fill="var(--blue)" opacity="0.18"/><text x="220" y="97" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">latest</text>
+  <text x="330" y="98" font-size="7.6" fill="var(--ink)">tighten refund wording</text>
+  <text x="560" y="98" font-size="7.2" fill="var(--muted)">alice · 2026-06-20</text>
+  <rect x="20" y="108" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="126" font-size="9" font-weight="700" fill="var(--accent-ink)">v2</text>
+  <rect x="120" y="113" width="53" height="17" rx="8" fill="var(--amber)" opacity="0.18"/><text x="147" y="125" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">staging</text>
+  <text x="330" y="126" font-size="7.6" fill="var(--ink)">add an empathy line</text>
+  <text x="560" y="126" font-size="7.2" fill="var(--muted)">bob · 2026-06-12</text>
+  <rect x="20" y="136" width="680" height="28" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <text x="40" y="154" font-size="9" font-weight="700" fill="var(--accent-ink)">v1</text>
+  <text x="120" y="154" font-size="7.4" fill="var(--faint)">(none)</text>
+  <text x="330" y="154" font-size="7.6" fill="var(--ink)">initial version</text>
+  <text x="560" y="154" font-size="7.2" fill="var(--muted)">alice · 2026-06-01</text>
+  <text x="34" y="178" font-size="7.4" fill="var(--muted)">versions are immutable &amp; incrementing (unique projectId+name+version); production / latest are movable pointers, both on v3 now</text>
+</svg>
+<div class="figcap"><b>The version history is a "git log for your prompt"</b> (fields from the <code>Prompt</code> model in <code>schema.prisma</code>: <code>version</code>/<code>labels</code>/<code>commitMessage</code>/<code>createdBy</code>; <b>values illustrative</b>): each save creates a new <b>immutable</b> version (<code>@@unique([projectId,name,version])</code>), newest on top. <code>production</code> and <code>latest</code> are not version numbers but <b>movable label pointers</b> — a release moves <code>production</code> onto a version, a rollback moves it back, and app code only knows the label. This table is the <b>concrete data form</b> of the git-style model above.</div>
 </div>
 
 <div class="codefile">
@@ -343,6 +401,21 @@ _ZH38.append(r"""
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">绝大多数请求走 ①（毫秒、不碰库）；只有缓存冷/失效后第一笔走 ②③——数据库压力被缓存挡在前面</text>
 </svg>
 <div class="figcap"><b>读穿透 + 回填</b>：<code>getPrompt</code> 先 <code>getCachedPrompt</code>，命中即返回；未命中走 <code>findPrompt</code>（DB）再 <code>cachePrompt</code>（<code>redis.set(key, value, "EX", ttlSeconds)</code>）。开关 <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>、时长 <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>。源码：<code>PromptService/index.ts:49-86,166-173</code>。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="缓存命中与未命中的延迟对比真实例子：命中走 Redis 约 1 毫秒秒回，未命中要查 Postgres 再回填 Redis 约 25 毫秒，约 25 倍差距；稳态命中率约 98%；TTL 3600 秒、epoch 轮换即失效。延迟与命中率为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：命中 vs 未命中的延迟</text>
+  <text x="20" y="56" font-size="8.5" font-weight="700" fill="var(--accent-ink)">cache HIT</text><text x="20" y="68" font-size="7" fill="var(--muted)">Redis</text>
+  <rect x="210" y="46" width="18" height="22" rx="4" fill="var(--accent)" opacity="0.85"/><text x="236" y="61" font-size="8" font-weight="700" fill="var(--accent-ink)">~1 ms · 秒回</text>
+  <text x="20" y="98" font-size="8.5" font-weight="700" fill="var(--amber)">cache MISS</text><text x="20" y="110" font-size="7" fill="var(--muted)">查 PG+回填</text>
+  <rect x="210" y="88" width="460" height="22" rx="4" fill="var(--amber)" opacity="0.8"/><text x="678" y="103" font-size="8" font-weight="700" fill="var(--amber)">~25 ms</text>
+  <rect x="210" y="120" width="150" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="285" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 25× 更快</text>
+  <text x="20" y="166" font-size="8" font-weight="700" fill="var(--ink)">稳态命中率</text>
+  <rect x="210" y="156" width="460" height="16" rx="8" fill="var(--panel-2)"/><rect x="210" y="156" width="451" height="16" rx="8" fill="var(--accent)" opacity="0.55"/><text x="676" y="168" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 98%</text>
+  <line x1="20" y1="184" x2="700" y2="184" stroke="var(--line)"/>
+  <text x="20" y="200" font-size="7.4" fill="var(--muted)">TTL 3600s（1h，LANGFUSE_CACHE_PROMPT_TTL_SECONDS）· 改 prompt → 轮换项目级 epoch → 旧 key 瞬间失效，无需逐个删</text>
+</svg>
+<div class="figcap"><b>缓存把「每次都查库」变成「几乎不查库」</b>（延迟/命中率<b>为示例</b>，机制取自 <code>PromptService</code>）：命中走 Redis 约 <code>1ms</code> 秒回，未命中才查 Postgres 再回填、约 <code>25ms</code>——相差约 <b>25 倍</b>。稳态命中率高（图中 ≈98%），意味着<b>绝大多数取 prompt 的请求都不碰数据库</b>。两道保险：<code>TTL 3600s</code> 兜底过期，改 prompt 时<b>轮换项目级 epoch</b>让旧 key 瞬间失效（上面 epoch 图的实际收益）。</div>
 </div>
 
 <div class="codefile">
@@ -501,6 +574,21 @@ _EN38.append(r"""
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the vast majority of requests take ① (millisecond, no DB); only the first after a cold/invalidated cache takes ②③—DB load is shielded behind the cache</text>
 </svg>
 <div class="figcap"><b>read-through + backfill</b>: <code>getPrompt</code> first <code>getCachedPrompt</code>, returns on a hit; on a miss runs <code>findPrompt</code> (DB) then <code>cachePrompt</code> (<code>redis.set(key, value, "EX", ttlSeconds)</code>). Toggle <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, duration <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>. Source: <code>PromptService/index.ts:49-86,166-173</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Cache hit vs miss latency real example: a hit goes to Redis in about 1 ms and returns instantly, a miss must query Postgres then backfill Redis in about 25 ms, roughly 25x slower; steady-state hit rate about 98%; TTL 3600 seconds, epoch rotation invalidates instantly. Latencies and hit rate illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: cache hit vs miss latency</text>
+  <text x="20" y="56" font-size="8.5" font-weight="700" fill="var(--accent-ink)">cache HIT</text><text x="20" y="68" font-size="7" fill="var(--muted)">Redis</text>
+  <rect x="210" y="46" width="18" height="22" rx="4" fill="var(--accent)" opacity="0.85"/><text x="236" y="61" font-size="8" font-weight="700" fill="var(--accent-ink)">~1 ms · instant</text>
+  <text x="20" y="98" font-size="8.5" font-weight="700" fill="var(--amber)">cache MISS</text><text x="20" y="110" font-size="7" fill="var(--muted)">PG+backfill</text>
+  <rect x="210" y="88" width="460" height="22" rx="4" fill="var(--amber)" opacity="0.8"/><text x="678" y="103" font-size="8" font-weight="700" fill="var(--amber)">~25 ms</text>
+  <rect x="210" y="120" width="150" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="285" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 25× faster</text>
+  <text x="20" y="166" font-size="8" font-weight="700" fill="var(--ink)">hit rate</text>
+  <rect x="210" y="156" width="460" height="16" rx="8" fill="var(--panel-2)"/><rect x="210" y="156" width="451" height="16" rx="8" fill="var(--accent)" opacity="0.55"/><text x="676" y="168" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 98%</text>
+  <line x1="20" y1="184" x2="700" y2="184" stroke="var(--line)"/>
+  <text x="20" y="200" font-size="7.4" fill="var(--muted)">TTL 3600s (1h, LANGFUSE_CACHE_PROMPT_TTL_SECONDS) · change a prompt → rotate the project epoch → old keys invalidate instantly, no per-key delete</text>
+</svg>
+<div class="figcap"><b>The cache turns "hit the DB every time" into "almost never"</b> (latency/hit-rate <b>illustrative</b>; mechanism from <code>PromptService</code>): a hit returns from Redis in about <code>1ms</code>, only a miss queries Postgres and backfills at about <code>25ms</code> — roughly <b>25x</b>. A high steady-state hit rate (≈98% here) means <b>the vast majority of prompt fetches never touch the database</b>. Two safeguards: <code>TTL 3600s</code> as a backstop, and <b>rotating the project epoch</b> on a prompt change to invalidate old keys instantly (the concrete payoff of the epoch figure above).</div>
 </div>
 
 <div class="codefile">
@@ -674,6 +762,29 @@ _ZH39.append(r"""
 </svg>
 <div class="figcap"><b>一个核心，三处复用</b>：<code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> 直接调 <code>fetchLLMCompletion</code>，传入 <code>tools</code> 与 <code>structuredOutputSchema</code>。这与第 29 课裁判的 <code>callLLM</code>、第 36 课实验的模型调用，<b>底层是同一台引擎</b>——凭证解密、provider 适配都只写一遍。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="Playground 请求真实例子：左边是 LlmApiKeys 连接（provider=openai、adapter=openai、displaySecretKey 掩码 sk…a1b2、secretKey 以 AES-256-GCM 加密），右边是请求参数（model=gpt-4o、temperature=0.2、maxTokens=512、system+user 消息）；两者汇入 fetchLLMCompletion，调用前一刻才解密凭证，返回内容与 usage。字段取自 LlmApiKeys 模型，值为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次 Playground 请求</text>
+  <rect x="18" y="32" width="330" height="126" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="32" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">LLM connection · LlmApiKeys</text>
+  <text x="32" y="68" font-size="7.6" fill="var(--muted)">provider</text><text x="170" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="86" font-size="7.6" fill="var(--muted)">adapter</text><text x="170" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="104" font-size="7.6" fill="var(--muted)">displaySecretKey</text><text x="170" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">sk-…a1b2</text>
+  <text x="32" y="122" font-size="7.6" fill="var(--muted)">baseURL</text><text x="170" y="122" font-size="7.6" font-family="monospace" fill="var(--ink)">（默认）</text>
+  <rect x="30" y="138" width="306" height="14" rx="7" fill="var(--amber-soft)"/><text x="36" y="148" font-size="6.6" fill="var(--amber)">🔒 secretKey: AES-256-GCM 加密存储，调用前一刻才解密</text>
+  <rect x="360" y="32" width="342" height="126" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="374" y="50" font-size="8.5" font-weight="700" fill="var(--accent-ink)">请求参数</text>
+  <text x="374" y="68" font-size="7.6" fill="var(--muted)">model</text><text x="500" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">gpt-4o</text>
+  <text x="374" y="86" font-size="7.6" fill="var(--muted)">temperature</text><text x="500" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">0.2</text>
+  <text x="374" y="104" font-size="7.6" fill="var(--muted)">maxTokens</text><text x="500" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">512</text>
+  <rect x="372" y="120" width="318" height="32" rx="6" fill="var(--code-bg)"/><text x="380" y="133" font-size="6.8" font-family="monospace" fill="var(--code-ink)">messages: [{role:&quot;system&quot;, …},</text><text x="380" y="146" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  {role:&quot;user&quot;, content:&quot;退款？&quot;}]</text>
+  <path d="M360 175 L300 175 L300 185 L420 185" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="250" y="170" width="220" height="28" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="188" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion()</text>
+  <text x="360" y="212" text-anchor="middle" font-size="7.4" fill="var(--muted)">同一引擎也被第29课裁判、第36课实验复用——连接定义一次，处处可用</text>
+  <rect x="490" y="170" width="212" height="28" rx="8" fill="var(--panel-2)" stroke="var(--accent)"/><text x="500" y="183" font-size="6.8" font-family="monospace" fill="var(--ink)">→ { content:&quot;30 days…&quot;,</text><text x="500" y="194" font-size="6.8" font-family="monospace" fill="var(--muted)">     usage:{ in:42,out:18 } }</text>
+</svg>
+<div class="figcap"><b>Playground 就是把「连接 + 参数」喂给统一引擎</b>（字段取自 <code>LlmApiKeys</code> 模型；<b>值为示例</b>）：左边的<b>连接</b>来自 <code>LlmApiKeys</code>——<code>provider</code>/<code>adapter</code> 选定接口，<code>secretKey</code> 以 <code>AES-256-GCM</code> 加密落库、只在调用前一刻解密，UI 只看得到掩码的 <code>displaySecretKey</code>；右边是<b>请求参数</b>（<code>model</code>/<code>temperature</code>/<code>maxTokens</code> + 消息）。两者汇入 <code>fetchLLMCompletion()</code>——<b>同一个引擎</b>也被第 29 课的裁判、第 36 课的实验复用。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/playground/server/chatCompletionHandler.ts</span><span class="ln">Playground 调同一核心</span></div>
@@ -843,6 +954,29 @@ _EN39.append(r"""
   <text x="360" y="198" text-anchor="middle" font-size="8" fill="var(--faint)">one engine wraps it all: credential decryption, provider adaptation, structured output, tool calls, streaming—reused by three, no reinventing</text>
 </svg>
 <div class="figcap"><b>one core, three reuses</b>: <code>web/src/features/playground/server/chatCompletionHandler.ts:19,69-86</code> directly calls <code>fetchLLMCompletion</code>, passing <code>tools</code> and <code>structuredOutputSchema</code>. This shares the <b>same engine</b> with Lesson 29's judge <code>callLLM</code> and Lesson 36's experiment model call—credential decryption and provider adaptation written once.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 222" role="img" aria-label="Playground request real example: left is the LlmApiKeys connection (provider=openai, adapter=openai, masked displaySecretKey sk…a1b2, secretKey encrypted with AES-256-GCM), right is the request params (model=gpt-4o, temperature=0.2, maxTokens=512, system+user messages); both feed fetchLLMCompletion, which decrypts the credential only at call time and returns content and usage. Fields from the LlmApiKeys model, values illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one Playground request</text>
+  <rect x="18" y="32" width="330" height="126" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="32" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">LLM connection · LlmApiKeys</text>
+  <text x="32" y="68" font-size="7.6" fill="var(--muted)">provider</text><text x="170" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="86" font-size="7.6" fill="var(--muted)">adapter</text><text x="170" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">openai</text>
+  <text x="32" y="104" font-size="7.6" fill="var(--muted)">displaySecretKey</text><text x="170" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">sk-…a1b2</text>
+  <text x="32" y="122" font-size="7.6" fill="var(--muted)">baseURL</text><text x="170" y="122" font-size="7.6" font-family="monospace" fill="var(--ink)">(default)</text>
+  <rect x="30" y="138" width="306" height="14" rx="7" fill="var(--amber-soft)"/><text x="36" y="148" font-size="6.6" fill="var(--amber)">🔒 secretKey: AES-256-GCM encrypted, decrypted at call time</text>
+  <rect x="360" y="32" width="342" height="126" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="374" y="50" font-size="8.5" font-weight="700" fill="var(--accent-ink)">request params</text>
+  <text x="374" y="68" font-size="7.6" fill="var(--muted)">model</text><text x="500" y="68" font-size="7.6" font-family="monospace" fill="var(--ink)">gpt-4o</text>
+  <text x="374" y="86" font-size="7.6" fill="var(--muted)">temperature</text><text x="500" y="86" font-size="7.6" font-family="monospace" fill="var(--ink)">0.2</text>
+  <text x="374" y="104" font-size="7.6" fill="var(--muted)">maxTokens</text><text x="500" y="104" font-size="7.6" font-family="monospace" fill="var(--ink)">512</text>
+  <rect x="372" y="120" width="318" height="32" rx="6" fill="var(--code-bg)"/><text x="380" y="133" font-size="6.8" font-family="monospace" fill="var(--code-ink)">messages: [{role:&quot;system&quot;, …},</text><text x="380" y="146" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  {role:&quot;user&quot;, content:&quot;Refund?&quot;}]</text>
+  <path d="M360 175 L300 175 L300 185 L420 185" fill="none" stroke="var(--line)" stroke-width="1.4"/>
+  <rect x="250" y="170" width="220" height="28" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="360" y="188" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">fetchLLMCompletion()</text>
+  <text x="360" y="212" text-anchor="middle" font-size="7.4" fill="var(--muted)">the same engine is reused by L29 judge and L36 experiments — define a connection once, reuse everywhere</text>
+  <rect x="490" y="170" width="212" height="28" rx="8" fill="var(--panel-2)" stroke="var(--accent)"/><text x="500" y="183" font-size="6.8" font-family="monospace" fill="var(--ink)">→ { content:&quot;30 days…&quot;,</text><text x="500" y="194" font-size="6.8" font-family="monospace" fill="var(--muted)">     usage:{ in:42,out:18 } }</text>
+</svg>
+<div class="figcap"><b>The Playground just feeds "connection + params" into one shared engine</b> (fields from the <code>LlmApiKeys</code> model; <b>values illustrative</b>): the <b>connection</b> on the left comes from <code>LlmApiKeys</code> — <code>provider</code>/<code>adapter</code> pick the interface, <code>secretKey</code> is stored <code>AES-256-GCM</code>-encrypted and decrypted only at call time, while the UI only ever sees the masked <code>displaySecretKey</code>; the <b>request params</b> on the right are <code>model</code>/<code>temperature</code>/<code>maxTokens</code> plus messages. Both flow into <code>fetchLLMCompletion()</code> — the <b>same engine</b> reused by Lesson 29's judge and Lesson 36's experiments.</div>
 </div>
 
 <div class="codefile">

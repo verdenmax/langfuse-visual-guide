@@ -383,6 +383,55 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>两层结构</b>：<code>schema.prisma:1494</code> Dashboard 有 <code>definition</code>（布局 JSON）与板级 <code>filters</code>；<code>:1536</code> DashboardWidget 是单块「查询+图表」。一个板上的多个 widget 各看一个角度，板级 filter 同时收敛全部——「先全局圈定范围，再各看各的指标」。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 368" role="img" aria-label="仪表盘真实例子：顶部是筛选条（时间范围、env=production、model 过滤），下面 2×2 四个 widget——折线 LINE_TIME_SERIES 每日 trace 数、纵向柱 VERTICAL_BAR 各模型成本、大数字 NUMBER 的 p95 延迟、透视表 PIVOT_TABLE 的高频用户；每个 widget 都是查询引擎上的一条保存查询。widget 类型取自 DashboardService 的 chartType，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一个仪表盘（4 个 widget）</text>
+  <rect x="18" y="28" width="684" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/>
+  <rect x="28" y="34" width="92" height="14" rx="7" fill="var(--accent)" opacity="0.16"/><text x="74" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">📅 last 30 days</text>
+  <rect x="127.60000000000001" y="34" width="102" height="14" rx="7" fill="var(--blue)" opacity="0.16"/><text x="179" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">env = production</text>
+  <rect x="238.0" y="34" width="65" height="14" rx="7" fill="var(--purple)" opacity="0.16"/><text x="270" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">model = *</text>
+  <text x="694" y="44" text-anchor="end" font-size="7" fill="var(--muted)">＋ 添加 widget</text>
+  <rect x="18" y="62" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">traces / day</text>
+  <rect x="249" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">LINE_TIME_SERIES</text>
+  <line x1="38" y1="190" x2="340" y2="190" stroke="var(--line)"/>
+  <polyline points="40,180 82,168 124,172 166,150 208,140 250,120 292,108 334,92" fill="none" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="40" cy="180" r="2.2" fill="var(--accent)"/>
+  <circle cx="82" cy="168" r="2.2" fill="var(--accent)"/>
+  <circle cx="124" cy="172" r="2.2" fill="var(--accent)"/>
+  <circle cx="166" cy="150" r="2.2" fill="var(--accent)"/>
+  <circle cx="208" cy="140" r="2.2" fill="var(--accent)"/>
+  <circle cx="250" cy="120" r="2.2" fill="var(--accent)"/>
+  <circle cx="292" cy="108" r="2.2" fill="var(--accent)"/>
+  <circle cx="334" cy="92" r="2.2" fill="var(--accent)"/>
+  <text x="40" y="200" font-size="6.4" fill="var(--faint)">Jun 1</text><text x="318" y="200" font-size="6.4" fill="var(--faint)">Jun 30</text>
+  <rect x="366" y="62" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">各模型成本 (USD)</text>
+  <rect x="598" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">VERTICAL_BAR</text>
+  <rect x="392" y="120" width="44" height="70" rx="4" fill="var(--accent)" opacity="0.7"/><text x="414" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">gpt-4o</text><text x="414" y="116" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent)">$126</text>
+  <rect x="460" y="166" width="44" height="24" rx="4" fill="var(--blue)" opacity="0.7"/><text x="482" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">4o-mini</text><text x="482" y="162" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--blue)">$43</text>
+  <rect x="528" y="138" width="44" height="52" rx="4" fill="var(--purple)" opacity="0.7"/><text x="550" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">claude</text><text x="550" y="134" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--purple)">$94</text>
+  <rect x="596" y="176" width="44" height="14" rx="4" fill="var(--amber)" opacity="0.7"/><text x="618" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">llama</text><text x="618" y="172" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--amber)">$25</text>
+  <rect x="18" y="206" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">p95 延迟</text>
+  <rect x="249" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">NUMBER</text>
+  <text x="60" y="290" font-size="46" font-weight="800" fill="var(--accent-ink)">1.8<tspan font-size="20"> s</tspan></text>
+  <rect x="60" y="300" width="120" height="16" rx="8" fill="var(--accent-soft)"/><text x="120" y="312" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent)">▼ 12% 对比上周</text>
+  <polyline points="210,318 232,312 254,316 276,300 298,304 320,290 340,286" fill="none" stroke="var(--blue)" stroke-width="1.6"/>
+  <rect x="366" y="206" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">高频用户</text>
+  <rect x="598" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">PIVOT_TABLE</text>
+  <rect x="380" y="232" width="308" height="16" fill="var(--panel-2)"/>
+  <text x="388" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">userId</text>
+  <text x="560" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">traces</text>
+  <text x="636" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">cost</text>
+  <rect x="380" y="248" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="261" font-size="7" font-family="monospace" fill="var(--ink)">u_8f3a</text><text x="560" y="261" font-size="7" fill="var(--muted)">1820</text><text x="636" y="261" font-size="7" fill="var(--accent-ink)">$58</text>
+  <rect x="380" y="268" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="281" font-size="7" font-family="monospace" fill="var(--ink)">u_2b71</text><text x="560" y="281" font-size="7" fill="var(--muted)">1340</text><text x="636" y="281" font-size="7" fill="var(--accent-ink)">$41</text>
+  <rect x="380" y="288" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="301" font-size="7" font-family="monospace" fill="var(--ink)">u_55c9</text><text x="560" y="301" font-size="7" fill="var(--muted)">980</text><text x="636" y="301" font-size="7" fill="var(--accent-ink)">$33</text>
+  <text x="360" y="358" text-anchor="middle" font-size="7.4" fill="var(--muted)">每个 widget = 查询引擎上的一条保存查询（view + metrics + dimensions），第 41 课细讲</text>
+</svg>
+<div class="figcap"><b>一个仪表盘 = 一组 widget，每个 widget = 一条保存的查询</b>（widget 类型取自 <code>DashboardService</code> 的 <code>chartType</code>；<b>数据为示例</b>）：顶部筛选条作用于<b>全盘</b>，下面四块分别是 <code>LINE_TIME_SERIES</code>（每日 trace）、<code>VERTICAL_BAR</code>（各模型成本）、<code>NUMBER</code>（p95 延迟大数字）、<code>PIVOT_TABLE</code>（高频用户）。同一份指标，<b>选不同图型就有不同读法</b>——趋势看折线、构成看柱状、单点 KPI 看大数字、明细看透视表。这些 widget 背后都是<a class="xref" href="41-query-engine.html">第 41 课</a>的查询引擎。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">板</span><span class="name">Dashboard</span></div><div class="ld">一块画布：<code>definition</code> 是 JSON 布局（哪些 widget、各占什么格子），<code>filters</code> 是板级全局过滤。projectId 可空——Langfuse 还内置了一批「托管仪表盘」开箱即用。你能像摆桌面小组件一样自由编排。</div></div>
@@ -554,6 +603,55 @@ This lesson covers their data model, focusing on a design that will echo repeate
   <rect x="480" y="160" width="200" height="64" rx="9" fill="var(--bg)" stroke="var(--blue)"/><text x="580" y="180" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">widget · latency histogram</text><rect x="510" y="206" width="10" height="12" fill="var(--teal)"/><rect x="524" y="198" width="10" height="20" fill="var(--teal)"/><rect x="538" y="202" width="10" height="16" fill="var(--teal)"/><rect x="552" y="210" width="10" height="8" fill="var(--teal)"/><text x="620" y="210" text-anchor="middle" font-size="6.4" fill="var(--muted)">histogram</text>
 </svg>
 <div class="figcap"><b>Two-layer structure</b>: <code>schema.prisma:1494</code> Dashboard has a <code>definition</code> (layout JSON) and board-level <code>filters</code>; <code>:1536</code> DashboardWidget is one "query+chart". Multiple widgets on a board each show one angle, the board filter converging all at once—"globally scope first, then each shows its own metric".</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 368" role="img" aria-label="Dashboard real example: a filter bar on top (time range, env=production, model filter), then a 2x2 of widgets — a LINE_TIME_SERIES of traces per day, a VERTICAL_BAR of cost by model, a NUMBER big-stat of p95 latency, and a PIVOT_TABLE of top users; each widget is one saved query on the query engine. Widget types from DashboardService chartType, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one dashboard (4 widgets)</text>
+  <rect x="18" y="28" width="684" height="26" rx="7" fill="var(--panel-2)" stroke="var(--line)"/>
+  <rect x="28" y="34" width="92" height="14" rx="7" fill="var(--accent)" opacity="0.16"/><text x="74" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">📅 last 30 days</text>
+  <rect x="127.60000000000001" y="34" width="102" height="14" rx="7" fill="var(--blue)" opacity="0.16"/><text x="179" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">env = production</text>
+  <rect x="238.0" y="34" width="65" height="14" rx="7" fill="var(--purple)" opacity="0.16"/><text x="270" y="44" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">model = *</text>
+  <text x="694" y="44" text-anchor="end" font-size="7" fill="var(--muted)">+ add widget</text>
+  <rect x="18" y="62" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">traces / day</text>
+  <rect x="249" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">LINE_TIME_SERIES</text>
+  <line x1="38" y1="190" x2="340" y2="190" stroke="var(--line)"/>
+  <polyline points="40,180 82,168 124,172 166,150 208,140 250,120 292,108 334,92" fill="none" stroke="var(--accent)" stroke-width="2"/>
+  <circle cx="40" cy="180" r="2.2" fill="var(--accent)"/>
+  <circle cx="82" cy="168" r="2.2" fill="var(--accent)"/>
+  <circle cx="124" cy="172" r="2.2" fill="var(--accent)"/>
+  <circle cx="166" cy="150" r="2.2" fill="var(--accent)"/>
+  <circle cx="208" cy="140" r="2.2" fill="var(--accent)"/>
+  <circle cx="250" cy="120" r="2.2" fill="var(--accent)"/>
+  <circle cx="292" cy="108" r="2.2" fill="var(--accent)"/>
+  <circle cx="334" cy="92" r="2.2" fill="var(--accent)"/>
+  <text x="40" y="200" font-size="6.4" fill="var(--faint)">Jun 1</text><text x="318" y="200" font-size="6.4" fill="var(--faint)">Jun 30</text>
+  <rect x="366" y="62" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="80" font-size="8.5" font-weight="700" fill="var(--ink)">cost by model (USD)</text>
+  <rect x="598" y="69" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="79" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">VERTICAL_BAR</text>
+  <rect x="392" y="120" width="44" height="70" rx="4" fill="var(--accent)" opacity="0.7"/><text x="414" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">gpt-4o</text><text x="414" y="116" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--accent)">$126</text>
+  <rect x="460" y="166" width="44" height="24" rx="4" fill="var(--blue)" opacity="0.7"/><text x="482" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">4o-mini</text><text x="482" y="162" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--blue)">$43</text>
+  <rect x="528" y="138" width="44" height="52" rx="4" fill="var(--purple)" opacity="0.7"/><text x="550" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">claude</text><text x="550" y="134" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--purple)">$94</text>
+  <rect x="596" y="176" width="44" height="14" rx="4" fill="var(--amber)" opacity="0.7"/><text x="618" y="200" text-anchor="middle" font-size="6.6" fill="var(--muted)">llama</text><text x="618" y="172" text-anchor="middle" font-size="6.6" font-weight="700" fill="var(--amber)">$25</text>
+  <rect x="18" y="206" width="335" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="30" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">p95 latency</text>
+  <rect x="249" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="297" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">NUMBER</text>
+  <text x="60" y="290" font-size="46" font-weight="800" fill="var(--accent-ink)">1.8<tspan font-size="20"> s</tspan></text>
+  <rect x="60" y="300" width="120" height="16" rx="8" fill="var(--accent-soft)"/><text x="120" y="312" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--accent)">▼ 12% vs last wk</text>
+  <polyline points="210,318 232,312 254,316 276,300 298,304 320,290 340,286" fill="none" stroke="var(--blue)" stroke-width="1.6"/>
+  <rect x="366" y="206" width="336" height="138" rx="9" fill="var(--bg)" stroke="var(--line)"/>
+  <text x="378" y="224" font-size="8.5" font-weight="700" fill="var(--ink)">top users</text>
+  <rect x="598" y="213" width="96" height="14" rx="7" fill="var(--accent-soft)"/><text x="646" y="223" text-anchor="middle" font-size="6.4" font-weight="700" font-family="monospace" fill="var(--accent-ink)">PIVOT_TABLE</text>
+  <rect x="380" y="232" width="308" height="16" fill="var(--panel-2)"/>
+  <text x="388" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">userId</text>
+  <text x="560" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">traces</text>
+  <text x="636" y="244" font-size="6.8" font-weight="700" fill="var(--ink)">cost</text>
+  <rect x="380" y="248" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="261" font-size="7" font-family="monospace" fill="var(--ink)">u_8f3a</text><text x="560" y="261" font-size="7" fill="var(--muted)">1820</text><text x="636" y="261" font-size="7" fill="var(--accent-ink)">$58</text>
+  <rect x="380" y="268" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="281" font-size="7" font-family="monospace" fill="var(--ink)">u_2b71</text><text x="560" y="281" font-size="7" fill="var(--muted)">1340</text><text x="636" y="281" font-size="7" fill="var(--accent-ink)">$41</text>
+  <rect x="380" y="288" width="308" height="20" fill="var(--bg)" stroke="var(--line)" stroke-width="0.4"/><text x="388" y="301" font-size="7" font-family="monospace" fill="var(--ink)">u_55c9</text><text x="560" y="301" font-size="7" fill="var(--muted)">980</text><text x="636" y="301" font-size="7" fill="var(--accent-ink)">$33</text>
+  <text x="360" y="358" text-anchor="middle" font-size="7.4" fill="var(--muted)">each widget = one saved query on the engine (view + metrics + dimensions), detailed in Lesson 41</text>
+</svg>
+<div class="figcap"><b>A dashboard = a set of widgets, each widget = one saved query</b> (widget types from <code>DashboardService</code>'s <code>chartType</code>; <b>data illustrative</b>): the filter bar on top applies to <b>the whole board</b>, and the four panels are <code>LINE_TIME_SERIES</code> (traces/day), <code>VERTICAL_BAR</code> (cost by model), <code>NUMBER</code> (p95 latency big-stat) and <code>PIVOT_TABLE</code> (top users). Same metrics, <b>different chart types read differently</b> — a line for trend, bars for composition, a big number for a single KPI, a pivot for detail. Every widget is backed by <a class="xref" href="41-query-engine.html">Lesson 41</a>'s query engine.</div>
 </div>
 
 <div class="layers">

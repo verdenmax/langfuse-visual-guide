@@ -385,6 +385,21 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>读穿透 + 回填</b>：<code>getPrompt</code> 先 <code>getCachedPrompt</code>，命中即返回；未命中走 <code>findPrompt</code>（DB）再 <code>cachePrompt</code>（<code>redis.set(key, value, "EX", ttlSeconds)</code>）。开关 <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>、时长 <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>。源码：<code>PromptService/index.ts:49-86,166-173</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="缓存命中与未命中的延迟对比真实例子：命中走 Redis 约 1 毫秒秒回，未命中要查 Postgres 再回填 Redis 约 25 毫秒，约 25 倍差距；稳态命中率约 98%；TTL 3600 秒、epoch 轮换即失效。延迟与命中率为示例">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：命中 vs 未命中的延迟</text>
+  <text x="20" y="56" font-size="8.5" font-weight="700" fill="var(--accent-ink)">cache HIT</text><text x="20" y="68" font-size="7" fill="var(--muted)">Redis</text>
+  <rect x="210" y="46" width="18" height="22" rx="4" fill="var(--accent)" opacity="0.85"/><text x="236" y="61" font-size="8" font-weight="700" fill="var(--accent-ink)">~1 ms · 秒回</text>
+  <text x="20" y="98" font-size="8.5" font-weight="700" fill="var(--amber)">cache MISS</text><text x="20" y="110" font-size="7" fill="var(--muted)">查 PG+回填</text>
+  <rect x="210" y="88" width="460" height="22" rx="4" fill="var(--amber)" opacity="0.8"/><text x="678" y="103" font-size="8" font-weight="700" fill="var(--amber)">~25 ms</text>
+  <rect x="210" y="120" width="150" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="285" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 25× 更快</text>
+  <text x="20" y="166" font-size="8" font-weight="700" fill="var(--ink)">稳态命中率</text>
+  <rect x="210" y="156" width="460" height="16" rx="8" fill="var(--panel-2)"/><rect x="210" y="156" width="451" height="16" rx="8" fill="var(--accent)" opacity="0.55"/><text x="676" y="168" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 98%</text>
+  <line x1="20" y1="184" x2="700" y2="184" stroke="var(--line)"/>
+  <text x="20" y="200" font-size="7.4" fill="var(--muted)">TTL 3600s（1h，LANGFUSE_CACHE_PROMPT_TTL_SECONDS）· 改 prompt → 轮换项目级 epoch → 旧 key 瞬间失效，无需逐个删</text>
+</svg>
+<div class="figcap"><b>缓存把「每次都查库」变成「几乎不查库」</b>（延迟/命中率<b>为示例</b>，机制取自 <code>PromptService</code>）：命中走 Redis 约 <code>1ms</code> 秒回，未命中才查 Postgres 再回填、约 <code>25ms</code>——相差约 <b>25 倍</b>。稳态命中率高（图中 ≈98%），意味着<b>绝大多数取 prompt 的请求都不碰数据库</b>。两道保险：<code>TTL 3600s</code> 兜底过期，改 prompt 时<b>轮换项目级 epoch</b>让旧 key 瞬间失效（上面 epoch 图的实际收益）。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/server/services/PromptService/index.ts</span><span class="ln">getPrompt 读穿透</span></div>
@@ -582,6 +597,21 @@ Along the way we'll see <a class="xref" href="37-prompt-management.html">Lesson 
   <text x="360" y="200" text-anchor="middle" font-size="8" fill="var(--faint)">the vast majority of requests take ① (millisecond, no DB); only the first after a cold/invalidated cache takes ②③—DB load is shielded behind the cache</text>
 </svg>
 <div class="figcap"><b>read-through + backfill</b>: <code>getPrompt</code> first <code>getCachedPrompt</code>, returns on a hit; on a miss runs <code>findPrompt</code> (DB) then <code>cachePrompt</code> (<code>redis.set(key, value, "EX", ttlSeconds)</code>). Toggle <code>LANGFUSE_CACHE_PROMPT_ENABLED</code>, duration <code>LANGFUSE_CACHE_PROMPT_TTL_SECONDS</code>. Source: <code>PromptService/index.ts:49-86,166-173</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 212" role="img" aria-label="Cache hit vs miss latency real example: a hit goes to Redis in about 1 ms and returns instantly, a miss must query Postgres then backfill Redis in about 25 ms, roughly 25x slower; steady-state hit rate about 98%; TTL 3600 seconds, epoch rotation invalidates instantly. Latencies and hit rate illustrative">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: cache hit vs miss latency</text>
+  <text x="20" y="56" font-size="8.5" font-weight="700" fill="var(--accent-ink)">cache HIT</text><text x="20" y="68" font-size="7" fill="var(--muted)">Redis</text>
+  <rect x="210" y="46" width="18" height="22" rx="4" fill="var(--accent)" opacity="0.85"/><text x="236" y="61" font-size="8" font-weight="700" fill="var(--accent-ink)">~1 ms · instant</text>
+  <text x="20" y="98" font-size="8.5" font-weight="700" fill="var(--amber)">cache MISS</text><text x="20" y="110" font-size="7" fill="var(--muted)">PG+backfill</text>
+  <rect x="210" y="88" width="460" height="22" rx="4" fill="var(--amber)" opacity="0.8"/><text x="678" y="103" font-size="8" font-weight="700" fill="var(--amber)">~25 ms</text>
+  <rect x="210" y="120" width="150" height="20" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="285" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 25× faster</text>
+  <text x="20" y="166" font-size="8" font-weight="700" fill="var(--ink)">hit rate</text>
+  <rect x="210" y="156" width="460" height="16" rx="8" fill="var(--panel-2)"/><rect x="210" y="156" width="451" height="16" rx="8" fill="var(--accent)" opacity="0.55"/><text x="676" y="168" font-size="8" font-weight="700" fill="var(--accent-ink)">≈ 98%</text>
+  <line x1="20" y1="184" x2="700" y2="184" stroke="var(--line)"/>
+  <text x="20" y="200" font-size="7.4" fill="var(--muted)">TTL 3600s (1h, LANGFUSE_CACHE_PROMPT_TTL_SECONDS) · change a prompt → rotate the project epoch → old keys invalidate instantly, no per-key delete</text>
+</svg>
+<div class="figcap"><b>The cache turns "hit the DB every time" into "almost never"</b> (latency/hit-rate <b>illustrative</b>; mechanism from <code>PromptService</code>): a hit returns from Redis in about <code>1ms</code>, only a miss queries Postgres and backfills at about <code>25ms</code> — roughly <b>25x</b>. A high steady-state hit rate (≈98% here) means <b>the vast majority of prompt fetches never touch the database</b>. Two safeguards: <code>TTL 3600s</code> as a backstop, and <b>rotating the project epoch</b> on a prompt change to invalidate old keys instantly (the concrete payoff of the epoch figure above).</div>
 </div>
 
 <div class="codefile">
