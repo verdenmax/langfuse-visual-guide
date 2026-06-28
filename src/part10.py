@@ -2102,7 +2102,7 @@ _ZH53.append(r"""
   <text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--faint)">依赖只朝下：上层用下层，下层不知上层</text>
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm 强制(only-allow) + minimumReleaseAge 防供应链投毒；同仓库共享代码一个 commit 原子改</text>
 </svg>
-<div class="figcap"><b>pnpm monorepo</b>：<code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee；<code>package.json</code> <code>packageManager: pnpm@11.4.0</code>、<code>preinstall: only-allow pnpm</code>、<code>minimumReleaseAge</code>（供应链防护）。依赖方向 <code>web/worker/ee → @langfuse/shared</code>，shared 不反向依赖——与 <code>.agents/ARCHITECTURE_PRINCIPLES.md</code> 一致。</div>
+<div class="figcap"><b>pnpm monorepo</b>：<code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee；<code>package.json</code> 的 <code>packageManager: pnpm@11.4.0</code>、<code>preinstall: only-allow pnpm</code>；<code>pnpm-workspace.yaml</code> 的 <code>minimumReleaseAge</code>（供应链防护）。依赖方向 <code>web/worker/ee → @langfuse/shared</code>，shared 不反向依赖——与 <code>.agents/ARCHITECTURE_PRINCIPLES.md</code> 一致。</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="Turbo 任务图真实例子：db:generate 在前，build 依赖 db:generate 和 ^build（先建上游包），lint/typecheck/build:check 依赖 ^build、test 依赖 ^test；改了 packages/shared 后，shared 与依赖它的 web/worker 被标为 affected 重跑（黄），未受影响的包命中指纹缓存秒回（绿）。任务与 dependsOn 取自 turbo.json，值为示例">
@@ -2308,7 +2308,7 @@ _EN53.append(r"""
   <text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--faint)">Dependencies only point down: upper uses lower, lower doesn't know upper</text>
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm enforced (only-allow) + minimumReleaseAge against supply-chain poisoning; same repo, atomic cross-package commit</text>
 </svg>
-<div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>, <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
+<div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>; <code>pnpm-workspace.yaml</code> <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="Turbo task-graph real example: db:generate comes first, build depends on db:generate and ^build (upstream packages built first), and lint/typecheck/build:check depend on ^build, test on ^test; after changing packages/shared, shared and the web/worker that depend on it are marked affected and re-run (amber), while unaffected packages hit the fingerprint cache and return instantly (green). Tasks and dependsOn from turbo.json, values illustrative">

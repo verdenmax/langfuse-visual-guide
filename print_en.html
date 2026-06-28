@@ -3523,7 +3523,7 @@ job). This is Lesson 5's "fast lane".
 
 
 <div class="fig">
-<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 200">
+<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 207">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">the life of one ingestion request (milliseconds)</text>
   <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">a batch of events</text>
   <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">1 auth</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
@@ -3537,7 +3537,7 @@ job). This is Lesson 5's "fast lane".
   <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">merge, cost, ClickHouse writes are not here — that's the worker (L15–17)</text>
   <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
 </svg>
-<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 207. No "heavy work" happens here, so the API always returns in milliseconds.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 232" role="img" aria-label="Ingestion API real example: POST /api/public/ingestion with Basic auth, body is a batch array with trace-create and observation-create; returns 207 Multi-Status with successes and errors. Status and batch shape per api/public/ingestion.ts, values illustrative">
@@ -7446,7 +7446,7 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
 <p>The soul of a score is its <code>dataType</code>—it decides how the value is read and validated. Langfuse pins down three types with Zod (plus a legacy TEXT):</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="The three score data types: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
+<svg viewBox="0 0 720 220" role="img" aria-label="The three comparable score scales: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A score's three scales (dataType)</text>
   <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value is a number</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">optional minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">e.g. helpfulness 0–1, latency 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">averageable, sortable</text>
   <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a set of label ↔ value</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">labels unique, values unique</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. sentiment {pos/neu/neg}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">countable, groupable</text>
@@ -7478,7 +7478,7 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">three comparable scales</span></div>
   <pre class="code"><span class="cm">// numeric: optional bounds, no categories</span>
 NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
 
@@ -7579,7 +7579,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
-    <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
+    <li><strong>Three comparable scales</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
     <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing Lesson 8's "don't invent when a general mechanism works".</li>
     <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
     <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to Lesson 8's scores table. The next five lessons are just "producing scores in different ways".</li>
@@ -7589,7 +7589,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. A Langfuse score has three dataTypes: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not an 'independent fourth logic' — what is it implemented as?</div>
+  <div class="qn">1. A Langfuse score config has three comparable scales: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not its own independent validation logic — what is it implemented as?</div>
   <ol class="opts">
     <li>a special CATEGORICAL with 'exactly two categories, locked to True=1 / False=0' — the core only handles numeric and categorical, and boolean reuses categorical storage and aggregation</li>
     <li>a separate boolean table</li>
@@ -8020,7 +8020,7 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
 
 
 <h2>A ticket's life: the state machine and the infinite-loop safeguard</h2>
-<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with four possible endings; in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
+<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with three possible endings (COMPLETED/ERROR/CANCELLED); in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="JobExecution state machine: PENDING after creation enters execution; success becomes COMPLETED recording the produced scoreId; a non-retryable error or exhausted retry budget becomes ERROR; deselected by a later event becomes CANCELLED; a rate-limit becomes DELAYED retrying after about 120 minutes back into execution">
@@ -8037,7 +8037,7 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
   <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
   <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.2" fill="var(--teal)">retry back to exec</text>
   <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
-  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">four endings + one retryable middle state; the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">three endings + one retryable middle state DELAYED (initial PENDING); the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
 </svg>
 <div class="figcap"><b>The status enum is from the real schema</b>: <code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code> (<code>schema.prisma:1080-1086</code>). On success <code>evalCompletion.ts:82-92</code> writes the score into the ingestion queue, then marks the ticket COMPLETED and fills <code>jobOutputScoreId</code> and <code>executionTraceId</code>—the ticket is now <strong>bidirectionally linked</strong> to "the score it produced" and "the judge's own trace".</div>
 </div>
@@ -10894,7 +10894,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
-  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (observation count). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
+  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (usage events). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
   The critical part: a reading <strong>must never duplicate, never miss</strong>. Read twice and your water bill doubles this month—an enraged customer; miss one and the platform gives away an hour of compute for free. So the reader clutches a <strong>"where did I read up to" ledger</strong> (a locked cron record), rigidly enforcing "<strong>each whole hour's usage is reported exactly once, no more, no less</strong>"—even if he dozes off mid-read, the network drops and he restarts, or two readers accidentally show up, this ledger keeps the books flawless.
 </div>
 
@@ -11043,7 +11043,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 </svg>
 
 <div class="cols">
-  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
+  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>usage events</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
   <div class="col"><h4>② spend alerts (cloudSpendAlert)</h4><p>direction: helps you → manage your LLM spend. Watches your cost on OpenAI/Anthropic etc., alerts on threshold crossing. <code>cloudSpendAlertQueue</code> (CloudSpendAlertJob).</p></div>
   <div class="col"><h4>③ self-host</h4><p>no ①—self-deploying Langfuse <strong>charges you no platform fee</strong>. But cost observation like ② and the cost computation of Lessons 16/42 still work—you see your LLM spend just the same.</p></div>
 </div>
@@ -13260,7 +13260,7 @@ As the close of Part 10 (Platform & Operations), this lesson is about the <stron
   <text x="360" y="120" text-anchor="middle" font-size="7" fill="var(--faint)">Dependencies only point down: upper uses lower, lower doesn't know upper</text>
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm enforced (only-allow) + minimumReleaseAge against supply-chain poisoning; same repo, atomic cross-package commit</text>
 </svg>
-<div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>, <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
+<div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>; <code>pnpm-workspace.yaml</code> <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="Turbo task-graph real example: db:generate comes first, build depends on db:generate and ^build (upstream packages built first), and lint/typecheck/build:check depend on ^build, test on ^test; after changing packages/shared, shared and the web/worker that depend on it are marked affected and re-run (amber), while unaffected packages hit the fingerprint cache and return instantly (green). Tasks and dependsOn from turbo.json, values illustrative">

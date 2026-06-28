@@ -373,7 +373,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <p>一个 score 的灵魂是它的 <code>dataType</code>——它决定 value 怎么解读、怎么校验。Langfuse 用 Zod 把三种类型定义得清清楚楚（外加一个旧的 TEXT）：</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="score 三种数据类型：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
+<svg viewBox="0 0 720 220" role="img" aria-label="score 的三种可比刻度：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score 的三种刻度（dataType）</text>
   <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC 数值</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value 是一个数</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">可设 minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">例：有用性 0–1、延迟分 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可求平均、可排序</text>
   <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL 分类</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">一组「标签 ↔ 值」</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">标签唯一、值唯一</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：情感 {正/中/负}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可计数、可分组</text>
@@ -405,7 +405,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种可比刻度</span></div>
   <pre class="code"><span class="cm">// 数值：可选区间，无 categories</span>
 NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
 
@@ -506,7 +506,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
   <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>score 是评估的原子单位</strong>：一个 (name, value, dataType, source) 挂在 trace 或其中某步 observation 上（也可挂 session / 数据集运行），把「发生了什么」变成「做得多好」。</li>
-    <li><strong>三种 dataType</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
+    <li><strong>三种可比刻度</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
     <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>「能用通用机制就别新造」。</li>
     <li><strong>score config = 某 name 的 schema</strong>：声明 dataType 与约束（区间/类别），强制校验，使<strong>同名分数永远同一把尺</strong>、可比可聚合。</li>
     <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
@@ -515,7 +515,7 @@ BooleanConfigFields = { dataType: <span class="st">"BOOLEAN"</span>,
 <div class="selftest">
 <h2>🧪 自测 · 想一想为什么这么设计</h2>
 <div class="quiz">
-  <div class="qn">1. Langfuse 的 score 有三种 dataType：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是「独立的第四套逻辑」，而是被实现成什么？</div>
+  <div class="qn">1. Langfuse score config 有三种可比刻度：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是独立的一套校验逻辑，而是被实现成什么？</div>
   <ol class="opts">
     <li>一个「恰好两档、且锁死为 True=1 / False=0」的特殊 CATEGORICAL——底层只需处理数值与分类两套逻辑，布尔复用分类的存储与聚合</li>
     <li>一个独立的布尔表</li>
@@ -579,7 +579,7 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
 <p>The soul of a score is its <code>dataType</code>—it decides how the value is read and validated. Langfuse pins down three types with Zod (plus a legacy TEXT):</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="The three score data types: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
+<svg viewBox="0 0 720 220" role="img" aria-label="The three comparable score scales: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A score's three scales (dataType)</text>
   <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value is a number</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">optional minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">e.g. helpfulness 0–1, latency 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">averageable, sortable</text>
   <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a set of label ↔ value</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">labels unique, values unique</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. sentiment {pos/neu/neg}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">countable, groupable</text>
@@ -611,7 +611,7 @@ Once you have this model, the next five lessons (LLM-as-a-judge, code eval, huma
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">three comparable scales</span></div>
   <pre class="code"><span class="cm">// numeric: optional bounds, no categories</span>
 NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
 
@@ -712,7 +712,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
-    <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
+    <li><strong>Three comparable scales</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
     <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s "don't invent when a general mechanism works".</li>
     <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
     <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a>'s scores table. The next five lessons are just "producing scores in different ways".</li>
@@ -721,7 +721,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 <div class="selftest">
 <h2>🧪 Self-test - think about the design</h2>
 <div class="quiz">
-  <div class="qn">1. A Langfuse score has three dataTypes: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not an 'independent fourth logic' — what is it implemented as?</div>
+  <div class="qn">1. A Langfuse score config has three comparable scales: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not its own independent validation logic — what is it implemented as?</div>
   <ol class="opts">
     <li>a special CATEGORICAL with 'exactly two categories, locked to True=1 / False=0' — the core only handles numeric and categorical, and boolean reuses categorical storage and aggregation</li>
     <li>a separate boolean table</li>

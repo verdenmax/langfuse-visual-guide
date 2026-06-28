@@ -33,7 +33,7 @@ _ZH28.append(r"""
 <p>一个 score 的灵魂是它的 <code>dataType</code>——它决定 value 怎么解读、怎么校验。Langfuse 用 Zod 把三种类型定义得清清楚楚（外加一个旧的 TEXT）：</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="score 三种数据类型：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
+<svg viewBox="0 0 720 220" role="img" aria-label="score 的三种可比刻度：NUMERIC 带 min/max 的数值、CATEGORICAL 一组标签到值的映射、BOOLEAN 固定为 True=1/False=0 的特殊分类">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">score 的三种刻度（dataType）</text>
   <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC 数值</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value 是一个数</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">可设 minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">例：有用性 0–1、延迟分 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可求平均、可排序</text>
   <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL 分类</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">一组「标签 ↔ 值」</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">标签唯一、值唯一</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">例：情感 {正/中/负}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">可计数、可分组</text>
@@ -65,7 +65,7 @@ _ZH28.append(r"""
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种 dataType</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">三种可比刻度</span></div>
   <pre class="code"><span class="cm">// 数值：可选区间，无 categories</span>
 NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
 
@@ -172,7 +172,7 @@ _ZH28.append(r"""
   <div class="tag">🎯 本课要点</div>
   <ul>
     <li><strong>score 是评估的原子单位</strong>：一个 (name, value, dataType, source) 挂在 trace 或其中某步 observation 上（也可挂 session / 数据集运行），把「发生了什么」变成「做得多好」。</li>
-    <li><strong>三种 dataType</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
+    <li><strong>三种可比刻度</strong>：NUMERIC（数，带可选 min/max）、CATEGORICAL（标签↔值的固定集合，二者皆唯一）、BOOLEAN（锁死 True=1/False=0 的特殊分类）。</li>
     <li><strong>布尔复用分类</strong>：不是独立第四类，而是「恰好两档」的分类——少一套特例，呼应第 8 课「能用通用机制就别新造」。</li>
     <li><strong>score config = 某 name 的 schema</strong>：声明 dataType 与约束（区间/类别），强制校验，使<strong>同名分数永远同一把尺</strong>、可比可聚合。</li>
     <li><strong>三种 source</strong>：API（亲手提交）、EVAL（AI/代码评判）、ANNOTATION（人工）——殊途同归，都写进第 8 课的 scores 表。后续五课都只是「用不同方式生产 score」。</li>
@@ -200,7 +200,7 @@ _EN28.append(r"""
 <p>The soul of a score is its <code>dataType</code>—it decides how the value is read and validated. Langfuse pins down three types with Zod (plus a legacy TEXT):</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 220" role="img" aria-label="The three score data types: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
+<svg viewBox="0 0 720 220" role="img" aria-label="The three comparable score scales: NUMERIC a number with optional min/max, CATEGORICAL a fixed set of label-to-value pairs, BOOLEAN a special category locked to True=1/False=0">
   <text x="360" y="20" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">A score's three scales (dataType)</text>
   <rect x="20" y="40" width="216" height="160" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="128" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">NUMERIC</text><text x="128" y="84" text-anchor="middle" font-size="8" fill="var(--accent-ink)">value is a number</text><text x="128" y="102" text-anchor="middle" font-size="8" fill="var(--accent-ink)">optional minValue / maxValue</text><text x="128" y="124" text-anchor="middle" font-size="7.5" fill="var(--muted)">e.g. helpfulness 0–1, latency 1–5</text><rect x="40" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="128" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"helpfulness": 0.82</text><text x="128" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">averageable, sortable</text>
   <rect x="252" y="40" width="216" height="160" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">CATEGORICAL</text><text x="360" y="84" text-anchor="middle" font-size="8" fill="var(--muted)">a set of label ↔ value</text><text x="360" y="102" text-anchor="middle" font-size="8" fill="var(--muted)">labels unique, values unique</text><text x="360" y="124" text-anchor="middle" font-size="7.5" fill="var(--faint)">e.g. sentiment {pos/neu/neg}</text><rect x="272" y="138" width="176" height="48" rx="6" fill="var(--bg)" stroke="var(--faint)"/><text x="360" y="156" text-anchor="middle" font-size="7.5" fill="var(--ink)">"sentiment": "positive"</text><text x="360" y="172" text-anchor="middle" font-size="7" fill="var(--muted)">countable, groupable</text>
@@ -232,7 +232,7 @@ _EN28.append(r"""
 </div>
 
 <div class="codefile">
-  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">the three dataTypes</span></div>
+  <div class="cf-head"><span class="dot"></span><span class="path">packages/shared/src/domain/score-configs.ts</span><span class="ln">three comparable scales</span></div>
   <pre class="code"><span class="cm">// numeric: optional bounds, no categories</span>
 NumericConfigFields = { dataType: <span class="st">"NUMERIC"</span>, minValue?, maxValue? };
 
@@ -337,7 +337,7 @@ _EN28.append(r"""
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>A score is evaluation's atomic unit</strong>: one (name, value, dataType, source) attached to a trace or one observation within it (or a session / dataset run), turning "what happened" into "how well".</li>
-    <li><strong>Three dataTypes</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
+    <li><strong>Three comparable scales</strong>: NUMERIC (a number with optional min/max), CATEGORICAL (a fixed set of label↔value, both unique), BOOLEAN (a special category locked to True=1/False=0).</li>
     <li><strong>Boolean reuses categorical</strong>: not a separate fourth type but an "exactly two" category—one fewer special case, echoing Lesson 8's "don't invent when a general mechanism works".</li>
     <li><strong>score config = a name's schema</strong>: declares dataType and constraints (bounds/categories), enforces validation, so <strong>same-named scores always share one ruler</strong>—comparable and aggregatable.</li>
     <li><strong>Three sources</strong>: API (you submit), EVAL (AI/code judge), ANNOTATION (human)—all converge, all written to Lesson 8's scores table. The next five lessons are just "producing scores in different ways".</li>
@@ -907,7 +907,7 @@ _ZH30.append(r"""
 
 _ZH30.append(r"""
 <h2>工单的一生：状态机与无限循环防护</h2>
-<p>JobExecution 是一台<strong>状态机</strong>。它出生于 PENDING，命运有四种终局；中间还可能因限流而 DELAYED 后重试。下图是它的完整生命周期：</p>
+<p>JobExecution 是一台<strong>状态机</strong>。它出生于 PENDING，有三种终局（COMPLETED/ERROR/CANCELLED）；中间还可能因限流而 DELAYED 后重试。下图是它的完整生命周期：</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="JobExecution 状态机：PENDING 创建后进入执行；成功则 COMPLETED 并记录产出的 scoreId；非可重试错误或重试预算耗尽则 ERROR；被后续事件取消选中则 CANCELLED；遇限流则 DELAYED 约 120 分钟后重试回到执行">
@@ -924,7 +924,7 @@ _ZH30.append(r"""
   <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
   <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.5" fill="var(--teal)">重试回执行</text>
   <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
-  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">四种终局 + 一个可重试中间态；DELAYED→执行的环让限流不致命，而是「稍后再试」</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">三种终局 + 一个可重试中间态 DELAYED（初态 PENDING）；DELAYED→执行的环让限流不致命，而是「稍后再试」</text>
 </svg>
 <div class="figcap"><b>状态枚举来自真实 schema</b>：<code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code>（<code>schema.prisma:1080-1086</code>）。完成时 <code>evalCompletion.ts:82-92</code> 把分写进 ingestion 队列、再把工单标 COMPLETED 并填 <code>jobOutputScoreId</code> 与 <code>executionTraceId</code>——工单从此<strong>双向链接</strong>到「它产出的分」和「裁判自己的 trace」。</div>
 </div>
@@ -1114,7 +1114,7 @@ _EN30.append(r"""
 
 _EN30.append(r"""
 <h2>A ticket's life: the state machine and the infinite-loop safeguard</h2>
-<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with four possible endings; in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
+<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with three possible endings (COMPLETED/ERROR/CANCELLED); in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="JobExecution state machine: PENDING after creation enters execution; success becomes COMPLETED recording the produced scoreId; a non-retryable error or exhausted retry budget becomes ERROR; deselected by a later event becomes CANCELLED; a rate-limit becomes DELAYED retrying after about 120 minutes back into execution">
@@ -1131,7 +1131,7 @@ _EN30.append(r"""
   <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
   <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.2" fill="var(--teal)">retry back to exec</text>
   <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
-  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">four endings + one retryable middle state; the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">three endings + one retryable middle state DELAYED (initial PENDING); the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
 </svg>
 <div class="figcap"><b>The status enum is from the real schema</b>: <code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code> (<code>schema.prisma:1080-1086</code>). On success <code>evalCompletion.ts:82-92</code> writes the score into the ingestion queue, then marks the ticket COMPLETED and fills <code>jobOutputScoreId</code> and <code>executionTraceId</code>—the ticket is now <strong>bidirectionally linked</strong> to "the score it produced" and "the judge's own trace".</div>
 </div>

@@ -1939,8 +1939,8 @@ QUIZZES = {
         "mcq": [
             {
                 "q": {
-                    "zh": "Langfuse 的 score 有三种 dataType：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是「独立的第四套逻辑」，而是被实现成什么？",
-                    "en": "A Langfuse score has three dataTypes: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not an 'independent fourth logic' — what is it implemented as?",
+                    "zh": "Langfuse score config 有三种可比刻度：NUMERIC、CATEGORICAL、BOOLEAN。但源码里 BOOLEAN 并不是独立的一套校验逻辑，而是被实现成什么？",
+                    "en": "A Langfuse score config has three comparable scales: NUMERIC, CATEGORICAL, BOOLEAN. But in the source, BOOLEAN is not its own independent validation logic — what is it implemented as?",
                 },
                 "opts": [
                     {

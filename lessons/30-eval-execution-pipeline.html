@@ -492,7 +492,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>工单的一生：状态机与无限循环防护</h2>
-<p>JobExecution 是一台<strong>状态机</strong>。它出生于 PENDING，命运有四种终局；中间还可能因限流而 DELAYED 后重试。下图是它的完整生命周期：</p>
+<p>JobExecution 是一台<strong>状态机</strong>。它出生于 PENDING，有三种终局（COMPLETED/ERROR/CANCELLED）；中间还可能因限流而 DELAYED 后重试。下图是它的完整生命周期：</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="JobExecution 状态机：PENDING 创建后进入执行；成功则 COMPLETED 并记录产出的 scoreId；非可重试错误或重试预算耗尽则 ERROR；被后续事件取消选中则 CANCELLED；遇限流则 DELAYED 约 120 分钟后重试回到执行">
@@ -509,7 +509,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
   <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.5" fill="var(--teal)">重试回执行</text>
   <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
-  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">四种终局 + 一个可重试中间态；DELAYED→执行的环让限流不致命，而是「稍后再试」</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">三种终局 + 一个可重试中间态 DELAYED（初态 PENDING）；DELAYED→执行的环让限流不致命，而是「稍后再试」</text>
 </svg>
 <div class="figcap"><b>状态枚举来自真实 schema</b>：<code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code>（<code>schema.prisma:1080-1086</code>）。完成时 <code>evalCompletion.ts:82-92</code> 把分写进 ingestion 队列、再把工单标 COMPLETED 并填 <code>jobOutputScoreId</code> 与 <code>executionTraceId</code>——工单从此<strong>双向链接</strong>到「它产出的分」和「裁判自己的 trace」。</div>
 </div>
@@ -737,7 +737,7 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
 
 
 <h2>A ticket's life: the state machine and the infinite-loop safeguard</h2>
-<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with four possible endings; in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
+<p>JobExecution is a <strong>state machine</strong>. It is born PENDING, with three possible endings (COMPLETED/ERROR/CANCELLED); in between it may go DELAYED on rate-limit and retry. Below is its full lifecycle:</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 240" role="img" aria-label="JobExecution state machine: PENDING after creation enters execution; success becomes COMPLETED recording the produced scoreId; a non-retryable error or exhausted retry budget becomes ERROR; deselected by a later event becomes CANCELLED; a rate-limit becomes DELAYED retrying after about 120 minutes back into execution">
@@ -754,7 +754,7 @@ We'll see <code>createEvalJobs</code>' fan-out and matching, the three gates of 
   <line x1="340" y1="130" x2="418" y2="162" stroke="var(--accent)" stroke-width="1.4"/><polygon points="418,162 409,158 408,166" fill="var(--accent)"/>
   <path d="M 485 92 Q 380 70 300 100" fill="none" stroke="var(--teal)" stroke-width="1.3" stroke-dasharray="3 2"/><polygon points="300,100 309,97 305,92" fill="var(--teal)"/><text x="392" y="80" text-anchor="middle" font-size="6.2" fill="var(--teal)">retry back to exec</text>
   <line x1="120" y1="146" x2="250" y2="168" stroke="var(--faint)" stroke-width="1.2" stroke-dasharray="4 3"/><polygon points="250,168 240,166 243,174" fill="var(--faint)"/>
-  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">four endings + one retryable middle state; the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
+  <text x="360" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">three endings + one retryable middle state DELAYED (initial PENDING); the DELAYED→exec loop makes rate-limits non-fatal, just "try later"</text>
 </svg>
 <div class="figcap"><b>The status enum is from the real schema</b>: <code>JobExecutionStatus = { COMPLETED, ERROR, PENDING, CANCELLED, DELAYED }</code> (<code>schema.prisma:1080-1086</code>). On success <code>evalCompletion.ts:82-92</code> writes the score into the ingestion queue, then marks the ticket COMPLETED and fills <code>jobOutputScoreId</code> and <code>executionTraceId</code>—the ticket is now <strong>bidirectionally linked</strong> to "the score it produced" and "the judge's own trace".</div>
 </div>

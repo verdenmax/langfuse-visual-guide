@@ -362,7 +362,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 <div class="card analogy">
   <div class="tag">📋 生活类比</div>
-  云计量像小区里的<strong>「水表 + 抄表员」</strong>。你用平台就像用水，平台给你装了一块<strong>表</strong>，按用量（观测数）默默地计。<strong>抄表员</strong>（每小时一次的定时任务）准点来抄一次<strong>这一小时</strong>的读数，把数字报给<strong>收费公司</strong>（Stripe），由它汇总成月度账单。
+  云计量像小区里的<strong>「水表 + 抄表员」</strong>。你用平台就像用水，平台给你装了一块<strong>表</strong>，按用量（用量事件）默默地计。<strong>抄表员</strong>（每小时一次的定时任务）准点来抄一次<strong>这一小时</strong>的读数，把数字报给<strong>收费公司</strong>（Stripe），由它汇总成月度账单。
   最要命的是：抄表<strong>绝不能重复、也绝不能漏</strong>。抄两遍，你这个月水费翻倍、客户暴怒；漏一次，平台白送了一小时算力。所以抄表员手里攥着一本<strong>「上次抄到几点」的台账</strong>（一张带锁的 cron 记录），死死卡住「<strong>每个整点小时的用量，不多不少、恰好上报一次</strong>」——哪怕他中途打了个盹、网断了重来、或者不小心来了两个抄表员，这本台账都能保证账目分毫不乱。
 </div>
 
@@ -491,7 +491,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <h2>两本不同的账：平台计费 vs 你的花费告警</h2>
 <p>容易混淆的是：Part 8 里出现了<strong>两种「钱」</strong>，方向正好相反。一种是<strong>平台向你收费</strong>（本课的计量，按用量事件报 Stripe）；另一种是<strong>你自己的 LLM 花费</strong>（第 <a class="xref" href="16-token-counting-cost.html">16</a>、<a class="xref" href="42-models-and-pricing.html">42</a> 课算出的成本）。后者还配了一个 <strong>花费告警（cloudSpendAlert）</strong>队列：盯着你这个月在各家 provider 上的 LLM 开销，越过你设的阈值就提醒你——这是帮<strong>你</strong>管好<strong>你的</strong>钱，和平台怎么收你的费是两码事。</p>
 
-<svg viewBox="0 0 720 220" role="img" aria-label="Part 8 里两种方向相反的钱：① 平台计费，方向是平台向你收费，按观测数每小时报 Stripe，走 cloudUsageMeteringQueue 讲究恰好一次；② 花费告警，方向是帮你管你的 LLM 花费，盯你在各 provider 的成本，走 cloudSpendAlertQueue，越过阈值就告警；自托管没有①不收平台费，但②那样的成本观测照用">
+<svg viewBox="0 0 720 220" role="img" aria-label="Part 8 里两种方向相反的钱：① 平台计费，方向是平台向你收费，按用量事件每小时报 Stripe，走 cloudUsageMeteringQueue 讲究恰好一次；② 花费告警，方向是帮你管你的 LLM 花费，盯你在各 provider 的成本，走 cloudSpendAlertQueue，越过阈值就告警；自托管没有①不收平台费，但②那样的成本观测照用">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
   <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 平台计费（平台 → 收你的费）</text>
@@ -511,7 +511,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 
 <div class="cols">
-  <div class="col"><h4>① 平台计量（本课主线）</h4><p>方向：平台 → 收你的费。按<strong>观测数</strong>每小时报 Stripe，Cloud 专属。<code>cloudUsageMeteringQueue</code>。讲究「恰好一次」。</p></div>
+  <div class="col"><h4>① 平台计量（本课主线）</h4><p>方向：平台 → 收你的费。按<strong>用量事件</strong>每小时报 Stripe，Cloud 专属。<code>cloudUsageMeteringQueue</code>。讲究「恰好一次」。</p></div>
   <div class="col"><h4>② 花费告警（cloudSpendAlert）</h4><p>方向：帮你 → 管你的 LLM 花费。盯你在 OpenAI/Anthropic 等的成本，越阈值就告警。<code>cloudSpendAlertQueue</code>（CloudSpendAlertJob）。</p></div>
   <div class="col"><h4>③ 自托管（self-host）</h4><p>没有①——自己部署 Langfuse <strong>不向你收平台费</strong>。但②那样的成本观测、第 16/42 课的成本计算照样能用，你的 LLM 花了多少一样看得清。</p></div>
 </div>
@@ -591,7 +591,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 <div class="card analogy">
   <div class="tag">📋 Analogy</div>
-  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (observation count). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
+  Cloud metering is like a residential <strong>"water meter + meter reader"</strong>. Using the platform is like using water; the platform installs a <strong>meter</strong> that quietly counts by usage (usage events). The <strong>meter reader</strong> (an hourly scheduled job) shows up on time to read <strong>that hour's</strong> figure, reporting it to the <strong>billing company</strong> (Stripe), which rolls it into a monthly invoice.
   The critical part: a reading <strong>must never duplicate, never miss</strong>. Read twice and your water bill doubles this month—an enraged customer; miss one and the platform gives away an hour of compute for free. So the reader clutches a <strong>"where did I read up to" ledger</strong> (a locked cron record), rigidly enforcing "<strong>each whole hour's usage is reported exactly once, no more, no less</strong>"—even if he dozes off mid-read, the network drops and he restarts, or two readers accidentally show up, this ledger keeps the books flawless.
 </div>
 
@@ -740,7 +740,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 </svg>
 
 <div class="cols">
-  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>observation count</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
+  <div class="col"><h4>① platform metering (this lesson)</h4><p>direction: platform → charges you. Reports <strong>usage events</strong> to Stripe hourly, Cloud-exclusive. <code>cloudUsageMeteringQueue</code>. Insists on "exactly once".</p></div>
   <div class="col"><h4>② spend alerts (cloudSpendAlert)</h4><p>direction: helps you → manage your LLM spend. Watches your cost on OpenAI/Anthropic etc., alerts on threshold crossing. <code>cloudSpendAlertQueue</code> (CloudSpendAlertJob).</p></div>
   <div class="col"><h4>③ self-host</h4><p>no ①—self-deploying Langfuse <strong>charges you no platform fee</strong>. But cost observation like ② and the cost computation of Lessons 16/42 still work—you see your LLM spend just the same.</p></div>
 </div>

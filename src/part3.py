@@ -44,7 +44,7 @@ _ZH12.append(r"""
   <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">合并、算成本、写 ClickHouse 都不在这里——那是 worker 的活（第 15–17 课）</text>
   <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">API 的全部职责：收下 → 校验 → 入队 → 回执</text>
 </svg>
-<div class="figcap"><b>极简的收件流程</b>：鉴权（API key 解析出 project，第 9·10 课）→ Zod 校验事件格式 → <code>processEventBatch</code> 把事件入队（同时把原件落 S3）→ 立即 200。整条链路上「重活」一件都不在这里做，所以 API 永远毫秒级返回。</div>
+<div class="figcap"><b>极简的收件流程</b>：鉴权（API key 解析出 project，第 9·10 课）→ Zod 校验事件格式 → <code>processEventBatch</code> 把事件入队（同时把原件落 S3）→ 立即 207。整条链路上「重活」一件都不在这里做，所以 API 永远毫秒级返回。</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 232" role="img" aria-label="摄取 API 真实例子：POST /api/public/ingestion 带 Basic 认证，body 是 batch 数组含 trace-create 与 observation-create；返回 207 Multi-Status，body 为 successes 与 errors。状态码与 batch 形状对齐 api/public/ingestion.ts，值为示例">
@@ -229,7 +229,7 @@ job). This is Lesson 5's "fast lane".
 
 _EN12.append(r"""
 <div class="fig">
-<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 200">
+<svg viewBox="0 0 720 200" role="img" aria-label="ingestion request lifecycle: auth, Zod validation, processEventBatch enqueue, immediate 207">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">the life of one ingestion request (milliseconds)</text>
   <rect x="20" y="70" width="120" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="80" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">SDK POST</text><text x="80" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">a batch of events</text>
   <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">1 auth</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
@@ -243,7 +243,7 @@ _EN12.append(r"""
   <text x="360" y="160" text-anchor="middle" font-size="9.5" fill="var(--faint)">merge, cost, ClickHouse writes are not here — that's the worker (L15–17)</text>
   <text x="360" y="182" text-anchor="middle" font-size="9" fill="var(--accent-ink)">the API's entire duty: accept → validate → enqueue → receipt</text>
 </svg>
-<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 200. No "heavy work" happens here, so the API always returns in milliseconds.</div>
+<div class="figcap"><b>A minimal accept flow</b>: auth (API key resolves a project, L09·10) → Zod-validate event shapes → <code>processEventBatch</code> enqueues (and lands originals in S3) → immediate 207. No "heavy work" happens here, so the API always returns in milliseconds.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 232" role="img" aria-label="Ingestion API real example: POST /api/public/ingestion with Basic auth, body is a batch array with trace-create and observation-create; returns 207 Multi-Status with successes and errors. Status and batch shape per api/public/ingestion.ts, values illustrative">
