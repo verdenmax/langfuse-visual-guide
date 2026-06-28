@@ -385,6 +385,42 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>登录入口</b>：<code>auth.ts:24-38</code> 导入 14 种 provider（Credentials/Email + 12 SSO）。静态 provider 由 env 配置，动态 SSO provider 运行时从库读取并合并（<code>auth.ts:739</code> 附近 <code>[...staticProviders, ...dynamicSsoProviders]</code>）。可强制 SSO：<code>AUTH_DISABLE_USERNAME_PASSWORD</code>（实例级）、<code>getSSOBlockedDomains()</code>（域名级）、<code>getSsoAuthProviderIdForDomain</code>（EE 多租户）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 258" role="img" aria-label="会话 JWT 真实例子：编码后的 token 分 header、payload、signature 三段（点号分隔，分别着色）；解码后 header 是 alg HS256/typ JWT，payload 含 sub、iat、exp 和 user 对象（id、email、admin、organizations 数组，每个组织有 role 和 projects，每个 project 又有 role），signature 是用密钥对前两段算的 HMAC，由 NextAuth 验证。会话用 jwt 策略、maxAge 来自 AUTH_SESSION_MAX_AGE。形状取自 next-auth.d.ts 与 auth.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一枚会话 JWT 的解剖</text>
+  <rect x="40" y="30" width="200" height="26" rx="5" fill="var(--blue)" opacity="0.16" stroke="var(--blue)"/><text x="140" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--blue)">eyJhbGciOiJI…</text>
+  <text x="245" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="254" y="30" width="250" height="26" rx="5" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="379" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--accent)">eyJzdWIiOiJ1_…</text>
+  <text x="509" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="518" y="30" width="150" height="26" rx="5" fill="var(--red)" opacity="0.16" stroke="var(--red)"/><text x="593" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--red)">3a7bf2c8e1…</text>
+  <text x="140" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">header</text>
+  <text x="379" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">payload</text>
+  <text x="593" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">signature</text>
+  <rect x="20" y="78" width="200" height="150" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="32" y="93" font-size="7.4" font-weight="700" fill="var(--blue)">HEADER</text>
+  <text x="32" y="110" font-size="6.8" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="32" y="125" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  alg: &quot;HS256&quot;,</text>
+  <text x="32" y="140" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  typ: &quot;JWT&quot;</text>
+  <text x="32" y="155" font-size="6.8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <rect x="230" y="78" width="320" height="150" rx="8" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="242" y="93" font-size="7.4" font-weight="700" fill="var(--accent-ink)">PAYLOAD</text>
+  <text x="242" y="110" font-size="6.5" font-family="monospace" fill="var(--code-ink)">{ sub: &quot;u_8f3a&quot;, iat: 1719.., exp: 1719..,</text>
+  <text x="242" y="125" font-size="6.5" font-family="monospace" fill="var(--code-ink)">  user: {</text>
+  <text x="242" y="140" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    id:&quot;u_8f3a&quot;, email:&quot;a@x.io&quot;, admin:false,</text>
+  <text x="242" y="155" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    organizations: [{ role:&quot;ADMIN&quot;,</text>
+  <text x="242" y="170" font-size="6.5" font-family="monospace" fill="var(--code-ink)">      projects:[{ role:&quot;MEMBER&quot; }] }] } }</text>
+  <text x="242" y="220" font-size="6.5" fill="var(--accent)">↑ org 角色 + project 角色 → 第 49 课 RBAC</text>
+  <rect x="560" y="78" width="140" height="150" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="572" y="93" font-size="7.4" font-weight="700" fill="var(--red)">SIGNATURE</text>
+  <text x="572" y="110" font-size="6.3" font-family="monospace" fill="var(--ink)">HMACSHA256(</text>
+  <text x="572" y="125" font-size="6.3" font-family="monospace" fill="var(--ink)">  b64(header)+</text>
+  <text x="572" y="140" font-size="6.3" font-family="monospace" fill="var(--ink)">  &quot;.&quot;+b64(pl),</text>
+  <text x="572" y="155" font-size="6.3" font-family="monospace" fill="var(--ink)">  secret )</text>
+  <text x="572" y="178" font-size="6.5" fill="var(--muted)">NextAuth 验签</text><text x="572" y="190" font-size="6.5" fill="var(--muted)">防篡改</text>
+  <text x="360" y="246" text-anchor="middle" font-size="7" fill="var(--muted)">session strategy=&quot;jwt&quot; · maxAge = AUTH_SESSION_MAX_AGE · 改一个字节签名就失效</text>
+</svg>
+<div class="figcap"><b>登录后你拿到的「身份」就是这枚签名的 JWT</b>（形状取自 <code>next-auth.d.ts</code> 与 <code>auth.ts</code>，<code>session.strategy=&quot;jwt&quot;</code>；<b>值为示例</b>）：三段 <code>header.payload.signature</code>。<code>payload</code> 里除了 <code>sub</code>/<code>iat</code>/<code>exp</code>，还带着整个 <code>user</code>——尤其是 <code>organizations[].role</code> 和其下 <code>projects[].role</code>，这正是<a class="xref" href="49-rbac-apikeys-scim.html">第 49 课</a> RBAC 判权的依据。<code>signature</code> 是用服务端密钥对前两段算的 HMAC：<b>内容公开可读，但改一个字节签名就对不上</b>，于是无法伪造越权。会话时效由 <code>AUTH_SESSION_MAX_AGE</code> 控制。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">自有</span><span class="name">CredentialsProvider（邮箱密码）</span></div><div class="ld">最基础的一条路：用户名+密码。密码用 <strong>bcrypt</strong> 加盐哈希存库，登录时比对。下一节会看到它周围一圈安全护栏（SSO 强制、时序攻击防护、SSO 用户拦截）。</div></div>
@@ -588,6 +624,42 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <line x1="365" y1="166" x2="365" y2="184" stroke="var(--faint)" stroke-width="1" stroke-dasharray="2 2"/>
 </svg>
 <div class="figcap"><b>Login entry</b>: <code>auth.ts:24-38</code> imports 14 providers (Credentials/Email + 12 SSO). Static providers come from env; dynamic SSO providers are read from the DB and merged at runtime (around <code>auth.ts:739</code>, <code>[...staticProviders, ...dynamicSsoProviders]</code>). SSO can be enforced: <code>AUTH_DISABLE_USERNAME_PASSWORD</code> (instance), <code>getSSOBlockedDomains()</code> (domain), <code>getSsoAuthProviderIdForDomain</code> (EE multi-tenant).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 258" role="img" aria-label="Session JWT real example: the encoded token has three dot-separated, color-coded parts header, payload, signature; decoded, the header is alg HS256/typ JWT, the payload has sub, iat, exp and a user object (id, email, admin, an organizations array where each org has a role and projects, and each project has a role), and the signature is an HMAC of the first two parts with the secret, verified by NextAuth. The session uses the jwt strategy with maxAge from AUTH_SESSION_MAX_AGE. Shape from next-auth.d.ts and auth.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: anatomy of a session JWT</text>
+  <rect x="40" y="30" width="200" height="26" rx="5" fill="var(--blue)" opacity="0.16" stroke="var(--blue)"/><text x="140" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--blue)">eyJhbGciOiJI…</text>
+  <text x="245" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="254" y="30" width="250" height="26" rx="5" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="379" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--accent)">eyJzdWIiOiJ1_…</text>
+  <text x="509" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="518" y="30" width="150" height="26" rx="5" fill="var(--red)" opacity="0.16" stroke="var(--red)"/><text x="593" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--red)">3a7bf2c8e1…</text>
+  <text x="140" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">header</text>
+  <text x="379" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">payload</text>
+  <text x="593" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">signature</text>
+  <rect x="20" y="78" width="200" height="150" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="32" y="93" font-size="7.4" font-weight="700" fill="var(--blue)">HEADER</text>
+  <text x="32" y="110" font-size="6.8" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="32" y="125" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  alg: &quot;HS256&quot;,</text>
+  <text x="32" y="140" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  typ: &quot;JWT&quot;</text>
+  <text x="32" y="155" font-size="6.8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <rect x="230" y="78" width="320" height="150" rx="8" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="242" y="93" font-size="7.4" font-weight="700" fill="var(--accent-ink)">PAYLOAD</text>
+  <text x="242" y="110" font-size="6.5" font-family="monospace" fill="var(--code-ink)">{ sub: &quot;u_8f3a&quot;, iat: 1719.., exp: 1719..,</text>
+  <text x="242" y="125" font-size="6.5" font-family="monospace" fill="var(--code-ink)">  user: {</text>
+  <text x="242" y="140" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    id:&quot;u_8f3a&quot;, email:&quot;a@x.io&quot;, admin:false,</text>
+  <text x="242" y="155" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    organizations: [{ role:&quot;ADMIN&quot;,</text>
+  <text x="242" y="170" font-size="6.5" font-family="monospace" fill="var(--code-ink)">      projects:[{ role:&quot;MEMBER&quot; }] }] } }</text>
+  <text x="242" y="220" font-size="6.2" fill="var(--accent)">↑ org role + project role → Lesson 49 RBAC</text>
+  <rect x="560" y="78" width="140" height="150" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="572" y="93" font-size="7.4" font-weight="700" fill="var(--red)">SIGNATURE</text>
+  <text x="572" y="110" font-size="6.3" font-family="monospace" fill="var(--ink)">HMACSHA256(</text>
+  <text x="572" y="125" font-size="6.3" font-family="monospace" fill="var(--ink)">  b64(header)+</text>
+  <text x="572" y="140" font-size="6.3" font-family="monospace" fill="var(--ink)">  &quot;.&quot;+b64(pl),</text>
+  <text x="572" y="155" font-size="6.3" font-family="monospace" fill="var(--ink)">  secret )</text>
+  <text x="572" y="178" font-size="6.2" fill="var(--muted)">verified by</text><text x="572" y="190" font-size="6.2" fill="var(--muted)">NextAuth</text>
+  <text x="360" y="246" text-anchor="middle" font-size="7" fill="var(--muted)">session strategy=&quot;jwt&quot; · maxAge = AUTH_SESSION_MAX_AGE · flip one byte and the signature breaks</text>
+</svg>
+<div class="figcap"><b>The "identity" you get after login is this signed JWT</b> (shape from <code>next-auth.d.ts</code> and <code>auth.ts</code>, <code>session.strategy=&quot;jwt&quot;</code>; <b>values illustrative</b>): three parts <code>header.payload.signature</code>. Beyond <code>sub</code>/<code>iat</code>/<code>exp</code>, the <code>payload</code> carries the whole <code>user</code> — notably <code>organizations[].role</code> and the nested <code>projects[].role</code>, which is exactly what <a class="xref" href="49-rbac-apikeys-scim.html">Lesson 49</a>'s RBAC checks. The <code>signature</code> is an HMAC of the first two parts with the server secret: <b>the contents are readable, but flip one byte and the signature no longer matches</b>, so privilege can't be forged. Session lifetime is controlled by <code>AUTH_SESSION_MAX_AGE</code>.</div>
 </div>
 
 <div class="layers">

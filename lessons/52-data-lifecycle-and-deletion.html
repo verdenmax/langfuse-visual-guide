@@ -384,6 +384,30 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>跨存储删除</b>：<code>projectDelete.ts:22 projectDeleteProcessor</code>——<code>Promise.all</code> 先清 ClickHouse（<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4 的 <code>deleteEventsByProjectId</code>）与 S3（<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>），再删 dataset run items，<strong>最后删 Postgres</strong>。注释明确「Delete project data from ClickHouse first」。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="数据生命周期真实例子：时间轴从创建、保留窗口、到删除；删除分两步——先在 pending_deletions 表软标记并入延迟队列，再由 worker 并行删 Postgres 与 ClickHouse（traces/observations/scores），ClickHouse 这步还顺带用 NOT EXISTS 守卫删除 S3 上的孤儿 media（被别的 trace 引用的共享 media 保留），最后把 isDeleted 置真；受 LANGFUSE_TRACE_DELETE_DELAY_MS 延迟与 LANGFUSE_DELETE_BATCH_SIZE 批大小控制。取自 traceDeletionProcessor 与 processClickhouseTraceDelete，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 trace 的生命周期与删除</text>
+  <line x1="40" y1="60" x2="680" y2="60" stroke="var(--line)" stroke-width="2"/>
+  <circle cx="70" cy="60" r="9" fill="var(--accent)" opacity="0.85"/><text x="70" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">①</text><text x="70" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent)">创建</text>
+  <circle cx="220" cy="60" r="9" fill="var(--blue)" opacity="0.85"/><text x="220" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">②</text><text x="220" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">保留窗口</text>
+  <circle cx="390" cy="60" r="9" fill="var(--amber)" opacity="0.85"/><text x="390" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">③</text><text x="390" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--amber)">到期/请求删除</text>
+  <circle cx="560" cy="60" r="9" fill="var(--red)" opacity="0.85"/><text x="560" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">④</text><text x="560" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--red)">跨存储删除</text>
+  <rect x="150" y="56" width="150" height="8" rx="4" fill="var(--blue)" opacity="0.3"/>
+  <text x="225" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">data-retention / data-access-days</text>
+  <rect x="20" y="96" width="320" height="58" rx="8" fill="var(--bg)" stroke="var(--amber)"/>
+  <text x="32" y="112" font-size="8" font-weight="700" fill="var(--amber)">④a 软标记（先快后稳）</text>
+  <text x="32" y="128" font-size="6.9" font-family="monospace" fill="var(--ink)">pendingDeletion.create({isDeleted:false})</text>
+  <text x="32" y="143" font-size="6.7" fill="var(--muted)">→ 延迟队列 (LANGFUSE_TRACE_DELETE_DELAY_MS)</text>
+  <rect x="350" y="96" width="350" height="120" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="362" y="112" font-size="8" font-weight="700" fill="var(--red)">④b 硬删除 · worker 并行 Promise.all</text>
+  <rect x="360" y="120" width="160" height="42" rx="6" fill="var(--blue-soft)"/><text x="368" y="134" font-size="7.4" font-weight="700" fill="var(--blue)">Postgres</text><text x="368" y="148" font-size="6.6" fill="var(--ink)">trace 行 / pending_deletions</text>
+  <rect x="528" y="120" width="164" height="42" rx="6" fill="var(--accent-soft)"/><text x="536" y="134" font-size="7.4" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="536" y="148" font-size="6.6" fill="var(--ink)">traces·observations·scores</text>
+  <rect x="360" y="168" width="332" height="40" rx="6" fill="var(--panel-2)"/><text x="368" y="182" font-size="7.2" font-weight="700" fill="var(--purple)">S3 media</text><text x="368" y="182" font-size="7.2" fill="var(--purple)"> </text><text x="420" y="182" font-size="6.7" fill="var(--ink)">只删孤儿（NOT EXISTS 守卫）</text><text x="368" y="198" font-size="6.5" fill="var(--muted)">被别的 trace 引用的共享 media 保留</text>
+  <line x1="340" y1="125" x2="350" y2="125" stroke="var(--line)" stroke-width="1.4"/><polygon points="350,125 343,122 343,128" fill="var(--muted)"/>
+  <text x="360" y="232" text-anchor="middle" font-size="7" fill="var(--muted)">全部成功后置 isDeleted=true；分批（LANGFUSE_DELETE_BATCH_SIZE）、可重试</text>
+</svg>
+<div class="figcap"><b>删除不是「DROP 一行」，而是一条跨三处存储的有序流程</b>（取自 <code>traceDeletionProcessor</code> 与 <code>processClickhouseTraceDelete</code>；<b>值为示例</b>）：数据生而被<b>保留</b>一段窗口（<code>data-retention</code> / <code>data-access-days</code>）。到期或主动删除时，先在 Postgres 的 <code>pending_deletions</code> 里<b>软标记</b>并入<b>延迟队列</b>（先快速响应），再由 worker <code>Promise.all</code> <b>并行</b>删 Postgres 与 ClickHouse 的 <code>traces/observations/scores</code>；ClickHouse 这步还顺带删 S3 上的 <b>孤儿 media</b>——用 <code>NOT EXISTS</code> 守卫，<b>被别的 trace 引用的共享 media 不误删</b>。全部成功才把 <code>isDeleted</code> 置真，整个过程分批、可重试。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">元数据</span><span class="name">Postgres（最后删）</span></div><div class="ld">项目、用户、API key、各种配置——结构化、强一致、量不大。它是整个系统的「源真相」，删除流程里<strong>留到最后</strong>：作为「这条删除还没完成」的锚点，保证崩溃后能安全重试。</div></div>
@@ -571,6 +595,30 @@ This lesson covers three deletions (auto-clean by retention period, on-demand tr
   <line x1="470" y1="120" x2="518" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="470" y1="160" x2="518" y2="165" stroke="var(--faint)" stroke-width="1"/>
 </svg>
 <div class="figcap"><b>Cross-store deletion</b>: <code>projectDelete.ts:22 projectDeleteProcessor</code> — <code>Promise.all</code> first cleans ClickHouse (<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4's <code>deleteEventsByProjectId</code>) and S3 (<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>), then deletes dataset run items, <strong>finally deletes Postgres</strong>. The comment is explicit: "Delete project data from ClickHouse first."</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Data lifecycle real example: a timeline from creation through a retention window to deletion; deletion is two-step — first a soft mark in the pending_deletions table plus a delayed queue, then a worker deletes Postgres and ClickHouse (traces/observations/scores) in parallel, and the ClickHouse step also deletes orphaned media from S3 with a NOT EXISTS guard (shared media referenced by other traces survives), finally setting isDeleted true; governed by LANGFUSE_TRACE_DELETE_DELAY_MS delay and LANGFUSE_DELETE_BATCH_SIZE batch size. From traceDeletionProcessor and processClickhouseTraceDelete, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a trace's lifecycle and deletion</text>
+  <line x1="40" y1="60" x2="680" y2="60" stroke="var(--line)" stroke-width="2"/>
+  <circle cx="70" cy="60" r="9" fill="var(--accent)" opacity="0.85"/><text x="70" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">①</text><text x="70" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent)">created</text>
+  <circle cx="220" cy="60" r="9" fill="var(--blue)" opacity="0.85"/><text x="220" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">②</text><text x="220" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">retention window</text>
+  <circle cx="390" cy="60" r="9" fill="var(--amber)" opacity="0.85"/><text x="390" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">③</text><text x="390" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--amber)">expire / delete req</text>
+  <circle cx="560" cy="60" r="9" fill="var(--red)" opacity="0.85"/><text x="560" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">④</text><text x="560" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--red)">cross-store delete</text>
+  <rect x="150" y="56" width="150" height="8" rx="4" fill="var(--blue)" opacity="0.3"/>
+  <text x="225" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">data-retention / data-access-days</text>
+  <rect x="20" y="96" width="320" height="58" rx="8" fill="var(--bg)" stroke="var(--amber)"/>
+  <text x="32" y="112" font-size="8" font-weight="700" fill="var(--amber)">④a soft mark (fast, safe)</text>
+  <text x="32" y="128" font-size="6.9" font-family="monospace" fill="var(--ink)">pendingDeletion.create({isDeleted:false})</text>
+  <text x="32" y="143" font-size="6.7" fill="var(--muted)">→ delayed queue (LANGFUSE_TRACE_DELETE_DELAY_MS)</text>
+  <rect x="350" y="96" width="350" height="120" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="362" y="112" font-size="8" font-weight="700" fill="var(--red)">④b hard delete · worker Promise.all</text>
+  <rect x="360" y="120" width="160" height="42" rx="6" fill="var(--blue-soft)"/><text x="368" y="134" font-size="7.4" font-weight="700" fill="var(--blue)">Postgres</text><text x="368" y="148" font-size="6.6" fill="var(--ink)">trace rows / pending_deletions</text>
+  <rect x="528" y="120" width="164" height="42" rx="6" fill="var(--accent-soft)"/><text x="536" y="134" font-size="7.4" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="536" y="148" font-size="6.6" fill="var(--ink)">traces·observations·scores</text>
+  <rect x="360" y="168" width="332" height="40" rx="6" fill="var(--panel-2)"/><text x="368" y="182" font-size="7.2" font-weight="700" fill="var(--purple)">S3 media</text><text x="368" y="182" font-size="7.2" fill="var(--purple)"> </text><text x="420" y="182" font-size="6.7" fill="var(--ink)">only orphans (NOT EXISTS guard)</text><text x="368" y="198" font-size="6.5" fill="var(--muted)">shared media referenced by others survives</text>
+  <line x1="340" y1="125" x2="350" y2="125" stroke="var(--line)" stroke-width="1.4"/><polygon points="350,125 343,122 343,128" fill="var(--muted)"/>
+  <text x="360" y="232" text-anchor="middle" font-size="7" fill="var(--muted)">set isDeleted=true after success; batched (LANGFUSE_DELETE_BATCH_SIZE), retryable</text>
+</svg>
+<div class="figcap"><b>Deletion isn't "DROP a row" but an ordered flow across three stores</b> (from <code>traceDeletionProcessor</code> and <code>processClickhouseTraceDelete</code>; <b>values illustrative</b>): data is born and <b>retained</b> for a window (<code>data-retention</code> / <code>data-access-days</code>). On expiry or an explicit delete, it's first <b>soft-marked</b> in Postgres' <code>pending_deletions</code> and put on a <b>delayed queue</b> (respond fast), then a worker deletes Postgres and ClickHouse <code>traces/observations/scores</code> <b>in parallel</b> via <code>Promise.all</code>; the ClickHouse step also removes <b>orphaned media</b> from S3 — guarded by <code>NOT EXISTS</code> so <b>shared media referenced by other traces is never wrongly deleted</b>. Only after all succeed is <code>isDeleted</code> set true; the whole process is batched and retryable.</div>
 </div>
 
 <div class="layers">

@@ -393,6 +393,80 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>角色→scope + 双查</b>：<code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>（OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 仅 read / NONE:271 空）；<code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code>（服务端，抛 <code>TRPCError FORBIDDEN</code>）+ <code>:42</code> <code>useHasProjectAccess</code>（前端 hook，隐藏 UI）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 336" role="img" aria-label="RBAC 权限矩阵真实例子：行是九个项目权限 scope（project:read、prompts:read、scores:CUD、prompts:CUD、playground:execute、traces:delete、apiKeys:CUD、auditLogs:read、project:delete），列是五个角色 OWNER/ADMIN/MEMBER/VIEWER/NONE，每格勾叉表示该角色是否拥有该 scope，构成一个阶梯：OWNER 全有、NONE 全无、VIEWER 只读、MEMBER 缺管理类、ADMIN 缺 project:delete。底部统计每个角色的 scope 数。取自 rbac/constants/projectAccessRights.ts，真实映射">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：项目角色 × 权限矩阵</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">行=权限 scope，列=角色；■=有，□=无</text>
+  <rect x="200" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="247" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">OWNER</text>
+  <rect x="300" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="347" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ADMIN</text>
+  <rect x="400" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="447" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">MEMBER</text>
+  <rect x="500" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="547" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">VIEWER</text>
+  <rect x="600" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="647" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">NONE</text>
+  <text x="20" y="62" font-size="7.6" font-weight="700" fill="var(--ink)">scope</text>
+  <rect x="20" y="70" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="84" font-size="7.3" font-family="monospace" fill="var(--ink)">project:read</text>
+  <rect x="200" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="70" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="84" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="94" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="108" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:read</text>
+  <rect x="200" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="94" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="118" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="132" font-size="7.3" font-family="monospace" fill="var(--ink)">scores:CUD</text>
+  <rect x="200" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="142" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="156" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:CUD</text>
+  <rect x="200" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="166" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="180" font-size="7.3" font-family="monospace" fill="var(--ink)">playground:execute</text>
+  <rect x="200" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="190" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="204" font-size="7.3" font-family="monospace" fill="var(--ink)">traces:delete</text>
+  <rect x="200" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="214" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="228" font-size="7.3" font-family="monospace" fill="var(--ink)">apiKeys:CUD</text>
+  <rect x="200" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="238" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="252" font-size="7.3" font-family="monospace" fill="var(--ink)">auditLogs:read</text>
+  <rect x="200" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="262" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="276" font-size="7.3" font-family="monospace" fill="var(--ink)">project:delete</text>
+  <rect x="200" y="262" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="276" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="347" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="400" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <text x="28" y="301" font-size="7.3" font-weight="700" fill="var(--accent-ink)">该角色 scope 总数</text>
+  <text x="247" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">56</text>
+  <text x="347" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">55</text>
+  <text x="447" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">42</text>
+  <text x="547" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">18</text>
+  <text x="647" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">0</text>
+  <text x="360" y="324" text-anchor="middle" font-size="7.2" fill="var(--muted)">阶梯式收权：OWNER 全有 · ADMIN 缺 project:delete · MEMBER 缺管理类 · VIEWER 只读 · NONE 回落到组织角色</text>
+</svg>
+<div class="figcap"><b>权限不是「开/关」，而是一张「角色 × scope」表</b>（取自 <code>rbac/constants/projectAccessRights.ts</code> 的 <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>，<b>真实映射</b>）：每个 API/页面要求某个 <code>scope</code>（如 <code>traces:delete</code>），<code>checkProjectAccess</code> 查当前角色是否在该 scope 的授权集里。五个角色排成<b>清晰阶梯</b>：<code>OWNER</code> 全有 → <code>ADMIN</code> 少了 <code>project:delete</code> → <code>MEMBER</code> 没有 <code>traces:delete</code>/<code>apiKeys:CUD</code>/<code>auditLogs:read</code> 这些管理类 → <code>VIEWER</code> 只剩 <code>:read</code> → <code>NONE</code> 为空（回落组织角色）。这张表正是<a class="xref" href="48-auth-and-sessions.html">第 48 课</a> JWT 里 <code>role</code> 字段的<b>判权依据</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/rbac/constants/projectAccessRights.ts · utils/checkProjectAccess.ts</span><span class="ln">角色→scope + 强制校验</span></div>
@@ -595,6 +669,80 @@ You'll repeatedly see two security creeds here: <strong>least privilege</strong>
   <text x="360" y="234" text-anchor="middle" font-size="8" fill="var(--faint)">Front-end hiding is bypassable (code runs on the user's machine); the real escalation block is the back end — defense in depth</text>
 </svg>
 <div class="figcap"><b>Role→scope + dual check</b>: <code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code> (OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 read-only / NONE:271 empty); <code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code> (server, throws <code>TRPCError FORBIDDEN</code>) + <code>:42</code> <code>useHasProjectAccess</code> (front-end hook, hides UI).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 336" role="img" aria-label="RBAC permission-matrix real example: rows are nine project permission scopes (project:read, prompts:read, scores:CUD, prompts:CUD, playground:execute, traces:delete, apiKeys:CUD, auditLogs:read, project:delete), columns are the five roles OWNER/ADMIN/MEMBER/VIEWER/NONE, each cell a check or cross for whether that role holds that scope, forming a staircase: OWNER has all, NONE none, VIEWER read-only, MEMBER lacks admin ops, ADMIN lacks project:delete. The bottom counts scopes per role. From rbac/constants/projectAccessRights.ts, real mapping">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: project role × permission matrix</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">rows = scopes, cols = roles; ■ = granted, □ = denied</text>
+  <rect x="200" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="247" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">OWNER</text>
+  <rect x="300" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="347" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ADMIN</text>
+  <rect x="400" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="447" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">MEMBER</text>
+  <rect x="500" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="547" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">VIEWER</text>
+  <rect x="600" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="647" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">NONE</text>
+  <text x="20" y="62" font-size="7.6" font-weight="700" fill="var(--ink)">scope</text>
+  <rect x="20" y="70" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="84" font-size="7.3" font-family="monospace" fill="var(--ink)">project:read</text>
+  <rect x="200" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="70" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="84" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="94" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="108" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:read</text>
+  <rect x="200" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="94" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="118" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="132" font-size="7.3" font-family="monospace" fill="var(--ink)">scores:CUD</text>
+  <rect x="200" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="142" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="156" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:CUD</text>
+  <rect x="200" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="166" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="180" font-size="7.3" font-family="monospace" fill="var(--ink)">playground:execute</text>
+  <rect x="200" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="190" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="204" font-size="7.3" font-family="monospace" fill="var(--ink)">traces:delete</text>
+  <rect x="200" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="214" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="228" font-size="7.3" font-family="monospace" fill="var(--ink)">apiKeys:CUD</text>
+  <rect x="200" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="238" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="252" font-size="7.3" font-family="monospace" fill="var(--ink)">auditLogs:read</text>
+  <rect x="200" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="262" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="276" font-size="7.3" font-family="monospace" fill="var(--ink)">project:delete</text>
+  <rect x="200" y="262" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="276" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="347" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="400" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <text x="28" y="301" font-size="7.3" font-weight="700" fill="var(--accent-ink)">total scopes / role</text>
+  <text x="247" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">56</text>
+  <text x="347" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">55</text>
+  <text x="447" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">42</text>
+  <text x="547" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">18</text>
+  <text x="647" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">0</text>
+  <text x="360" y="324" text-anchor="middle" font-size="7.2" fill="var(--muted)">a staircase: OWNER all · ADMIN lacks project:delete · MEMBER lacks admin ops · VIEWER read-only · NONE falls back to the org role</text>
+</svg>
+<div class="figcap"><b>Permissions aren't on/off but a "role × scope" table</b> (from <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code> in <code>rbac/constants/projectAccessRights.ts</code>, <b>real mapping</b>): each API/page requires a <code>scope</code> (e.g. <code>traces:delete</code>), and <code>checkProjectAccess</code> checks whether the current role is in that scope's grant set. The five roles form a <b>clean staircase</b>: <code>OWNER</code> has all → <code>ADMIN</code> drops <code>project:delete</code> → <code>MEMBER</code> loses admin ops like <code>traces:delete</code>/<code>apiKeys:CUD</code>/<code>auditLogs:read</code> → <code>VIEWER</code> keeps only <code>:read</code> → <code>NONE</code> is empty (falls back to the org role). This table is exactly what the <code>role</code> field in <a class="xref" href="48-auth-and-sessions.html">Lesson 48</a>'s JWT is checked against.</div>
 </div>
 
 <div class="codefile">

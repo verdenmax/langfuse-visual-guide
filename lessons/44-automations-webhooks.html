@@ -386,6 +386,34 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>Trigger → Action 的 IFTTT 模型</b>：<code>schema.prisma:1635</code> Trigger（eventSource/eventActions/filter/status）、<code>:1613</code> Action（type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json）、<code>:1659</code> Automation（绑定二者）、<code>:1690</code> AutomationExecution（PENDING/COMPLETED/ERROR/CANCELLED + input/output/error）。<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>监控告警就经此投递。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="webhook 投递真实例子：一个 POST 请求带 content-type、user-agent 和 x-langfuse-signature 头（值形如 t=时间戳,v1=HMAC），请求体是 prompt-version 事件的 JSON（id、timestamp、type=prompt-version、apiVersion=v1、action=created、prompt 对象）；接收方用共享密钥对「时间戳.载荷」算 HMAC-SHA256 比对签名再信任。字段取自 domain/webhooks.ts 与 signature.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次 webhook 投递（载荷 + 签名）</text>
+  <rect x="18" y="28" width="684" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="30" y="44" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--accent-ink)">POST https://your-app.com/hooks/langfuse</text>
+  <rect x="18" y="58" width="684" height="74" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="30" y="73" font-size="7.4" font-weight="700" fill="var(--muted)">请求头 headers</text>
+  <text x="30" y="90" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">content-type: application/json</text>
+  <text x="30" y="108" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">user-agent: Langfuse/1.0</text>
+  <rect x="26" y="114" width="668" height="16" rx="4" fill="var(--accent-soft)"/>
+  <text x="30" y="126" font-size="7.3" font-family="monospace" fill="var(--accent-ink)" font-weight="700">x-langfuse-signature: t=1719500000,v1=3a7bf2c8…</text>
+  <rect x="18" y="138" width="450" height="120" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="153" font-size="7.4" font-weight="700" fill="var(--blue)">请求体 body (JSON)</text>
+  <text x="30" y="168" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="183" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  id: &quot;evt_9f3a…&quot;, timestamp: &quot;2026-06-27T10:00Z&quot;,</text>
+  <text x="30" y="198" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  type: &quot;prompt-version&quot;, apiVersion: &quot;v1&quot;,</text>
+  <text x="30" y="213" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  action: &quot;created&quot;,</text>
+  <text x="30" y="228" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  prompt: { name: &quot;support-reply&quot;, version: 3,</text>
+  <text x="30" y="243" font-size="6.7" font-family="monospace" fill="var(--code-ink)">            type: &quot;text&quot; } }</text>
+  <rect x="478" y="138" width="224" height="120" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="490" y="153" font-size="7.6" font-weight="700" fill="var(--accent-ink)">🔐 验签 (HMAC-SHA256)</text>
+  <text x="490" y="172" font-size="6.8" font-family="monospace" fill="var(--ink)">signed = &quot;{t}.{body}&quot;</text>
+  <text x="490" y="187" font-size="6.8" font-family="monospace" fill="var(--ink)">hmac = HMAC(secret, signed)</text>
+  <text x="490" y="202" font-size="6.8" font-family="monospace" fill="var(--ink)">compare == v1 ?</text>
+  <text x="490" y="217" font-size="6.8" font-family="monospace" fill="var(--ink)"></text>
+  <rect x="486" y="228" width="208" height="22" rx="6" fill="var(--accent-soft)"/><text x="590" y="243" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--accent-ink)">✓ 一致才信任，否则丢弃</text>
+</svg>
+<div class="figcap"><b>每次投递都自带「这是我发的」证明</b>（字段取自 <code>domain/webhooks.ts</code> 与 <code>encryption/signature.ts</code>；<b>值为示例</b>）：Langfuse 把事件 <code>POST</code> 到你的 URL，体是 <code>prompt-version</code> 事件 JSON（<code>type</code>/<code>apiVersion</code>/<code>action</code>=created|updated|deleted/<code>prompt</code>）。关键在 <code>x-langfuse-signature: t=…,v1=…</code>——<code>createSignatureHeader</code> 对 <code>&quot;{timestamp}.{body}&quot;</code> 算 <b>HMAC-SHA256</b>。你的接收端用<b>同一个密钥</b>重算、比对 <code>v1</code>，一致才信任。于是别人即使知道你的 URL 也<b>伪造不出合法请求</b>（配合第 44 课的 SSRF 出站防护，一进一出都设防）。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">何时</span><span class="name">Trigger</span></div><div class="ld">守着事件流：<code>eventSource</code>（盯哪类对象）+ <code>eventActions</code>（哪种变化）+ <code>filter</code>（更细的条件，和<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>同款过滤）。<code>status=ACTIVE</code> 才生效——可随时停用而不删除。</div></div>
@@ -587,6 +615,34 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">AutomationExecution is like Lesson 30's JobExecution and Lesson 32's annotation item — yet another "persisted execution record" state machine</text>
 </svg>
 <div class="figcap"><b>The IFTTT Trigger → Action model</b>: <code>schema.prisma:1635</code> Trigger (eventSource/eventActions/filter/status), <code>:1613</code> Action (type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json), <code>:1659</code> Automation (binds the two), <code>:1690</code> AutomationExecution (PENDING/COMPLETED/ERROR/CANCELLED + input/output/error). <a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>'s monitor alerts are delivered through exactly this path.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="Webhook delivery real example: a POST request with content-type, user-agent and x-langfuse-signature headers (value shaped t=timestamp,v1=HMAC), and a JSON body for a prompt-version event (id, timestamp, type=prompt-version, apiVersion=v1, action=created, prompt object); the receiver recomputes HMAC-SHA256 over timestamp.payload with the shared secret and compares before trusting. Fields from domain/webhooks.ts and signature.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one webhook delivery (payload + signature)</text>
+  <rect x="18" y="28" width="684" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="30" y="44" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--accent-ink)">POST https://your-app.com/hooks/langfuse</text>
+  <rect x="18" y="58" width="684" height="74" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="30" y="73" font-size="7.4" font-weight="700" fill="var(--muted)">headers</text>
+  <text x="30" y="90" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">content-type: application/json</text>
+  <text x="30" y="108" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">user-agent: Langfuse/1.0</text>
+  <rect x="26" y="114" width="668" height="16" rx="4" fill="var(--accent-soft)"/>
+  <text x="30" y="126" font-size="7.3" font-family="monospace" fill="var(--accent-ink)" font-weight="700">x-langfuse-signature: t=1719500000,v1=3a7bf2c8…</text>
+  <rect x="18" y="138" width="450" height="120" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="153" font-size="7.4" font-weight="700" fill="var(--blue)">body (JSON)</text>
+  <text x="30" y="168" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="183" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  id: &quot;evt_9f3a…&quot;, timestamp: &quot;2026-06-27T10:00Z&quot;,</text>
+  <text x="30" y="198" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  type: &quot;prompt-version&quot;, apiVersion: &quot;v1&quot;,</text>
+  <text x="30" y="213" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  action: &quot;created&quot;,</text>
+  <text x="30" y="228" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  prompt: { name: &quot;support-reply&quot;, version: 3,</text>
+  <text x="30" y="243" font-size="6.7" font-family="monospace" fill="var(--code-ink)">            type: &quot;text&quot; } }</text>
+  <rect x="478" y="138" width="224" height="120" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="490" y="153" font-size="7.6" font-weight="700" fill="var(--accent-ink)">🔐 verify (HMAC-SHA256)</text>
+  <text x="490" y="172" font-size="6.8" font-family="monospace" fill="var(--ink)">signed = &quot;{t}.{body}&quot;</text>
+  <text x="490" y="187" font-size="6.8" font-family="monospace" fill="var(--ink)">hmac = HMAC(secret, signed)</text>
+  <text x="490" y="202" font-size="6.8" font-family="monospace" fill="var(--ink)">compare == v1 ?</text>
+  <text x="490" y="217" font-size="6.8" font-family="monospace" fill="var(--ink)"></text>
+  <rect x="486" y="228" width="208" height="22" rx="6" fill="var(--accent-soft)"/><text x="590" y="243" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--accent-ink)">✓ trust only if equal, else drop</text>
+</svg>
+<div class="figcap"><b>Every delivery carries proof of "I really sent this"</b> (fields from <code>domain/webhooks.ts</code> and <code>encryption/signature.ts</code>; <b>values illustrative</b>): Langfuse <code>POST</code>s the event to your URL with a <code>prompt-version</code> JSON body (<code>type</code>/<code>apiVersion</code>/<code>action</code>=created|updated|deleted/<code>prompt</code>). The key is <code>x-langfuse-signature: t=…,v1=…</code> — <code>createSignatureHeader</code> computes <b>HMAC-SHA256</b> over <code>&quot;{timestamp}.{body}&quot;</code>. Your receiver recomputes it with the <b>same secret</b> and compares <code>v1</code>, trusting only on a match. So even someone who knows your URL <b>cannot forge a valid request</b> (paired with Lesson 44's SSRF outbound guard, both directions are defended).</div>
 </div>
 
 <div class="layers">

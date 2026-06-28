@@ -386,6 +386,25 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>你的数据，你的去处</b>：模型见 <code>schema.prisma:1183</code> PosthogIntegration、<code>:1196</code> MixpanelIntegration、<code>:1209</code> BlobStorageIntegration——均以 <code>projectId</code> 为主键，存加密凭据（encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey）、<code>lastSyncAt</code>、<code>enabled</code>、<code>exportSource</code>（<code>AnalyticsIntegrationExportSource</code>：TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 246" role="img" aria-label="分析集成扇出真实例子：左边是源数据 traces/observations，向上扇出到 PostHog（事件捕获 event+properties+distinct_id，发往 posthogHostName、用 phc_ 项目 key），向下扇出到 BlobStorage（type=S3，按 exportFrequency 周期导出 CSV/JSON/JSONL 对象到 bucket/prefix）；增量游标只导上次之后的新行。模型字段取自 PosthogIntegration 与 BlobStorageIntegration，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一份数据，扇出到两个下游</text>
+  <rect x="20" y="92" width="180" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="110" y="116" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">源数据</text><text x="110" y="132" text-anchor="middle" font-size="7.6" fill="var(--accent-ink)">traces / observations</text><text x="110" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">(ClickHouse)</text>
+  <path d="M200 110 C 250 90, 280 64, 320 60" fill="none" stroke="var(--blue)" stroke-width="1.6"/><polygon points="320,60 312,58 315,66" fill="var(--blue)"/>
+  <path d="M200 140 C 250 160, 280 186, 320 190" fill="none" stroke="var(--purple)" stroke-width="1.6"/><polygon points="320,190 312,186 315,194" fill="var(--purple)"/>
+  <rect x="322" y="34" width="378" height="78" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="336" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">PostHog · PosthogIntegration</text>
+  <rect x="334" y="56" width="354" height="34" rx="6" fill="var(--code-bg)"/><text x="342" y="69" font-size="6.7" font-family="monospace" fill="var(--code-ink)">capture({ event:&quot;langfuse trace&quot;,</text><text x="342" y="82" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  distinct_id:&quot;u_8f3a&quot;, properties:{cost,latency…} })</text>
+  <text x="336" y="104" font-size="6.6" fill="var(--muted)">→ posthogHostName · key phc_…  ·  产品分析/留存漏斗</text>
+  <rect x="322" y="150" width="378" height="86" rx="9" fill="var(--bg)" stroke="var(--purple)"/>
+  <text x="336" y="166" font-size="8.5" font-weight="700" fill="var(--purple)">BlobStorage · type=S3</text>
+  <rect x="334" y="172" width="354" height="30" rx="6" fill="var(--code-bg)"/><text x="342" y="191" font-size="6.8" font-family="monospace" fill="var(--code-ink)">s3://my-bucket/langfuse/2026-06-27/obs.csv</text>
+  <text x="336" y="216" font-size="6.6" fill="var(--muted)">fileType ∈ {CSV,JSON,JSONL} · exportFrequency 周期导出 · bucket/prefix</text>
+  <text x="336" y="229" font-size="6.6" fill="var(--accent-ink)">⟲ 增量游标：只导上次之后的新行</text>
+</svg>
+<div class="figcap"><b>同一份数据，按下游的「语言」各发一份</b>（模型取自 <code>PosthogIntegration</code> 与 <code>BlobStorageIntegration</code>；<b>值为示例</b>）：traces/observations 向上以 <b>事件</b>的形式 <code>capture({event, distinct_id, properties})</code> 进 PostHog（发往 <code>posthogHostName</code>、用 <code>phc_</code> 项目 key），做产品分析、留存漏斗；向下以<b>文件</b>的形式周期导出到 <code>BlobStorage</code>（<code>type</code>=S3/S3_COMPATIBLE/AZURE_BLOB_STORAGE，<code>fileType</code>∈CSV/JSON/JSONL，落到 <code>bucket/prefix</code>），喂数仓/离线分析。一个<b>增量游标</b>保证每次只导新增行、不重不漏。Langfuse 不替代这些工具，而是<b>把数据准确地送过去</b>。</div>
+</div>
 
 <table class="t">
   <thead><tr><th>集成</th><th>去处</th><th>凭据（加密）</th><th>特有配置</th></tr></thead>
@@ -565,6 +584,25 @@ By the end you'll see: a mature platform "exporting data out" is far more than "
   <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">All three share one skeleton: two-level fan-out queue + lastSyncAt incremental sync + encrypted creds; blob adds streaming export</text>
 </svg>
 <div class="figcap"><b>Your data, your destinations</b>: models at <code>schema.prisma:1183</code> PosthogIntegration, <code>:1196</code> MixpanelIntegration, <code>:1209</code> BlobStorageIntegration — all keyed by <code>projectId</code>, storing encrypted credentials (encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey), <code>lastSyncAt</code>, <code>enabled</code>, <code>exportSource</code> (<code>AnalyticsIntegrationExportSource</code>: TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 246" role="img" aria-label="Analytics-integration fan-out real example: on the left the source data traces/observations fans out upward to PostHog (event capture with event+properties+distinct_id, sent to posthogHostName with a phc_ project key) and downward to BlobStorage (type=S3, exporting CSV/JSON/JSONL objects to a bucket/prefix on an exportFrequency); an incremental cursor only exports rows newer than last time. Fields from the PosthogIntegration and BlobStorageIntegration models, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one data source, fanned out to two sinks</text>
+  <rect x="20" y="92" width="180" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="110" y="116" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">source</text><text x="110" y="132" text-anchor="middle" font-size="7.6" fill="var(--accent-ink)">traces / observations</text><text x="110" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">(ClickHouse)</text>
+  <path d="M200 110 C 250 90, 280 64, 320 60" fill="none" stroke="var(--blue)" stroke-width="1.6"/><polygon points="320,60 312,58 315,66" fill="var(--blue)"/>
+  <path d="M200 140 C 250 160, 280 186, 320 190" fill="none" stroke="var(--purple)" stroke-width="1.6"/><polygon points="320,190 312,186 315,194" fill="var(--purple)"/>
+  <rect x="322" y="34" width="378" height="78" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="336" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">PostHog · PosthogIntegration</text>
+  <rect x="334" y="56" width="354" height="34" rx="6" fill="var(--code-bg)"/><text x="342" y="69" font-size="6.7" font-family="monospace" fill="var(--code-ink)">capture({ event:&quot;langfuse trace&quot;,</text><text x="342" y="82" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  distinct_id:&quot;u_8f3a&quot;, properties:{cost,latency…} })</text>
+  <text x="336" y="104" font-size="6.6" fill="var(--muted)">→ posthogHostName · key phc_…  ·  product analytics / funnels</text>
+  <rect x="322" y="150" width="378" height="86" rx="9" fill="var(--bg)" stroke="var(--purple)"/>
+  <text x="336" y="166" font-size="8.5" font-weight="700" fill="var(--purple)">BlobStorage · type=S3</text>
+  <rect x="334" y="172" width="354" height="30" rx="6" fill="var(--code-bg)"/><text x="342" y="191" font-size="6.8" font-family="monospace" fill="var(--code-ink)">s3://my-bucket/langfuse/2026-06-27/obs.csv</text>
+  <text x="336" y="216" font-size="6.6" fill="var(--muted)">fileType ∈ {CSV,JSON,JSONL} · exportFrequency periodic · bucket/prefix</text>
+  <text x="336" y="229" font-size="6.6" fill="var(--accent-ink)">⟲ incremental cursor: only rows newer than last export</text>
+</svg>
+<div class="figcap"><b>Same data, sent in each downstream's "language"</b> (models from <code>PosthogIntegration</code> and <code>BlobStorageIntegration</code>; <b>values illustrative</b>): traces/observations go up as <b>events</b> via <code>capture({event, distinct_id, properties})</code> into PostHog (to <code>posthogHostName</code> with a <code>phc_</code> project key) for product analytics and funnels; and down as <b>files</b> exported periodically to <code>BlobStorage</code> (<code>type</code>=S3/S3_COMPATIBLE/AZURE_BLOB_STORAGE, <code>fileType</code>∈CSV/JSON/JSONL, into a <code>bucket/prefix</code>) for the warehouse / offline analysis. An <b>incremental cursor</b> makes each run export only new rows — no gaps, no dupes. Langfuse doesn't replace these tools; it <b>delivers the data to them accurately</b>.</div>
 </div>
 
 <table class="t">

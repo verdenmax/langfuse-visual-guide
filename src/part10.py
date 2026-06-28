@@ -47,6 +47,42 @@ _ZH48.append(r"""
 </svg>
 <div class="figcap"><b>登录入口</b>：<code>auth.ts:24-38</code> 导入 14 种 provider（Credentials/Email + 12 SSO）。静态 provider 由 env 配置，动态 SSO provider 运行时从库读取并合并（<code>auth.ts:739</code> 附近 <code>[...staticProviders, ...dynamicSsoProviders]</code>）。可强制 SSO：<code>AUTH_DISABLE_USERNAME_PASSWORD</code>（实例级）、<code>getSSOBlockedDomains()</code>（域名级）、<code>getSsoAuthProviderIdForDomain</code>（EE 多租户）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 258" role="img" aria-label="会话 JWT 真实例子：编码后的 token 分 header、payload、signature 三段（点号分隔，分别着色）；解码后 header 是 alg HS256/typ JWT，payload 含 sub、iat、exp 和 user 对象（id、email、admin、organizations 数组，每个组织有 role 和 projects，每个 project 又有 role），signature 是用密钥对前两段算的 HMAC，由 NextAuth 验证。会话用 jwt 策略、maxAge 来自 AUTH_SESSION_MAX_AGE。形状取自 next-auth.d.ts 与 auth.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一枚会话 JWT 的解剖</text>
+  <rect x="40" y="30" width="200" height="26" rx="5" fill="var(--blue)" opacity="0.16" stroke="var(--blue)"/><text x="140" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--blue)">eyJhbGciOiJI…</text>
+  <text x="245" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="254" y="30" width="250" height="26" rx="5" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="379" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--accent)">eyJzdWIiOiJ1_…</text>
+  <text x="509" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="518" y="30" width="150" height="26" rx="5" fill="var(--red)" opacity="0.16" stroke="var(--red)"/><text x="593" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--red)">3a7bf2c8e1…</text>
+  <text x="140" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">header</text>
+  <text x="379" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">payload</text>
+  <text x="593" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">signature</text>
+  <rect x="20" y="78" width="200" height="150" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="32" y="93" font-size="7.4" font-weight="700" fill="var(--blue)">HEADER</text>
+  <text x="32" y="110" font-size="6.8" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="32" y="125" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  alg: &quot;HS256&quot;,</text>
+  <text x="32" y="140" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  typ: &quot;JWT&quot;</text>
+  <text x="32" y="155" font-size="6.8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <rect x="230" y="78" width="320" height="150" rx="8" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="242" y="93" font-size="7.4" font-weight="700" fill="var(--accent-ink)">PAYLOAD</text>
+  <text x="242" y="110" font-size="6.5" font-family="monospace" fill="var(--code-ink)">{ sub: &quot;u_8f3a&quot;, iat: 1719.., exp: 1719..,</text>
+  <text x="242" y="125" font-size="6.5" font-family="monospace" fill="var(--code-ink)">  user: {</text>
+  <text x="242" y="140" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    id:&quot;u_8f3a&quot;, email:&quot;a@x.io&quot;, admin:false,</text>
+  <text x="242" y="155" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    organizations: [{ role:&quot;ADMIN&quot;,</text>
+  <text x="242" y="170" font-size="6.5" font-family="monospace" fill="var(--code-ink)">      projects:[{ role:&quot;MEMBER&quot; }] }] } }</text>
+  <text x="242" y="220" font-size="6.5" fill="var(--accent)">↑ org 角色 + project 角色 → 第 49 课 RBAC</text>
+  <rect x="560" y="78" width="140" height="150" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="572" y="93" font-size="7.4" font-weight="700" fill="var(--red)">SIGNATURE</text>
+  <text x="572" y="110" font-size="6.3" font-family="monospace" fill="var(--ink)">HMACSHA256(</text>
+  <text x="572" y="125" font-size="6.3" font-family="monospace" fill="var(--ink)">  b64(header)+</text>
+  <text x="572" y="140" font-size="6.3" font-family="monospace" fill="var(--ink)">  &quot;.&quot;+b64(pl),</text>
+  <text x="572" y="155" font-size="6.3" font-family="monospace" fill="var(--ink)">  secret )</text>
+  <text x="572" y="178" font-size="6.5" fill="var(--muted)">NextAuth 验签</text><text x="572" y="190" font-size="6.5" fill="var(--muted)">防篡改</text>
+  <text x="360" y="246" text-anchor="middle" font-size="7" fill="var(--muted)">session strategy=&quot;jwt&quot; · maxAge = AUTH_SESSION_MAX_AGE · 改一个字节签名就失效</text>
+</svg>
+<div class="figcap"><b>登录后你拿到的「身份」就是这枚签名的 JWT</b>（形状取自 <code>next-auth.d.ts</code> 与 <code>auth.ts</code>，<code>session.strategy=&quot;jwt&quot;</code>；<b>值为示例</b>）：三段 <code>header.payload.signature</code>。<code>payload</code> 里除了 <code>sub</code>/<code>iat</code>/<code>exp</code>，还带着整个 <code>user</code>——尤其是 <code>organizations[].role</code> 和其下 <code>projects[].role</code>，这正是第 49 课 RBAC 判权的依据。<code>signature</code> 是用服务端密钥对前两段算的 HMAC：<b>内容公开可读，但改一个字节签名就对不上</b>，于是无法伪造越权。会话时效由 <code>AUTH_SESSION_MAX_AGE</code> 控制。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">自有</span><span class="name">CredentialsProvider（邮箱密码）</span></div><div class="ld">最基础的一条路：用户名+密码。密码用 <strong>bcrypt</strong> 加盐哈希存库，登录时比对。下一节会看到它周围一圈安全护栏（SSO 强制、时序攻击防护、SSO 用户拦截）。</div></div>
@@ -211,6 +247,42 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <line x1="365" y1="166" x2="365" y2="184" stroke="var(--faint)" stroke-width="1" stroke-dasharray="2 2"/>
 </svg>
 <div class="figcap"><b>Login entry</b>: <code>auth.ts:24-38</code> imports 14 providers (Credentials/Email + 12 SSO). Static providers come from env; dynamic SSO providers are read from the DB and merged at runtime (around <code>auth.ts:739</code>, <code>[...staticProviders, ...dynamicSsoProviders]</code>). SSO can be enforced: <code>AUTH_DISABLE_USERNAME_PASSWORD</code> (instance), <code>getSSOBlockedDomains()</code> (domain), <code>getSsoAuthProviderIdForDomain</code> (EE multi-tenant).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 258" role="img" aria-label="Session JWT real example: the encoded token has three dot-separated, color-coded parts header, payload, signature; decoded, the header is alg HS256/typ JWT, the payload has sub, iat, exp and a user object (id, email, admin, an organizations array where each org has a role and projects, and each project has a role), and the signature is an HMAC of the first two parts with the secret, verified by NextAuth. The session uses the jwt strategy with maxAge from AUTH_SESSION_MAX_AGE. Shape from next-auth.d.ts and auth.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: anatomy of a session JWT</text>
+  <rect x="40" y="30" width="200" height="26" rx="5" fill="var(--blue)" opacity="0.16" stroke="var(--blue)"/><text x="140" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--blue)">eyJhbGciOiJI…</text>
+  <text x="245" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="254" y="30" width="250" height="26" rx="5" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="379" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--accent)">eyJzdWIiOiJ1_…</text>
+  <text x="509" y="48" font-size="11" font-weight="700" fill="var(--muted)">.</text>
+  <rect x="518" y="30" width="150" height="26" rx="5" fill="var(--red)" opacity="0.16" stroke="var(--red)"/><text x="593" y="47" text-anchor="middle" font-size="7.6" font-family="monospace" fill="var(--red)">3a7bf2c8e1…</text>
+  <text x="140" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">header</text>
+  <text x="379" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">payload</text>
+  <text x="593" y="68" text-anchor="middle" font-size="6.6" fill="var(--muted)">signature</text>
+  <rect x="20" y="78" width="200" height="150" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="32" y="93" font-size="7.4" font-weight="700" fill="var(--blue)">HEADER</text>
+  <text x="32" y="110" font-size="6.8" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="32" y="125" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  alg: &quot;HS256&quot;,</text>
+  <text x="32" y="140" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  typ: &quot;JWT&quot;</text>
+  <text x="32" y="155" font-size="6.8" font-family="monospace" fill="var(--code-ink)">}</text>
+  <rect x="230" y="78" width="320" height="150" rx="8" fill="var(--code-bg)" stroke="var(--accent)"/>
+  <text x="242" y="93" font-size="7.4" font-weight="700" fill="var(--accent-ink)">PAYLOAD</text>
+  <text x="242" y="110" font-size="6.5" font-family="monospace" fill="var(--code-ink)">{ sub: &quot;u_8f3a&quot;, iat: 1719.., exp: 1719..,</text>
+  <text x="242" y="125" font-size="6.5" font-family="monospace" fill="var(--code-ink)">  user: {</text>
+  <text x="242" y="140" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    id:&quot;u_8f3a&quot;, email:&quot;a@x.io&quot;, admin:false,</text>
+  <text x="242" y="155" font-size="6.5" font-family="monospace" fill="var(--code-ink)">    organizations: [{ role:&quot;ADMIN&quot;,</text>
+  <text x="242" y="170" font-size="6.5" font-family="monospace" fill="var(--code-ink)">      projects:[{ role:&quot;MEMBER&quot; }] }] } }</text>
+  <text x="242" y="220" font-size="6.2" fill="var(--accent)">↑ org role + project role → Lesson 49 RBAC</text>
+  <rect x="560" y="78" width="140" height="150" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="572" y="93" font-size="7.4" font-weight="700" fill="var(--red)">SIGNATURE</text>
+  <text x="572" y="110" font-size="6.3" font-family="monospace" fill="var(--ink)">HMACSHA256(</text>
+  <text x="572" y="125" font-size="6.3" font-family="monospace" fill="var(--ink)">  b64(header)+</text>
+  <text x="572" y="140" font-size="6.3" font-family="monospace" fill="var(--ink)">  &quot;.&quot;+b64(pl),</text>
+  <text x="572" y="155" font-size="6.3" font-family="monospace" fill="var(--ink)">  secret )</text>
+  <text x="572" y="178" font-size="6.2" fill="var(--muted)">verified by</text><text x="572" y="190" font-size="6.2" fill="var(--muted)">NextAuth</text>
+  <text x="360" y="246" text-anchor="middle" font-size="7" fill="var(--muted)">session strategy=&quot;jwt&quot; · maxAge = AUTH_SESSION_MAX_AGE · flip one byte and the signature breaks</text>
+</svg>
+<div class="figcap"><b>The "identity" you get after login is this signed JWT</b> (shape from <code>next-auth.d.ts</code> and <code>auth.ts</code>, <code>session.strategy=&quot;jwt&quot;</code>; <b>values illustrative</b>): three parts <code>header.payload.signature</code>. Beyond <code>sub</code>/<code>iat</code>/<code>exp</code>, the <code>payload</code> carries the whole <code>user</code> — notably <code>organizations[].role</code> and the nested <code>projects[].role</code>, which is exactly what Lesson 49's RBAC checks. The <code>signature</code> is an HMAC of the first two parts with the server secret: <b>the contents are readable, but flip one byte and the signature no longer matches</b>, so privilege can't be forged. Session lifetime is controlled by <code>AUTH_SESSION_MAX_AGE</code>.</div>
 </div>
 
 <div class="layers">
@@ -396,6 +468,80 @@ _ZH49.append(r"""
 </svg>
 <div class="figcap"><b>角色→scope + 双查</b>：<code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>（OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 仅 read / NONE:271 空）；<code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code>（服务端，抛 <code>TRPCError FORBIDDEN</code>）+ <code>:42</code> <code>useHasProjectAccess</code>（前端 hook，隐藏 UI）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 336" role="img" aria-label="RBAC 权限矩阵真实例子：行是九个项目权限 scope（project:read、prompts:read、scores:CUD、prompts:CUD、playground:execute、traces:delete、apiKeys:CUD、auditLogs:read、project:delete），列是五个角色 OWNER/ADMIN/MEMBER/VIEWER/NONE，每格勾叉表示该角色是否拥有该 scope，构成一个阶梯：OWNER 全有、NONE 全无、VIEWER 只读、MEMBER 缺管理类、ADMIN 缺 project:delete。底部统计每个角色的 scope 数。取自 rbac/constants/projectAccessRights.ts，真实映射">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：项目角色 × 权限矩阵</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">行=权限 scope，列=角色；■=有，□=无</text>
+  <rect x="200" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="247" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">OWNER</text>
+  <rect x="300" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="347" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ADMIN</text>
+  <rect x="400" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="447" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">MEMBER</text>
+  <rect x="500" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="547" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">VIEWER</text>
+  <rect x="600" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="647" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">NONE</text>
+  <text x="20" y="62" font-size="7.6" font-weight="700" fill="var(--ink)">scope</text>
+  <rect x="20" y="70" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="84" font-size="7.3" font-family="monospace" fill="var(--ink)">project:read</text>
+  <rect x="200" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="70" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="84" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="94" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="108" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:read</text>
+  <rect x="200" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="94" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="118" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="132" font-size="7.3" font-family="monospace" fill="var(--ink)">scores:CUD</text>
+  <rect x="200" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="142" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="156" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:CUD</text>
+  <rect x="200" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="166" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="180" font-size="7.3" font-family="monospace" fill="var(--ink)">playground:execute</text>
+  <rect x="200" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="190" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="204" font-size="7.3" font-family="monospace" fill="var(--ink)">traces:delete</text>
+  <rect x="200" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="214" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="228" font-size="7.3" font-family="monospace" fill="var(--ink)">apiKeys:CUD</text>
+  <rect x="200" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="238" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="252" font-size="7.3" font-family="monospace" fill="var(--ink)">auditLogs:read</text>
+  <rect x="200" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="262" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="276" font-size="7.3" font-family="monospace" fill="var(--ink)">project:delete</text>
+  <rect x="200" y="262" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="276" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="347" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="400" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <text x="28" y="301" font-size="7.3" font-weight="700" fill="var(--accent-ink)">该角色 scope 总数</text>
+  <text x="247" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">56</text>
+  <text x="347" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">55</text>
+  <text x="447" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">42</text>
+  <text x="547" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">18</text>
+  <text x="647" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">0</text>
+  <text x="360" y="324" text-anchor="middle" font-size="7.2" fill="var(--muted)">阶梯式收权：OWNER 全有 · ADMIN 缺 project:delete · MEMBER 缺管理类 · VIEWER 只读 · NONE 回落到组织角色</text>
+</svg>
+<div class="figcap"><b>权限不是「开/关」，而是一张「角色 × scope」表</b>（取自 <code>rbac/constants/projectAccessRights.ts</code> 的 <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code>，<b>真实映射</b>）：每个 API/页面要求某个 <code>scope</code>（如 <code>traces:delete</code>），<code>checkProjectAccess</code> 查当前角色是否在该 scope 的授权集里。五个角色排成<b>清晰阶梯</b>：<code>OWNER</code> 全有 → <code>ADMIN</code> 少了 <code>project:delete</code> → <code>MEMBER</code> 没有 <code>traces:delete</code>/<code>apiKeys:CUD</code>/<code>auditLogs:read</code> 这些管理类 → <code>VIEWER</code> 只剩 <code>:read</code> → <code>NONE</code> 为空（回落组织角色）。这张表正是第 48 课 JWT 里 <code>role</code> 字段的<b>判权依据</b>。</div>
+</div>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/features/rbac/constants/projectAccessRights.ts · utils/checkProjectAccess.ts</span><span class="ln">角色→scope + 强制校验</span></div>
@@ -559,6 +705,80 @@ You'll repeatedly see two security creeds here: <strong>least privilege</strong>
   <text x="360" y="234" text-anchor="middle" font-size="8" fill="var(--faint)">Front-end hiding is bypassable (code runs on the user's machine); the real escalation block is the back end — defense in depth</text>
 </svg>
 <div class="figcap"><b>Role→scope + dual check</b>: <code>projectAccessRights.ts:91</code> <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code> (OWNER:92 / ADMIN:150 / MEMBER:207 / VIEWER:251 read-only / NONE:271 empty); <code>checkProjectAccess.ts:28</code> <code>throwIfNoProjectAccess</code> (server, throws <code>TRPCError FORBIDDEN</code>) + <code>:42</code> <code>useHasProjectAccess</code> (front-end hook, hides UI).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 336" role="img" aria-label="RBAC permission-matrix real example: rows are nine project permission scopes (project:read, prompts:read, scores:CUD, prompts:CUD, playground:execute, traces:delete, apiKeys:CUD, auditLogs:read, project:delete), columns are the five roles OWNER/ADMIN/MEMBER/VIEWER/NONE, each cell a check or cross for whether that role holds that scope, forming a staircase: OWNER has all, NONE none, VIEWER read-only, MEMBER lacks admin ops, ADMIN lacks project:delete. The bottom counts scopes per role. From rbac/constants/projectAccessRights.ts, real mapping">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: project role × permission matrix</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">rows = scopes, cols = roles; ■ = granted, □ = denied</text>
+  <rect x="200" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="247" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">OWNER</text>
+  <rect x="300" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="347" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">ADMIN</text>
+  <rect x="400" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="447" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">MEMBER</text>
+  <rect x="500" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="547" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">VIEWER</text>
+  <rect x="600" y="48" width="94" height="20" rx="5" fill="var(--accent-soft)"/><text x="647" y="62" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">NONE</text>
+  <text x="20" y="62" font-size="7.6" font-weight="700" fill="var(--ink)">scope</text>
+  <rect x="20" y="70" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="84" font-size="7.3" font-family="monospace" fill="var(--ink)">project:read</text>
+  <rect x="200" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="70" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="84" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="70" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="84" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="94" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="108" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:read</text>
+  <rect x="200" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="94" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="547" y="108" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="600" y="94" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="118" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="132" font-size="7.3" font-family="monospace" fill="var(--ink)">scores:CUD</text>
+  <rect x="200" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="118" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="132" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="118" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="132" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="142" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="156" font-size="7.3" font-family="monospace" fill="var(--ink)">prompts:CUD</text>
+  <rect x="200" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="142" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="156" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="142" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="156" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="166" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="180" font-size="7.3" font-family="monospace" fill="var(--ink)">playground:execute</text>
+  <rect x="200" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="166" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="447" y="180" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="500" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="166" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="180" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="190" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="204" font-size="7.3" font-family="monospace" fill="var(--ink)">traces:delete</text>
+  <rect x="200" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="190" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="204" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="190" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="204" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="214" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="228" font-size="7.3" font-family="monospace" fill="var(--ink)">apiKeys:CUD</text>
+  <rect x="200" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="214" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="228" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="214" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="228" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="238" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="252" font-size="7.3" font-family="monospace" fill="var(--ink)">auditLogs:read</text>
+  <rect x="200" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="238" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="347" y="252" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="400" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="238" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="252" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="20" y="262" width="178" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="276" font-size="7.3" font-family="monospace" fill="var(--ink)">project:delete</text>
+  <rect x="200" y="262" width="94" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="247" y="276" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="300" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="347" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="400" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="447" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="500" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="547" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="600" y="262" width="94" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="647" y="276" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <text x="28" y="301" font-size="7.3" font-weight="700" fill="var(--accent-ink)">total scopes / role</text>
+  <text x="247" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">56</text>
+  <text x="347" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">55</text>
+  <text x="447" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">42</text>
+  <text x="547" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">18</text>
+  <text x="647" y="301" text-anchor="middle" font-size="8.5" font-weight="800" fill="var(--accent-ink)">0</text>
+  <text x="360" y="324" text-anchor="middle" font-size="7.2" fill="var(--muted)">a staircase: OWNER all · ADMIN lacks project:delete · MEMBER lacks admin ops · VIEWER read-only · NONE falls back to the org role</text>
+</svg>
+<div class="figcap"><b>Permissions aren't on/off but a "role × scope" table</b> (from <code>projectRoleAccessRights: Record&lt;Role, ProjectScope[]&gt;</code> in <code>rbac/constants/projectAccessRights.ts</code>, <b>real mapping</b>): each API/page requires a <code>scope</code> (e.g. <code>traces:delete</code>), and <code>checkProjectAccess</code> checks whether the current role is in that scope's grant set. The five roles form a <b>clean staircase</b>: <code>OWNER</code> has all → <code>ADMIN</code> drops <code>project:delete</code> → <code>MEMBER</code> loses admin ops like <code>traces:delete</code>/<code>apiKeys:CUD</code>/<code>auditLogs:read</code> → <code>VIEWER</code> keeps only <code>:read</code> → <code>NONE</code> is empty (falls back to the org role). This table is exactly what the <code>role</code> field in Lesson 48's JWT is checked against.</div>
 </div>
 
 <div class="codefile">
@@ -731,6 +951,54 @@ _ZH50.append(r"""
 </svg>
 <div class="figcap"><b>开源核分层</b>：代码全在仓库里（<code>web/src/features/entitlements/*</code>、<code>packages/shared/src/server/ee/*</code> 也开源）。Plan 见 <code>plans.ts:21</code>（<code>type Plan = keyof typeof planLabels</code>，含 cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise），默认 <code>"oss"</code>；<code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> 按前缀判断。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="权益与套餐矩阵真实例子：行是若干 entitlement（trace-deletion、data-retention、rbac-project-roles、audit-logs、admin-api、prompt-protected-labels、self-host-ui-customization），列是四档 OSS、Cloud Pro、Cloud Team、Self-host EE，每格勾叉表示该档是否解锁该权益；基础权益人人有，治理类需 Team 或企业版，UI 定制是自托管企业版独有。取自 features/entitlements/constants/entitlements.ts，真实映射">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：权益 × 套餐矩阵（开源核）</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">代码全开源；■=该档解锁此权益，□=需更高档/许可证</text>
+  <rect x="240" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="295" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">OSS</text>
+  <rect x="356" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="411" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Pro</text>
+  <rect x="472" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="527" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Team</text>
+  <rect x="588" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="643" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Self-host EE</text>
+  <text x="20" y="64" font-size="7.6" font-weight="700" fill="var(--ink)">entitlement</text>
+  <rect x="20" y="72" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="86" font-size="7.1" font-family="monospace" fill="var(--ink)">trace-deletion</text>
+  <rect x="240" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="295" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="356" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="96" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="110" font-size="7.1" font-family="monospace" fill="var(--ink)">data-retention</text>
+  <rect x="240" y="96" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="110" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="120" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="134" font-size="7.1" font-family="monospace" fill="var(--ink)">rbac-project-roles</text>
+  <rect x="240" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="144" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="158" font-size="7.1" font-family="monospace" fill="var(--ink)">audit-logs</text>
+  <rect x="240" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="168" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="182" font-size="7.1" font-family="monospace" fill="var(--ink)">admin-api</text>
+  <rect x="240" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="192" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="206" font-size="7.1" font-family="monospace" fill="var(--ink)">prompt-protected-labels</text>
+  <rect x="240" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="216" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="230" font-size="7.1" font-family="monospace" fill="var(--ink)">self-host-ui-customization</text>
+  <rect x="240" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="527" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="588" y="216" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="230" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">hasEntitlement(key) 按 plan 查这张表 —— 代码看得到，能不能用由 plan/license 决定</text>
+</svg>
+<div class="figcap"><b>开源核 = 代码全开放，但「能不能启用」由权益表决定</b>（取自 <code>features/entitlements/constants/entitlements.ts</code> 的 <code>entitlementAccess: Record&lt;Plan, …&gt;</code>，<b>真实映射</b>）：基础权益（<code>trace-deletion</code>）人人都有；<code>data-retention</code> 从 <b>Cloud Pro</b> 起；<code>rbac-project-roles</code>/<code>audit-logs</code>/<code>admin-api</code> 这些<b>治理类</b>要 <b>Cloud Team</b> 或<b>自托管企业版</b>；<code>self-host-ui-customization</code> 是自托管企业版独有。运行时一句 <code>hasEntitlement(&quot;audit-logs&quot;)</code> 按当前 <code>plan</code> 查表放行。所以你能读到全部源码，但<b>启用企业特性仍需对应 plan 或 license</b>——这正是「open-core」。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">免费</span><span class="name">oss 开源核（默认 plan）</span></div><div class="ld">自托管下来直接能用的全部核心：摄取、查询、评估、prompt、dashboard、自动化……占了功能的绝大多数。组织没有付费 plan 时，<code>plan ?? "oss"</code> 兜底到这里——<strong>默认落到免费，而非默认付费</strong>。</div></div>
@@ -886,6 +1154,54 @@ This lesson shows how that "ticket system" is implemented with very little code:
   <line x1="330" y1="168" x2="388" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="388,130 379,131 383,138" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>Open-core layering</b>: the code is all in the repo (<code>web/src/features/entitlements/*</code>, <code>packages/shared/src/server/ee/*</code> are open too). Plans at <code>plans.ts:21</code> (<code>type Plan = keyof typeof planLabels</code>, including cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise), defaulting to <code>"oss"</code>; <code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> judge by prefix.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="Entitlement-by-plan matrix real example: rows are several entitlements (trace-deletion, data-retention, rbac-project-roles, audit-logs, admin-api, prompt-protected-labels, self-host-ui-customization), columns are four tiers OSS, Cloud Pro, Cloud Team, Self-host EE, each cell a check or cross for whether that tier unlocks the entitlement; base entitlements are universal, governance ones need Team or Enterprise, and UI customization is self-host Enterprise only. From features/entitlements/constants/entitlements.ts, real mapping">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: entitlement × plan matrix (open-core)</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">code is fully open; ■ = tier unlocks it, □ = needs a higher tier / license</text>
+  <rect x="240" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="295" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">OSS</text>
+  <rect x="356" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="411" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Pro</text>
+  <rect x="472" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="527" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Team</text>
+  <rect x="588" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="643" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Self-host EE</text>
+  <text x="20" y="64" font-size="7.6" font-weight="700" fill="var(--ink)">entitlement</text>
+  <rect x="20" y="72" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="86" font-size="7.1" font-family="monospace" fill="var(--ink)">trace-deletion</text>
+  <rect x="240" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="295" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="356" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="96" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="110" font-size="7.1" font-family="monospace" fill="var(--ink)">data-retention</text>
+  <rect x="240" y="96" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="110" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="120" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="134" font-size="7.1" font-family="monospace" fill="var(--ink)">rbac-project-roles</text>
+  <rect x="240" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="144" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="158" font-size="7.1" font-family="monospace" fill="var(--ink)">audit-logs</text>
+  <rect x="240" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="168" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="182" font-size="7.1" font-family="monospace" fill="var(--ink)">admin-api</text>
+  <rect x="240" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="192" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="206" font-size="7.1" font-family="monospace" fill="var(--ink)">prompt-protected-labels</text>
+  <rect x="240" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="216" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="230" font-size="7.1" font-family="monospace" fill="var(--ink)">self-host-ui-customization</text>
+  <rect x="240" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="527" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="588" y="216" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="230" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">hasEntitlement(key) checks this table by plan — the code is visible, but whether you can use it depends on plan/license</text>
+</svg>
+<div class="figcap"><b>Open-core = the code is fully open, but "can you enable it" is decided by the entitlement table</b> (from <code>entitlementAccess: Record&lt;Plan, …&gt;</code> in <code>features/entitlements/constants/entitlements.ts</code>, <b>real mapping</b>): base entitlements (<code>trace-deletion</code>) are universal; <code>data-retention</code> starts at <b>Cloud Pro</b>; <b>governance</b> ones like <code>rbac-project-roles</code>/<code>audit-logs</code>/<code>admin-api</code> need <b>Cloud Team</b> or <b>self-host Enterprise</b>; <code>self-host-ui-customization</code> is self-host-Enterprise only. At runtime a single <code>hasEntitlement(&quot;audit-logs&quot;)</code> checks this table by the current <code>plan</code>. So you can read all the source, but <b>enabling enterprise features still needs the matching plan or license</b> — that's "open-core".</div>
 </div>
 
 <div class="layers">
@@ -1054,6 +1370,34 @@ _ZH51.append(r"""
 </svg>
 <div class="figcap"><b>instrumentAsync 包装器</b>：<code>instrumentation/index.ts:54</code> <code>instrumentAsync</code>（<code>startActiveSpan</code> 开 span、<code>startNewTrace</code> 开根 trace 或从 <code>traceContext</code> 续、<code>catch</code> 内 <code>traceException</code> 再抛、<code>span.end()</code>）。同模块：<code>:140</code> getCurrentSpan、<code>:142</code> traceException、<code>:263</code> getTracer、<code>:328/343/354</code> recordGauge/Increment/Histogram。OTel 摄取见 <code>otel/OtelIngestionProcessor.ts</code>。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="自我可观测真实例子：左边是 instrumentAsync 调用，name 为 blob-export-table、spanKind 为 INTERNAL，回调里用 span.setAttribute 记 blob.table、blob.projectId、blob.fileType、blob.compressed；右边是产出的 OTel span 条，带 name、kind、duration 和这些属性；再经 OTLP exporter 发往你的 APM。Langfuse 用它自己摄取用户数据的同一套 OTel 给自己埋点。取自 worker 的 instrumentAsync，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：Langfuse 给自己埋的一条 OTel span</text>
+  <rect x="16" y="30" width="332" height="170" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="46" font-size="7.6" font-weight="700" fill="var(--blue)">worker · 埋点代码</text>
+  <text x="30" y="62" font-size="6.8" font-family="monospace" fill="var(--code-ink)">instrumentAsync(</text>
+  <text x="30" y="77" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  { name: &quot;blob-export-table&quot;,</text>
+  <text x="30" y="92" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    spanKind: INTERNAL },</text>
+  <text x="30" y="107" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  async (span) =&gt; {</text>
+  <text x="30" y="122" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.table&quot;, t);</text>
+  <text x="30" y="137" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.fileType&quot;,f);</text>
+  <text x="30" y="152" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.compressed&quot;,c);</text>
+  <text x="30" y="167" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    … do the export …</text>
+  <text x="30" y="182" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  })</text>
+  <rect x="358" y="30" width="344" height="170" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="372" y="46" font-size="7.6" font-weight="700" fill="var(--accent-ink)">产出的 OTel span</text>
+  <rect x="372" y="54" width="316" height="20" rx="4" fill="var(--accent)" opacity="0.45"/><text x="380" y="68" font-size="7.4" font-family="monospace" font-weight="700" fill="var(--accent-ink)">blob-export-table</text><text x="684" y="68" text-anchor="end" font-size="6.8" fill="var(--accent-ink)">1.2s</text>
+  <text x="372" y="88" font-size="6.6" fill="var(--muted)">kind=INTERNAL · 自身也是一条 trace</text>
+  <text x="378" y="104" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.table</text><text x="690" y="104" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">observations</text>
+  <text x="378" y="120" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.projectId</text><text x="690" y="120" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">proj_8f3a</text>
+  <text x="378" y="136" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.fileType</text><text x="690" y="136" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">CSV</text>
+  <text x="378" y="152" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.compressed</text><text x="690" y="152" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">true</text>
+  <line x1="372" y1="168" x2="688" y2="168" stroke="var(--line)"/>
+  <text x="372" y="184" font-size="6.8" fill="var(--accent-ink)">→ OTLP exporter → 你的 APM（Datadog / Grafana / …）</text>
+  <text x="360" y="218" text-anchor="middle" font-size="7.2" fill="var(--muted)">同一套 OTel：对外摄取用户的 trace，对内也给自己埋点——「吃自己的狗粮」</text>
+</svg>
+<div class="figcap"><b>Langfuse 用「它卖给你的那套可观测」来观测自己</b>（取自 worker 的 <code>instrumentAsync</code>；<b>值为示例</b>）：一句 <code>instrumentAsync({ name:&quot;blob-export-table&quot;, spanKind:INTERNAL }, span =&gt; …)</code> 就把一次内部导出包成一条 <b>OTel span</b>，用 <code>span.setAttribute</code> 挂上 <code>blob.table</code>/<code>blob.fileType</code>/<code>blob.compressed</code> 等属性，再经 <b>OTLP exporter</b> 发往你的 APM（Datadog/Grafana……）。于是平台自己的延迟、错误、队列深度都<b>有 trace 可查</b>。这就是「吃自己的狗粮」：对外摄取用户 trace 的同一套 OpenTelemetry，对内也用来给自己埋点。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">追踪</span><span class="name">instrumentAsync（span 包装器）</span></div><div class="ld">把异步逻辑包成一条 OTel span：自动计时、自动 catch 异常记到 span、自动结束。<code>startNewTrace</code> 开新根、或从上游 <code>traceContext</code> 续——<strong>跨服务的分布式追踪</strong>就这么串起来。前面四课用的都是它。</div></div>
@@ -1209,6 +1553,34 @@ _EN51.append(r"""
   <text x="360" y="220" text-anchor="middle" font-size="8" fill="var(--faint)">It can even "ingest" OTel in reverse: OtelIngestionProcessor lets your OTel data flow straight into Langfuse (both ends speak OTel)</text>
 </svg>
 <div class="figcap"><b>The instrumentAsync wrapper</b>: <code>instrumentation/index.ts:54</code> <code>instrumentAsync</code> (<code>startActiveSpan</code> opens a span, <code>startNewTrace</code> opens a root trace or continues from <code>traceContext</code>, <code>catch</code> calls <code>traceException</code> then rethrows, <code>span.end()</code>). Same module: <code>:140</code> getCurrentSpan, <code>:142</code> traceException, <code>:263</code> getTracer, <code>:328/343/354</code> recordGauge/Increment/Histogram. OTel ingestion at <code>otel/OtelIngestionProcessor.ts</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 232" role="img" aria-label="Self-observability real example: on the left an instrumentAsync call with name blob-export-table and spanKind INTERNAL, whose callback records blob.table, blob.projectId, blob.fileType, blob.compressed via span.setAttribute; on the right the resulting OTel span bar with name, kind, duration and those attributes; then it is sent to your APM through an OTLP exporter. Langfuse instruments itself with the very same OTel it ingests user data from. From the worker instrumentAsync, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: an OTel span Langfuse emits about itself</text>
+  <rect x="16" y="30" width="332" height="170" rx="9" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="46" font-size="7.6" font-weight="700" fill="var(--blue)">worker · instrumentation</text>
+  <text x="30" y="62" font-size="6.8" font-family="monospace" fill="var(--code-ink)">instrumentAsync(</text>
+  <text x="30" y="77" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  { name: &quot;blob-export-table&quot;,</text>
+  <text x="30" y="92" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    spanKind: INTERNAL },</text>
+  <text x="30" y="107" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  async (span) =&gt; {</text>
+  <text x="30" y="122" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.table&quot;, t);</text>
+  <text x="30" y="137" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.fileType&quot;,f);</text>
+  <text x="30" y="152" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    span.setAttribute(&quot;blob.compressed&quot;,c);</text>
+  <text x="30" y="167" font-size="6.8" font-family="monospace" fill="var(--code-ink)">    … do the export …</text>
+  <text x="30" y="182" font-size="6.8" font-family="monospace" fill="var(--code-ink)">  })</text>
+  <rect x="358" y="30" width="344" height="170" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="372" y="46" font-size="7.6" font-weight="700" fill="var(--accent-ink)">the OTel span produced</text>
+  <rect x="372" y="54" width="316" height="20" rx="4" fill="var(--accent)" opacity="0.45"/><text x="380" y="68" font-size="7.4" font-family="monospace" font-weight="700" fill="var(--accent-ink)">blob-export-table</text><text x="684" y="68" text-anchor="end" font-size="6.8" fill="var(--accent-ink)">1.2s</text>
+  <text x="372" y="88" font-size="6.6" fill="var(--muted)">kind=INTERNAL · itself a trace</text>
+  <text x="378" y="104" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.table</text><text x="690" y="104" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">observations</text>
+  <text x="378" y="120" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.projectId</text><text x="690" y="120" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">proj_8f3a</text>
+  <text x="378" y="136" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.fileType</text><text x="690" y="136" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">CSV</text>
+  <text x="378" y="152" font-size="6.9" font-family="monospace" fill="var(--blue)">blob.compressed</text><text x="690" y="152" text-anchor="end" font-size="6.9" font-family="monospace" fill="var(--ink)">true</text>
+  <line x1="372" y1="168" x2="688" y2="168" stroke="var(--line)"/>
+  <text x="372" y="184" font-size="6.8" fill="var(--accent-ink)">→ OTLP exporter → your APM (Datadog / Grafana / …)</text>
+  <text x="360" y="218" text-anchor="middle" font-size="7.2" fill="var(--muted)">the same OTel: it ingests users' traces outward and instruments itself inward — eating its own dog food</text>
+</svg>
+<div class="figcap"><b>Langfuse observes itself with the same observability it sells you</b> (from the worker's <code>instrumentAsync</code>; <b>values illustrative</b>): one <code>instrumentAsync({ name:&quot;blob-export-table&quot;, spanKind:INTERNAL }, span =&gt; …)</code> wraps an internal export into an <b>OTel span</b>, attaches attributes like <code>blob.table</code>/<code>blob.fileType</code>/<code>blob.compressed</code> via <code>span.setAttribute</code>, and ships it through an <b>OTLP exporter</b> to your APM (Datadog/Grafana…). So the platform's own latency, errors and queue depth are all <b>traceable</b>. That's eating its own dog food: the same OpenTelemetry it ingests users' traces with, it also uses to instrument itself.</div>
 </div>
 
 <div class="layers">
@@ -1371,6 +1743,30 @@ _ZH52.append(r"""
 </svg>
 <div class="figcap"><b>跨存储删除</b>：<code>projectDelete.ts:22 projectDeleteProcessor</code>——<code>Promise.all</code> 先清 ClickHouse（<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4 的 <code>deleteEventsByProjectId</code>）与 S3（<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>），再删 dataset run items，<strong>最后删 Postgres</strong>。注释明确「Delete project data from ClickHouse first」。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="数据生命周期真实例子：时间轴从创建、保留窗口、到删除；删除分两步——先在 pending_deletions 表软标记并入延迟队列，再由 worker 并行删 Postgres 与 ClickHouse（traces/observations/scores），ClickHouse 这步还顺带用 NOT EXISTS 守卫删除 S3 上的孤儿 media（被别的 trace 引用的共享 media 保留），最后把 isDeleted 置真；受 LANGFUSE_TRACE_DELETE_DELAY_MS 延迟与 LANGFUSE_DELETE_BATCH_SIZE 批大小控制。取自 traceDeletionProcessor 与 processClickhouseTraceDelete，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 trace 的生命周期与删除</text>
+  <line x1="40" y1="60" x2="680" y2="60" stroke="var(--line)" stroke-width="2"/>
+  <circle cx="70" cy="60" r="9" fill="var(--accent)" opacity="0.85"/><text x="70" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">①</text><text x="70" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent)">创建</text>
+  <circle cx="220" cy="60" r="9" fill="var(--blue)" opacity="0.85"/><text x="220" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">②</text><text x="220" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">保留窗口</text>
+  <circle cx="390" cy="60" r="9" fill="var(--amber)" opacity="0.85"/><text x="390" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">③</text><text x="390" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--amber)">到期/请求删除</text>
+  <circle cx="560" cy="60" r="9" fill="var(--red)" opacity="0.85"/><text x="560" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">④</text><text x="560" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--red)">跨存储删除</text>
+  <rect x="150" y="56" width="150" height="8" rx="4" fill="var(--blue)" opacity="0.3"/>
+  <text x="225" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">data-retention / data-access-days</text>
+  <rect x="20" y="96" width="320" height="58" rx="8" fill="var(--bg)" stroke="var(--amber)"/>
+  <text x="32" y="112" font-size="8" font-weight="700" fill="var(--amber)">④a 软标记（先快后稳）</text>
+  <text x="32" y="128" font-size="6.9" font-family="monospace" fill="var(--ink)">pendingDeletion.create({isDeleted:false})</text>
+  <text x="32" y="143" font-size="6.7" fill="var(--muted)">→ 延迟队列 (LANGFUSE_TRACE_DELETE_DELAY_MS)</text>
+  <rect x="350" y="96" width="350" height="120" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="362" y="112" font-size="8" font-weight="700" fill="var(--red)">④b 硬删除 · worker 并行 Promise.all</text>
+  <rect x="360" y="120" width="160" height="42" rx="6" fill="var(--blue-soft)"/><text x="368" y="134" font-size="7.4" font-weight="700" fill="var(--blue)">Postgres</text><text x="368" y="148" font-size="6.6" fill="var(--ink)">trace 行 / pending_deletions</text>
+  <rect x="528" y="120" width="164" height="42" rx="6" fill="var(--accent-soft)"/><text x="536" y="134" font-size="7.4" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="536" y="148" font-size="6.6" fill="var(--ink)">traces·observations·scores</text>
+  <rect x="360" y="168" width="332" height="40" rx="6" fill="var(--panel-2)"/><text x="368" y="182" font-size="7.2" font-weight="700" fill="var(--purple)">S3 media</text><text x="368" y="182" font-size="7.2" fill="var(--purple)"> </text><text x="420" y="182" font-size="6.7" fill="var(--ink)">只删孤儿（NOT EXISTS 守卫）</text><text x="368" y="198" font-size="6.5" fill="var(--muted)">被别的 trace 引用的共享 media 保留</text>
+  <line x1="340" y1="125" x2="350" y2="125" stroke="var(--line)" stroke-width="1.4"/><polygon points="350,125 343,122 343,128" fill="var(--muted)"/>
+  <text x="360" y="232" text-anchor="middle" font-size="7" fill="var(--muted)">全部成功后置 isDeleted=true；分批（LANGFUSE_DELETE_BATCH_SIZE）、可重试</text>
+</svg>
+<div class="figcap"><b>删除不是「DROP 一行」，而是一条跨三处存储的有序流程</b>（取自 <code>traceDeletionProcessor</code> 与 <code>processClickhouseTraceDelete</code>；<b>值为示例</b>）：数据生而被<b>保留</b>一段窗口（<code>data-retention</code> / <code>data-access-days</code>）。到期或主动删除时，先在 Postgres 的 <code>pending_deletions</code> 里<b>软标记</b>并入<b>延迟队列</b>（先快速响应），再由 worker <code>Promise.all</code> <b>并行</b>删 Postgres 与 ClickHouse 的 <code>traces/observations/scores</code>；ClickHouse 这步还顺带删 S3 上的 <b>孤儿 media</b>——用 <code>NOT EXISTS</code> 守卫，<b>被别的 trace 引用的共享 media 不误删</b>。全部成功才把 <code>isDeleted</code> 置真，整个过程分批、可重试。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">元数据</span><span class="name">Postgres（最后删）</span></div><div class="ld">项目、用户、API key、各种配置——结构化、强一致、量不大。它是整个系统的「源真相」，删除流程里<strong>留到最后</strong>：作为「这条删除还没完成」的锚点，保证崩溃后能安全重试。</div></div>
@@ -1520,6 +1916,30 @@ _EN52.append(r"""
   <line x1="470" y1="120" x2="518" y2="100" stroke="var(--faint)" stroke-width="1"/><line x1="470" y1="160" x2="518" y2="165" stroke="var(--faint)" stroke-width="1"/>
 </svg>
 <div class="figcap"><b>Cross-store deletion</b>: <code>projectDelete.ts:22 projectDeleteProcessor</code> — <code>Promise.all</code> first cleans ClickHouse (<code>deleteTracesByProjectId</code>/<code>deleteObservationsByProjectId</code>/<code>deleteScoresByProjectId</code>/v4's <code>deleteEventsByProjectId</code>) and S3 (<code>removeIngestionEventsFromS3AndDeleteClickhouseRefsForProject</code>), then deletes dataset run items, <strong>finally deletes Postgres</strong>. The comment is explicit: "Delete project data from ClickHouse first."</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 244" role="img" aria-label="Data lifecycle real example: a timeline from creation through a retention window to deletion; deletion is two-step — first a soft mark in the pending_deletions table plus a delayed queue, then a worker deletes Postgres and ClickHouse (traces/observations/scores) in parallel, and the ClickHouse step also deletes orphaned media from S3 with a NOT EXISTS guard (shared media referenced by other traces survives), finally setting isDeleted true; governed by LANGFUSE_TRACE_DELETE_DELAY_MS delay and LANGFUSE_DELETE_BATCH_SIZE batch size. From traceDeletionProcessor and processClickhouseTraceDelete, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a trace's lifecycle and deletion</text>
+  <line x1="40" y1="60" x2="680" y2="60" stroke="var(--line)" stroke-width="2"/>
+  <circle cx="70" cy="60" r="9" fill="var(--accent)" opacity="0.85"/><text x="70" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">①</text><text x="70" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent)">created</text>
+  <circle cx="220" cy="60" r="9" fill="var(--blue)" opacity="0.85"/><text x="220" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">②</text><text x="220" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">retention window</text>
+  <circle cx="390" cy="60" r="9" fill="var(--amber)" opacity="0.85"/><text x="390" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">③</text><text x="390" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--amber)">expire / delete req</text>
+  <circle cx="560" cy="60" r="9" fill="var(--red)" opacity="0.85"/><text x="560" y="64" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">④</text><text x="560" y="46" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--red)">cross-store delete</text>
+  <rect x="150" y="56" width="150" height="8" rx="4" fill="var(--blue)" opacity="0.3"/>
+  <text x="225" y="82" text-anchor="middle" font-size="6.6" fill="var(--muted)">data-retention / data-access-days</text>
+  <rect x="20" y="96" width="320" height="58" rx="8" fill="var(--bg)" stroke="var(--amber)"/>
+  <text x="32" y="112" font-size="8" font-weight="700" fill="var(--amber)">④a soft mark (fast, safe)</text>
+  <text x="32" y="128" font-size="6.9" font-family="monospace" fill="var(--ink)">pendingDeletion.create({isDeleted:false})</text>
+  <text x="32" y="143" font-size="6.7" fill="var(--muted)">→ delayed queue (LANGFUSE_TRACE_DELETE_DELAY_MS)</text>
+  <rect x="350" y="96" width="350" height="120" rx="8" fill="var(--bg)" stroke="var(--red)"/>
+  <text x="362" y="112" font-size="8" font-weight="700" fill="var(--red)">④b hard delete · worker Promise.all</text>
+  <rect x="360" y="120" width="160" height="42" rx="6" fill="var(--blue-soft)"/><text x="368" y="134" font-size="7.4" font-weight="700" fill="var(--blue)">Postgres</text><text x="368" y="148" font-size="6.6" fill="var(--ink)">trace rows / pending_deletions</text>
+  <rect x="528" y="120" width="164" height="42" rx="6" fill="var(--accent-soft)"/><text x="536" y="134" font-size="7.4" font-weight="700" fill="var(--accent-ink)">ClickHouse</text><text x="536" y="148" font-size="6.6" fill="var(--ink)">traces·observations·scores</text>
+  <rect x="360" y="168" width="332" height="40" rx="6" fill="var(--panel-2)"/><text x="368" y="182" font-size="7.2" font-weight="700" fill="var(--purple)">S3 media</text><text x="368" y="182" font-size="7.2" fill="var(--purple)"> </text><text x="420" y="182" font-size="6.7" fill="var(--ink)">only orphans (NOT EXISTS guard)</text><text x="368" y="198" font-size="6.5" fill="var(--muted)">shared media referenced by others survives</text>
+  <line x1="340" y1="125" x2="350" y2="125" stroke="var(--line)" stroke-width="1.4"/><polygon points="350,125 343,122 343,128" fill="var(--muted)"/>
+  <text x="360" y="232" text-anchor="middle" font-size="7" fill="var(--muted)">set isDeleted=true after success; batched (LANGFUSE_DELETE_BATCH_SIZE), retryable</text>
+</svg>
+<div class="figcap"><b>Deletion isn't "DROP a row" but an ordered flow across three stores</b> (from <code>traceDeletionProcessor</code> and <code>processClickhouseTraceDelete</code>; <b>values illustrative</b>): data is born and <b>retained</b> for a window (<code>data-retention</code> / <code>data-access-days</code>). On expiry or an explicit delete, it's first <b>soft-marked</b> in Postgres' <code>pending_deletions</code> and put on a <b>delayed queue</b> (respond fast), then a worker deletes Postgres and ClickHouse <code>traces/observations/scores</code> <b>in parallel</b> via <code>Promise.all</code>; the ClickHouse step also removes <b>orphaned media</b> from S3 — guarded by <code>NOT EXISTS</code> so <b>shared media referenced by other traces is never wrongly deleted</b>. Only after all succeed is <code>isDeleted</code> set true; the whole process is batched and retryable.</div>
 </div>
 
 <div class="layers">
@@ -1683,6 +2103,43 @@ _ZH53.append(r"""
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm 强制(only-allow) + minimumReleaseAge 防供应链投毒；同仓库共享代码一个 commit 原子改</text>
 </svg>
 <div class="figcap"><b>pnpm monorepo</b>：<code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee；<code>package.json</code> <code>packageManager: pnpm@11.4.0</code>、<code>preinstall: only-allow pnpm</code>、<code>minimumReleaseAge</code>（供应链防护）。依赖方向 <code>web/worker/ee → @langfuse/shared</code>，shared 不反向依赖——与 <code>.agents/ARCHITECTURE_PRINCIPLES.md</code> 一致。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Turbo 任务图真实例子：db:generate 在前，build 依赖 db:generate 和 ^build（先建上游包），lint/typecheck/build:check 依赖 ^build、test 依赖 ^test；改了 packages/shared 后，shared 与依赖它的 web/worker 被标为 affected 重跑（黄），未受影响的包命中指纹缓存秒回（绿）。任务与 dependsOn 取自 turbo.json，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：Turbo 任务图与 affected 缓存</text>
+  <rect x="20" y="34" width="200" height="26" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="32" y="51" font-size="8" font-weight="700" fill="var(--amber)">✎ 改了 packages/shared</text>
+  <rect x="40" y="76" width="120" height="34" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="100" y="91" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">db:generate</text>
+  <text x="100" y="103" text-anchor="middle" font-size="6.5" fill="var(--amber)">↻ 受影响重跑</text>
+  <text x="100" y="120" text-anchor="middle" font-size="6.2" fill="var(--faint)">cache:false</text>
+  <rect x="210" y="76" width="120" height="34" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="270" y="91" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">build</text>
+  <text x="270" y="103" text-anchor="middle" font-size="6.5" fill="var(--amber)">↻ 受影响重跑</text>
+  <text x="270" y="120" text-anchor="middle" font-size="6.2" fill="var(--faint)">^build · cache</text>
+  <rect x="390" y="62" width="140" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="460" y="77" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent)">typecheck</text>
+  <text x="460" y="89" text-anchor="middle" font-size="6.5" fill="var(--accent)">⚡ 缓存命中</text>
+  <rect x="390" y="100" width="140" height="30" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="460" y="115" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">lint</text>
+  <text x="460" y="127" text-anchor="middle" font-size="6.5" fill="var(--amber)">↻ 受影响重跑</text>
+  <rect x="548" y="62" width="150" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="623" y="77" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent)">test</text>
+  <text x="623" y="89" text-anchor="middle" font-size="6.5" fill="var(--accent)">⚡ 缓存命中</text>
+  <rect x="548" y="100" width="150" height="30" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="623" y="115" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">build:check</text>
+  <text x="623" y="127" text-anchor="middle" font-size="6.5" fill="var(--amber)">↻ 受影响重跑</text>
+  <line x1="160" y1="93" x2="210" y2="93" stroke="var(--muted)" stroke-width="1.4"/><polygon points="210,93 203,90 203,96" fill="var(--muted)"/>
+  <line x1="330" y1="93" x2="390" y2="77" stroke="var(--muted)" stroke-width="1.2"/><polygon points="390,77 383,74 383,80" fill="var(--muted)"/>
+  <line x1="330" y1="93" x2="390" y2="115" stroke="var(--muted)" stroke-width="1.2"/><polygon points="390,115 383,112 383,118" fill="var(--muted)"/>
+  <line x1="530" y1="77" x2="548" y2="77" stroke="var(--muted)" stroke-width="1.2"/><polygon points="548,77 541,74 541,80" fill="var(--muted)"/>
+  <line x1="530" y1="115" x2="548" y2="115" stroke="var(--muted)" stroke-width="1.2"/><polygon points="548,115 541,112 541,118" fill="var(--muted)"/>
+  <rect x="40" y="158" width="14" height="14" rx="3" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="60" y="169" font-size="7" fill="var(--muted)">↻ 受影响 → 真正执行</text>
+  <rect x="280" y="158" width="14" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="300" y="169" font-size="7" fill="var(--muted)">⚡ 未受影响 → 指纹缓存秒回</text>
+  <rect x="40" y="184" width="658" height="44" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="52" y="200" font-size="7" font-family="monospace" fill="var(--code-ink)">hash(inputs + deps + config) → 命中则跳过执行、直接重放缓存的输出与日志</text>
+  <text x="52" y="216" font-size="6.8" fill="var(--muted)">turbo run build lint test --filter=...[origin/main] 只跑改动波及的包；其余 >>> FULL TURBO 秒过</text>
+</svg>
+<div class="figcap"><b>Turbo 把 monorepo 的构建变成「带缓存的任务 DAG」</b>（任务与 <code>dependsOn</code> 取自 <code>turbo.json</code>；<b>值为示例</b>）：<code>build</code> 依赖 <code>db:generate</code> 和 <code>^build</code>（先建上游包），<code>lint</code>/<code>typecheck</code>/<code>build:check</code> 依赖 <code>^build</code>、<code>test</code> 依赖 <code>^test</code>。每个任务有一个<b>指纹</b>＝<code>hash(输入 + 依赖 + 配置)</code>：你只改了 <code>packages/shared</code>，于是 shared 和依赖它的 web/worker 被标为 <b>affected 真正重跑</b>（黄），其余包<b>命中缓存秒回</b>（绿，<code>&gt;&gt;&gt; FULL TURBO</code>）。配合 <code>--filter=...[origin/main]</code>，CI 只跑改动波及的那部分——这就是大仓库还能快的原因。</div>
 </div>
 
 <div class="layers">
@@ -1852,6 +2309,43 @@ _EN53.append(r"""
   <text x="360" y="214" text-anchor="middle" font-size="8" fill="var(--faint)">pnpm enforced (only-allow) + minimumReleaseAge against supply-chain poisoning; same repo, atomic cross-package commit</text>
 </svg>
 <div class="figcap"><b>pnpm monorepo</b>: <code>pnpm-workspace.yaml</code> packages = web / worker / packages/** / ee; <code>package.json</code> <code>packageManager: pnpm@11.4.0</code>, <code>preinstall: only-allow pnpm</code>, <code>minimumReleaseAge</code> (supply-chain protection). Dependency direction <code>web/worker/ee → @langfuse/shared</code>, shared doesn't reverse-depend — consistent with <code>.agents/ARCHITECTURE_PRINCIPLES.md</code>.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Turbo task-graph real example: db:generate comes first, build depends on db:generate and ^build (upstream packages built first), and lint/typecheck/build:check depend on ^build, test on ^test; after changing packages/shared, shared and the web/worker that depend on it are marked affected and re-run (amber), while unaffected packages hit the fingerprint cache and return instantly (green). Tasks and dependsOn from turbo.json, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: the Turbo task graph &amp; affected cache</text>
+  <rect x="20" y="34" width="200" height="26" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="32" y="51" font-size="8" font-weight="700" fill="var(--amber)">✎ changed packages/shared</text>
+  <rect x="40" y="76" width="120" height="34" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="100" y="91" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">db:generate</text>
+  <text x="100" y="103" text-anchor="middle" font-size="6.3" fill="var(--amber)">↻ affected</text>
+  <text x="100" y="120" text-anchor="middle" font-size="6.2" fill="var(--faint)">cache:false</text>
+  <rect x="210" y="76" width="120" height="34" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="270" y="91" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">build</text>
+  <text x="270" y="103" text-anchor="middle" font-size="6.3" fill="var(--amber)">↻ affected</text>
+  <text x="270" y="120" text-anchor="middle" font-size="6.2" fill="var(--faint)">^build · cache</text>
+  <rect x="390" y="62" width="140" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="460" y="77" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent)">typecheck</text>
+  <text x="460" y="89" text-anchor="middle" font-size="6.3" fill="var(--accent)">⚡ cache hit</text>
+  <rect x="390" y="100" width="140" height="30" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="460" y="115" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">lint</text>
+  <text x="460" y="127" text-anchor="middle" font-size="6.3" fill="var(--amber)">↻ affected</text>
+  <rect x="548" y="62" width="150" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="623" y="77" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--accent)">test</text>
+  <text x="623" y="89" text-anchor="middle" font-size="6.3" fill="var(--accent)">⚡ cache hit</text>
+  <rect x="548" y="100" width="150" height="30" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+  <text x="623" y="115" text-anchor="middle" font-size="8" font-weight="700" font-family="monospace" fill="var(--amber)">build:check</text>
+  <text x="623" y="127" text-anchor="middle" font-size="6.3" fill="var(--amber)">↻ affected</text>
+  <line x1="160" y1="93" x2="210" y2="93" stroke="var(--muted)" stroke-width="1.4"/><polygon points="210,93 203,90 203,96" fill="var(--muted)"/>
+  <line x1="330" y1="93" x2="390" y2="77" stroke="var(--muted)" stroke-width="1.2"/><polygon points="390,77 383,74 383,80" fill="var(--muted)"/>
+  <line x1="330" y1="93" x2="390" y2="115" stroke="var(--muted)" stroke-width="1.2"/><polygon points="390,115 383,112 383,118" fill="var(--muted)"/>
+  <line x1="530" y1="77" x2="548" y2="77" stroke="var(--muted)" stroke-width="1.2"/><polygon points="548,77 541,74 541,80" fill="var(--muted)"/>
+  <line x1="530" y1="115" x2="548" y2="115" stroke="var(--muted)" stroke-width="1.2"/><polygon points="548,115 541,112 541,118" fill="var(--muted)"/>
+  <rect x="40" y="158" width="14" height="14" rx="3" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="60" y="169" font-size="7" fill="var(--muted)">↻ affected → really runs</text>
+  <rect x="280" y="158" width="14" height="14" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="300" y="169" font-size="7" fill="var(--muted)">⚡ unaffected → fingerprint cache replay</text>
+  <rect x="40" y="184" width="658" height="44" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="52" y="200" font-size="7" font-family="monospace" fill="var(--code-ink)">hash(inputs + deps + config) → on hit, skip execution and replay cached outputs+logs</text>
+  <text x="52" y="216" font-size="6.8" fill="var(--muted)">turbo run build lint test --filter=...[origin/main] runs only affected packages; the rest is >>> FULL TURBO instantly</text>
+</svg>
+<div class="figcap"><b>Turbo turns a monorepo build into a "cached task DAG"</b> (tasks and <code>dependsOn</code> from <code>turbo.json</code>; <b>values illustrative</b>): <code>build</code> depends on <code>db:generate</code> and <code>^build</code> (upstream packages first), then <code>lint</code>/<code>typecheck</code>/<code>build:check</code> depend on <code>^build</code> and <code>test</code> on <code>^test</code>. Every task has a <b>fingerprint</b> = <code>hash(inputs + deps + config)</code>: change only <code>packages/shared</code> and shared plus the web/worker depending on it are marked <b>affected and really re-run</b> (amber), while the rest <b>hit the cache instantly</b> (green, <code>&gt;&gt;&gt; FULL TURBO</code>). With <code>--filter=...[origin/main]</code>, CI runs only the affected slice — which is why a big repo stays fast.</div>
 </div>
 
 <div class="layers">

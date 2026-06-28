@@ -388,6 +388,54 @@ Langfuse 是<strong>开源</strong>的——你现在读的这套源码，从摄
 </svg>
 <div class="figcap"><b>开源核分层</b>：代码全在仓库里（<code>web/src/features/entitlements/*</code>、<code>packages/shared/src/server/ee/*</code> 也开源）。Plan 见 <code>plans.ts:21</code>（<code>type Plan = keyof typeof planLabels</code>，含 cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise），默认 <code>"oss"</code>；<code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> 按前缀判断。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="权益与套餐矩阵真实例子：行是若干 entitlement（trace-deletion、data-retention、rbac-project-roles、audit-logs、admin-api、prompt-protected-labels、self-host-ui-customization），列是四档 OSS、Cloud Pro、Cloud Team、Self-host EE，每格勾叉表示该档是否解锁该权益；基础权益人人有，治理类需 Team 或企业版，UI 定制是自托管企业版独有。取自 features/entitlements/constants/entitlements.ts，真实映射">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：权益 × 套餐矩阵（开源核）</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">代码全开源；■=该档解锁此权益，□=需更高档/许可证</text>
+  <rect x="240" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="295" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">OSS</text>
+  <rect x="356" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="411" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Pro</text>
+  <rect x="472" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="527" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Team</text>
+  <rect x="588" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="643" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Self-host EE</text>
+  <text x="20" y="64" font-size="7.6" font-weight="700" fill="var(--ink)">entitlement</text>
+  <rect x="20" y="72" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="86" font-size="7.1" font-family="monospace" fill="var(--ink)">trace-deletion</text>
+  <rect x="240" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="295" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="356" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="96" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="110" font-size="7.1" font-family="monospace" fill="var(--ink)">data-retention</text>
+  <rect x="240" y="96" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="110" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="120" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="134" font-size="7.1" font-family="monospace" fill="var(--ink)">rbac-project-roles</text>
+  <rect x="240" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="144" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="158" font-size="7.1" font-family="monospace" fill="var(--ink)">audit-logs</text>
+  <rect x="240" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="168" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="182" font-size="7.1" font-family="monospace" fill="var(--ink)">admin-api</text>
+  <rect x="240" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="192" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="206" font-size="7.1" font-family="monospace" fill="var(--ink)">prompt-protected-labels</text>
+  <rect x="240" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="216" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="230" font-size="7.1" font-family="monospace" fill="var(--ink)">self-host-ui-customization</text>
+  <rect x="240" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="527" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="588" y="216" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="230" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">hasEntitlement(key) 按 plan 查这张表 —— 代码看得到，能不能用由 plan/license 决定</text>
+</svg>
+<div class="figcap"><b>开源核 = 代码全开放，但「能不能启用」由权益表决定</b>（取自 <code>features/entitlements/constants/entitlements.ts</code> 的 <code>entitlementAccess: Record&lt;Plan, …&gt;</code>，<b>真实映射</b>）：基础权益（<code>trace-deletion</code>）人人都有；<code>data-retention</code> 从 <b>Cloud Pro</b> 起；<code>rbac-project-roles</code>/<code>audit-logs</code>/<code>admin-api</code> 这些<b>治理类</b>要 <b>Cloud Team</b> 或<b>自托管企业版</b>；<code>self-host-ui-customization</code> 是自托管企业版独有。运行时一句 <code>hasEntitlement(&quot;audit-logs&quot;)</code> 按当前 <code>plan</code> 查表放行。所以你能读到全部源码，但<b>启用企业特性仍需对应 plan 或 license</b>——这正是「open-core」。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">免费</span><span class="name">oss 开源核（默认 plan）</span></div><div class="ld">自托管下来直接能用的全部核心：摄取、查询、评估、prompt、dashboard、自动化……占了功能的绝大多数。组织没有付费 plan 时，<code>plan ?? "oss"</code> 兜底到这里——<strong>默认落到免费，而非默认付费</strong>。</div></div>
@@ -582,6 +630,54 @@ This lesson shows how that "ticket system" is implemented with very little code:
   <line x1="330" y1="168" x2="388" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="388,130 379,131 383,138" fill="var(--accent)"/>
 </svg>
 <div class="figcap"><b>Open-core layering</b>: the code is all in the repo (<code>web/src/features/entitlements/*</code>, <code>packages/shared/src/server/ee/*</code> are open too). Plans at <code>plans.ts:21</code> (<code>type Plan = keyof typeof planLabels</code>, including cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise), defaulting to <code>"oss"</code>; <code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> judge by prefix.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 270" role="img" aria-label="Entitlement-by-plan matrix real example: rows are several entitlements (trace-deletion, data-retention, rbac-project-roles, audit-logs, admin-api, prompt-protected-labels, self-host-ui-customization), columns are four tiers OSS, Cloud Pro, Cloud Team, Self-host EE, each cell a check or cross for whether that tier unlocks the entitlement; base entitlements are universal, governance ones need Team or Enterprise, and UI customization is self-host Enterprise only. From features/entitlements/constants/entitlements.ts, real mapping">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: entitlement × plan matrix (open-core)</text>
+  <text x="360" y="36" text-anchor="middle" font-size="7.6" fill="var(--muted)">code is fully open; ■ = tier unlocks it, □ = needs a higher tier / license</text>
+  <rect x="240" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="295" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">OSS</text>
+  <rect x="356" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="411" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Pro</text>
+  <rect x="472" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="527" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Cloud Team</text>
+  <rect x="588" y="50" width="110" height="20" rx="5" fill="var(--accent-soft)"/><text x="643" y="64" text-anchor="middle" font-size="7.8" font-weight="700" fill="var(--accent-ink)">Self-host EE</text>
+  <text x="20" y="64" font-size="7.6" font-weight="700" fill="var(--ink)">entitlement</text>
+  <rect x="20" y="72" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="86" font-size="7.1" font-family="monospace" fill="var(--ink)">trace-deletion</text>
+  <rect x="240" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="295" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="356" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="72" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="96" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="110" font-size="7.1" font-family="monospace" fill="var(--ink)">data-retention</text>
+  <rect x="240" y="96" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="110" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="411" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="472" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="96" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="120" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="134" font-size="7.1" font-family="monospace" fill="var(--ink)">rbac-project-roles</text>
+  <rect x="240" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="120" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="134" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="120" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="144" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="158" font-size="7.1" font-family="monospace" fill="var(--ink)">audit-logs</text>
+  <rect x="240" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="144" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="158" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="144" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="158" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="168" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="182" font-size="7.1" font-family="monospace" fill="var(--ink)">admin-api</text>
+  <rect x="240" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="168" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="182" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="168" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="182" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="192" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="206" font-size="7.1" font-family="monospace" fill="var(--ink)">prompt-protected-labels</text>
+  <rect x="240" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="192" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="527" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="588" y="192" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="206" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <rect x="20" y="216" width="212" height="20" rx="4" fill="var(--panel-2)"/><text x="28" y="230" font-size="7.1" font-family="monospace" fill="var(--ink)">self-host-ui-customization</text>
+  <rect x="240" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="295" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="356" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="411" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="472" y="216" width="110" height="20" rx="4" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/><text x="527" y="230" text-anchor="middle" font-size="8" fill="var(--faint)">✗</text>
+  <rect x="588" y="216" width="110" height="20" rx="4" fill="var(--accent)" opacity="0.5"/><text x="643" y="230" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">✓</text>
+  <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">hasEntitlement(key) checks this table by plan — the code is visible, but whether you can use it depends on plan/license</text>
+</svg>
+<div class="figcap"><b>Open-core = the code is fully open, but "can you enable it" is decided by the entitlement table</b> (from <code>entitlementAccess: Record&lt;Plan, …&gt;</code> in <code>features/entitlements/constants/entitlements.ts</code>, <b>real mapping</b>): base entitlements (<code>trace-deletion</code>) are universal; <code>data-retention</code> starts at <b>Cloud Pro</b>; <b>governance</b> ones like <code>rbac-project-roles</code>/<code>audit-logs</code>/<code>admin-api</code> need <b>Cloud Team</b> or <b>self-host Enterprise</b>; <code>self-host-ui-customization</code> is self-host-Enterprise only. At runtime a single <code>hasEntitlement(&quot;audit-logs&quot;)</code> checks this table by the current <code>plan</code>. So you can read all the source, but <b>enabling enterprise features still needs the matching plan or license</b> — that's "open-core".</div>
 </div>
 
 <div class="layers">

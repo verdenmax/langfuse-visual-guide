@@ -383,6 +383,28 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>同源分叉</b>：批量导出 <code>worker/src/features/batchExport/handleBatchExportJob.ts</code>（只读产文件）；批量操作 <code>worker/src/features/batchAction/handleBatchActionJob.ts</code>（<code>CHUNK_SIZE=1000</code>，switch 分发到 trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create 等处理器）。两者都基于<a class="xref" href="23-filtering-search-bar.html">第 23 课</a>的过滤条件、都走 BullMQ 队列。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="批量导出真实例子：上方是 BatchExportStatus 状态机 QUEUED→PROCESSING→COMPLETED（旁有 FAILED 分支），下方是导出产物 CSV——表头 id,timestamp,name,userId,totalCost,latency 加三行数据；导出按状态在库里登记、可续跑、对同一请求幂等。状态枚举取自 features/batchExport/types.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次批量导出（CSV）+ 状态机</text>
+  <rect x="70" y="32" width="150" height="26" rx="13" fill="var(--muted)" opacity="0.16" stroke="var(--muted)"/><text x="145" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">QUEUED</text>
+  <rect x="250" y="32" width="150" height="26" rx="13" fill="var(--amber)" opacity="0.16" stroke="var(--amber)"/><text x="325" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">PROCESSING</text>
+  <rect x="470" y="32" width="150" height="26" rx="13" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="545" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">COMPLETED</text>
+  <line x1="220" y1="45" x2="250" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="250,45 243,42 243,48" fill="var(--muted)"/>
+  <line x1="440" y1="45" x2="470" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="470,45 463,42 463,48" fill="var(--muted)"/>
+  <line x1="325" y1="58" x2="325" y2="74" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="325,74 322,67 328,67" fill="var(--red)"/>
+  <rect x="270" y="74" width="110" height="20" rx="10" fill="var(--red)" opacity="0.14" stroke="var(--red)"/><text x="325" y="88" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--red)">FAILED</text>
+  <text x="478" y="74" font-size="6.6" fill="var(--faint)">状态存 batch_exports 表</text>
+  <rect x="40" y="106" width="640" height="116" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="56" y="124" font-size="8.5" font-weight="700" fill="var(--accent-ink)">📄 export_traces_2026-06-27.csv</text><text x="664" y="124" text-anchor="end" font-size="6.8" fill="var(--muted)">流式分块写出</text>
+  <rect x="50" y="131" width="620" height="16" fill="var(--panel-2)"/>
+  <text x="58" y="142" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--ink)">id,timestamp,name,userId,totalCost,latency</text>
+  <text x="58" y="160" font-size="6.9" font-family="monospace" fill="var(--muted)">t_9f3a,2026-06-27T10:00Z,chat,u_8f3a,0.0123,1.84</text>
+  <text x="58" y="178" font-size="6.9" font-family="monospace" fill="var(--muted)">t_2b71,2026-06-27T10:01Z,chat,u_2b71,0.0098,1.32</text>
+  <text x="58" y="196" font-size="6.9" font-family="monospace" fill="var(--muted)">t_55c9,2026-06-27T10:02Z,summarize,u_55c9,0.0211,2.07</text>
+  <text x="56" y="214" font-size="6.6" fill="var(--accent-ink)">⟲ 幂等：同一导出请求重跑得同一文件，不会重复扣费或写两份</text>
+</svg>
+<div class="figcap"><b>大导出是「有状态、可续跑」的后台作业，不是一次性内存操作</b>（状态枚举取自 <code>features/batchExport/types.ts</code>；<b>值为示例</b>）：一次导出在库里走 <code>QUEUED → PROCESSING → COMPLETED</code> 状态机（出错转 <code>FAILED</code>），产物是一份<b>流式分块</b>写出的 CSV（图中表头 + 数据行）。为什么要状态机而不是「点一下立刻下载」？因为导出可能是<b>百万行</b>——必须能后台跑、能断点续、能重试，还要<b>幂等</b>（同一请求重跑得同一结果，不重复计费）。这正是<a class="xref" href="30-eval-execution-pipeline.html">第 30 课</a>「创建与执行分离」在导出场景的复用。</div>
+</div>
 
 <table class="t">
   <thead><tr><th>维度</th><th>批量导出 Batch Export</th><th>批量操作 Batch Action</th></tr></thead>
@@ -583,6 +605,28 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
   <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
 </svg>
 <div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on <a class="xref" href="23-filtering-search-bar.html">Lesson 23</a>'s filter, both via BullMQ queues.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="Batch export real example: on top the BatchExportStatus state machine QUEUED to PROCESSING to COMPLETED (with a FAILED branch), below the export artifact CSV — a header id,timestamp,name,userId,totalCost,latency plus three data rows; the export is recorded by status in the DB, resumable, and idempotent for the same request. Status enum from features/batchExport/types.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a batch export (CSV) + state machine</text>
+  <rect x="70" y="32" width="150" height="26" rx="13" fill="var(--muted)" opacity="0.16" stroke="var(--muted)"/><text x="145" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">QUEUED</text>
+  <rect x="250" y="32" width="150" height="26" rx="13" fill="var(--amber)" opacity="0.16" stroke="var(--amber)"/><text x="325" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">PROCESSING</text>
+  <rect x="470" y="32" width="150" height="26" rx="13" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="545" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">COMPLETED</text>
+  <line x1="220" y1="45" x2="250" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="250,45 243,42 243,48" fill="var(--muted)"/>
+  <line x1="440" y1="45" x2="470" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="470,45 463,42 463,48" fill="var(--muted)"/>
+  <line x1="325" y1="58" x2="325" y2="74" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="325,74 322,67 328,67" fill="var(--red)"/>
+  <rect x="270" y="74" width="110" height="20" rx="10" fill="var(--red)" opacity="0.14" stroke="var(--red)"/><text x="325" y="88" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--red)">FAILED</text>
+  <text x="478" y="74" font-size="6.6" fill="var(--faint)">status in batch_exports</text>
+  <rect x="40" y="106" width="640" height="116" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="56" y="124" font-size="8.5" font-weight="700" fill="var(--accent-ink)">📄 export_traces_2026-06-27.csv</text><text x="664" y="124" text-anchor="end" font-size="6.8" fill="var(--muted)">streamed in chunks</text>
+  <rect x="50" y="131" width="620" height="16" fill="var(--panel-2)"/>
+  <text x="58" y="142" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--ink)">id,timestamp,name,userId,totalCost,latency</text>
+  <text x="58" y="160" font-size="6.9" font-family="monospace" fill="var(--muted)">t_9f3a,2026-06-27T10:00Z,chat,u_8f3a,0.0123,1.84</text>
+  <text x="58" y="178" font-size="6.9" font-family="monospace" fill="var(--muted)">t_2b71,2026-06-27T10:01Z,chat,u_2b71,0.0098,1.32</text>
+  <text x="58" y="196" font-size="6.9" font-family="monospace" fill="var(--muted)">t_55c9,2026-06-27T10:02Z,summarize,u_55c9,0.0211,2.07</text>
+  <text x="56" y="214" font-size="6.6" fill="var(--accent-ink)">⟲ idempotent: re-running the same export request yields the same file, no double work</text>
+</svg>
+<div class="figcap"><b>A big export is a stateful, resumable background job, not a one-shot in-memory call</b> (status enum from <code>features/batchExport/types.ts</code>; <b>values illustrative</b>): an export moves through a <code>QUEUED → PROCESSING → COMPLETED</code> state machine in the DB (to <code>FAILED</code> on error), producing a <b>streamed, chunked</b> CSV (header + rows here). Why a state machine instead of "click and download now"? Because an export can be <b>millions of rows</b> — it must run in the background, resume, retry, and be <b>idempotent</b> (re-running the same request gives the same result, no double billing). This reuses <a class="xref" href="30-eval-execution-pipeline.html">Lesson 30</a>'s "creation separate from execution" for the export case.</div>
 </div>
 
 <table class="t">

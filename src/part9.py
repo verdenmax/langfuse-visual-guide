@@ -46,6 +46,34 @@ _ZH44.append(r"""
 </svg>
 <div class="figcap"><b>Trigger → Action 的 IFTTT 模型</b>：<code>schema.prisma:1635</code> Trigger（eventSource/eventActions/filter/status）、<code>:1613</code> Action（type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json）、<code>:1659</code> Automation（绑定二者）、<code>:1690</code> AutomationExecution（PENDING/COMPLETED/ERROR/CANCELLED + input/output/error）。第 33 课监控告警就经此投递。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="webhook 投递真实例子：一个 POST 请求带 content-type、user-agent 和 x-langfuse-signature 头（值形如 t=时间戳,v1=HMAC），请求体是 prompt-version 事件的 JSON（id、timestamp、type=prompt-version、apiVersion=v1、action=created、prompt 对象）；接收方用共享密钥对「时间戳.载荷」算 HMAC-SHA256 比对签名再信任。字段取自 domain/webhooks.ts 与 signature.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次 webhook 投递（载荷 + 签名）</text>
+  <rect x="18" y="28" width="684" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="30" y="44" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--accent-ink)">POST https://your-app.com/hooks/langfuse</text>
+  <rect x="18" y="58" width="684" height="74" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="30" y="73" font-size="7.4" font-weight="700" fill="var(--muted)">请求头 headers</text>
+  <text x="30" y="90" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">content-type: application/json</text>
+  <text x="30" y="108" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">user-agent: Langfuse/1.0</text>
+  <rect x="26" y="114" width="668" height="16" rx="4" fill="var(--accent-soft)"/>
+  <text x="30" y="126" font-size="7.3" font-family="monospace" fill="var(--accent-ink)" font-weight="700">x-langfuse-signature: t=1719500000,v1=3a7bf2c8…</text>
+  <rect x="18" y="138" width="450" height="120" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="153" font-size="7.4" font-weight="700" fill="var(--blue)">请求体 body (JSON)</text>
+  <text x="30" y="168" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="183" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  id: &quot;evt_9f3a…&quot;, timestamp: &quot;2026-06-27T10:00Z&quot;,</text>
+  <text x="30" y="198" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  type: &quot;prompt-version&quot;, apiVersion: &quot;v1&quot;,</text>
+  <text x="30" y="213" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  action: &quot;created&quot;,</text>
+  <text x="30" y="228" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  prompt: { name: &quot;support-reply&quot;, version: 3,</text>
+  <text x="30" y="243" font-size="6.7" font-family="monospace" fill="var(--code-ink)">            type: &quot;text&quot; } }</text>
+  <rect x="478" y="138" width="224" height="120" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="490" y="153" font-size="7.6" font-weight="700" fill="var(--accent-ink)">🔐 验签 (HMAC-SHA256)</text>
+  <text x="490" y="172" font-size="6.8" font-family="monospace" fill="var(--ink)">signed = &quot;{t}.{body}&quot;</text>
+  <text x="490" y="187" font-size="6.8" font-family="monospace" fill="var(--ink)">hmac = HMAC(secret, signed)</text>
+  <text x="490" y="202" font-size="6.8" font-family="monospace" fill="var(--ink)">compare == v1 ?</text>
+  <text x="490" y="217" font-size="6.8" font-family="monospace" fill="var(--ink)"></text>
+  <rect x="486" y="228" width="208" height="22" rx="6" fill="var(--accent-soft)"/><text x="590" y="243" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--accent-ink)">✓ 一致才信任，否则丢弃</text>
+</svg>
+<div class="figcap"><b>每次投递都自带「这是我发的」证明</b>（字段取自 <code>domain/webhooks.ts</code> 与 <code>encryption/signature.ts</code>；<b>值为示例</b>）：Langfuse 把事件 <code>POST</code> 到你的 URL，体是 <code>prompt-version</code> 事件 JSON（<code>type</code>/<code>apiVersion</code>/<code>action</code>=created|updated|deleted/<code>prompt</code>）。关键在 <code>x-langfuse-signature: t=…,v1=…</code>——<code>createSignatureHeader</code> 对 <code>&quot;{timestamp}.{body}&quot;</code> 算 <b>HMAC-SHA256</b>。你的接收端用<b>同一个密钥</b>重算、比对 <code>v1</code>，一致才信任。于是别人即使知道你的 URL 也<b>伪造不出合法请求</b>（配合第 44 课的 SSRF 出站防护，一进一出都设防）。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">何时</span><span class="name">Trigger</span></div><div class="ld">守着事件流：<code>eventSource</code>（盯哪类对象）+ <code>eventActions</code>（哪种变化）+ <code>filter</code>（更细的条件，和第 23 课同款过滤）。<code>status=ACTIVE</code> 才生效——可随时停用而不删除。</div></div>
@@ -208,6 +236,34 @@ You'll see textbook-grade <strong>defense in depth</strong>: a protocol allowlis
   <text x="360" y="188" text-anchor="middle" font-size="8" fill="var(--faint)">AutomationExecution is like Lesson 30's JobExecution and Lesson 32's annotation item — yet another "persisted execution record" state machine</text>
 </svg>
 <div class="figcap"><b>The IFTTT Trigger → Action model</b>: <code>schema.prisma:1635</code> Trigger (eventSource/eventActions/filter/status), <code>:1613</code> Action (type WEBHOOK/SLACK/GITHUB_DISPATCH + config Json), <code>:1659</code> Automation (binds the two), <code>:1690</code> AutomationExecution (PENDING/COMPLETED/ERROR/CANCELLED + input/output/error). Lesson 33's monitor alerts are delivered through exactly this path.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 268" role="img" aria-label="Webhook delivery real example: a POST request with content-type, user-agent and x-langfuse-signature headers (value shaped t=timestamp,v1=HMAC), and a JSON body for a prompt-version event (id, timestamp, type=prompt-version, apiVersion=v1, action=created, prompt object); the receiver recomputes HMAC-SHA256 over timestamp.payload with the shared secret and compares before trusting. Fields from domain/webhooks.ts and signature.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one webhook delivery (payload + signature)</text>
+  <rect x="18" y="28" width="684" height="24" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="30" y="44" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--accent-ink)">POST https://your-app.com/hooks/langfuse</text>
+  <rect x="18" y="58" width="684" height="74" rx="8" fill="var(--code-bg)" stroke="var(--line)"/>
+  <text x="30" y="73" font-size="7.4" font-weight="700" fill="var(--muted)">headers</text>
+  <text x="30" y="90" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">content-type: application/json</text>
+  <text x="30" y="108" font-size="7.3" font-family="monospace" fill="var(--code-ink)" font-weight="400">user-agent: Langfuse/1.0</text>
+  <rect x="26" y="114" width="668" height="16" rx="4" fill="var(--accent-soft)"/>
+  <text x="30" y="126" font-size="7.3" font-family="monospace" fill="var(--accent-ink)" font-weight="700">x-langfuse-signature: t=1719500000,v1=3a7bf2c8…</text>
+  <rect x="18" y="138" width="450" height="120" rx="8" fill="var(--code-bg)" stroke="var(--blue)"/>
+  <text x="30" y="153" font-size="7.4" font-weight="700" fill="var(--blue)">body (JSON)</text>
+  <text x="30" y="168" font-size="6.7" font-family="monospace" fill="var(--code-ink)">{</text>
+  <text x="30" y="183" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  id: &quot;evt_9f3a…&quot;, timestamp: &quot;2026-06-27T10:00Z&quot;,</text>
+  <text x="30" y="198" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  type: &quot;prompt-version&quot;, apiVersion: &quot;v1&quot;,</text>
+  <text x="30" y="213" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  action: &quot;created&quot;,</text>
+  <text x="30" y="228" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  prompt: { name: &quot;support-reply&quot;, version: 3,</text>
+  <text x="30" y="243" font-size="6.7" font-family="monospace" fill="var(--code-ink)">            type: &quot;text&quot; } }</text>
+  <rect x="478" y="138" width="224" height="120" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="490" y="153" font-size="7.6" font-weight="700" fill="var(--accent-ink)">🔐 verify (HMAC-SHA256)</text>
+  <text x="490" y="172" font-size="6.8" font-family="monospace" fill="var(--ink)">signed = &quot;{t}.{body}&quot;</text>
+  <text x="490" y="187" font-size="6.8" font-family="monospace" fill="var(--ink)">hmac = HMAC(secret, signed)</text>
+  <text x="490" y="202" font-size="6.8" font-family="monospace" fill="var(--ink)">compare == v1 ?</text>
+  <text x="490" y="217" font-size="6.8" font-family="monospace" fill="var(--ink)"></text>
+  <rect x="486" y="228" width="208" height="22" rx="6" fill="var(--accent-soft)"/><text x="590" y="243" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--accent-ink)">✓ trust only if equal, else drop</text>
+</svg>
+<div class="figcap"><b>Every delivery carries proof of "I really sent this"</b> (fields from <code>domain/webhooks.ts</code> and <code>encryption/signature.ts</code>; <b>values illustrative</b>): Langfuse <code>POST</code>s the event to your URL with a <code>prompt-version</code> JSON body (<code>type</code>/<code>apiVersion</code>/<code>action</code>=created|updated|deleted/<code>prompt</code>). The key is <code>x-langfuse-signature: t=…,v1=…</code> — <code>createSignatureHeader</code> computes <b>HMAC-SHA256</b> over <code>&quot;{timestamp}.{body}&quot;</code>. Your receiver recomputes it with the <b>same secret</b> and compares <code>v1</code>, trusting only on a match. So even someone who knows your URL <b>cannot forge a valid request</b> (paired with Lesson 44's SSRF outbound guard, both directions are defended).</div>
 </div>
 
 <div class="layers">
@@ -385,6 +441,28 @@ _ZH45.append(r"""
 </svg>
 <div class="figcap"><b>OAuth 安装 + 加密保管</b>：<code>SlackService.ts:134</code> 用 <code>InstallProvider</code> 托管 OAuth；<code>storeInstallation</code>（:143）在回调时 <code>encrypt(installation.bot.token)</code>（:163）并 <code>prisma.slackIntegration.upsert</code>（:157，按 <code>projectId</code>）。模型 <code>schema.prisma:1805</code>：<code>projectId @unique</code>、teamId/teamName、加密的 botToken、botUserId。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Slack 告警卡片真实例子：Slack 里一条来自 Langfuse 应用的消息，左侧有按严重度着色的竖条（错误红/警告黄/正常绿，对应 #dc3545/#ffc107/#28a745），标题是触发的监控器，下面是项目、指标、阈值、当前值等字段，再加一个「在 Langfuse 中查看」按钮；经自动化的 SLACK action 投递。颜色映射主题变量，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 Slack 告警卡片</text>
+  <rect x="40" y="30" width="22" height="22" rx="5" fill="var(--accent)" opacity="0.85"/><text x="51" y="46" text-anchor="middle" font-size="11" fill="var(--bg)">🪢</text>
+  <text x="70" y="40" font-size="9.5" font-weight="700" fill="var(--ink)">Langfuse</text><rect x="132" y="32" width="34" height="13" rx="3" fill="var(--panel-2)"/><text x="149" y="42" text-anchor="middle" font-size="7" font-weight="700" fill="var(--muted)">APP</text><text x="176" y="41" font-size="7.5" fill="var(--faint)">10:00 AM</text>
+  <rect x="70" y="54" width="600" height="150" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="70" y="54" width="6" height="150" rx="3" fill="var(--red)"/>
+  <text x="90" y="76" font-size="10" font-weight="700" fill="var(--red)">🔴 监控触发: error-rate</text>
+  <text x="90" y="92" font-size="7.6" fill="var(--muted)">滚动窗口聚合越过阈值（第 33 课）</text>
+  <text x="90" y="112" font-size="7" font-weight="700" fill="var(--faint)">项目 Project</text><text x="90" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">chat-support</text>
+  <text x="390" y="112" font-size="7" font-weight="700" fill="var(--faint)">指标 Metric</text><text x="390" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">error rate (1h)</text>
+  <text x="90" y="150" font-size="7" font-weight="700" fill="var(--faint)">阈值 Threshold</text><text x="90" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">&gt; 5%</text>
+  <text x="390" y="150" font-size="7" font-weight="700" fill="var(--faint)">当前值 Current</text><text x="390" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--red)">8.2%</text>
+  <rect x="90" y="176" width="160" height="22" rx="6" fill="var(--accent)" opacity="0.9"/><text x="170" y="191" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">在 Langfuse 中查看 →</text>
+  <text x="270" y="191" font-size="6.8" fill="var(--faint)">经自动化 SLACK action 投递（第 44 课 Trigger→Action）</text>
+  <text x="40" y="224" font-size="7" font-weight="700" fill="var(--muted)">严重度配色:</text>
+  <rect x="120" y="216" width="12" height="12" rx="3" fill="var(--red)"/><text x="137" y="226" font-size="6.8" fill="var(--muted)">error #dc3545</text>
+  <rect x="280" y="216" width="12" height="12" rx="3" fill="var(--amber)"/><text x="297" y="226" font-size="6.8" fill="var(--muted)">warning #ffc107</text>
+  <rect x="440" y="216" width="12" height="12" rx="3" fill="var(--accent)"/><text x="457" y="226" font-size="6.8" fill="var(--muted)">ok #28a745</text>
+</svg>
+<div class="figcap"><b>告警不是一行干巴巴的日志，而是一张能直接行动的卡片</b>（经自动化的 <code>SLACK</code> action 投递，<code>ActionType</code> ∈ WEBHOOK/SLACK/GITHUB_DISPATCH；<b>值为示例</b>）：左侧竖条按<b>严重度</b>着色（error 红 <code>#dc3545</code> / warning 黄 <code>#ffc107</code> / ok 绿 <code>#28a745</code>——图中用主题变量呈现），正文把<b>项目、指标、阈值、当前值</b>排成字段，再给一个「在 Langfuse 中查看」按钮一键跳回现场。监控器只管「判断要不要告警」（第 33 课），怎么把它渲染成这张 Slack 卡、投到哪个频道，是第 44 课自动化系统的事——<b>判断与投递分离</b>。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">托管</span><span class="name">InstallProvider（@slack/oauth）</span></div><div class="ld">不自己手搓 OAuth 的 code-exchange，而是用官方 SDK 的 <code>InstallProvider</code> 托管整套跳转/回调/换令牌。<code>handleInstallPath</code> 渲染安装页、<code>handleCallback</code> 处理回调（<code>oauth-handlers.ts</code>），projectId 通过 OAuth <code>metadata</code> 一路带回来。</div></div>
@@ -540,6 +618,28 @@ The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it.
   <text x="360" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">The token never lands in cleartext — same treatment as Lesson 39's LLM API keys: encrypt at rest, decrypt at use</text>
 </svg>
 <div class="figcap"><b>OAuth install + encrypted safekeeping</b>: <code>SlackService.ts:134</code> uses <code>InstallProvider</code> to host OAuth; <code>storeInstallation</code> (:143) on callback runs <code>encrypt(installation.bot.token)</code> (:163) and <code>prisma.slackIntegration.upsert</code> (:157, by <code>projectId</code>). Model <code>schema.prisma:1805</code>: <code>projectId @unique</code>, teamId/teamName, encrypted botToken, botUserId.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Slack alert card real example: a message in Slack from the Langfuse app, with a severity-colored left bar (error red / warning amber / ok green, mapping #dc3545/#ffc107/#28a745), a title for the triggered monitor, fields for project, metric, threshold and current value, and a View in Langfuse button; delivered via the automation SLACK action. Colors map to theme variables, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a Slack alert card</text>
+  <rect x="40" y="30" width="22" height="22" rx="5" fill="var(--accent)" opacity="0.85"/><text x="51" y="46" text-anchor="middle" font-size="11" fill="var(--bg)">🪢</text>
+  <text x="70" y="40" font-size="9.5" font-weight="700" fill="var(--ink)">Langfuse</text><rect x="132" y="32" width="34" height="13" rx="3" fill="var(--panel-2)"/><text x="149" y="42" text-anchor="middle" font-size="7" font-weight="700" fill="var(--muted)">APP</text><text x="176" y="41" font-size="7.5" fill="var(--faint)">10:00 AM</text>
+  <rect x="70" y="54" width="600" height="150" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="70" y="54" width="6" height="150" rx="3" fill="var(--red)"/>
+  <text x="90" y="76" font-size="10" font-weight="700" fill="var(--red)">🔴 Monitor triggered: error-rate</text>
+  <text x="90" y="92" font-size="7.6" fill="var(--muted)">rolling-window aggregate crossed the threshold (Lesson 33)</text>
+  <text x="90" y="112" font-size="7" font-weight="700" fill="var(--faint)">Project</text><text x="90" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">chat-support</text>
+  <text x="390" y="112" font-size="7" font-weight="700" fill="var(--faint)">Metric</text><text x="390" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">error rate (1h)</text>
+  <text x="90" y="150" font-size="7" font-weight="700" fill="var(--faint)">Threshold</text><text x="90" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">&gt; 5%</text>
+  <text x="390" y="150" font-size="7" font-weight="700" fill="var(--faint)">Current</text><text x="390" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--red)">8.2%</text>
+  <rect x="90" y="176" width="160" height="22" rx="6" fill="var(--accent)" opacity="0.9"/><text x="170" y="191" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">View in Langfuse →</text>
+  <text x="270" y="191" font-size="6.8" fill="var(--faint)">delivered via the automation SLACK action (L44 Trigger→Action)</text>
+  <text x="40" y="224" font-size="7" font-weight="700" fill="var(--muted)">severity colors:</text>
+  <rect x="120" y="216" width="12" height="12" rx="3" fill="var(--red)"/><text x="137" y="226" font-size="6.8" fill="var(--muted)">error #dc3545</text>
+  <rect x="280" y="216" width="12" height="12" rx="3" fill="var(--amber)"/><text x="297" y="226" font-size="6.8" fill="var(--muted)">warning #ffc107</text>
+  <rect x="440" y="216" width="12" height="12" rx="3" fill="var(--accent)"/><text x="457" y="226" font-size="6.8" fill="var(--muted)">ok #28a745</text>
+</svg>
+<div class="figcap"><b>An alert isn't a dry log line but an actionable card</b> (delivered via the automation <code>SLACK</code> action, <code>ActionType</code> ∈ WEBHOOK/SLACK/GITHUB_DISPATCH; <b>values illustrative</b>): the left bar is colored by <b>severity</b> (error red <code>#dc3545</code> / warning amber <code>#ffc107</code> / ok green <code>#28a745</code> — rendered here via theme variables), the body lays out <b>project, metric, threshold and current value</b> as fields, and a View-in-Langfuse button jumps you straight back to the scene. The monitor only decides "whether to alert" (Lesson 33); rendering it into this Slack card and choosing the channel is the Lesson 44 automation system's job — <b>decision separate from delivery</b>.</div>
 </div>
 
 <div class="layers">
@@ -706,6 +806,25 @@ _ZH46.append(r"""
 </svg>
 <div class="figcap"><b>你的数据，你的去处</b>：模型见 <code>schema.prisma:1183</code> PosthogIntegration、<code>:1196</code> MixpanelIntegration、<code>:1209</code> BlobStorageIntegration——均以 <code>projectId</code> 为主键，存加密凭据（encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey）、<code>lastSyncAt</code>、<code>enabled</code>、<code>exportSource</code>（<code>AnalyticsIntegrationExportSource</code>：TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS）。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 246" role="img" aria-label="分析集成扇出真实例子：左边是源数据 traces/observations，向上扇出到 PostHog（事件捕获 event+properties+distinct_id，发往 posthogHostName、用 phc_ 项目 key），向下扇出到 BlobStorage（type=S3，按 exportFrequency 周期导出 CSV/JSON/JSONL 对象到 bucket/prefix）；增量游标只导上次之后的新行。模型字段取自 PosthogIntegration 与 BlobStorageIntegration，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一份数据，扇出到两个下游</text>
+  <rect x="20" y="92" width="180" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="110" y="116" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">源数据</text><text x="110" y="132" text-anchor="middle" font-size="7.6" fill="var(--accent-ink)">traces / observations</text><text x="110" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">(ClickHouse)</text>
+  <path d="M200 110 C 250 90, 280 64, 320 60" fill="none" stroke="var(--blue)" stroke-width="1.6"/><polygon points="320,60 312,58 315,66" fill="var(--blue)"/>
+  <path d="M200 140 C 250 160, 280 186, 320 190" fill="none" stroke="var(--purple)" stroke-width="1.6"/><polygon points="320,190 312,186 315,194" fill="var(--purple)"/>
+  <rect x="322" y="34" width="378" height="78" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="336" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">PostHog · PosthogIntegration</text>
+  <rect x="334" y="56" width="354" height="34" rx="6" fill="var(--code-bg)"/><text x="342" y="69" font-size="6.7" font-family="monospace" fill="var(--code-ink)">capture({ event:&quot;langfuse trace&quot;,</text><text x="342" y="82" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  distinct_id:&quot;u_8f3a&quot;, properties:{cost,latency…} })</text>
+  <text x="336" y="104" font-size="6.6" fill="var(--muted)">→ posthogHostName · key phc_…  ·  产品分析/留存漏斗</text>
+  <rect x="322" y="150" width="378" height="86" rx="9" fill="var(--bg)" stroke="var(--purple)"/>
+  <text x="336" y="166" font-size="8.5" font-weight="700" fill="var(--purple)">BlobStorage · type=S3</text>
+  <rect x="334" y="172" width="354" height="30" rx="6" fill="var(--code-bg)"/><text x="342" y="191" font-size="6.8" font-family="monospace" fill="var(--code-ink)">s3://my-bucket/langfuse/2026-06-27/obs.csv</text>
+  <text x="336" y="216" font-size="6.6" fill="var(--muted)">fileType ∈ {CSV,JSON,JSONL} · exportFrequency 周期导出 · bucket/prefix</text>
+  <text x="336" y="229" font-size="6.6" fill="var(--accent-ink)">⟲ 增量游标：只导上次之后的新行</text>
+</svg>
+<div class="figcap"><b>同一份数据，按下游的「语言」各发一份</b>（模型取自 <code>PosthogIntegration</code> 与 <code>BlobStorageIntegration</code>；<b>值为示例</b>）：traces/observations 向上以 <b>事件</b>的形式 <code>capture({event, distinct_id, properties})</code> 进 PostHog（发往 <code>posthogHostName</code>、用 <code>phc_</code> 项目 key），做产品分析、留存漏斗；向下以<b>文件</b>的形式周期导出到 <code>BlobStorage</code>（<code>type</code>=S3/S3_COMPATIBLE/AZURE_BLOB_STORAGE，<code>fileType</code>∈CSV/JSON/JSONL，落到 <code>bucket/prefix</code>），喂数仓/离线分析。一个<b>增量游标</b>保证每次只导新增行、不重不漏。Langfuse 不替代这些工具，而是<b>把数据准确地送过去</b>。</div>
+</div>
 
 <table class="t">
   <thead><tr><th>集成</th><th>去处</th><th>凭据（加密）</th><th>特有配置</th></tr></thead>
@@ -846,6 +965,25 @@ By the end you'll see: a mature platform "exporting data out" is far more than "
   <text x="360" y="226" text-anchor="middle" font-size="8" fill="var(--faint)">All three share one skeleton: two-level fan-out queue + lastSyncAt incremental sync + encrypted creds; blob adds streaming export</text>
 </svg>
 <div class="figcap"><b>Your data, your destinations</b>: models at <code>schema.prisma:1183</code> PosthogIntegration, <code>:1196</code> MixpanelIntegration, <code>:1209</code> BlobStorageIntegration — all keyed by <code>projectId</code>, storing encrypted credentials (encryptedPosthogApiKey / encryptedMixpanelProjectToken / secretAccessKey), <code>lastSyncAt</code>, <code>enabled</code>, <code>exportSource</code> (<code>AnalyticsIntegrationExportSource</code>: TRACES_OBSERVATIONS / TRACES_OBSERVATIONS_EVENTS / EVENTS).</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 246" role="img" aria-label="Analytics-integration fan-out real example: on the left the source data traces/observations fans out upward to PostHog (event capture with event+properties+distinct_id, sent to posthogHostName with a phc_ project key) and downward to BlobStorage (type=S3, exporting CSV/JSON/JSONL objects to a bucket/prefix on an exportFrequency); an incremental cursor only exports rows newer than last time. Fields from the PosthogIntegration and BlobStorageIntegration models, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: one data source, fanned out to two sinks</text>
+  <rect x="20" y="92" width="180" height="64" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="110" y="116" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-ink)">source</text><text x="110" y="132" text-anchor="middle" font-size="7.6" fill="var(--accent-ink)">traces / observations</text><text x="110" y="146" text-anchor="middle" font-size="6.8" fill="var(--muted)">(ClickHouse)</text>
+  <path d="M200 110 C 250 90, 280 64, 320 60" fill="none" stroke="var(--blue)" stroke-width="1.6"/><polygon points="320,60 312,58 315,66" fill="var(--blue)"/>
+  <path d="M200 140 C 250 160, 280 186, 320 190" fill="none" stroke="var(--purple)" stroke-width="1.6"/><polygon points="320,190 312,186 315,194" fill="var(--purple)"/>
+  <rect x="322" y="34" width="378" height="78" rx="9" fill="var(--bg)" stroke="var(--blue)"/>
+  <text x="336" y="50" font-size="8.5" font-weight="700" fill="var(--blue)">PostHog · PosthogIntegration</text>
+  <rect x="334" y="56" width="354" height="34" rx="6" fill="var(--code-bg)"/><text x="342" y="69" font-size="6.7" font-family="monospace" fill="var(--code-ink)">capture({ event:&quot;langfuse trace&quot;,</text><text x="342" y="82" font-size="6.7" font-family="monospace" fill="var(--code-ink)">  distinct_id:&quot;u_8f3a&quot;, properties:{cost,latency…} })</text>
+  <text x="336" y="104" font-size="6.6" fill="var(--muted)">→ posthogHostName · key phc_…  ·  product analytics / funnels</text>
+  <rect x="322" y="150" width="378" height="86" rx="9" fill="var(--bg)" stroke="var(--purple)"/>
+  <text x="336" y="166" font-size="8.5" font-weight="700" fill="var(--purple)">BlobStorage · type=S3</text>
+  <rect x="334" y="172" width="354" height="30" rx="6" fill="var(--code-bg)"/><text x="342" y="191" font-size="6.8" font-family="monospace" fill="var(--code-ink)">s3://my-bucket/langfuse/2026-06-27/obs.csv</text>
+  <text x="336" y="216" font-size="6.6" fill="var(--muted)">fileType ∈ {CSV,JSON,JSONL} · exportFrequency periodic · bucket/prefix</text>
+  <text x="336" y="229" font-size="6.6" fill="var(--accent-ink)">⟲ incremental cursor: only rows newer than last export</text>
+</svg>
+<div class="figcap"><b>Same data, sent in each downstream's "language"</b> (models from <code>PosthogIntegration</code> and <code>BlobStorageIntegration</code>; <b>values illustrative</b>): traces/observations go up as <b>events</b> via <code>capture({event, distinct_id, properties})</code> into PostHog (to <code>posthogHostName</code> with a <code>phc_</code> project key) for product analytics and funnels; and down as <b>files</b> exported periodically to <code>BlobStorage</code> (<code>type</code>=S3/S3_COMPATIBLE/AZURE_BLOB_STORAGE, <code>fileType</code>∈CSV/JSON/JSONL, into a <code>bucket/prefix</code>) for the warehouse / offline analysis. An <b>incremental cursor</b> makes each run export only new rows — no gaps, no dupes. Langfuse doesn't replace these tools; it <b>delivers the data to them accurately</b>.</div>
 </div>
 
 <table class="t">
@@ -995,6 +1133,28 @@ _ZH47.append(r"""
   <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
 </svg>
 <div class="figcap"><b>同源分叉</b>：批量导出 <code>worker/src/features/batchExport/handleBatchExportJob.ts</code>（只读产文件）；批量操作 <code>worker/src/features/batchAction/handleBatchActionJob.ts</code>（<code>CHUNK_SIZE=1000</code>，switch 分发到 trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create 等处理器）。两者都基于第 23 课的过滤条件、都走 BullMQ 队列。</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="批量导出真实例子：上方是 BatchExportStatus 状态机 QUEUED→PROCESSING→COMPLETED（旁有 FAILED 分支），下方是导出产物 CSV——表头 id,timestamp,name,userId,totalCost,latency 加三行数据；导出按状态在库里登记、可续跑、对同一请求幂等。状态枚举取自 features/batchExport/types.ts，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一次批量导出（CSV）+ 状态机</text>
+  <rect x="70" y="32" width="150" height="26" rx="13" fill="var(--muted)" opacity="0.16" stroke="var(--muted)"/><text x="145" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">QUEUED</text>
+  <rect x="250" y="32" width="150" height="26" rx="13" fill="var(--amber)" opacity="0.16" stroke="var(--amber)"/><text x="325" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">PROCESSING</text>
+  <rect x="470" y="32" width="150" height="26" rx="13" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="545" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">COMPLETED</text>
+  <line x1="220" y1="45" x2="250" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="250,45 243,42 243,48" fill="var(--muted)"/>
+  <line x1="440" y1="45" x2="470" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="470,45 463,42 463,48" fill="var(--muted)"/>
+  <line x1="325" y1="58" x2="325" y2="74" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="325,74 322,67 328,67" fill="var(--red)"/>
+  <rect x="270" y="74" width="110" height="20" rx="10" fill="var(--red)" opacity="0.14" stroke="var(--red)"/><text x="325" y="88" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--red)">FAILED</text>
+  <text x="478" y="74" font-size="6.6" fill="var(--faint)">状态存 batch_exports 表</text>
+  <rect x="40" y="106" width="640" height="116" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="56" y="124" font-size="8.5" font-weight="700" fill="var(--accent-ink)">📄 export_traces_2026-06-27.csv</text><text x="664" y="124" text-anchor="end" font-size="6.8" fill="var(--muted)">流式分块写出</text>
+  <rect x="50" y="131" width="620" height="16" fill="var(--panel-2)"/>
+  <text x="58" y="142" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--ink)">id,timestamp,name,userId,totalCost,latency</text>
+  <text x="58" y="160" font-size="6.9" font-family="monospace" fill="var(--muted)">t_9f3a,2026-06-27T10:00Z,chat,u_8f3a,0.0123,1.84</text>
+  <text x="58" y="178" font-size="6.9" font-family="monospace" fill="var(--muted)">t_2b71,2026-06-27T10:01Z,chat,u_2b71,0.0098,1.32</text>
+  <text x="58" y="196" font-size="6.9" font-family="monospace" fill="var(--muted)">t_55c9,2026-06-27T10:02Z,summarize,u_55c9,0.0211,2.07</text>
+  <text x="56" y="214" font-size="6.6" fill="var(--accent-ink)">⟲ 幂等：同一导出请求重跑得同一文件，不会重复扣费或写两份</text>
+</svg>
+<div class="figcap"><b>大导出是「有状态、可续跑」的后台作业，不是一次性内存操作</b>（状态枚举取自 <code>features/batchExport/types.ts</code>；<b>值为示例</b>）：一次导出在库里走 <code>QUEUED → PROCESSING → COMPLETED</code> 状态机（出错转 <code>FAILED</code>），产物是一份<b>流式分块</b>写出的 CSV（图中表头 + 数据行）。为什么要状态机而不是「点一下立刻下载」？因为导出可能是<b>百万行</b>——必须能后台跑、能断点续、能重试，还要<b>幂等</b>（同一请求重跑得同一结果，不重复计费）。这正是第 30 课「创建与执行分离」在导出场景的复用。</div>
 </div>
 
 <table class="t">
@@ -1157,6 +1317,28 @@ As the closing lesson of "Automation & Integrations," it once again assembles th
   <line x1="460" y1="82" x2="538" y2="115" stroke="var(--faint)" stroke-width="1"/><line x1="460" y1="185" x2="538" y2="145" stroke="var(--faint)" stroke-width="1"/>
 </svg>
 <div class="figcap"><b>Same-origin fork</b>: batch export <code>worker/src/features/batchExport/handleBatchExportJob.ts</code> (read-only, produces a file); batch action <code>worker/src/features/batchAction/handleBatchActionJob.ts</code> (<code>CHUNK_SIZE=1000</code>, switch dispatches to trace-delete / *-add-to-annotation-queue / dataset-delete / eval-create processors). Both built on Lesson 23's filter, both via BullMQ queues.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 234" role="img" aria-label="Batch export real example: on top the BatchExportStatus state machine QUEUED to PROCESSING to COMPLETED (with a FAILED branch), below the export artifact CSV — a header id,timestamp,name,userId,totalCost,latency plus three data rows; the export is recorded by status in the DB, resumable, and idempotent for the same request. Status enum from features/batchExport/types.ts, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a batch export (CSV) + state machine</text>
+  <rect x="70" y="32" width="150" height="26" rx="13" fill="var(--muted)" opacity="0.16" stroke="var(--muted)"/><text x="145" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--muted)">QUEUED</text>
+  <rect x="250" y="32" width="150" height="26" rx="13" fill="var(--amber)" opacity="0.16" stroke="var(--amber)"/><text x="325" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">PROCESSING</text>
+  <rect x="470" y="32" width="150" height="26" rx="13" fill="var(--accent)" opacity="0.16" stroke="var(--accent)"/><text x="545" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">COMPLETED</text>
+  <line x1="220" y1="45" x2="250" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="250,45 243,42 243,48" fill="var(--muted)"/>
+  <line x1="440" y1="45" x2="470" y2="45" stroke="var(--line)" stroke-width="1.6"/><polygon points="470,45 463,42 463,48" fill="var(--muted)"/>
+  <line x1="325" y1="58" x2="325" y2="74" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="3 2"/><polygon points="325,74 322,67 328,67" fill="var(--red)"/>
+  <rect x="270" y="74" width="110" height="20" rx="10" fill="var(--red)" opacity="0.14" stroke="var(--red)"/><text x="325" y="88" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--red)">FAILED</text>
+  <text x="478" y="74" font-size="6.6" fill="var(--faint)">status in batch_exports</text>
+  <rect x="40" y="106" width="640" height="116" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
+  <text x="56" y="124" font-size="8.5" font-weight="700" fill="var(--accent-ink)">📄 export_traces_2026-06-27.csv</text><text x="664" y="124" text-anchor="end" font-size="6.8" fill="var(--muted)">streamed in chunks</text>
+  <rect x="50" y="131" width="620" height="16" fill="var(--panel-2)"/>
+  <text x="58" y="142" font-size="6.9" font-family="monospace" font-weight="700" fill="var(--ink)">id,timestamp,name,userId,totalCost,latency</text>
+  <text x="58" y="160" font-size="6.9" font-family="monospace" fill="var(--muted)">t_9f3a,2026-06-27T10:00Z,chat,u_8f3a,0.0123,1.84</text>
+  <text x="58" y="178" font-size="6.9" font-family="monospace" fill="var(--muted)">t_2b71,2026-06-27T10:01Z,chat,u_2b71,0.0098,1.32</text>
+  <text x="58" y="196" font-size="6.9" font-family="monospace" fill="var(--muted)">t_55c9,2026-06-27T10:02Z,summarize,u_55c9,0.0211,2.07</text>
+  <text x="56" y="214" font-size="6.6" fill="var(--accent-ink)">⟲ idempotent: re-running the same export request yields the same file, no double work</text>
+</svg>
+<div class="figcap"><b>A big export is a stateful, resumable background job, not a one-shot in-memory call</b> (status enum from <code>features/batchExport/types.ts</code>; <b>values illustrative</b>): an export moves through a <code>QUEUED → PROCESSING → COMPLETED</code> state machine in the DB (to <code>FAILED</code> on error), producing a <b>streamed, chunked</b> CSV (header + rows here). Why a state machine instead of "click and download now"? Because an export can be <b>millions of rows</b> — it must run in the background, resume, retry, and be <b>idempotent</b> (re-running the same request gives the same result, no double billing). This reuses Lesson 30's "creation separate from execution" for the export case.</div>
 </div>
 
 <table class="t">

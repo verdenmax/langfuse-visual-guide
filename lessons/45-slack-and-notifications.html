@@ -388,6 +388,28 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>OAuth 安装 + 加密保管</b>：<code>SlackService.ts:134</code> 用 <code>InstallProvider</code> 托管 OAuth；<code>storeInstallation</code>（:143）在回调时 <code>encrypt(installation.bot.token)</code>（:163）并 <code>prisma.slackIntegration.upsert</code>（:157，按 <code>projectId</code>）。模型 <code>schema.prisma:1805</code>：<code>projectId @unique</code>、teamId/teamName、加密的 botToken、botUserId。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Slack 告警卡片真实例子：Slack 里一条来自 Langfuse 应用的消息，左侧有按严重度着色的竖条（错误红/警告黄/正常绿，对应 #dc3545/#ffc107/#28a745），标题是触发的监控器，下面是项目、指标、阈值、当前值等字段，再加一个「在 Langfuse 中查看」按钮；经自动化的 SLACK action 投递。颜色映射主题变量，值为示例">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：一条 Slack 告警卡片</text>
+  <rect x="40" y="30" width="22" height="22" rx="5" fill="var(--accent)" opacity="0.85"/><text x="51" y="46" text-anchor="middle" font-size="11" fill="var(--bg)">🪢</text>
+  <text x="70" y="40" font-size="9.5" font-weight="700" fill="var(--ink)">Langfuse</text><rect x="132" y="32" width="34" height="13" rx="3" fill="var(--panel-2)"/><text x="149" y="42" text-anchor="middle" font-size="7" font-weight="700" fill="var(--muted)">APP</text><text x="176" y="41" font-size="7.5" fill="var(--faint)">10:00 AM</text>
+  <rect x="70" y="54" width="600" height="150" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="70" y="54" width="6" height="150" rx="3" fill="var(--red)"/>
+  <text x="90" y="76" font-size="10" font-weight="700" fill="var(--red)">🔴 监控触发: error-rate</text>
+  <text x="90" y="92" font-size="7.6" fill="var(--muted)">滚动窗口聚合越过阈值（第 33 课）</text>
+  <text x="90" y="112" font-size="7" font-weight="700" fill="var(--faint)">项目 Project</text><text x="90" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">chat-support</text>
+  <text x="390" y="112" font-size="7" font-weight="700" fill="var(--faint)">指标 Metric</text><text x="390" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">error rate (1h)</text>
+  <text x="90" y="150" font-size="7" font-weight="700" fill="var(--faint)">阈值 Threshold</text><text x="90" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">&gt; 5%</text>
+  <text x="390" y="150" font-size="7" font-weight="700" fill="var(--faint)">当前值 Current</text><text x="390" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--red)">8.2%</text>
+  <rect x="90" y="176" width="160" height="22" rx="6" fill="var(--accent)" opacity="0.9"/><text x="170" y="191" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">在 Langfuse 中查看 →</text>
+  <text x="270" y="191" font-size="6.8" fill="var(--faint)">经自动化 SLACK action 投递（第 44 课 Trigger→Action）</text>
+  <text x="40" y="224" font-size="7" font-weight="700" fill="var(--muted)">严重度配色:</text>
+  <rect x="120" y="216" width="12" height="12" rx="3" fill="var(--red)"/><text x="137" y="226" font-size="6.8" fill="var(--muted)">error #dc3545</text>
+  <rect x="280" y="216" width="12" height="12" rx="3" fill="var(--amber)"/><text x="297" y="226" font-size="6.8" fill="var(--muted)">warning #ffc107</text>
+  <rect x="440" y="216" width="12" height="12" rx="3" fill="var(--accent)"/><text x="457" y="226" font-size="6.8" fill="var(--muted)">ok #28a745</text>
+</svg>
+<div class="figcap"><b>告警不是一行干巴巴的日志，而是一张能直接行动的卡片</b>（经自动化的 <code>SLACK</code> action 投递，<code>ActionType</code> ∈ WEBHOOK/SLACK/GITHUB_DISPATCH；<b>值为示例</b>）：左侧竖条按<b>严重度</b>着色（error 红 <code>#dc3545</code> / warning 黄 <code>#ffc107</code> / ok 绿 <code>#28a745</code>——图中用主题变量呈现），正文把<b>项目、指标、阈值、当前值</b>排成字段，再给一个「在 Langfuse 中查看」按钮一键跳回现场。监控器只管「判断要不要告警」（<a class="xref" href="33-monitors-and-alerting.html">第 33 课</a>），怎么把它渲染成这张 Slack 卡、投到哪个频道，是<a class="xref" href="44-automations-webhooks.html">第 44 课</a>自动化系统的事——<b>判断与投递分离</b>。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-main"><div class="lh"><span class="badge">托管</span><span class="name">InstallProvider（@slack/oauth）</span></div><div class="ld">不自己手搓 OAuth 的 code-exchange，而是用官方 SDK 的 <code>InstallProvider</code> 托管整套跳转/回调/换令牌。<code>handleInstallPath</code> 渲染安装页、<code>handleCallback</code> 处理回调（<code>oauth-handlers.ts</code>），projectId 通过 OAuth <code>metadata</code> 一路带回来。</div></div>
@@ -582,6 +604,28 @@ The previous lesson's webhook was "naked" delivery: give a URL, hurl JSON at it.
   <text x="360" y="108" text-anchor="middle" font-size="8" fill="var(--faint)">The token never lands in cleartext — same treatment as Lesson 39's LLM API keys: encrypt at rest, decrypt at use</text>
 </svg>
 <div class="figcap"><b>OAuth install + encrypted safekeeping</b>: <code>SlackService.ts:134</code> uses <code>InstallProvider</code> to host OAuth; <code>storeInstallation</code> (:143) on callback runs <code>encrypt(installation.bot.token)</code> (:163) and <code>prisma.slackIntegration.upsert</code> (:157, by <code>projectId</code>). Model <code>schema.prisma:1805</code>: <code>projectId @unique</code>, teamId/teamName, encrypted botToken, botUserId.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 240" role="img" aria-label="Slack alert card real example: a message in Slack from the Langfuse app, with a severity-colored left bar (error red / warning amber / ok green, mapping #dc3545/#ffc107/#28a745), a title for the triggered monitor, fields for project, metric, threshold and current value, and a View in Langfuse button; delivered via the automation SLACK action. Colors map to theme variables, values illustrative">
+  <text x="360" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: a Slack alert card</text>
+  <rect x="40" y="30" width="22" height="22" rx="5" fill="var(--accent)" opacity="0.85"/><text x="51" y="46" text-anchor="middle" font-size="11" fill="var(--bg)">🪢</text>
+  <text x="70" y="40" font-size="9.5" font-weight="700" fill="var(--ink)">Langfuse</text><rect x="132" y="32" width="34" height="13" rx="3" fill="var(--panel-2)"/><text x="149" y="42" text-anchor="middle" font-size="7" font-weight="700" fill="var(--muted)">APP</text><text x="176" y="41" font-size="7.5" fill="var(--faint)">10:00 AM</text>
+  <rect x="70" y="54" width="600" height="150" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+  <rect x="70" y="54" width="6" height="150" rx="3" fill="var(--red)"/>
+  <text x="90" y="76" font-size="10" font-weight="700" fill="var(--red)">🔴 Monitor triggered: error-rate</text>
+  <text x="90" y="92" font-size="7.6" fill="var(--muted)">rolling-window aggregate crossed the threshold (Lesson 33)</text>
+  <text x="90" y="112" font-size="7" font-weight="700" fill="var(--faint)">Project</text><text x="90" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">chat-support</text>
+  <text x="390" y="112" font-size="7" font-weight="700" fill="var(--faint)">Metric</text><text x="390" y="127" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">error rate (1h)</text>
+  <text x="90" y="150" font-size="7" font-weight="700" fill="var(--faint)">Threshold</text><text x="90" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--ink)">&gt; 5%</text>
+  <text x="390" y="150" font-size="7" font-weight="700" fill="var(--faint)">Current</text><text x="390" y="165" font-size="8.5" font-weight="700" font-family="monospace" fill="var(--red)">8.2%</text>
+  <rect x="90" y="176" width="160" height="22" rx="6" fill="var(--accent)" opacity="0.9"/><text x="170" y="191" text-anchor="middle" font-size="8" font-weight="700" fill="var(--bg)">View in Langfuse →</text>
+  <text x="270" y="191" font-size="6.8" fill="var(--faint)">delivered via the automation SLACK action (L44 Trigger→Action)</text>
+  <text x="40" y="224" font-size="7" font-weight="700" fill="var(--muted)">severity colors:</text>
+  <rect x="120" y="216" width="12" height="12" rx="3" fill="var(--red)"/><text x="137" y="226" font-size="6.8" fill="var(--muted)">error #dc3545</text>
+  <rect x="280" y="216" width="12" height="12" rx="3" fill="var(--amber)"/><text x="297" y="226" font-size="6.8" fill="var(--muted)">warning #ffc107</text>
+  <rect x="440" y="216" width="12" height="12" rx="3" fill="var(--accent)"/><text x="457" y="226" font-size="6.8" fill="var(--muted)">ok #28a745</text>
+</svg>
+<div class="figcap"><b>An alert isn't a dry log line but an actionable card</b> (delivered via the automation <code>SLACK</code> action, <code>ActionType</code> ∈ WEBHOOK/SLACK/GITHUB_DISPATCH; <b>values illustrative</b>): the left bar is colored by <b>severity</b> (error red <code>#dc3545</code> / warning amber <code>#ffc107</code> / ok green <code>#28a745</code> — rendered here via theme variables), the body lays out <b>project, metric, threshold and current value</b> as fields, and a View-in-Langfuse button jumps you straight back to the scene. The monitor only decides "whether to alert" (<a class="xref" href="33-monitors-and-alerting.html">Lesson 33</a>); rendering it into this Slack card and choosing the channel is the <a class="xref" href="44-automations-webhooks.html">Lesson 44</a> automation system's job — <b>decision separate from delivery</b>.</div>
 </div>
 
 <div class="layers">
