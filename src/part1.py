@@ -284,7 +284,7 @@ _ZH.append(r"""
 <div class="card detail">
   <div class="tag">🔬 源码细节</div>
   observation 的类型在领域层是一个枚举：最初的 <code>LegacyPrismaObservationType</code> 只有
-  <code>SPAN / EVENT / GENERATION</code> 三种（见 <code>packages/shared/prisma/schema.prisma</code>），
+  <code>SPAN / EVENT / GENERATION</code> 三种（该旧枚举如今已同步扩展到 10 种），
   而当前的领域模型 <code>packages/shared/src/domain/observations.ts</code> 的 <code>ObservationType</code> 已扩展到 <strong>10 种</strong>
   （新增 <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>）。ClickHouse 的 <code>observations</code> 表把 model、
   <code>provided_usage_details</code>、<code>cost_details</code>、<code>prompt_id</code> 等都<strong>内联</strong>成一行的列与 Map——
@@ -417,7 +417,7 @@ traces/observations.</p>
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>
   The observation type is an enum in the domain layer: the original <code>LegacyPrismaObservationType</code> had only
-  <code>SPAN / EVENT / GENERATION</code> (see <code>packages/shared/prisma/schema.prisma</code>), while the current domain model
+  <code>SPAN / EVENT / GENERATION</code> (that legacy enum has since been extended to 10 too), while the current domain model
   <code>packages/shared/src/domain/observations.ts</code> defines an <code>ObservationType</code> with <strong>10 values</strong>
   (adding <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>). The ClickHouse
   <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
@@ -1377,7 +1377,7 @@ _ZH3.append(r"""
   <tr><td class="mono">GUARDRAIL</td><td>一次护栏检查</td><td>安全/合规拦截</td></tr>
 </table>
 
-<p>这 10 种里，<code>SPAN / EVENT / GENERATION</code> 是<strong>最基础的三型</strong>（最早的 <code>LegacyPrismaObservationType</code> 就只有这 3 个），
+<p>这 10 种里，<code>SPAN / EVENT / GENERATION</code> 是<strong>最基础的三型</strong>（<code>LegacyPrismaObservationType</code> 最早只有这 3 个，现已同步到 10 种），
 其余 7 种是后来为更精细地刻画 agent/RAG 流程而加的「更具体的 span」。除了类型，observation 还有 <code>level</code>（DEBUG/DEFAULT/WARNING/ERROR）
 表示严重程度。真正让它「厚」的，是下面这一大堆<strong>富属性字段</strong>：</p>
 
@@ -1518,7 +1518,7 @@ choice of pointer direction underwrites the whole ingestion path's feasibility.<
 </table>
 
 <p>Of the 10, <code>SPAN / EVENT / GENERATION</code> are the <strong>three foundational types</strong> (the original
-<code>LegacyPrismaObservationType</code> had only these); the other 7 are "more specific spans" added to describe agent/RAG flows
+<code>LegacyPrismaObservationType</code> originally had only these, now extended to 10 too); the other 7 are "more specific spans" added to describe agent/RAG flows
 more precisely. Besides type, an observation has a <code>level</code> (DEBUG/DEFAULT/WARNING/ERROR) for severity. What truly makes
 it "heavy" is the pile of <strong>rich-attribute fields</strong> below:</p>
 

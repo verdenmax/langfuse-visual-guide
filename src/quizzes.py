@@ -1573,8 +1573,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "第 8 课让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。",
-                    "en": "L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.",
+                    "zh": "第 8 课让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（源码 README 记录约 96% 在 2 分钟内开始，长尾很长，2 天留足裕量）——用极小正确性换巨大成本节省。",
+                    "en": "L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~96% start within 2 min per the repo README, with a long tail; 2 days leaves margin) — a tiny correctness trade for huge cost savings.",
                 },
             },
         ],
@@ -3009,8 +3009,8 @@ QUIZZES = {
             },
             {
                 "q": {
-                    "zh": "Langfuse Cloud 按「观测数」（observations）向你计费，而不是按 trace 数或 token 数。为什么观测是更合适的计费单位？",
-                    "en": "Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?",
+                    "zh": "Langfuse Cloud 按「用量事件」（可观测操作的细颗粒度）计费，而不是按 token 数。为什么这种细颗粒度单位比 token 更合适？",
+                    "en": "Langfuse Cloud bills by 'usage events' (a fine-grained per-observable-operation unit) rather than token count. Why is this fine-grained unit more suitable than token?",
                 },
                 "opts": [
                     {
@@ -3023,8 +3023,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。",
-                    "en": "Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.",
+                    "zh": "按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。（计量上报两个 meter：tracing_observations 为 legacy、tracing_events=trace+score+observation 之和，为当前口径。）",
+                    "en": "Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received. (Metering reports two meters: tracing_observations legacy, and tracing_events = trace+score+observation, the current unit.)",
                 },
             },
             {
@@ -3034,8 +3034,8 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "方向相反：计量是「平台向你收费」(按观测数报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱",
-                        "en": "opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money",
+                        "zh": "方向相反：计量是「平台向你收费」(按用量事件报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱",
+                        "en": "opposite directions: metering is 'the platform charging you' (reports usage events to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money",
                     },
                     {"zh": "完全一样，只是名字不同", "en": "identical, just different names"},
                     {"zh": "都是平台向你收费", "en": "both are the platform charging you"},
@@ -3834,8 +3834,8 @@ QUIZZES = {
                 },
                 "opts": [
                     {
-                        "zh": "「快接收、异步处理」：API 用 API key(两层哈希)认证后，把原始事件落进 S3、任务塞进 Redis 队列就立刻 200 返回(请求路径极薄)，真正的校验解析合并由 worker 从队列取出后在后台做、upsert 进 ClickHouse——异步削峰，请求不被重活拖住",
-                        "en": "'receive fast, process async': after the API authenticates by API key (two-tier hash), it lands the raw event in S3, pushes the task to a Redis queue, and returns 200 immediately (a very thin request path); the real validation/parsing/merging is done by the worker pulling from the queue in the background, upserting into ClickHouse — async peak-shaving, the request isn't dragged by heavy work",
+                        "zh": "「快接收、异步处理」：API 用 API key(两层哈希)认证后，把原始事件落进 S3、任务塞进 Redis 队列就立刻 207 返回(请求路径极薄)，真正的校验解析合并由 worker 从队列取出后在后台做、upsert 进 ClickHouse——异步削峰，请求不被重活拖住",
+                        "en": "'receive fast, process async': after the API authenticates by API key (two-tier hash), it lands the raw event in S3, pushes the task to a Redis queue, and returns 207 immediately (a very thin request path); the real validation/parsing/merging is done by the worker pulling from the queue in the background, upserting into ClickHouse — async peak-shaving, the request isn't dragged by heavy work",
                     },
                     {"zh": "把所有数据直接同步写进 ClickHouse 并等待确认", "en": "synchronously write all data straight into ClickHouse and wait for confirmation"},
                     {"zh": "丢弃超过阈值的数据以保证不卡", "en": "drop data over a threshold to stay responsive"},
@@ -3843,8 +3843,8 @@ QUIZZES = {
                 ],
                 "answer": 0,
                 "why": {
-                    "zh": "摄取这一站是「异步」主题的典范。如果请求路径上同步把数据写进 ClickHouse 并等确认，高峰时数据库一慢，整条上报链路就堵死、SDK 侧超时丢数据。Langfuse 的做法是把请求路径做到极薄：认证 + 把原始事件落进 S3(持久化，不丢) + 把任务塞进 Redis 队列，就立刻返回 200。真正耗时的校验、解析、合并、写 ClickHouse，全交给 worker 异步在后台慢慢做。这样请求侧永远快、永远不被重活拖住(削峰)，而数据因为先落了 S3 + 进了队列，即使 worker 一时处理不过来也不会丢(解耦 + 可重试)。这正是第12-19课摄取链路的精髓，也是第54课「异步」主题的第一次亮相。",
-                    "en": "The ingested station is a paragon of the 'async' theme. If the request path synchronously wrote data into ClickHouse and waited for confirmation, then at peak when the DB slows, the whole report chain jams and the SDK side times out and loses data. Langfuse makes the request path razor-thin: authenticate + land the raw event in S3 (persisted, not lost) + push the task to a Redis queue, then return 200 immediately. The truly time-consuming validation, parsing, merging, and ClickHouse writes are all handed to the worker to do slowly in the background. So the request side is always fast, never dragged by heavy work (peak-shaving), and since data first landed in S3 + entered the queue, even if the worker can't keep up momentarily nothing is lost (decoupling + retryable). This is the essence of Lessons 12-19's ingestion path and the 'async' theme's first appearance from Lesson 54.",
+                    "zh": "摄取这一站是「异步」主题的典范。如果请求路径上同步把数据写进 ClickHouse 并等确认，高峰时数据库一慢，整条上报链路就堵死、SDK 侧超时丢数据。Langfuse 的做法是把请求路径做到极薄：认证 + 把原始事件落进 S3(持久化，不丢) + 把任务塞进 Redis 队列，就立刻返回 207。真正耗时的校验、解析、合并、写 ClickHouse，全交给 worker 异步在后台慢慢做。这样请求侧永远快、永远不被重活拖住(削峰)，而数据因为先落了 S3 + 进了队列，即使 worker 一时处理不过来也不会丢(解耦 + 可重试)。这正是第12-19课摄取链路的精髓，也是第54课「异步」主题的第一次亮相。",
+                    "en": "The ingested station is a paragon of the 'async' theme. If the request path synchronously wrote data into ClickHouse and waited for confirmation, then at peak when the DB slows, the whole report chain jams and the SDK side times out and loses data. Langfuse makes the request path razor-thin: authenticate + land the raw event in S3 (persisted, not lost) + push the task to a Redis queue, then return 207 immediately. The truly time-consuming validation, parsing, merging, and ClickHouse writes are all handed to the worker to do slowly in the background. So the request side is always fast, never dragged by heavy work (peak-shaving), and since data first landed in S3 + entered the queue, even if the worker can't keep up momentarily nothing is lost (decoupling + retryable). This is the essence of Lessons 12-19's ingestion path and the 'async' theme's first appearance from Lesson 54.",
                 },
             },
             {

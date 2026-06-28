@@ -124,16 +124,16 @@ _ZH28.append(r"""
 </div>
 
 <h2>一个 score 对象到底有哪些字段</h2>
-<p>把 <code>ScoreSchema</code> 拆开看，一条 score 大致分三组字段——「评什么·打多少」「谁打的·带什么」「挂在哪」。最值得记的是最后一组：<strong>一条 score 必须挂在 trace / observation / session / 数据集运行 四者之一上</strong>（四个引用字段，恰好一个非空）。</p>
+<p>把 <code>ScoreSchema</code> 拆开看，一条 score 大致分三组字段——「评什么·打多少」「谁打的·带什么」「挂在哪」。最值得记的是最后一组：<strong>一条 score 必须挂在 trace、session 或数据集运行 三者之一上</strong>（这三个引用字段恰有一个非空）；<code>observationId</code> 不是平级的第四项，而是<strong>在 trace 内再定位到某一步</strong>（必须与 <code>traceId</code> 同在）。</p>
 
 <div class="cols">
   <div class="col"><h4>评什么 · 打多少</h4><p><code>name</code> 评的是哪个维度（如「有用性」）；<code>value</code> 永远是一个数；<code>stringValue</code> 标签（分类/布尔/文本才有）；<code>dataType</code> 哪种刻度。</p></div>
   <div class="col"><h4>谁打的 · 带什么</h4><p><code>source</code> API / EVAL / ANNOTATION；<code>authorUserId</code> 人工标注者（可空）；<code>comment</code> 备注（可空）；<code>configId</code> 按哪份 config 校验；<code>queueId</code> 来自哪个标注队列。</p></div>
-  <div class="col"><h4>挂在哪（四选一）</h4><p><code>traceId</code> 整条 trace；<code>observationId</code> trace 里某一步；<code>sessionId</code> 整个会话；<code>datasetRunId</code> 某次数据集运行——<strong>必须恰有一个非空</strong>。</p></div>
+  <div class="col"><h4>挂在哪（三选一 + 可定位到步）</h4><p>三选一：<code>traceId</code> 整条 trace、<code>sessionId</code> 整个会话、<code>datasetRunId</code> 某次数据集运行；另可用 <code>observationId</code> 在 <code>traceId</code> 之上<strong>再定位到某一步</strong>（需与 traceId 同在）。</p></div>
 </div>
-<p>这组「四选一的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能贴在<strong>某一步 observation</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。源码：<code>packages/shared/src/domain/scores.ts:89-133</code>。</p>
+<p>这组「三选一（外加步内定位）的挂载点」很关键：它让评分既能贴在<strong>整条 trace</strong>（这次回答整体好不好）、也能用 <code>observationId</code> 贴到<strong>某一步</strong>（这步检索准不准）、还能贴在<strong>整个 session</strong> 或<strong>一次数据集运行</strong>（第 34、35 课的实验场景）。（特例：<code>CORRECTION</code> 类分数只能挂 trace/observation，不能挂 session/datasetRun。）同一个 score 模型，覆盖了从「单步」到「整批实验」的所有评估粒度。校验规则见 <code>packages/shared/src/utils/scores.ts</code> 的 <code>applyScoreValidation</code>（字段定义 <code>domain/scores.ts</code>）。</p>
 
-<svg viewBox="0 0 720 230" role="img" aria-label="一条 score 有四个引用字段 traceId、observationId、sessionId、datasetRunId，必须恰好一个非空：本例 traceId 指向整条 trace，其余三者为空但同样可挂到某一步 observation、整个 session 或一次数据集运行，同一 score 模型覆盖从单步到整批实验的所有评估粒度">
+<svg viewBox="0 0 720 230" role="img" aria-label="一条 score 在 trace、session、datasetRun 三者中恰挂一个，observationId 另可在 trace 内定位到某一步（须配 traceId）：本例 traceId 指向整条 trace，也可改挂整个 session 或一次数据集运行，同一 score 模型覆盖从单步到整批实验的所有评估粒度">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
   <rect x="20" y="52" width="210" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
   <text x="125" y="74" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">一条 score</text>
@@ -141,7 +141,7 @@ _ZH28.append(r"""
   <text x="34" y="122" font-size="10" fill="var(--muted)">observationId = null</text>
   <text x="34" y="146" font-size="10" fill="var(--muted)">sessionId = null</text>
   <text x="34" y="170" font-size="10" fill="var(--muted)">datasetRunId = null</text>
-  <text x="34" y="192" font-size="9.5" fill="var(--ink)">约束：恰好一个非空</text>
+  <text x="34" y="192" font-size="8.8" fill="var(--ink)">约束：trace/session/run 三选一</text>
   <rect x="430" y="46" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
   <text x="444" y="70" font-size="10.5" fill="var(--ink)">trace · 整条回答好不好</text>
   <rect x="430" y="92" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
@@ -291,16 +291,16 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 </div>
 
 <h2>What fields a score object actually has</h2>
-<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / observation / session / dataset-run</strong> (four reference fields, exactly one non-null).</p>
+<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / session / dataset-run</strong>; <code>observationId</code> is not a fourth peer but pins a step <strong>within</strong> a trace (it requires <code>traceId</code>).</p>
 
 <div class="cols">
   <div class="col"><h4>what · how much</h4><p><code>name</code> which dimension (e.g. "helpfulness"); <code>value</code> always a number; <code>stringValue</code> the label (categorical/boolean/text only); <code>dataType</code> which scale.</p></div>
   <div class="col"><h4>who · with what</h4><p><code>source</code> API / EVAL / ANNOTATION; <code>authorUserId</code> the human annotator (nullable); <code>comment</code> a note (nullable); <code>configId</code> which config validates it; <code>queueId</code> which annotation queue it came from.</p></div>
-  <div class="col"><h4>attached to (one of)</h4><p><code>traceId</code> the whole trace; <code>observationId</code> one step within; <code>sessionId</code> the whole session; <code>datasetRunId</code> one dataset run—<strong>exactly one must be non-null</strong>.</p></div>
+  <div class="col"><h4>attached to (one of three)</h4><p>one of <code>traceId</code> (whole trace), <code>sessionId</code> (whole session), <code>datasetRunId</code> (one dataset run); plus an optional <code>observationId</code> to pin a step <strong>within</strong> a trace (requires traceId).</p></div>
 </div>
-<p>This "one-of-four attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation</strong> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). One score model covers every evaluation granularity, from a single step to a whole batch experiment. Source: <code>packages/shared/src/domain/scores.ts:89-133</code>.</p>
+<p>This "one-of-three (plus in-trace step) attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation within it</strong> via <code>observationId</code> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). (Special case: <code>CORRECTION</code> scores may attach only to trace/observation, never session/datasetRun.) One score model covers every evaluation granularity. Validation rule: <code>packages/shared/src/utils/scores.ts</code> (<code>applyScoreValidation</code>); field defs in <code>domain/scores.ts</code>.</p>
 
-<svg viewBox="0 0 720 230" role="img" aria-label="a score has four reference fields traceId, observationId, sessionId, datasetRunId and exactly one must be non-null: here traceId points at the whole trace while the other three are null but could equally attach to one observation, a whole session, or a dataset run, so one score model covers every granularity from a single step to a whole batch experiment">
+<svg viewBox="0 0 720 230" role="img" aria-label="a score attaches to exactly one of trace, session or datasetRun, with an optional observationId pinning a step within a trace (requires traceId): here traceId points at the whole trace but could equally be a whole session or a dataset run, so one score model covers every granularity from a single step to a whole batch experiment">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
   <rect x="20" y="52" width="210" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
   <text x="125" y="74" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one score</text>
@@ -308,7 +308,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <text x="34" y="122" font-size="10" fill="var(--muted)">observationId = null</text>
   <text x="34" y="146" font-size="10" fill="var(--muted)">sessionId = null</text>
   <text x="34" y="170" font-size="10" fill="var(--muted)">datasetRunId = null</text>
-  <text x="34" y="192" font-size="9.5" fill="var(--ink)">rule: exactly one non-null</text>
+  <text x="34" y="192" font-size="8.8" fill="var(--ink)">rule: one of trace/session/run</text>
   <rect x="430" y="46" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
   <text x="444" y="70" font-size="10.5" fill="var(--ink)">trace · whole answer good?</text>
   <rect x="430" y="92" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>

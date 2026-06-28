@@ -488,7 +488,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div>
 
 <p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
-用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 96% 的观测在 trace 之后 2 分钟内开始）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据源码记录的分布（<code>repositories/README.md</code>：约 96% 的观测在 trace 之后 2 分钟内开始，但有很长的长尾）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
 <strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
 
 
@@ -558,7 +558,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（约 98% 在 5 分钟内，2 天留足裕量）——用极小正确性换巨大成本节省。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：D</strong>。<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>让三表独立、靠时间关联，JOIN 没有外键可走。回看时间窗（OBSERVATIONS_TO_TRACE_INTERVAL=2 天、SCORE=1 小时）注入 WHERE，配合按月分区只扫几个相关分区。代价是极长尾观测可能漏（源码 README 记录约 96% 在 2 分钟内开始，长尾很长，2 天留足裕量）——用极小正确性换巨大成本节省。</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -709,8 +709,8 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Per a documented distribution
+(~96% of observations start within 2 minutes of the trace per repositories/README.md, with a very long tail), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">
@@ -782,7 +782,7 @@ is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny lon
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. <a class="xref" href="08-clickhouse-wide-events.html">L08</a> made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. <a class="xref" href="08-clickhouse-wide-events.html">L08</a> made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~96% start within 2 min per the repo README, with a long tail; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
   </details>
 </div>
 <div class="card spark">

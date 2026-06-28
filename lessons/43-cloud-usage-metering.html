@@ -368,22 +368,22 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>计量模型：每小时数一次观测，报给 Stripe</h2>
-<p>Langfuse Cloud 的计费单位是<strong>观测数（observations）</strong>——你的应用每产生一步可观测的 LLM 操作，就计一次。计量任务（<code>handleCloudUsageMeteringJob</code>）由一个<strong>每小时触发</strong>的定时队列驱动：对刚过去的<strong>那个整点小时</strong>，从 ClickHouse 数出每个项目的观测数，再按组织（organization）汇总，最后把数字推给 <strong>Stripe 的计量 API</strong>，由 Stripe 负责出账单。</p>
+<p>Langfuse Cloud 按<strong>用量事件</strong>计费。计量任务（<code>handleCloudUsageMeteringJob</code>）由一个<strong>每小时触发</strong>的定时队列驱动：对刚过去的<strong>那个整点小时</strong>，从 ClickHouse 数出每个项目的 observation/trace/score 数，再按组织（organization）汇总，最后推给 <strong>Stripe 的计量 API</strong>——它上报<strong>两个 meter</strong>：<code>tracing_observations</code>（仅观测数，<strong>legacy</strong>）和 <code>tracing_events</code>（= trace + score + observation 之和，<strong>当前计费口径</strong>），由 Stripe 出账单。</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 210" role="img" aria-label="云计量流程：每小时定时任务对过去一小时区间，从 ClickHouse 数各项目的观测/trace/score 数，按组织汇总，对有 Stripe customerId 的组织调用 stripe.billing.meterEvents.create 上报 tracing_observations 用量，由 Stripe 出账单">
+<svg viewBox="0 0 720 210" role="img" aria-label="云计量流程：每小时定时任务对过去一小时区间，从 ClickHouse 数各项目的观测/trace/score 数，按组织汇总，对有 Stripe customerId 的组织调用 stripe.billing.meterEvents.create 上报 tracing_observations(legacy) 与 tracing_events 用量，由 Stripe 出账单">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">每小时计量：数观测 → 按组织汇总 → 报 Stripe</text>
   <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">每小时 cron</text><text x="80" y="116" text-anchor="middle" font-size="6.4" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
   <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">数这一小时的用量</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.5" fill="var(--faint)">按项目，来自 ClickHouse</text>
   <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">按 organization 汇总</text><text x="425" y="110" text-anchor="middle" font-size="6.5" fill="var(--muted)">仅有 Stripe customerId 的</text><text x="425" y="123" text-anchor="middle" font-size="6.5" fill="var(--faint)">∑ 各项目观测数</text>
-  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe 计量 API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.2" fill="var(--muted)">event=tracing_observations</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe 计量 API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.2" fill="var(--muted)">tracing_events + obs(legacy)</text>
   <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
   <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
   <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
   <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe 拿到「某客户这一小时用了 N 个观测」的计量事件，月底汇总成发票——平台只管报数，开票交给专业的</text>
   <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">上报包在 backOff 重试里：网络抖动也要保证这笔用量最终送达</text>
 </svg>
-<div class="figcap"><b>用量计量 → Stripe 出账</b>：<code>handleCloudUsageMeteringJob</code> 每小时对过去整点区间，用 <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> 从 ClickHouse 数量，按 org 汇总，对有 <code>cloudConfig.stripe.customerId</code> 的组织调 <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code>（<code>backOff</code> 重试）。源码：<code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>。</div>
+<div class="figcap"><b>用量计量 → Stripe 出账</b>：<code>handleCloudUsageMeteringJob</code> 每小时对过去整点区间，用 <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> 从 ClickHouse 数量，按 org 汇总，对有 <code>cloudConfig.stripe.customerId</code> 的组织调 <code>meterEvents.create</code> 上报两个 meter——<code>tracing_observations</code>(legacy) 与 <code>tracing_events</code>(=trace+score+obs)（<code>backOff</code> 重试）。源码：<code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>。</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 268" role="img" aria-label="云用量计量真实例子：左边是按小时累计的计量（每个项目记 observations 数，按组织汇总），整月累计成一个总用量；右边是月末 Stripe 账单，分订阅(套餐)、用量(observations 计费)、税三类行项目，合计总额。结构取自 billing 的 getInvoices（subscription/usage/tax 分解），observations 为计费单位，金额为示例">
@@ -403,14 +403,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · 2026 年 6 月</text>
   <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
   <text x="402" y="72" font-size="7.8" fill="var(--ink)">订阅 · Team 套餐</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
-  <text x="402" y="96" font-size="7.8" fill="var(--ink)">用量 · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">用量 · 1.24M events</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
   <text x="402" y="120" font-size="7.8" fill="var(--muted)">税 (tax)</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
   <text x="402" y="142" font-size="6.6" fill="var(--faint)">用量 = Σobs × 单价（按套餐阶梯，金额为示例）</text>
   <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
   <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">合计 Total</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
   <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">平台只负责「数数」（每项目记 observations、按组织汇总）；真正开票、收税、扣款交给 Stripe</text>
 </svg>
-<div class="figcap"><b>平台数数，Stripe 开票</b>（结构取自 billing 的 <code>getInvoices</code>：subscription / usage / tax 分解；<b>金额为示例</b>）：用量的计费单位是 <code>observations</code>——每个<b>项目</b>按小时累计，再按<b>组织</b>汇总成整月总量（图左 1.24M）。月末 Stripe 出一张账单，拆成<b>订阅</b>（固定套餐费）、<b>用量</b>（Σobs × 阶梯单价）、<b>税</b>三类行项目，合计扣款。这条「<b>计量与计费分离</b>」的边界很关键：平台专心准确地数数，发票、税务、支付这些又重又合规的事全甩给 Stripe。</div>
+<div class="figcap"><b>平台数数，Stripe 开票</b>（结构取自 billing 的 <code>getInvoices</code>：subscription / usage / tax 分解；<b>金额为示例</b>）：用量按 <code>tracing_events</code>（trace+score+observation 之和）计费——每个<b>项目</b>按小时累计、再按<b>组织</b>汇总（图左以 obs 累计示意，整月 1.24M）。月末 Stripe 出一张账单，拆成<b>订阅</b>（固定套餐费）、<b>用量</b>（Σevents × 阶梯单价）、<b>税</b>三类行项目，合计扣款。这条「<b>计量与计费分离</b>」的边界很关键：平台专心准确地数数，发票、税务、支付这些又重又合规的事全甩给 Stripe。</div>
 </div>
 
 <div class="codefile">
@@ -425,20 +425,26 @@ html[data-lang="zh"] .lang-en { display: none !important; }
       stripe.billing.meterEvents.create({
         event_name: <span class="st">"tracing_observations"</span>,
         timestamp: meterIntervalEnd.getTime() / 1000,
-        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// 报数</span>
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// legacy meter</span>
   }
+  <span class="cm">// 当前计费口径：events = traces + scores + observations</span>
+  <span class="kw">const</span> countEvents = countScores + countTraces + countObservations;
+  <span class="kw">if</span> (countEvents &gt; 0) <span class="kw">await</span> backOff(() =&gt;
+    stripe.billing.meterEvents.create({ event_name: <span class="st">"tracing_events"</span>,
+      timestamp: meterIntervalEnd.getTime() / 1000,
+      payload: { stripe_customer_id, value: countEvents.toString() } }));
 }</pre>
 </div>
 
 <table class="t">
   <thead><tr><th>这一小时数了什么</th><th>来源</th><th>是否用于计费</th></tr></thead>
   <tbody>
-    <tr><td>观测数（observations）</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>是</b>——上报为 <code>tracing_observations</code> 计量事件</td></tr>
-    <tr><td>trace 数</td><td><code>getTraceCounts…</code></td><td>统计/内部口径</td></tr>
-    <tr><td>score 数</td><td><code>getScoreCounts…</code></td><td>统计/内部口径</td></tr>
+    <tr><td>观测数（observations）</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>是</b>——单独上报 <code>tracing_observations</code>(legacy)，并计入 <code>tracing_events</code></td></tr>
+    <tr><td>trace 数</td><td><code>getTraceCounts…</code></td><td><b>是</b>——计入 <code>tracing_events</code></td></tr>
+    <tr><td>score 数</td><td><code>getScoreCounts…</code></td><td><b>是</b>——计入 <code>tracing_events</code></td></tr>
   </tbody>
 </table>
-<p>三种量都数，但<strong>计费只认观测数</strong>（meterEvent 的 <code>event_name</code> 就叫 <code>tracing_observations</code>）。trace/score 的计数更多是内部统计与口径备查——计费单位的选择，前面讲过，落在「最对齐价值」的观测上。</p>
+<p>三种量都数，且都进账：计量上报<strong>两个 meter</strong>——<code>tracing_observations</code>（仅观测数，<strong>legacy</strong>、向后兼容）与 <code>tracing_events</code>（trace + score + observation 之和，<strong>当前计费口径</strong>）。也就是说 <strong>trace、score 同样计入计费</strong>（汇入 <code>tracing_events</code>），并非只是内部统计。计费单位从「纯观测数」演进为「用量事件之和」，仍保持<strong>按可观测操作的细颗粒度</strong>。</p>
 
 
 <h2>命门：计量必须「恰好一次」</h2>
@@ -483,14 +489,14 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 
 
 <h2>两本不同的账：平台计费 vs 你的花费告警</h2>
-<p>容易混淆的是：Part 8 里出现了<strong>两种「钱」</strong>，方向正好相反。一种是<strong>平台向你收费</strong>（本课的计量，按观测数报 Stripe）；另一种是<strong>你自己的 LLM 花费</strong>（第 <a class="xref" href="16-token-counting-cost.html">16</a>、<a class="xref" href="42-models-and-pricing.html">42</a> 课算出的成本）。后者还配了一个 <strong>花费告警（cloudSpendAlert）</strong>队列：盯着你这个月在各家 provider 上的 LLM 开销，越过你设的阈值就提醒你——这是帮<strong>你</strong>管好<strong>你的</strong>钱，和平台怎么收你的费是两码事。</p>
+<p>容易混淆的是：Part 8 里出现了<strong>两种「钱」</strong>，方向正好相反。一种是<strong>平台向你收费</strong>（本课的计量，按用量事件报 Stripe）；另一种是<strong>你自己的 LLM 花费</strong>（第 <a class="xref" href="16-token-counting-cost.html">16</a>、<a class="xref" href="42-models-and-pricing.html">42</a> 课算出的成本）。后者还配了一个 <strong>花费告警（cloudSpendAlert）</strong>队列：盯着你这个月在各家 provider 上的 LLM 开销，越过你设的阈值就提醒你——这是帮<strong>你</strong>管好<strong>你的</strong>钱，和平台怎么收你的费是两码事。</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="Part 8 里两种方向相反的钱：① 平台计费，方向是平台向你收费，按观测数每小时报 Stripe，走 cloudUsageMeteringQueue 讲究恰好一次；② 花费告警，方向是帮你管你的 LLM 花费，盯你在各 provider 的成本，走 cloudSpendAlertQueue，越过阈值就告警；自托管没有①不收平台费，但②那样的成本观测照用">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
   <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">① 平台计费（平台 → 收你的费）</text>
   <text x="40" y="90" font-size="9.5" fill="var(--ink)">方向：平台 → 收你的费</text>
-  <text x="40" y="110" font-size="9.5" fill="var(--ink)">按观测数 / 每小时报 Stripe</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">按用量事件 / 每小时报 Stripe</text>
   <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
   <text x="40" y="150" font-size="9.5" fill="var(--muted)">讲究「恰好一次」</text>
   <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
@@ -516,17 +522,17 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么计量任务要为「恰好一次」下这么大功夫——对齐整点、加锁、还要兜底解锁？</strong> 因为<strong>这是钱</strong>，而钱对错误的容忍度是零。前面所有链路，偶尔多算一条 trace、漏掉一个 score，大多无伤大雅、下次自愈。但计费不一样：<strong>多上报一小时用量，客户的信用卡就被多刷一次</strong>，是会上投诉、上推特的事故；少报，则是平台实打实的亏损。普通后台任务追求「最终一致」就够了，计量任务却必须做到<strong>「精确一次」（exactly-once）</strong>——这是分布式系统里出了名难啃的保证。Langfuse 的解法很务实：不去追求理论上完美的精确一次，而是用一张<strong>数据库行当锁</strong>，把三种现实威胁逐一堵死——重复执行（互斥锁挡）、任务崩溃（20 分钟兜底接管）、区间错位（严格对齐整点）。<strong>把「精确一次」拆解成几个可落地的具体防护，而非空谈理论保证</strong>，这是工程的智慧。<br><br>
-  <strong>为什么 Langfuse 按「观测数」计费，而不是 trace 数或 token 数？</strong> 这是个有意思的产品取舍。按 <strong>token</strong> 计费会和你用的模型强绑定（贵模型 token 多），且和 Langfuse 提供的价值不直接相关——Langfuse 的价值是<strong>记录和分析</strong>，不是替你跑模型。按 <strong>trace</strong> 计费则太粗：一个 trace 可能含一步、也可能含上百步观测，复杂 agent 和简单问答按同价收费不公平。<strong>观测</strong>恰好是「一次可观测的操作」这个<strong>原子计量单位</strong>——它和「Langfuse 帮你存了、分析了多少东西」最对得上，复杂应用产生的观测多、付得也多，简单的少付，<strong>计费颗粒度与平台提供的价值对齐</strong>。好的计费单位，应当让「客户付的钱」正比于「他从你这儿得到的价值」。
+  <strong>为什么按「用量事件」而不是 token 数计费？</strong> 这是个有意思的产品取舍。按 <strong>token</strong> 计费会和你用的模型强绑定（贵模型 token 多），且和 Langfuse 提供的价值不直接相关——Langfuse 的价值是<strong>记录和分析</strong>，不是替你跑模型。按 <strong>trace</strong> 又太粗：一个 trace 可能含一步、也可能含上百步观测。所以 Langfuse 选了<strong>细颗粒度的「可观测操作」</strong>作单位：早期只数 observation（<code>tracing_observations</code>，至今保留为 legacy），现已演进为 <code>tracing_events</code>＝trace + score + observation 之和。无论哪种，复杂应用产生的事件多、付得也多，简单的少付，<strong>计费颗粒度与平台提供的价值对齐</strong>。
 </div>
 
 <div class="card key">
   <div class="tag">🎯 本课要点 · 第八部分收官</div>
   <ul>
     <li><strong>这是 Cloud 专属的平台计费</strong>：和你的 LLM 成本（第 16/42 课）是两笔反向的账；自托管不收平台费，可只看作「托管计费如何搭建」。</li>
-    <li><strong>按观测数计量</strong>：每小时定时任务从 ClickHouse 数各 org 的观测数，对有 Stripe customerId 的组织调 <code>meterEvents.create</code> 上报（<code>backOff</code> 重试），由 Stripe 出账。</li>
+    <li><strong>按用量事件计量</strong>：每小时定时任务从 ClickHouse 数各 org 的 obs/trace/score 数，对有 Stripe customerId 的组织调 <code>meterEvents.create</code> 上报两个 meter（<code>tracing_observations</code> legacy + <code>tracing_events</code>＝三者之和，<code>backOff</code> 重试），由 Stripe 出账。</li>
     <li><strong>「恰好一次」是命门</strong>：用 <code>cronJobs</code> 表当分布式锁+台账——区间严格对齐整点、<code>Processing</code> 互斥、20 分钟兜底接管，让每小时用量不重不漏。</li>
     <li><strong>计费要精确一次</strong>：钱对错误零容忍，普通任务的「最终一致」不够；把 exactly-once 拆成「防重复+防崩溃+防错位」三道可落地的具体防护。</li>
-    <li><strong>观测是对齐价值的计费单位</strong>：比 token（绑模型）、trace（太粗）更贴合「Langfuse 帮你记录分析了多少」——客户付的钱正比于得到的价值。另有 <code>cloudSpendAlert</code> 帮你管自己的 LLM 花费。</li>
+    <li><strong>用量事件是对齐价值的计费单位</strong>（<code>tracing_events</code>=trace+score+observation，<code>tracing_observations</code> 为 legacy）：比 token（绑模型）更贴合「Langfuse 帮你记录分析了多少」——客户付的钱正比于得到的价值。另有 <code>cloudSpendAlert</code> 帮你管自己的 LLM 花费。</li>
   </ul>
 </div>
 <div class="selftest">
@@ -545,7 +551,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Langfuse Cloud 按「观测数」（observations）向你计费，而不是按 trace 数或 token 数。为什么观测是更合适的计费单位？</div>
+  <div class="qn">2. Langfuse Cloud 按「用量事件」（可观测操作的细颗粒度）计费，而不是按 token 数。为什么这种细颗粒度单位比 token 更合适？</div>
   <ol class="opts">
     <li>观测数最容易统计</li>
     <li>观测数最小，收费最低</li>
@@ -554,7 +560,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>答案：C</strong>。按 token 计费和你用的模型强绑定(贵模型 token 多)，且和 Langfuse 的价值(记录与分析，不是替你跑模型)不直接相关。按 trace 太粗：一个 trace 可能含一步或上百步观测，复杂 agent 和简单问答同价不公平。观测恰好是「一次可观测操作」的原子计量单位，最对得上「Langfuse 帮你存了、分析了多少」——复杂应用观测多付得多、简单少付。好的计费单位让客户付的钱正比于得到的价值。（计量上报两个 meter：tracing_observations 为 legacy、tracing_events=trace+score+observation 之和，为当前口径。）</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -563,7 +569,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
     <li>完全一样，只是名字不同</li>
     <li>都是平台向你收费</li>
     <li>都只在自托管版生效</li>
-    <li>方向相反：计量是「平台向你收费」(按观测数报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱</li>
+    <li>方向相反：计量是「平台向你收费」(按用量事件报Stripe，Cloud专属)；花费告警是「帮你管你自己的LLM花费」(盯你在各provider的成本越阈值就提醒)——一个收你的钱、一个帮你看你的钱</li>
   </ol>
   <details class="accordion">
     <summary>看答案与解析 <span class="hint">点击展开</span></summary>
@@ -591,22 +597,22 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 
 <h2>The metering model: count observations hourly, report to Stripe</h2>
-<p>Langfuse Cloud's billing unit is the <strong>observation count</strong>—each observable LLM step your app produces counts once. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observations from ClickHouse, aggregates by organization, and pushes the figure to <strong>Stripe's metering API</strong>, leaving Stripe to invoice.</p>
+<p>Langfuse Cloud bills by <strong>usage events</strong>. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and pushes them to <strong>Stripe's metering API</strong> — reporting <strong>two meters</strong>: <code>tracing_observations</code> (observation count only, <strong>legacy</strong>) and <code>tracing_events</code> (= trace + score + observation, the <strong>current billing unit</strong>), leaving Stripe to invoice.</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations usage, with Stripe invoicing">
+<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations(legacy) and tracing_events usage, with Stripe invoicing">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">hourly metering: count observations → aggregate by org → report to Stripe</text>
   <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">hourly cron</text><text x="80" y="116" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
   <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">count this hour's usage</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.2" fill="var(--faint)">per project, from ClickHouse</text>
   <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">aggregate by organization</text><text x="425" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">only those with a Stripe customerId</text><text x="425" y="123" text-anchor="middle" font-size="6.2" fill="var(--faint)">∑ each project's observations</text>
-  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">event=tracing_observations</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">tracing_events + obs(legacy)</text>
   <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
   <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
   <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
   <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe receives "N observations this hour" metering events → invoice at month end; the platform reports counts, invoicing left to the specialist</text>
   <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
 </svg>
-<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>meterEvents.create</code> reporting two meters — <code>tracing_observations</code>(legacy) and <code>tracing_events</code>(=trace+score+obs) (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 268" role="img" aria-label="Cloud usage-metering real example: left is hourly metering accumulating (each project counts observations, aggregated per organization) into a monthly total; right is the month-end Stripe invoice broken into subscription (plan), usage (observations billing) and tax line items, summing to a total. Structure from billing getInvoices (subscription/usage/tax breakdown), observations as the billing unit, amounts illustrative">
@@ -626,14 +632,14 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · June 2026</text>
   <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
   <text x="402" y="72" font-size="7.8" fill="var(--ink)">subscription · Team plan</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
-  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M events</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
   <text x="402" y="120" font-size="7.8" fill="var(--muted)">tax</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
-  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σobs × unit price (per plan tier; illustrative)</text>
+  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σevents × unit price (per plan tier; illustrative)</text>
   <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
   <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Total due</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
   <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">the platform only counts (observations per project, aggregated per org); Stripe does the actual invoicing, tax and charging</text>
 </svg>
-<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): the usage billing unit is <code>observations</code> — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σobs × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
+<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): usage is billed via <code>tracing_events</code> (trace+score+observation) — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M obs illustrative on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σevents × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
 </div>
 
 <div class="codefile">
@@ -648,20 +654,26 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
       stripe.billing.meterEvents.create({
         event_name: <span class="st">"tracing_observations"</span>,
         timestamp: meterIntervalEnd.getTime() / 1000,
-        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// report count</span>
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// legacy meter</span>
   }
+  <span class="cm">// current billing unit: events = traces + scores + observations</span>
+  <span class="kw">const</span> countEvents = countScores + countTraces + countObservations;
+  <span class="kw">if</span> (countEvents &gt; 0) <span class="kw">await</span> backOff(() =&gt;
+    stripe.billing.meterEvents.create({ event_name: <span class="st">"tracing_events"</span>,
+      timestamp: meterIntervalEnd.getTime() / 1000,
+      payload: { stripe_customer_id, value: countEvents.toString() } }));
 }</pre>
 </div>
 
 <table class="t">
   <thead><tr><th>what's counted this hour</th><th>source</th><th>used for billing?</th></tr></thead>
   <tbody>
-    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b>—reported as the <code>tracing_observations</code> meter event</td></tr>
-    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td>stats / internal</td></tr>
-    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td>stats / internal</td></tr>
+    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b> — reported alone as <code>tracing_observations</code>(legacy), and summed into <code>tracing_events</code></td></tr>
+    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td><b>yes</b> — summed into <code>tracing_events</code></td></tr>
+    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td><b>yes</b> — summed into <code>tracing_events</code></td></tr>
   </tbody>
 </table>
-<p>All three are counted, but <strong>only observation count is billed</strong> (the meterEvent's <code>event_name</code> is literally <code>tracing_observations</code>). Trace/score counts are more for internal stats and reference—the choice of billing unit, as discussed, lands on the most value-aligned observation.</p>
+<p>All three are counted, and all three are billed: metering reports <strong>two meters</strong> — <code>tracing_observations</code> (observation count only, <strong>legacy</strong>, kept for backward compat) and <code>tracing_events</code> (trace + score + observation, the <strong>current billing unit</strong>). So <strong>trace and score counts do count toward billing</strong> (folded into <code>tracing_events</code>), not just internal stats. The billing unit evolved from "observations only" to "the sum of usage events," still at the <strong>fine granularity of one observable operation</strong>.</p>
 
 
 <h2>The crux: metering must be "exactly once"</h2>
@@ -706,14 +718,14 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 
 <h2>Two different ledgers: platform billing vs your spend alerts</h2>
-<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting usage events to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="two kinds of money in opposite directions: 1 platform billing, the platform charges you, reporting observation counts hourly to Stripe via cloudUsageMeteringQueue with exactly-once care; 2 spend alerts, helping you manage your LLM spend, watching your provider costs via cloudSpendAlertQueue and pinging you over a threshold; self-host has no 1 (no platform fee) but still uses 2-style cost observation">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
   <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 platform billing (platform → charges you)</text>
   <text x="40" y="90" font-size="9.5" fill="var(--ink)">direction: platform → charges you</text>
-  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by observation count / hourly → Stripe</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by usage events / hourly → Stripe</text>
   <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
   <text x="40" y="150" font-size="9.5" fill="var(--muted)">cares about "exactly once"</text>
   <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
@@ -738,17 +750,17 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why does the metering job go to such lengths for "exactly once"—hour alignment, locking, plus fallback unlock?</strong> Because <strong>this is money</strong>, and money's tolerance for error is zero. All earlier chains can occasionally over-count a trace or miss a score with little harm, self-healing next time. Billing is different: <strong>over-report one hour and a customer's credit card gets charged once more</strong>—a complaint-and-Twitter incident; under-report and the platform takes a real loss. A normal background job seeking "eventual consistency" is enough, but the metering job must achieve <strong>"exactly once"</strong>—a notoriously hard guarantee in distributed systems. Langfuse's solution is pragmatic: rather than chase theoretically perfect exactly-once, it uses a <strong>database row as a lock</strong> to plug three real threats one by one—duplicate execution (mutex blocks), task crash (20-minute fallback takeover), interval misalignment (strict hour alignment). <strong>Decomposing "exactly once" into a few implementable concrete defenses, rather than theorizing about guarantees</strong>—that's engineering wisdom.<br><br>
-  <strong>Why does Langfuse bill by "observation count" rather than trace count or token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations, and charging complex agents and simple Q&A the same is unfair. An <strong>observation</strong> is exactly the <strong>atomic metering unit</strong> of "one observable operation"—it best matches "how much Langfuse stored and analyzed for you": complex apps produce more observations and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>. A good billing unit should make "what the customer pays" proportional to "the value they get from you".
+  <strong>Why bill by "usage events" rather than token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations. So Langfuse picked a <strong>fine-grained "observable operation" unit</strong>: early on it counted only observations (<code>tracing_observations</code>, kept to this day as legacy), and has since evolved to <code>tracing_events</code> = trace + score + observation. Either way, complex apps produce more events and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points · Part 8 wrap-up</div>
   <ul>
     <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
-    <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>
+    <li><strong>Meter by usage events</strong>: an hourly job counts each org's obs/trace/score from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report two meters (<code>tracing_observations</code> legacy + <code>tracing_events</code> = the sum; <code>backOff</code> retry), Stripe invoicing.</li>
     <li><strong>"Exactly once" is the crux</strong>: a <code>cronJobs</code> table as distributed lock + ledger—strict hour-aligned intervals, <code>Processing</code> mutex, 20-minute fallback takeover—so each hour's usage is no-dup, no-miss.</li>
     <li><strong>Billing must be exactly-once</strong>: money tolerates no error, normal jobs' "eventual consistency" isn't enough; decompose exactly-once into "anti-duplicate + anti-crash + anti-misalignment" implementable defenses.</li>
-    <li><strong>Observation = a value-aligned billing unit</strong>: better than token (model-bound) or trace (too coarse) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
+    <li><strong>Usage events = a value-aligned billing unit</strong> (<code>tracing_events</code>=trace+score+observation; <code>tracing_observations</code> legacy): better than token (model-bound) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
   </ul>
 </div>
 <div class="selftest">
@@ -767,7 +779,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?</div>
+  <div class="qn">2. Langfuse Cloud bills by 'usage events' (a fine-grained per-observable-operation unit) rather than token count. Why is this fine-grained unit more suitable than token?</div>
   <ol class="opts">
     <li>observation count is easiest to count</li>
     <li>observation count is smallest, lowest charge</li>
@@ -776,7 +788,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received. (Metering reports two meters: tracing_observations legacy, and tracing_events = trace+score+observation, the current unit.)</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -785,7 +797,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
     <li>identical, just different names</li>
     <li>both are the platform charging you</li>
     <li>both only work in self-host</li>
-    <li>opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
+    <li>opposite directions: metering is 'the platform charging you' (reports usage events to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
   </ol>
   <details class="accordion">
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>

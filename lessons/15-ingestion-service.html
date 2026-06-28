@@ -524,7 +524,7 @@ result.event_ts = <span class="kw">new</span> Date().<span class="fn">getTime</s
   <div class="step"><div class="num">4</div><div class="sc"><h4>事件 → 记录 → 合并</h4><p>把事件映射成记录，<code>mergeRecords</code> 左折叠出 <code>mergedObservationRecord</code>。</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>补 input/output</h4><p>从最新往回找第一条非空的 input / output（事件里没有就退回 ClickHouse 的值），并归一化 tool 数据。</p></div></div>
   <div class="step"><div class="num">6</div><div class="sc"><h4>算 token 与成本</h4><p><code>getGenerationUsage</code> 做模型匹配、token 计数、成本计算（<a class="xref" href="16-token-counting-cost.html">第 16 课</a>详解），并进最终记录。</p></div></div>
-  <div class="step"><div class="num">7</div><div class="sc"><h4>入写库队列</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code>——<strong>不直接写库</strong>，交给<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>的批写器攒批落盘。</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>入写库队列</h4><p><code>clickhouseWriter.addToQueue(Observations, finalRecord)</code>——<strong>不直接写库</strong>，交给<a class="xref" href="17-clickhouse-writer.html">第 17 课</a>的批写器攒批落盘。</p></div></div>
 </div>
 
 <p>第 7 步要特别留意：<code>IngestionService</code> 自己<strong>从不直接写 ClickHouse</strong>，它只把合并好的记录塞进 <code>ClickhouseWriter</code> 的队列。
@@ -776,7 +776,7 @@ data and multi-version SDKs</strong>.</p>
   <div class="step"><div class="num">4</div><div class="sc"><h4>events → records → merge</h4><p>Map events to records, <code>mergeRecords</code> left-folds into <code>mergedObservationRecord</code>.</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>fill input/output</h4><p>Find the first non-null input/output scanning from newest back (fallback to ClickHouse's), and normalize tool data.</p></div></div>
   <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in <a class="xref" href="16-token-counting-cost.html">Lesson 16</a>), folded into the final record.</p></div></div>
-  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a>'s batch writer.</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickhouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to <a class="xref" href="17-clickhouse-writer.html">Lesson 17</a>'s batch writer.</p></div></div>
 </div>
 
 <p>Note step 7: <code>IngestionService</code> <strong>never writes ClickHouse directly</strong> — it only pushes the merged record into

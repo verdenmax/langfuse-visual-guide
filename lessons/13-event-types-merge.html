@@ -454,7 +454,7 @@ Langfuse 用 Zod 把它定义得一清二楚：先有一个 <code>base</code>（
 <p>那些 <code>body</code> 不是各写各的，而是<strong>层层继承</strong>出来的。最里层是 <code>OptionalObservationBody</code>（traceId、name、startTime、input/output…），
 往外 <code>extend</code> 一层加 <code>id</code> 成 <code>CreateEventEvent</code>，再加 <code>endTime</code> 成 <code>CreateSpanBody</code>，再加 <code>model / usage / modelParameters</code> 成 <code>CreateGenerationBody</code>。
 这条链精确对应<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>的观测三型：<strong>EVENT 是时间点</strong>（无时长）、<strong>SPAN 有起止</strong>（多了 endTime）、<strong>GENERATION 是带 LLM 字段的 SPAN</strong>（多了 model/usage）。
-有趣的是，<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>提到的那些新观测类型——AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL——它们的 <code>body</code> <strong>全都复用 <code>CreateGenerationBody</code></strong>：
+有趣的是，<a class="xref" href="03-three-pillars-deep.html">第 3 课</a>提到的那些新观测类型——AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL——它们的 <code>body</code> <strong>全都复用 <code>CreateGenerationBody</code></strong>：
 本质上都是「generation 那么丰富的一段观测」，只是语义标签不同。</p>
 
 <div class="fig">
@@ -730,7 +730,7 @@ instances, public and internal</strong>: things like <code>dataset-run-item-crea
 <code>CreateEventEvent</code>, add <code>endTime</code> for <code>CreateSpanBody</code>, then add <code>model / usage / modelParameters</code> for
 <code>CreateGenerationBody</code>. This chain maps precisely onto <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a>'s three observation kinds: <strong>EVENT is a point in time</strong> (no
 duration), <strong>SPAN has start &amp; end</strong> (adds endTime), <strong>GENERATION is a SPAN with LLM fields</strong> (adds model/usage). Tellingly,
-the newer observation types from <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> — AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL — <strong>all reuse
+the newer observation types from <a class="xref" href="03-three-pillars-deep.html">Lesson 3</a> — AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL — <strong>all reuse
 <code>CreateGenerationBody</code></strong>: at heart they're each "a generation-rich span", differing only in semantic label.</p>
 
 <div class="fig">

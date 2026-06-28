@@ -583,7 +583,7 @@ traces/observations.</p>
 <div class="card detail">
   <div class="tag">🔬 Source detail</div>
   The observation type is an enum in the domain layer: the original <code>LegacyPrismaObservationType</code> had only
-  <code>SPAN / EVENT / GENERATION</code> (see <code>packages/shared/prisma/schema.prisma</code>), while the current domain model
+  <code>SPAN / EVENT / GENERATION</code> (that legacy enum has since been extended to 10 too), while the current domain model
   <code>packages/shared/src/domain/observations.ts</code> defines an <code>ObservationType</code> with <strong>10 values</strong>
   (adding <code>AGENT / TOOL / CHAIN / RETRIEVER / EMBEDDING / EVALUATOR / GUARDRAIL</code>). The ClickHouse
   <code>observations</code> table <strong>inlines</strong> model, <code>provided_usage_details</code>,
@@ -1248,7 +1248,7 @@ choice of pointer direction underwrites the whole ingestion path's feasibility.<
 </table>
 
 <p>Of the 10, <code>SPAN / EVENT / GENERATION</code> are the <strong>three foundational types</strong> (the original
-<code>LegacyPrismaObservationType</code> had only these); the other 7 are "more specific spans" added to describe agent/RAG flows
+<code>LegacyPrismaObservationType</code> originally had only these, now extended to 10 too); the other 7 are "more specific spans" added to describe agent/RAG flows
 more precisely. Besides type, an observation has a <code>level</code> (DEBUG/DEFAULT/WARNING/ERROR) for severity. What truly makes
 it "heavy" is the pile of <strong>rich-attribute fields</strong> below:</p>
 
@@ -3504,7 +3504,7 @@ job). This is Lesson 5's "fast lane".
   Picture the ingestion API as a courier's <strong>drop-off counter</strong>: the courier (your SDK) brings <strong>a batch</strong> of parcels
   (events), and the clerk (the API) does three things before waving you through — <strong>check the sender's identity</strong> (auth: which
   project is this key?), <strong>scan and log the labels</strong> (validate: is each parcel well-formed?), <strong>drop them on the
-  belt</strong> (enqueue). Then it <strong>hands you a receipt on the spot</strong> (HTTP 200) and lets you go — it <strong>won't</strong> sort,
+  belt</strong> (enqueue). Then it <strong>hands you a receipt on the spot</strong> (HTTP 207) and lets you go — it <strong>won't</strong> sort,
   weigh and deliver in front of you. The slow work is done by people down the belt (the worker). The counter's only goal: <strong>accept fast,
   never block the door</strong>.
 </div>
@@ -3517,7 +3517,7 @@ job). This is Lesson 5's "fast lane".
   <rect x="160" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="215" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">1 auth</text><text x="215" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">key→project</text>
   <rect x="290" y="70" width="110" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="345" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">2 Zod validate</text><text x="345" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">well-formed?</text>
   <rect x="420" y="70" width="150" height="50" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-ink)">3 processEventBatch</text><text x="495" y="108" text-anchor="middle" font-size="8" fill="var(--accent-ink)">enqueue (+ S3)</text>
-  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">200 OK</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">return now</text>
+  <rect x="590" y="70" width="110" height="50" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="645" y="92" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ink)">207</text><text x="645" y="108" text-anchor="middle" font-size="8.5" fill="var(--muted)">return now</text>
   <line x1="140" y1="95" x2="158" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="158,95 149,90 149,100" fill="var(--faint)"/>
   <line x1="270" y1="95" x2="288" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="288,95 279,90 279,100" fill="var(--faint)"/>
   <line x1="400" y1="95" x2="418" y2="95" stroke="var(--faint)" stroke-width="1.8"/><polygon points="418,95 409,90 409,100" fill="var(--faint)"/>
@@ -3856,7 +3856,7 @@ instances, public and internal</strong>: things like <code>dataset-run-item-crea
 <code>CreateEventEvent</code>, add <code>endTime</code> for <code>CreateSpanBody</code>, then add <code>model / usage / modelParameters</code> for
 <code>CreateGenerationBody</code>. This chain maps precisely onto Lesson 3's three observation kinds: <strong>EVENT is a point in time</strong> (no
 duration), <strong>SPAN has start &amp; end</strong> (adds endTime), <strong>GENERATION is a SPAN with LLM fields</strong> (adds model/usage). Tellingly,
-the newer observation types from Lesson 8 — AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL — <strong>all reuse
+the newer observation types from Lesson 3 — AGENT / TOOL / CHAIN / RETRIEVER / EVALUATOR / EMBEDDING / GUARDRAIL — <strong>all reuse
 <code>CreateGenerationBody</code></strong>: at heart they're each "a generation-rich span", differing only in semantic label.</p>
 
 <div class="fig">
@@ -4232,7 +4232,7 @@ steady-state are <strong>physically isolated</strong>, neither dragging the othe
     <li><strong>S3 is the real ledger</strong>: bodies land in <code>&lt;eventId&gt;.json</code>, read back for Lesson 15's merge and able to rebuild a lost job — light queue, saved memory, replayable.</li>
     <li><strong>Sharding</strong>: under cluster the queue splits into <code>ingestion-queue-N</code>, shard chosen by SHA-256 modulo of <code>projectId-eventBodyId</code> — same entity always same shard, ordered and balanced.</li>
     <li><strong>Primary / secondary</strong>: redirect high-throughput projects to the secondary by env allowlist (static) or S3 slowdown flag (dynamic), physically isolating them so one noisy tenant can't block everyone.</li>
-    <li><strong>Resilience</strong>: jobs use <code>attempts: 6</code> + exponential backoff; removed on success, kept on failure. Queue + S3 = spike absorption + fault tolerance + replayability.</li>
+    <li><strong>Resilience</strong>: jobs use <code>attempts: 6</code> (secondary queue: 5) + exponential backoff; removed on success, kept on failure. Queue + S3 = spike absorption + fault tolerance + replayability.</li>
   </ul>
 </div>
 
@@ -4467,7 +4467,7 @@ data and multi-version SDKs</strong>.</p>
   <div class="step"><div class="num">4</div><div class="sc"><h4>events → records → merge</h4><p>Map events to records, <code>mergeRecords</code> left-folds into <code>mergedObservationRecord</code>.</p></div></div>
   <div class="step"><div class="num">5</div><div class="sc"><h4>fill input/output</h4><p>Find the first non-null input/output scanning from newest back (fallback to ClickHouse's), and normalize tool data.</p></div></div>
   <div class="step"><div class="num">6</div><div class="sc"><h4>compute tokens &amp; cost</h4><p><code>getGenerationUsage</code> does model matching, token counting, cost calculation (detailed in Lesson 16), folded into the final record.</p></div></div>
-  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickHouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to Lesson 17's batch writer.</p></div></div>
+  <div class="step"><div class="num">7</div><div class="sc"><h4>enqueue the write</h4><p><code>clickhouseWriter.addToQueue(Observations, finalRecord)</code> — <strong>not a direct DB write</strong>, handed to Lesson 17's batch writer.</p></div></div>
 </div>
 
 <p>Note step 7: <code>IngestionService</code> <strong>never writes ClickHouse directly</strong> — it only pushes the merged record into
@@ -4787,7 +4787,7 @@ the regex gives flexibility, <code>project_id</code> precedence gives override r
 <h1>ClickhouseWriter: batched persistence</h1>
 
 <p class="lead">
-Lesson 15's merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+Lesson 15's merge ended with <code>clickhouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
 what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
 handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as Lesson 8 said, ClickHouse
 <strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates
@@ -5544,7 +5544,7 @@ precisely at a <code>features/</code> subfolder.</p>
 <svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, special-semantics endpoints for streaming and webhooks">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
-  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
+  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~62 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
   <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · special semantics</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
@@ -5569,7 +5569,7 @@ precisely at a <code>features/</code> subfolder.</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
-  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~64 routers</span>
+  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~62 routers</span>
 web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (Lesson 21)</span>
 
 <span class="cm">// ② public REST: the stable interface for SDKs, by resource + version folder</span>
@@ -5737,7 +5737,7 @@ other. This is the master plan of Part 4's read path.</p>
 <p class="lead">
 Last lesson named the three doors; this one pushes open the "staff entrance" — <strong>tRPC</strong> — and shows its skeleton. tRPC is the <strong>type-safe
 contract</strong> between UI and server: types the backend defines flow <strong>end to end</strong> to the frontend caller, so a change in one place errors the
-whole chain instantly. Its structure is surprisingly lean: one <strong>root router</strong> aggregates ~64 feature routers, plus a handful of <strong>"procedure
+whole chain instantly. Its structure is surprisingly lean: one <strong>root router</strong> aggregates ~62 feature routers, plus a handful of <strong>"procedure
 builders"</strong> that guard auth and RBAC uniformly via <strong>layered middleware</strong>. Grasp this middleware stack and you grasp the security and the flow
 of Langfuse's entire UI backend.
 </p>
@@ -5838,7 +5838,7 @@ repository/service to read ClickHouse/Postgres:</p>
   <rect x="14" y="48" width="116" height="50" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="72" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">UI hook</text><text x="72" y="83" text-anchor="middle" font-size="7" fill="var(--muted)">api.traces.all.useQuery</text>
   <rect x="148" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="206" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">tRPC entry</text><text x="206" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">[trpc].ts + context</text><text x="206" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">inject session/prisma</text>
   <rect x="282" y="48" width="116" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="340" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">middleware stack</text><text x="340" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">OTel→error→auth</text><text x="340" y="90" text-anchor="middle" font-size="7" fill="var(--accent-ink)">RBAC guards here</text>
-  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">router resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(one of ~64 routers)</text>
+  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">router resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(one of ~62 routers)</text>
   <rect x="550" y="48" width="156" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="628" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">shared repo/service</text><text x="628" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">@langfuse/shared</text><text x="628" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">→ ClickHouse / Postgres</text>
   <line x1="130" y1="73" x2="146" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="146,73 138,69 138,77" fill="var(--faint)"/>
   <line x1="264" y1="73" x2="280" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="280,73 272,69 272,77" fill="var(--faint)"/>
@@ -5848,7 +5848,7 @@ repository/service to read ClickHouse/Postgres:</p>
   <text x="360" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">change a backend field → the frontend errors at compile time — tRPC's biggest difference from REST</text>
   <rect x="150" y="166" width="420" height="26" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--faint)">repository, filtering, read-model details → Lessons 22–25</text>
 </svg>
-<div class="figcap"><b>From hook to database</b>: <code>createTRPCContext</code> (trpc.ts:57) injects <code>{session, headers, prisma}</code> into every request; the middleware stack guards auth/RBAC; the resolver calls a <code>@langfuse/shared</code> repository. The return <strong>type threads all the way to the frontend</strong>. Source: <code>root.ts:70</code> (appRouter aggregates ~64 routers).</div>
+<div class="figcap"><b>From hook to database</b>: <code>createTRPCContext</code> (trpc.ts:57) injects <code>{session, headers, prisma}</code> into every request; the middleware stack guards auth/RBAC; the resolver calls a <code>@langfuse/shared</code> repository. The return <strong>type threads all the way to the frontend</strong>. Source: <code>root.ts:70</code> (appRouter aggregates ~62 routers).</div>
 </div>
 
 <p>That <strong>context</strong> injected into every request looks unremarkable but is the bedrock — it gathers, in one shot, "who is this request, what did it
@@ -5916,7 +5916,7 @@ isolation key"):</p>
 </table>
 
 <div class="cols">
-  <div class="col"><h4>😖 if each router wrote its own auth</h4><p>64 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
+  <div class="col"><h4>😖 if each router wrote its own auth</h4><p>62 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
   <div class="col"><h4>😀 converged into middleware + procedure</h4><p>The check is written once, tested once; a router author just <strong>picks the right door</strong> (<code>protectedProjectProcedure</code>) and RBAC applies automatically and uniformly. A new router can <strong>hardly miss</strong> tenant checking — security backstopped by structure.</p></div>
 </div>
 
@@ -5924,7 +5924,7 @@ isolation key"):</p>
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
-  "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
+  "omission" and "drift"</strong>. If 62 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
   <strong>declaratively</strong> via procedure builders, means a router author only picks the right "door" (<code>protectedProjectProcedure</code>) and RBAC takes
   effect <strong>automatically and uniformly</strong>. Even better is the "<strong>pull projectId from the input</strong>" move: it makes the check happen
@@ -5936,11 +5936,11 @@ isolation key"):</p>
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~64 feature routers, the return type threading to the frontend.</li>
+    <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~62 feature routers, the return type threading to the frontend.</li>
     <li><strong>context</strong> (<code>createTRPCContext</code>) injects <code>{ session, headers, prisma }</code> into every request; session from NextAuth.</li>
     <li><strong>A procedure = a stackable middleware chain</strong>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project RBAC).</li>
     <li><strong>RBAC's key move</strong>: <code>enforceUserIsAuthedAndProjectMember</code> pulls <code>projectId</code> from the input at the middleware stage and checks session membership — uniform, before the resolver (echoing Lesson 10).</li>
-    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
+    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 62 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
   </ul>
 </div>
 
@@ -6136,8 +6136,8 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Per a documented distribution
+(~96% of observations start within 2 minutes of the trace per repositories/README.md, with a very long tail), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">
@@ -6210,7 +6210,7 @@ is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny lon
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~98% finish within 5 min; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: D</strong>. L08 made the three tables independent and time-correlated, so JOINs have no FK to follow. Look-back windows (OBSERVATIONS_TO_TRACE_INTERVAL=2 days, SCORE=1 hour) injected into WHERE, with monthly partitioning, scan only a few relevant partitions. The cost is missing extreme-long-tail observations (~96% start within 2 min per the repo README, with a long tail; 2 days leaves margin) — a tiny correctness trade for huge cost savings.</div></div></div>
   </details>
 </div>
 <div class="card spark">
@@ -7506,16 +7506,16 @@ declaring what dataType that name uses, and what bounds / which categories. So n
 </div>
 
 <h2>What fields a score object actually has</h2>
-<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / observation / session / dataset-run</strong> (four reference fields, exactly one non-null).</p>
+<p>Unpack <code>ScoreSchema</code> and a score splits into three groups of fields—"what & how much", "who & with what", and "attached to what". The most worth remembering is the last: <strong>a score must attach to exactly one of trace / session / dataset-run</strong>; <code>observationId</code> is not a fourth peer but pins a step <strong>within</strong> a trace (it requires <code>traceId</code>).</p>
 
 <div class="cols">
   <div class="col"><h4>what · how much</h4><p><code>name</code> which dimension (e.g. "helpfulness"); <code>value</code> always a number; <code>stringValue</code> the label (categorical/boolean/text only); <code>dataType</code> which scale.</p></div>
   <div class="col"><h4>who · with what</h4><p><code>source</code> API / EVAL / ANNOTATION; <code>authorUserId</code> the human annotator (nullable); <code>comment</code> a note (nullable); <code>configId</code> which config validates it; <code>queueId</code> which annotation queue it came from.</p></div>
-  <div class="col"><h4>attached to (one of)</h4><p><code>traceId</code> the whole trace; <code>observationId</code> one step within; <code>sessionId</code> the whole session; <code>datasetRunId</code> one dataset run—<strong>exactly one must be non-null</strong>.</p></div>
+  <div class="col"><h4>attached to (one of three)</h4><p>one of <code>traceId</code> (whole trace), <code>sessionId</code> (whole session), <code>datasetRunId</code> (one dataset run); plus an optional <code>observationId</code> to pin a step <strong>within</strong> a trace (requires traceId).</p></div>
 </div>
-<p>This "one-of-four attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation</strong> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). One score model covers every evaluation granularity, from a single step to a whole batch experiment. Source: <code>packages/shared/src/domain/scores.ts:89-133</code>.</p>
+<p>This "one-of-three (plus in-trace step) attachment point" matters: it lets a score sit on the <strong>whole trace</strong> (was this answer good overall), on <strong>one observation within it</strong> via <code>observationId</code> (was this retrieval step accurate), or on a <strong>whole session</strong> or a <strong>dataset run</strong> (the experiment scenarios of Lessons 34–35). (Special case: <code>CORRECTION</code> scores may attach only to trace/observation, never session/datasetRun.) One score model covers every evaluation granularity. Validation rule: <code>packages/shared/src/utils/scores.ts</code> (<code>applyScoreValidation</code>); field defs in <code>domain/scores.ts</code>.</p>
 
-<svg viewBox="0 0 720 230" role="img" aria-label="a score has four reference fields traceId, observationId, sessionId, datasetRunId and exactly one must be non-null: here traceId points at the whole trace while the other three are null but could equally attach to one observation, a whole session, or a dataset run, so one score model covers every granularity from a single step to a whole batch experiment">
+<svg viewBox="0 0 720 230" role="img" aria-label="a score attaches to exactly one of trace, session or datasetRun, with an optional observationId pinning a step within a trace (requires traceId): here traceId points at the whole trace but could equally be a whole session or a dataset run, so one score model covers every granularity from a single step to a whole batch experiment">
   <rect x="0" y="0" width="720" height="230" fill="var(--bg)"></rect>
   <rect x="20" y="52" width="210" height="150" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"></rect>
   <text x="125" y="74" font-size="11.5" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">one score</text>
@@ -7523,7 +7523,7 @@ declaring what dataType that name uses, and what bounds / which categories. So n
   <text x="34" y="122" font-size="10" fill="var(--muted)">observationId = null</text>
   <text x="34" y="146" font-size="10" fill="var(--muted)">sessionId = null</text>
   <text x="34" y="170" font-size="10" fill="var(--muted)">datasetRunId = null</text>
-  <text x="34" y="192" font-size="9.5" fill="var(--ink)">rule: exactly one non-null</text>
+  <text x="34" y="192" font-size="8.8" fill="var(--ink)">rule: one of trace/session/run</text>
   <rect x="430" y="46" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--accent)"></rect>
   <text x="444" y="70" font-size="10.5" fill="var(--ink)">trace · whole answer good?</text>
   <rect x="430" y="92" width="274" height="38" rx="8" fill="var(--bg)" stroke="var(--faint)"></rect>
@@ -9756,7 +9756,7 @@ Along the way we'll see Lesson 37's dependencies' "second half": referenced chil
   <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
   <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">key fact: a resolved prompt may span several prompt names—the very reason the next section's invalidation is project-scoped</text>
 </svg>
-<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,218+</code>.</div>
+<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,236+</code>.</div>
 </div>
 
 <div class="codefile">
@@ -10857,22 +10857,22 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 
 <h2>The metering model: count observations hourly, report to Stripe</h2>
-<p>Langfuse Cloud's billing unit is the <strong>observation count</strong>—each observable LLM step your app produces counts once. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observations from ClickHouse, aggregates by organization, and pushes the figure to <strong>Stripe's metering API</strong>, leaving Stripe to invoice.</p>
+<p>Langfuse Cloud bills by <strong>usage events</strong>. The metering job (<code>handleCloudUsageMeteringJob</code>) is driven by an <strong>hourly-triggered</strong> scheduled queue: for the <strong>just-passed whole hour</strong>, it counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and pushes them to <strong>Stripe's metering API</strong> — reporting <strong>two meters</strong>: <code>tracing_observations</code> (observation count only, <strong>legacy</strong>) and <code>tracing_events</code> (= trace + score + observation, the <strong>current billing unit</strong>), leaving Stripe to invoice.</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations usage, with Stripe invoicing">
+<svg viewBox="0 0 720 210" role="img" aria-label="Cloud metering flow: an hourly scheduled job, for the past hour interval, counts each project's observation/trace/score counts from ClickHouse, aggregates by organization, and for orgs with a Stripe customerId calls stripe.billing.meterEvents.create to report tracing_observations(legacy) and tracing_events usage, with Stripe invoicing">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">hourly metering: count observations → aggregate by org → report to Stripe</text>
   <rect x="20" y="80" width="120" height="48" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-width="2"/><text x="80" y="100" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">hourly cron</text><text x="80" y="116" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">CloudUsageMeteringJob</text>
   <rect x="170" y="68" width="150" height="72" rx="9" fill="var(--bg)" stroke="var(--teal)"/><text x="245" y="88" text-anchor="middle" font-size="8" font-weight="700" fill="var(--teal)">count this hour's usage</text><text x="245" y="105" text-anchor="middle" font-size="6.4" fill="var(--muted)">getObservationCounts…</text><text x="245" y="118" text-anchor="middle" font-size="6.4" fill="var(--muted)">getTrace / getScore Counts</text><text x="245" y="131" text-anchor="middle" font-size="6.2" fill="var(--faint)">per project, from ClickHouse</text>
   <rect x="350" y="74" width="150" height="60" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="425" y="94" text-anchor="middle" font-size="8" font-weight="700" fill="var(--ink)">aggregate by organization</text><text x="425" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">only those with a Stripe customerId</text><text x="425" y="123" text-anchor="middle" font-size="6.2" fill="var(--faint)">∑ each project's observations</text>
-  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">event=tracing_observations</text>
+  <rect x="530" y="74" width="170" height="60" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="615" y="94" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Stripe metering API</text><text x="615" y="110" text-anchor="middle" font-size="6.2" fill="var(--accent-ink)">meterEvents.create</text><text x="615" y="123" text-anchor="middle" font-size="6.0" fill="var(--muted)">tracing_events + obs(legacy)</text>
   <line x1="140" y1="104" x2="168" y2="104" stroke="var(--accent)" stroke-width="1.4"/><polygon points="168,104 159,100 159,108" fill="var(--accent)"/>
   <line x1="320" y1="104" x2="348" y2="104" stroke="var(--teal)" stroke-width="1.4"/><polygon points="348,104 339,100 339,108" fill="var(--teal)"/>
   <line x1="500" y1="104" x2="528" y2="104" stroke="var(--blue)" stroke-width="1.4"/><polygon points="528,104 519,100 519,108" fill="var(--blue)"/>
   <text x="360" y="170" text-anchor="middle" font-size="8" fill="var(--faint)">Stripe receives "N observations this hour" metering events → invoice at month end; the platform reports counts, invoicing left to the specialist</text>
   <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">the report is wrapped in backOff retry: even network blips must let this usage eventually arrive</text>
 </svg>
-<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>stripe.billing.meterEvents.create({event_name:"tracing_observations", value})</code> (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
+<div class="figcap"><b>usage metering → Stripe invoicing</b>: <code>handleCloudUsageMeteringJob</code> hourly counts the past whole-hour interval via <code>getObservation/Trace/ScoreCountsByProjectInCreationInterval</code> from ClickHouse, aggregates by org, and for orgs with a <code>cloudConfig.stripe.customerId</code> calls <code>meterEvents.create</code> reporting two meters — <code>tracing_observations</code>(legacy) and <code>tracing_events</code>(=trace+score+obs) (<code>backOff</code> retry). Source: <code>worker/src/ee/cloudUsageMetering/handleCloudUsageMeteringJob.ts</code>.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 268" role="img" aria-label="Cloud usage-metering real example: left is hourly metering accumulating (each project counts observations, aggregated per organization) into a monthly total; right is the month-end Stripe invoice broken into subscription (plan), usage (observations billing) and tax line items, summing to a total. Structure from billing getInvoices (subscription/usage/tax breakdown), observations as the billing unit, amounts illustrative">
@@ -10892,14 +10892,14 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   <text x="402" y="48" font-size="9" font-weight="700" fill="var(--accent-ink)">Stripe Invoice · June 2026</text>
   <line x1="402" y1="54" x2="690" y2="54" stroke="var(--line)"/>
   <text x="402" y="72" font-size="7.8" fill="var(--ink)">subscription · Team plan</text><text x="690" y="72" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$199.00</text>
-  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M observations</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
+  <text x="402" y="96" font-size="7.8" fill="var(--ink)">usage · 1.24M events</text><text x="690" y="96" text-anchor="end" font-size="8" font-weight="700" fill="var(--ink)">$124.00</text>
   <text x="402" y="120" font-size="7.8" fill="var(--muted)">tax</text><text x="690" y="120" text-anchor="end" font-size="8" font-weight="700" fill="var(--muted)">$25.84</text>
-  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σobs × unit price (per plan tier; illustrative)</text>
+  <text x="402" y="142" font-size="6.6" fill="var(--faint)">usage = Σevents × unit price (per plan tier; illustrative)</text>
   <line x1="402" y1="154" x2="690" y2="154" stroke="var(--accent)"/>
   <rect x="396" y="160" width="300" height="30" rx="7" fill="var(--accent-soft)"/><text x="408" y="180" font-size="9.5" font-weight="700" fill="var(--accent-ink)">Total due</text><text x="688" y="180" text-anchor="end" font-size="12" font-weight="800" fill="var(--accent-ink)">$348.84</text>
   <text x="360" y="256" text-anchor="middle" font-size="7.2" fill="var(--muted)">the platform only counts (observations per project, aggregated per org); Stripe does the actual invoicing, tax and charging</text>
 </svg>
-<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): the usage billing unit is <code>observations</code> — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σobs × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
+<div class="figcap"><b>The platform counts, Stripe invoices</b> (structure from billing's <code>getInvoices</code>: subscription / usage / tax breakdown; <b>amounts illustrative</b>): usage is billed via <code>tracing_events</code> (trace+score+observation) — each <b>project</b> accumulates them hourly, then they aggregate per <b>organization</b> into a monthly total (1.24M obs illustrative on the left). At month end Stripe issues one invoice split into <b>subscription</b> (fixed plan fee), <b>usage</b> (Σevents × tiered unit price) and <b>tax</b> line items, charged as a total. This "<b>metering separate from billing</b>" boundary matters: the platform focuses on counting accurately, and hands the heavy, compliance-laden invoicing, tax and payments entirely to Stripe.</div>
 </div>
 
 <div class="codefile">
@@ -10914,20 +10914,26 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
       stripe.billing.meterEvents.create({
         event_name: <span class="st">"tracing_observations"</span>,
         timestamp: meterIntervalEnd.getTime() / 1000,
-        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// report count</span>
+        payload: { stripe_customer_id, value: countObservations.toString() } }));  <span class="cm">// legacy meter</span>
   }
+  <span class="cm">// current billing unit: events = traces + scores + observations</span>
+  <span class="kw">const</span> countEvents = countScores + countTraces + countObservations;
+  <span class="kw">if</span> (countEvents &gt; 0) <span class="kw">await</span> backOff(() =&gt;
+    stripe.billing.meterEvents.create({ event_name: <span class="st">"tracing_events"</span>,
+      timestamp: meterIntervalEnd.getTime() / 1000,
+      payload: { stripe_customer_id, value: countEvents.toString() } }));
 }</pre>
 </div>
 
 <table class="t">
   <thead><tr><th>what's counted this hour</th><th>source</th><th>used for billing?</th></tr></thead>
   <tbody>
-    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b>—reported as the <code>tracing_observations</code> meter event</td></tr>
-    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td>stats / internal</td></tr>
-    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td>stats / internal</td></tr>
+    <tr><td>observation count</td><td><code>getObservationCountsByProjectInCreationInterval</code></td><td><b>yes</b> — reported alone as <code>tracing_observations</code>(legacy), and summed into <code>tracing_events</code></td></tr>
+    <tr><td>trace count</td><td><code>getTraceCounts…</code></td><td><b>yes</b> — summed into <code>tracing_events</code></td></tr>
+    <tr><td>score count</td><td><code>getScoreCounts…</code></td><td><b>yes</b> — summed into <code>tracing_events</code></td></tr>
   </tbody>
 </table>
-<p>All three are counted, but <strong>only observation count is billed</strong> (the meterEvent's <code>event_name</code> is literally <code>tracing_observations</code>). Trace/score counts are more for internal stats and reference—the choice of billing unit, as discussed, lands on the most value-aligned observation.</p>
+<p>All three are counted, and all three are billed: metering reports <strong>two meters</strong> — <code>tracing_observations</code> (observation count only, <strong>legacy</strong>, kept for backward compat) and <code>tracing_events</code> (trace + score + observation, the <strong>current billing unit</strong>). So <strong>trace and score counts do count toward billing</strong> (folded into <code>tracing_events</code>), not just internal stats. The billing unit evolved from "observations only" to "the sum of usage events," still at the <strong>fine granularity of one observable operation</strong>.</p>
 
 
 <h2>The crux: metering must be "exactly once"</h2>
@@ -10972,14 +10978,14 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 
 
 <h2>Two different ledgers: platform billing vs your spend alerts</h2>
-<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting observation counts to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
+<p>Easily confused: Part 8 features <strong>two kinds of "money"</strong>, in opposite directions. One is <strong>the platform charging you</strong> (this lesson's metering, reporting usage events to Stripe); the other is <strong>your own LLM spend</strong> (the cost computed in Lessons 16, 42). The latter has a <strong>spend-alert (cloudSpendAlert)</strong> queue: it watches your monthly LLM spend across providers and pings you when it crosses a threshold you set—helping <strong>you</strong> manage <strong>your</strong> money, a separate matter from how the platform bills you.</p>
 
 <svg viewBox="0 0 720 220" role="img" aria-label="two kinds of money in opposite directions: 1 platform billing, the platform charges you, reporting observation counts hourly to Stripe via cloudUsageMeteringQueue with exactly-once care; 2 spend alerts, helping you manage your LLM spend, watching your provider costs via cloudSpendAlertQueue and pinging you over a threshold; self-host has no 1 (no platform fee) but still uses 2-style cost observation">
   <rect x="0" y="0" width="720" height="220" fill="var(--bg)"></rect>
   <rect x="24" y="42" width="322" height="132" rx="10" fill="var(--amber-soft)" stroke="var(--accent)"></rect>
   <text x="185" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">1 platform billing (platform → charges you)</text>
   <text x="40" y="90" font-size="9.5" fill="var(--ink)">direction: platform → charges you</text>
-  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by observation count / hourly → Stripe</text>
+  <text x="40" y="110" font-size="9.5" fill="var(--ink)">by usage events / hourly → Stripe</text>
   <text x="40" y="130" font-size="9.5" fill="var(--muted)">cloudUsageMeteringQueue</text>
   <text x="40" y="150" font-size="9.5" fill="var(--muted)">cares about "exactly once"</text>
   <text x="360" y="108" font-size="14" font-weight="700" text-anchor="middle" fill="var(--accent-ink)">↔</text>
@@ -11004,17 +11010,17 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why does the metering job go to such lengths for "exactly once"—hour alignment, locking, plus fallback unlock?</strong> Because <strong>this is money</strong>, and money's tolerance for error is zero. All earlier chains can occasionally over-count a trace or miss a score with little harm, self-healing next time. Billing is different: <strong>over-report one hour and a customer's credit card gets charged once more</strong>—a complaint-and-Twitter incident; under-report and the platform takes a real loss. A normal background job seeking "eventual consistency" is enough, but the metering job must achieve <strong>"exactly once"</strong>—a notoriously hard guarantee in distributed systems. Langfuse's solution is pragmatic: rather than chase theoretically perfect exactly-once, it uses a <strong>database row as a lock</strong> to plug three real threats one by one—duplicate execution (mutex blocks), task crash (20-minute fallback takeover), interval misalignment (strict hour alignment). <strong>Decomposing "exactly once" into a few implementable concrete defenses, rather than theorizing about guarantees</strong>—that's engineering wisdom.<br><br>
-  <strong>Why does Langfuse bill by "observation count" rather than trace count or token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations, and charging complex agents and simple Q&A the same is unfair. An <strong>observation</strong> is exactly the <strong>atomic metering unit</strong> of "one observable operation"—it best matches "how much Langfuse stored and analyzed for you": complex apps produce more observations and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>. A good billing unit should make "what the customer pays" proportional to "the value they get from you".
+  <strong>Why bill by "usage events" rather than token count?</strong> An interesting product trade-off. Billing by <strong>token</strong> would tightly couple to the model you use (pricey models burn more tokens) and isn't directly tied to Langfuse's value—Langfuse's value is <strong>recording and analysis</strong>, not running the model for you. Billing by <strong>trace</strong> is too coarse: one trace may hold one step or hundreds of observations. So Langfuse picked a <strong>fine-grained "observable operation" unit</strong>: early on it counted only observations (<code>tracing_observations</code>, kept to this day as legacy), and has since evolved to <code>tracing_events</code> = trace + score + observation. Either way, complex apps produce more events and pay more, simple ones pay less, <strong>billing granularity aligned with the value the platform provides</strong>.
 </div>
 
 <div class="card key">
   <div class="tag">🎯 Key points · Part 8 wrap-up</div>
   <ul>
     <li><strong>This is Cloud-exclusive platform billing</strong>: a separate, opposite ledger from your LLM cost (Lessons 16/42); self-host charges no platform fee, so read it as "how managed billing is built".</li>
-    <li><strong>Meter by observation count</strong>: an hourly job counts each org's observations from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report (<code>backOff</code> retry), Stripe invoicing.</li>
+    <li><strong>Meter by usage events</strong>: an hourly job counts each org's obs/trace/score from ClickHouse, and for orgs with a Stripe customerId calls <code>meterEvents.create</code> to report two meters (<code>tracing_observations</code> legacy + <code>tracing_events</code> = the sum; <code>backOff</code> retry), Stripe invoicing.</li>
     <li><strong>"Exactly once" is the crux</strong>: a <code>cronJobs</code> table as distributed lock + ledger—strict hour-aligned intervals, <code>Processing</code> mutex, 20-minute fallback takeover—so each hour's usage is no-dup, no-miss.</li>
     <li><strong>Billing must be exactly-once</strong>: money tolerates no error, normal jobs' "eventual consistency" isn't enough; decompose exactly-once into "anti-duplicate + anti-crash + anti-misalignment" implementable defenses.</li>
-    <li><strong>Observation = a value-aligned billing unit</strong>: better than token (model-bound) or trace (too coarse) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
+    <li><strong>Usage events = a value-aligned billing unit</strong> (<code>tracing_events</code>=trace+score+observation; <code>tracing_observations</code> legacy): better than token (model-bound) at matching "how much Langfuse recorded/analyzed for you"—what the customer pays is proportional to value received. A separate <code>cloudSpendAlert</code> helps you manage your own LLM spend.</li>
   </ul>
 </div>
 
@@ -11034,7 +11040,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   </details>
 </div>
 <div class="quiz">
-  <div class="qn">2. Langfuse Cloud bills you by 'observation count' rather than trace count or token count. Why is the observation a more suitable billing unit?</div>
+  <div class="qn">2. Langfuse Cloud bills by 'usage events' (a fine-grained per-observable-operation unit) rather than token count. Why is this fine-grained unit more suitable than token?</div>
   <ol class="opts">
     <li>observation count is easiest to count</li>
     <li>observation count is smallest, lowest charge</li>
@@ -11043,7 +11049,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: C</strong>. Billing by token couples tightly to your model (pricey models burn more) and isn't directly tied to Langfuse's value (record and analysis, not running the model). Billing by trace is too coarse: one trace may hold one step or hundreds of observations, charging complex agents and simple Q&A the same is unfair. The observation is exactly the atomic metering unit of 'one observable operation', best matching 'how much Langfuse stored and analyzed'—complex apps pay more, simple less. A good billing unit makes what the customer pays proportional to value received. (Metering reports two meters: tracing_observations legacy, and tracing_events = trace+score+observation, the current unit.)</div></div></div>
   </details>
 </div>
 <div class="quiz">
@@ -11052,7 +11058,7 @@ Three focuses: Langfuse Cloud meters by <strong>observation count</strong>, uses
     <li>identical, just different names</li>
     <li>both are the platform charging you</li>
     <li>both only work in self-host</li>
-    <li>opposite directions: metering is 'the platform charging you' (reports observation count to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
+    <li>opposite directions: metering is 'the platform charging you' (reports usage events to Stripe, Cloud-exclusive); spend alert is 'helping you manage your own LLM spend' (watches your cost across providers, alerts on threshold)—one charges you, one helps you watch your money</li>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
@@ -12018,7 +12024,7 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <text x="572" y="178" font-size="6.2" fill="var(--muted)">verified by</text><text x="572" y="190" font-size="6.2" fill="var(--muted)">NextAuth</text>
   <text x="360" y="246" text-anchor="middle" font-size="7" fill="var(--muted)">session strategy=&quot;jwt&quot; · maxAge = AUTH_SESSION_MAX_AGE · flip one byte and the signature breaks</text>
 </svg>
-<div class="figcap"><b>The "identity" you get after login is this signed JWT</b> (shape from <code>next-auth.d.ts</code> and <code>auth.ts</code>, <code>session.strategy=&quot;jwt&quot;</code>; <b>values illustrative</b>): three parts <code>header.payload.signature</code>. Beyond <code>sub</code>/<code>iat</code>/<code>exp</code>, the <code>payload</code> carries the whole <code>user</code> — notably <code>organizations[].role</code> and the nested <code>projects[].role</code>, which is exactly what Lesson 49's RBAC checks. The <code>signature</code> is an HMAC of the first two parts with the server secret: <b>the contents are readable, but flip one byte and the signature no longer matches</b>, so privilege can't be forged. Session lifetime is controlled by <code>AUTH_SESSION_MAX_AGE</code>.</div>
+<div class="figcap"><b>The "identity" you get after login is this signed JWT</b> (shape from <code>next-auth.d.ts</code> and <code>auth.ts</code>, <code>session.strategy=&quot;jwt&quot;</code>; <b>values illustrative</b>): three parts <code>header.payload.signature</code>. Beyond <code>sub</code>/<code>iat</code>/<code>exp</code>, the <code>payload</code> carries the whole <code>user</code> — notably <code>organizations[].role</code> and the nested <code>projects[].role</code>, which is exactly what Lesson 49's RBAC checks. The <code>signature</code> guarantees integrity: flip one byte and it no longer matches, so privilege can't be forged. <b>Note</b>: the panel above shows <b>generic JWT</b> structure; Langfuse registers no custom <code>jwt.encode/decode</code>, so NextAuth v4 issues an <b>encrypted JWE</b> session token by default — the payload is <b>not actually publicly readable</b>, with integrity via AEAD. Session lifetime is controlled by <code>AUTH_SESSION_MAX_AGE</code>.</div>
 </div>
 
 <div class="layers">
@@ -12493,10 +12499,10 @@ This lesson shows how that "ticket system" is implemented with very little code:
 </div>
 
 <h2>Open core: all code open, a few features unlocked by plan</h2>
-<p>First clear up a common misconception: open-core is <strong>not "half open-source, half closed"</strong>. In this Langfuse repo <strong>all features' code is open</strong> — including the "enterprise" ones. The difference is only <strong>whether they can be enabled at runtime</strong>: each org carries a <code>plan</code>, free defaults to <code>"oss"</code> (self-hosted open-source), paid has three cloud tiers <code>cloud:hobby / core / pro / enterprise</code> plus two self-hosted <code>self-hosted:pro / enterprise</code>. The helpers <code>isCloudPlan</code> / <code>isSelfHostedPlan</code> distinguish them by prefix. Whether a feature works hinges entirely on whether your plan is on its allow list.</p>
+<p>First clear up a common misconception: open-core is <strong>not "half open-source, half closed"</strong>. In this Langfuse repo <strong>all features' code is open</strong> — including the "enterprise" ones. The difference is only <strong>whether they can be enabled at runtime</strong>: each org carries a <code>plan</code>, free defaults to <code>"oss"</code> (self-hosted open-source), paid has five cloud tiers <code>cloud:hobby / core / pro / team / enterprise</code> plus two self-hosted <code>self-hosted:pro / enterprise</code>. The helpers <code>isCloudPlan</code> / <code>isSelfHostedPlan</code> distinguish them by prefix. Whether a feature works hinges entirely on whether your plan is on its allow list.</p>
 
 <div class="fig">
-<svg viewBox="0 0 720 240" role="img" aria-label="Open-core model: the entire repo code is open (core + enterprise features both readable), but unlocked at runtime by the org's plan — oss free (self-hosted open-source), cloud tiers (hobby/core/pro/enterprise), self-hosted tiers (pro/enterprise); the plan decides which entitlements can be enabled">
+<svg viewBox="0 0 720 240" role="img" aria-label="Open-core model: the entire repo code is open (core + enterprise features both readable), but unlocked at runtime by the org's plan — oss free (self-hosted open-source), cloud tiers (hobby/core/pro/team/enterprise), self-hosted tiers (pro/enterprise); the plan decides which entitlements can be enabled">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Code all public; features unlocked by plan</text>
   <rect x="30" y="40" width="300" height="180" rx="10" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2"/><text x="180" y="60" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">the entire repo (all open source)</text>
   <rect x="48" y="74" width="264" height="48" rx="7" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="180" y="94" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">free core (everyone)</text><text x="180" y="110" text-anchor="middle" font-size="6.2" fill="var(--muted)">ingest·query·eval·prompt·dashboard…</text>
@@ -12504,14 +12510,14 @@ This lesson shows how that "ticket system" is implemented with very little code:
   <rect x="390" y="46" width="305" height="168" rx="10" fill="var(--bg)" stroke="var(--accent)"/><text x="542" y="66" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">the org's plan decides what can be enabled</text>
   <rect x="406" y="78" width="135" height="30" rx="6" fill="var(--teal)" opacity="0.13" stroke="var(--teal)"/><text x="473" y="97" text-anchor="middle" font-size="6.8" font-weight="700" fill="var(--teal)">oss (default · free)</text>
   <rect x="552" y="78" width="130" height="30" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="617" y="91" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:hobby/core</text><text x="617" y="102" text-anchor="middle" font-size="5.6" fill="var(--muted)">cloud · entry</text>
-  <rect x="406" y="116" width="135" height="32" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="473" y="129" text-anchor="middle" font-size="6.4" fill="var(--ink)">cloud:pro/enterprise</text><text x="473" y="140" text-anchor="middle" font-size="5.6" fill="var(--muted)">cloud · premium</text>
+  <rect x="406" y="116" width="135" height="32" rx="6" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="473" y="129" text-anchor="middle" font-size="6.2" fill="var(--ink)">cloud:pro/team/enterprise</text><text x="473" y="140" text-anchor="middle" font-size="5.6" fill="var(--muted)">cloud · premium</text>
   <rect x="552" y="116" width="130" height="32" rx="6" fill="var(--purple-soft)" stroke="var(--accent)"/><text x="617" y="129" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">self-hosted:pro</text><text x="617" y="140" text-anchor="middle" font-size="6.0" fill="var(--accent-ink)">/enterprise</text>
   <text x="542" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">isCloudPlan / isSelfHostedPlan distinguish by prefix</text>
   <text x="542" y="188" text-anchor="middle" font-size="6.6" fill="var(--faint)">higher plan = longer allow list, larger quotas</text>
   <text x="542" y="204" text-anchor="middle" font-size="6.6" fill="var(--faint)">next: entitlementAccess master table + hasEntitlement gate</text>
   <line x1="330" y1="168" x2="388" y2="130" stroke="var(--accent)" stroke-width="1.3"/><polygon points="388,130 379,131 383,138" fill="var(--accent)"/>
 </svg>
-<div class="figcap"><b>Open-core layering</b>: the code is all in the repo (<code>web/src/features/entitlements/*</code>, <code>packages/shared/src/server/ee/*</code> are open too). Plans at <code>plans.ts:21</code> (<code>type Plan = keyof typeof planLabels</code>, including cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise), defaulting to <code>"oss"</code>; <code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> judge by prefix.</div>
+<div class="figcap"><b>Open-core layering</b>: the code is all in the repo (<code>web/src/features/entitlements/*</code>, <code>packages/shared/src/server/ee/*</code> are open too). Plans at <code>plans.ts:21</code> (<code>type Plan = keyof typeof planLabels</code>, including cloud:hobby/core/pro/team/enterprise + self-hosted:pro/enterprise), defaulting to <code>"oss"</code>; <code>plans.ts:26-27</code> <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> judge by prefix.</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 270" role="img" aria-label="Entitlement-by-plan matrix real example: rows are several entitlements (trace-deletion, data-retention, rbac-project-roles, audit-logs, admin-api, prompt-protected-labels, self-host-ui-customization), columns are four tiers OSS, Cloud Pro, Cloud Team, Self-host EE, each cell a check or cross for whether that tier unlocks the entitlement; base entitlements are universal, governance ones need Team or Enterprise, and UI customization is self-host Enterprise only. From features/entitlements/constants/entitlements.ts, real mapping">
@@ -12564,7 +12570,7 @@ This lesson shows how that "ticket system" is implemented with very little code:
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">free</span><span class="name">oss open core (default plan)</span></div><div class="ld">Everything a self-host install runs out of the box: ingestion, query, eval, prompt, dashboard, automation… the vast majority of features. When an org has no paid plan, <code>plan ?? "oss"</code> falls back here — <strong>defaulting to free, not to paid</strong>.</div></div>
-  <div class="layer l-main"><div class="lh"><span class="badge">paid</span><span class="name">cloud / self-hosted tiers</span></div><div class="ld">Cloud hobby→core→pro→enterprise, self-hosted pro→enterprise, progressively unlocking more enterprise features and loosening more quotas. Same code, different "doors" opened for different orgs by plan.</div></div>
+  <div class="layer l-main"><div class="lh"><span class="badge">paid</span><span class="name">cloud / self-hosted tiers</span></div><div class="ld">Cloud hobby→core→pro→team→enterprise, self-hosted pro→enterprise, progressively unlocking more enterprise features and loosening more quotas. Same code, different "doors" opened for different orgs by plan.</div></div>
   <div class="layer l-part"><div class="lh"><span class="badge">transparent</span><span class="name">enterprise features are open too</span></div><div class="ld">The key difference from a "closed-source commercial edition": the <strong>code</strong> for audit logs, data retention, multi-tenant SSO is <strong>equally public</strong>, in <code>ee/</code> and <code>shared/.../ee/</code>. You can audit, learn, and modify it for yourself — only production enablement needs a license.</div></div>
 </div>
 
@@ -12669,7 +12675,7 @@ This lesson shows how that "ticket system" is implemented with very little code:
   <div class="tag">🎯 Key points</div>
   <ul>
     <li><strong>Open-core ≠ half-closed</strong>: all Langfuse features' code (incl. enterprise) is in the public repo, readable, learnable, self-modifiable. Free vs paid lies in <strong>runtime enablement</strong>, not "whether the code exists."</li>
-    <li><strong>Plan tiering</strong>: an org carries a <code>plan</code>, defaulting to <code>"oss"</code> (free self-host), paid has cloud:hobby/core/pro/enterprise + self-hosted:pro/enterprise; <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> split by prefix.</li>
+    <li><strong>Plan tiering</strong>: an org carries a <code>plan</code>, defaulting to <code>"oss"</code> (free self-host), paid has cloud:hobby/core/pro/team/enterprise + self-hosted:pro/enterprise; <code>isCloudPlan</code>/<code>isSelfHostedPlan</code> split by prefix.</li>
     <li><strong>Master table + one gate</strong>: <code>entitlementAccess: Record&lt;Plan,{entitlements, entitlementLimits}&gt;</code> maps each plan to "which binary features + each resource's quota (number/false unlimited)"; <code>hasEntitlement</code> (admin→true, <code>plan ?? "oss"</code>, <code>includes</code>) is the shared gate in front of every feature — converging authority, easing evolution, of one lineage with Lesson 49's RBAC.</li>
     <li><strong>EE license</strong>: <code>isEnterpriseLicenseAvailable</code> — Cloud (any region) has enterprise features; self-hosting checks whether <code>LANGFUSE_EE_LICENSE_KEY</code> starts with <code>langfuse_ee_</code> (<code>langfuse_pro_</code> isn't enterprise; the prefix encodes the tier).</li>
     <li><strong>Fail-safe default</strong>: no plan falls back to <code>"oss"</code> (least entitlement, paid features off by default), not defaulting to error or all-on — the same safe-default view as "login defaults deny, IP-resolution failure defaults block." EE code lives in a separate package <code>@langfuse/ee</code>, dependency direction <code>web→ee→shared</code>.</li>
@@ -13433,7 +13439,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
 <h2>Themes 1 & 2: wide events + immutability (how data looks and is written)</h2>
 <p><strong>Wide events</strong> are the foundation of the whole architecture and the core claim of "observability 2.0." The traditional approach splits monitoring data into three piles — metrics, logs, traces — then laboriously stitches them back later. Langfuse does the reverse: with the <strong>observation as the primary analytical unit</strong>, it packs an operation's <strong>full context</strong> (input, output, model, usage, latency, custom attributes…) <strong>into one wide, rich event</strong>; a trace is just the "correlation handle" linking related observations, not the only entry point. This preserves <strong>high-cardinality context</strong> — you can slice, group, filter at will to investigate problems <strong>you didn't anticipate (unknown unknowns)</strong>, without pre-building a metric for every future question (Lessons 5/6 domain models and Lesson 41's query engine are this claim landing).</p>
 
-<p><strong>Immutability</strong> is wide events' natural partner. Under high-throughput telemetry, Langfuse <strong>favors append over update</strong>: an event written basically doesn't move. Why? Because "<strong>updates</strong>" are shockingly costly at massive scale — they force <strong>read-time deduplication</strong>, conjuring hidden query costs. In Lesson 13 you saw how ClickHouse uses <strong>ReplacingMergeTree(event_ts, is_deleted) + read-time FINAL deduplication</strong> to swallow "the same entity written multiple times": it doesn't really modify old rows but appends new ones and <strong>keeps the latest version by event_ts</strong> at query time. <strong>Turning "modify" into "append + dedup at query" is the key to write-side surviving at high scale.</strong></p>
+<p><strong>Immutability</strong> is wide events' natural partner. Under high-throughput telemetry, Langfuse <strong>favors append over update</strong>: an event written basically doesn't move. Why? Because "<strong>updates</strong>" are shockingly costly at massive scale — they force <strong>read-time deduplication</strong>, conjuring hidden query costs. In Lesson 8 you saw how ClickHouse uses <strong>ReplacingMergeTree(event_ts, is_deleted) + read-time FINAL deduplication</strong> to swallow "the same entity written multiple times": it doesn't really modify old rows but appends new ones and <strong>keeps the latest version by event_ts</strong> at query time. <strong>Turning "modify" into "append + dedup at query" is the key to write-side surviving at high scale.</strong></p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="Wide events vs fragmented: tradition splits data into metrics/logs/traces piles stitched later; Langfuse packs full context (input output model usage latency attributes) into one wide rich event per observation, preserving high cardinality to investigate unknown unknowns; immutability = append not update, avoiding read-time dedup hidden cost">
@@ -13448,13 +13454,13 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <rect x="520" y="110" width="176" height="52" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="608" y="128" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">why not update?</text><text x="608" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">updates force read-time dedup</text><text x="608" y="154" text-anchor="middle" font-size="6.0" fill="var(--muted)">= hidden query cost at scale</text>
   <line x1="224" y1="102" x2="258" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="258,102 249,98 249,106" fill="var(--accent)"/>
   <line x1="490" y1="90" x2="518" y2="82" stroke="var(--teal)" stroke-width="1.3"/><polygon points="518,82 509,81 511,89" fill="var(--teal)"/>
-  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">L13: ReplacingMergeTree(event_ts, is_deleted) + read-time FINAL → "entity written N times" = "append rows, keep latest at query"</text>
+  <text x="360" y="186" text-anchor="middle" font-size="8" fill="var(--faint)">L8: ReplacingMergeTree(event_ts, is_deleted) + read-time FINAL → "entity written N times" = "append rows, keep latest at query"</text>
   <text x="360" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">Turning "modify" into "append + merge" — the key to high-scale write survival, and the conspiracy between immutability and wide events</text>
 </svg>
-<div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, Lesson 13 ReplacingMergeTree, Lesson 41 query engine.</div>
+<div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, Lesson 8 ReplacingMergeTree, Lesson 41 query engine.</div>
 </div>
 <div class="fig">
-<svg viewBox="0 0 720 288" role="img" aria-label="Design-theme cross-reference table: six themes that run through the whole guide, each mapped to a real mechanism and lessons — wide events (observations as wide high-cardinality rows, L02/L08), immutable+dedup (ReplacingMergeTree FINAL + event-id idempotency, L13/L17), async decoupling (API lands S3+Redis and returns 207, worker consumes, L12/L15), dual storage (Postgres config/txn + ClickHouse analytics, L09/L08), multi-tenancy (projectId on every row + RBAC role×scope, L06/L49), cost-awareness (columnar scans + token pricing + cache hits, L16/L42). Mechanisms from each lesson's source">
+<svg viewBox="0 0 720 288" role="img" aria-label="Design-theme cross-reference table: six themes that run through the whole guide, each mapped to a real mechanism and lessons — wide events (observations as wide high-cardinality rows, L02/L08), immutable+dedup (ReplacingMergeTree FINAL + event-id idempotency, L08/L13), async decoupling (API lands S3+Redis and returns 207, worker consumes, L12/L15), dual storage (Postgres config/txn + ClickHouse analytics, L09/L08), multi-tenancy (projectId on every row + RBAC role×scope, L06/L49), cost-awareness (columnar scans + token pricing + cache hits, L16/L42). Mechanisms from each lesson's source">
   <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: six design themes → the real mechanism each lands in</text>
   <text x="360" y="37" text-anchor="middle" font-size="7.6" fill="var(--muted)">one set of beliefs, realized as concrete code throughout the guide</text>
   <rect x="20" y="46" width="680" height="18" fill="var(--panel-2)"/>
@@ -13468,7 +13474,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <rect x="20" y="98" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
   <rect x="28" y="103" width="142" height="18" rx="5" fill="var(--blue)" opacity="0.16"/><text x="99" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--blue)">immutable + dedup</text>
   <text x="180" y="116" font-size="7.5" font-family="monospace" fill="var(--ink)">ReplacingMergeTree FINAL · event-id idempotency</text>
-  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L13·L17</text>
+  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L08·L13</text>
   <rect x="20" y="130" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
   <rect x="28" y="135" width="142" height="18" rx="5" fill="var(--purple)" opacity="0.16"/><text x="99" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--purple)">async decouple</text>
   <text x="180" y="148" font-size="7.5" font-family="monospace" fill="var(--ink)">API lands S3+Redis → 207 · worker consumes</text>
@@ -13487,7 +13493,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <text x="690" y="244" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L16·L42</text>
   <text x="360" y="274" text-anchor="middle" font-size="7.2" fill="var(--muted)">these six aren't isolated choices but recur on every path — understand one and the rest connect</text>
 </svg>
-<div class="figcap"><b>The whole guide really repeats just six things</b> (every mechanism is from that lesson's real source; lesson numbers are for navigation): ① <b>wide events</b> — make each observation a wide row and keep high cardinality, so you can slice freely (L02/L08); ② <b>immutable + dedup</b> — append-only events converged via <code>ReplacingMergeTree FINAL</code> and event-<code>id</code> idempotency (L13/L17); ③ <b>async decoupling</b> — ingestion just lands S3+Redis and returns <code>207</code>, the heavy work goes to a worker (L12/L15); ④ <b>dual storage</b> — Postgres for config/txn, ClickHouse for analytics (L09/L08); ⑤ <b>multi-tenancy</b> — <code>projectId</code> on every row, RBAC role×scope for authz (L06/L49); ⑥ <b>cost-awareness</b> — columnar scans, token pricing, cache hits (L16/L42). <b>Understand one and the rest connect</b>.</div>
+<div class="figcap"><b>The whole guide really repeats just six things</b> (every mechanism is from that lesson's real source; lesson numbers are for navigation): ① <b>wide events</b> — make each observation a wide row and keep high cardinality, so you can slice freely (L02/L08); ② <b>immutable + dedup</b> — append-only events converged via <code>ReplacingMergeTree FINAL</code> and event-<code>id</code> idempotency (L08/L13); ③ <b>async decoupling</b> — ingestion just lands S3+Redis and returns <code>207</code>, the heavy work goes to a worker (L12/L15); ④ <b>dual storage</b> — Postgres for config/txn, ClickHouse for analytics (L09/L08); ⑤ <b>multi-tenancy</b> — <code>projectId</code> on every row, RBAC role×scope for authz (L06/L49); ⑥ <b>cost-awareness</b> — columnar scans, token pricing, cache hits (L16/L42). <b>Understand one and the rest connect</b>.</div>
 </div>
 
 <div class="layers">
@@ -13571,7 +13577,7 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <thead><tr><th>Theme</th><th>In a sentence</th><th>Seen in lessons</th></tr></thead>
   <tbody>
     <tr><td><b>① wide events</b></td><td>one wide rich event, preserving high cardinality to investigate unknown unknowns</td><td>L05/L06 domain models · L41 query engine</td></tr>
-    <tr><td><b>② immutability</b></td><td>append not update; modify = append new rows + dedup at query (keep latest)</td><td>L13 ReplacingMergeTree · L18</td></tr>
+    <tr><td><b>② immutability</b></td><td>append not update; modify = append new rows + dedup at query (keep latest)</td><td>L08 ReplacingMergeTree · L13</td></tr>
     <tr><td><b>③ async</b></td><td>receive fast, process slowly in queues; fan-out/idempotency/watermark/lock</td><td>L12–19 ingestion · L30/L43/L46/L52</td></tr>
     <tr><td><b>④ dual (tri) storage</b></td><td>PG(OLTP)+CH(OLAP)+S3(payloads), each goes home</td><td>L02/L22/L24 · L52 deletion</td></tr>
     <tr><td><b>⑤ multi-tenancy</b></td><td>projectId everywhere; auth→RBAC→entitlement layered isolation</td><td>L48/L49/L50 · L46/L52 per-project</td></tr>
@@ -13662,7 +13668,7 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
 
 
 <h2>Leg one: born → ingested → stored</h2>
-<p><strong>① Born (Lesson 12).</strong> Your app calls an LLM, the <strong>SDK</strong> creates a trace and its child observations on the spot, recording input, output, model, usage, <strong>batches them up</strong>, and async-POSTs to the ingestion API — your main flow <strong>barely notices</strong>. <strong>② Ingested (Lessons 13-19).</strong> The API first authenticates by API key (<strong>Lesson 49</strong>'s two-tier hash check), <strong>lands the raw event in S3</strong>, <strong>pushes the task to a Redis queue</strong>, and returns 200 immediately — that's "<strong>receive fast</strong>." Then the <strong>worker</strong> pulls from the queue, validates, parses, possibly merges, and <strong>upserts into ClickHouse</strong>. <strong>③ Stored (Lesson 13).</strong> The trace finally <strong>splits into three copies</strong> to settle: analyzable event detail into <strong>ClickHouse</strong> (immutable, ReplacingMergeTree dedup-at-query keeping the latest), bulky inputs/outputs into <strong>S3</strong>, related metadata into <strong>Postgres</strong>. From birth to storage, Lesson 10's "dual (tri) storage" and Lesson 54's "async, immutability" themes first play in concert here.</p>
+<p><strong>① Born (Lesson 12).</strong> Your app calls an LLM, the <strong>SDK</strong> creates a trace and its child observations on the spot, recording input, output, model, usage, <strong>batches them up</strong>, and async-POSTs to the ingestion API — your main flow <strong>barely notices</strong>. <strong>② Ingested (Lessons 13-19).</strong> The API first authenticates by API key (<strong>Lesson 49</strong>'s two-tier hash check), <strong>lands the raw event in S3</strong>, <strong>pushes the task to a Redis queue</strong>, and returns 207 immediately — that's "<strong>receive fast</strong>." Then the <strong>worker</strong> pulls from the queue, validates, parses, possibly merges, and <strong>upserts into ClickHouse</strong>. <strong>③ Stored (Lesson 13).</strong> The trace finally <strong>splits into three copies</strong> to settle: analyzable event detail into <strong>ClickHouse</strong> (immutable, ReplacingMergeTree dedup-at-query keeping the latest), bulky inputs/outputs into <strong>S3</strong>, related metadata into <strong>Postgres</strong>. From birth to storage, Lesson 10's "dual (tri) storage" and Lesson 54's "async, immutability" themes first play in concert here.</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 250" role="img" aria-label="A trace's life timeline: born (SDK creates, L12) → ingested (API auth, land S3, push Redis queue, worker processes, L13-19/L49) → stored (split into three: ClickHouse events + S3 payloads + Postgres metadata) → read (list/detail/session/REST, L20-27) → evaluated (eval scoring, monitor alerts, datasets, L28-36) → acted on (automation webhook/Slack, analytics export, batch, L44-47) → retired (retention cross-store deletion, L52), observed by OTel throughout (L51), gated by plan (L50), isolated by project">
@@ -13865,13 +13871,13 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
   <div class="qn">1. This lesson follows a trace through its 'seven stations' (born→ingested→stored→read→evaluated→acted on→retired). At the 'ingested' station, how does Langfuse withstand high throughput without losing data?</div>
   <ol class="opts">
     <li>make the SDK retry until the database is free</li>
-    <li>'receive fast, process async': after the API authenticates by API key (two-tier hash), it lands the raw event in S3, pushes the task to a Redis queue, and returns 200 immediately (a very thin request path); the real validation/parsing/merging is done by the worker pulling from the queue in the background, upserting into ClickHouse — async peak-shaving, the request isn't dragged by heavy work</li>
+    <li>'receive fast, process async': after the API authenticates by API key (two-tier hash), it lands the raw event in S3, pushes the task to a Redis queue, and returns 207 immediately (a very thin request path); the real validation/parsing/merging is done by the worker pulling from the queue in the background, upserting into ClickHouse — async peak-shaving, the request isn't dragged by heavy work</li>
     <li>drop data over a threshold to stay responsive</li>
     <li>synchronously write all data straight into ClickHouse and wait for confirmation</li>
   </ol>
   <details class="accordion" open>
     <summary>Show answer &amp; explanation <span class="hint">click to expand</span></summary>
-    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The ingested station is a paragon of the 'async' theme. If the request path synchronously wrote data into ClickHouse and waited for confirmation, then at peak when the DB slows, the whole report chain jams and the SDK side times out and loses data. Langfuse makes the request path razor-thin: authenticate + land the raw event in S3 (persisted, not lost) + push the task to a Redis queue, then return 200 immediately. The truly time-consuming validation, parsing, merging, and ClickHouse writes are all handed to the worker to do slowly in the background. So the request side is always fast, never dragged by heavy work (peak-shaving), and since data first landed in S3 + entered the queue, even if the worker can't keep up momentarily nothing is lost (decoupling + retryable). This is the essence of Lessons 12-19's ingestion path and the 'async' theme's first appearance from Lesson 54.</div></div></div>
+    <div class="acc-body"><div class="qa"><div class="a"><strong>Answer: B</strong>. The ingested station is a paragon of the 'async' theme. If the request path synchronously wrote data into ClickHouse and waited for confirmation, then at peak when the DB slows, the whole report chain jams and the SDK side times out and loses data. Langfuse makes the request path razor-thin: authenticate + land the raw event in S3 (persisted, not lost) + push the task to a Redis queue, then return 207 immediately. The truly time-consuming validation, parsing, merging, and ClickHouse writes are all handed to the worker to do slowly in the background. So the request side is always fast, never dragged by heavy work (peak-shaving), and since data first landed in S3 + entered the queue, even if the worker can't keep up momentarily nothing is lost (decoupling + retryable). This is the essence of Lessons 12-19's ingestion path and the 'async' theme's first appearance from Lesson 54.</div></div></div>
   </details>
 </div>
 <div class="quiz">

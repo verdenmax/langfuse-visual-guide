@@ -356,7 +356,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <div class="card prereq"><div class="tag">🧭 <span class="lang-zh">读前</span><span class="lang-en">Before you start</span></div><div class="lang-zh">先读 <a class="xref" href="14-ingestion-queue.html">第14课</a> 的队列与 <a class="xref" href="08-clickhouse-wide-events.html">第8课</a> 的 CH 表，本课讲 ClickhouseWriter 如何批量落盘。</div><div class="lang-en">Read <a class="xref" href="14-ingestion-queue.html">Lesson 14</a> (the queue) and <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> (the CH tables); this lesson covers how ClickhouseWriter batches to disk.</div></div>
   <div class="lang-zh">
 <p class="lead">
-<a class="xref" href="15-ingestion-service.html">第 15 课</a>合并完，最后一步是 <code>clickHouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
+<a class="xref" href="15-ingestion-service.html">第 15 课</a>合并完，最后一步是 <code>clickhouseWriter.addToQueue(...)</code>——记录被塞进一个队列，而不是马上写库。这一课就讲那个队列背后的
 <code>ClickhouseWriter</code>：一个<strong>单例</strong>，把潮水般涌来的<strong>单条记录</strong>攒成<strong>少数几个大批次</strong>，再一次性 INSERT 进 ClickHouse。
 为什么非要攒？因为<a class="xref" href="08-clickhouse-wide-events.html">第 8 课</a>说过，ClickHouse <strong>极度偏爱大批量写入</strong>、最怕逐条插入。这一层，就是把「高频小写」翻译成「低频大写」的<strong>缓冲带</strong>。
 </p>
@@ -576,7 +576,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </div></div>
   <div class="lang-en">
 <p class="lead">
-<a class="xref" href="15-ingestion-service.html">Lesson 15</a>'s merge ended with <code>clickHouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
+<a class="xref" href="15-ingestion-service.html">Lesson 15</a>'s merge ended with <code>clickhouseWriter.addToQueue(...)</code> — the record goes into a queue, not straight to the DB. This lesson covers
 what's behind that queue, the <code>ClickhouseWriter</code>: a <strong>singleton</strong> that gathers the flood of <strong>single records</strong> into a
 handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in one shot. Why batch at all? Because, as <a class="xref" href="08-clickhouse-wide-events.html">Lesson 8</a> said, ClickHouse
 <strong>strongly prefers large batched writes</strong> and dreads row-by-row inserts. This layer is the <strong>buffer</strong> that translates

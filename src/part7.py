@@ -458,7 +458,7 @@ _ZH38.append(r"""
   <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
   <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">关键事实：一个 resolved prompt 可能横跨好几个 prompt 名字——这正是下一节失效设计要项目级的根因</text>
 </svg>
-<div class="figcap"><b>解析 = 把组合展开成成品</b>：<code>buildAndResolvePromptGraph</code> 沿第 37 课的依赖图把子 prompt 内联进父，得到 <code>resolvedPrompt</code>；<code>MAX_PROMPT_NESTING_DEPTH</code> 限深、<code>seen</code> 集合防环。<strong>缓存与返回的都是这个展开后的成品</strong>。源码：<code>PromptService/index.ts:132-144,218+</code>。</div>
+<div class="figcap"><b>解析 = 把组合展开成成品</b>：<code>buildAndResolvePromptGraph</code> 沿第 37 课的依赖图把子 prompt 内联进父，得到 <code>resolvedPrompt</code>；<code>MAX_PROMPT_NESTING_DEPTH</code> 限深、<code>seen</code> 集合防环。<strong>缓存与返回的都是这个展开后的成品</strong>。源码：<code>PromptService/index.ts:132-144,236+</code>。</div>
 </div>
 
 <div class="codefile">
@@ -633,7 +633,7 @@ _EN38.append(r"""
   <line x1="430" y1="98" x2="518" y2="98" stroke="var(--teal)" stroke-width="1.5"/><polygon points="518,98 509,94 509,102" fill="var(--teal)"/>
   <text x="360" y="178" text-anchor="middle" font-size="8" fill="var(--faint)">key fact: a resolved prompt may span several prompt names—the very reason the next section's invalidation is project-scoped</text>
 </svg>
-<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,218+</code>.</div>
+<div class="figcap"><b>resolution = expand composition into a product</b>: <code>buildAndResolvePromptGraph</code> walks Lesson 37's dependency graph, inlining children into the parent to get <code>resolvedPrompt</code>; <code>MAX_PROMPT_NESTING_DEPTH</code> caps depth, a <code>seen</code> set blocks cycles. <strong>What's cached and returned is this expanded product</strong>. Source: <code>PromptService/index.ts:132-144,236+</code>.</div>
 </div>
 
 <div class="codefile">

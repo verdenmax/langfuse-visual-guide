@@ -49,7 +49,7 @@ _ZH20.append(r"""
 <svg viewBox="0 0 720 250" role="img" aria-label="Next.js web 应用：Pages Router 承载 UI 页面与多数 API；三种 API 风格 tRPC 给 UI、REST 给 SDK、特殊语义端点给流式与 webhook">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">Langfuse web 应用：一栋楼，三道门</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js 应用（web/）· 以 Pages Router 为主</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI 页面 pages/project/[projectId]/…（traces / sessions / dashboards / datasets …）</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src 目录：features/ · components/ · server/ · hooks/ · ee/</text>
-  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① 员工通道 · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给自家 UI · 类型安全</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 个 feature 路由</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 21 课</text>
+  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① 员工通道 · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给自家 UI · 类型安全</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~62 个 feature 路由</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 21 课</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② 公共前台 · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">给外部 SDK · 稳定带版本</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern 契约</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">第 27 课</text>
   <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)">③ 装卸口 · 特殊语义</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/**（仅 4 个文件）</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">流式 SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
@@ -74,7 +74,7 @@ _ZH20.append(r"""
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">三种 API 入口</span></div>
-  <pre class="code"><span class="cm">// ① tRPC：UI 的类型安全后端，一个文件接住全部 ~64 个路由</span>
+  <pre class="code"><span class="cm">// ① tRPC：UI 的类型安全后端，一个文件接住全部 ~62 个路由</span>
 web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter（第 21 课）</span>
 
 <span class="cm">// ② 公共 REST：给 SDK 的稳定接口，按资源 + 版本分文件夹</span>
@@ -233,7 +233,7 @@ precisely at a <code>features/</code> subfolder.</p>
 <svg viewBox="0 0 720 250" role="img" aria-label="Next.js web app: Pages Router carries UI pages and most APIs; three API styles tRPC for UI, REST for SDK, special-semantics endpoints for streaming and webhooks">
   <text x="360" y="22" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">The Langfuse web app: one building, three doors</text>
   <rect x="30" y="40" width="660" height="62" rx="10" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="360" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">Next.js app (web/) · primarily Pages Router</text><text x="360" y="78" text-anchor="middle" font-size="8" fill="var(--muted)">UI pages pages/project/[projectId]/… (traces / sessions / dashboards / datasets …)</text><text x="360" y="92" text-anchor="middle" font-size="8" fill="var(--muted)">src dirs: features/ · components/ · server/ · hooks/ · ee/</text>
-  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~64 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
+  <rect x="24" y="124" width="210" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="129" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--accent-ink)">① staff entrance · tRPC</text><text x="129" y="164" text-anchor="middle" font-size="8" fill="var(--accent-ink)">pages/api/trpc/[trpc].ts</text><text x="129" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">own UI · type-safe</text><text x="129" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">~62 feature routers</text><text x="129" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 21</text>
   <rect x="255" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--teal)"/><text x="360" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--teal)">② public reception · REST</text><text x="360" y="164" text-anchor="middle" font-size="8" fill="var(--ink)">pages/api/public/**</text><text x="360" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">external SDK · stable, versioned</text><text x="360" y="194" text-anchor="middle" font-size="7.5" fill="var(--muted)">v1 / v2 / v3 + Fern contract</text><text x="360" y="210" text-anchor="middle" font-size="7.5" fill="var(--faint)">Lesson 27</text>
   <rect x="486" y="124" width="210" height="100" rx="10" fill="var(--bg)" stroke="var(--blue)"/><text x="591" y="146" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink)">③ loading dock · special semantics</text><text x="591" y="164" text-anchor="middle" font-size="7.5" fill="var(--muted)">app/api/** (only 4 files)</text><text x="591" y="180" text-anchor="middle" font-size="7.5" fill="var(--muted)">+ dashboard/execute-query-stream</text><text x="591" y="196" text-anchor="middle" font-size="7.5" fill="var(--muted)">streaming SSE · webhook</text>
   <line x1="129" y1="102" x2="129" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="360" y1="102" x2="360" y2="122" stroke="var(--faint)" stroke-width="1.4"/><line x1="591" y1="102" x2="591" y2="122" stroke="var(--faint)" stroke-width="1.4"/>
@@ -258,7 +258,7 @@ precisely at a <code>features/</code> subfolder.</p>
 
 <div class="codefile">
   <div class="cf-head"><span class="dot"></span><span class="path">web/src/pages/api/ &amp; web/src/app/</span><span class="ln">three API entries</span></div>
-  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~64 routers</span>
+  <pre class="code"><span class="cm">// ① tRPC: the UI's type-safe backend, one file catches all ~62 routers</span>
 web/src/pages/api/trpc/[trpc].ts        <span class="cm">// → appRouter (Lesson 21)</span>
 
 <span class="cm">// ② public REST: the stable interface for SDKs, by resource + version folder</span>
@@ -385,7 +385,7 @@ _EN21 = []
 _ZH21.append(r"""
 <p class="lead">
 上一课点出了三道门，这一课推开「员工通道」——<strong>tRPC</strong>，看它的骨架。tRPC 是 UI 与后端之间<strong>类型安全的契约</strong>：后端定义的类型，前端调用时<strong>一路贯穿</strong>，
-改一处、全链路即时报错。它的结构出奇地简洁：一个<strong>根路由</strong>聚合约 64 个功能路由，加一小撮<strong>「procedure 构建器」</strong>用<strong>分层中间件</strong>统一把守鉴权与 RBAC。
+改一处、全链路即时报错。它的结构出奇地简洁：一个<strong>根路由</strong>聚合约 62 个功能路由，加一小撮<strong>「procedure 构建器」</strong>用<strong>分层中间件</strong>统一把守鉴权与 RBAC。
 看懂这套中间件栈，你就看懂了 Langfuse 整个 UI 后端的安检与脉络。
 </p>
 
@@ -485,7 +485,7 @@ _ZH21.append(r"""
   <rect x="14" y="48" width="116" height="50" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="72" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">UI 钩子</text><text x="72" y="83" text-anchor="middle" font-size="7" fill="var(--muted)">api.traces.all.useQuery</text>
   <rect x="148" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="206" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">tRPC 入口</text><text x="206" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">[trpc].ts + context</text><text x="206" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">注入 session/prisma</text>
   <rect x="282" y="48" width="116" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="340" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">中间件栈</text><text x="340" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">OTel→错误→鉴权</text><text x="340" y="90" text-anchor="middle" font-size="7" fill="var(--accent-ink)">RBAC 在此把守</text>
-  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">路由 resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(64 个路由之一)</text>
+  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">路由 resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(62 个路由之一)</text>
   <rect x="550" y="48" width="156" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="628" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">shared 仓储/服务</text><text x="628" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">@langfuse/shared</text><text x="628" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">→ ClickHouse / Postgres</text>
   <line x1="130" y1="73" x2="146" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="146,73 138,69 138,77" fill="var(--faint)"/>
   <line x1="264" y1="73" x2="280" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="280,73 272,69 272,77" fill="var(--faint)"/>
@@ -495,7 +495,7 @@ _ZH21.append(r"""
   <text x="360" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">改后端字段 → 前端编译即报错，这是 tRPC 相对 REST 的最大不同</text>
   <rect x="150" y="166" width="420" height="26" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--faint)">仓储层、过滤、读模型的细节 → 第 22–25 课</text>
 </svg>
-<div class="figcap"><b>从钩子到数据库</b>：<code>createTRPCContext</code>（trpc.ts:57）把 <code>{session, headers, prisma}</code> 注入每个请求；中间件栈把守鉴权/RBAC；resolver 调 <code>@langfuse/shared</code> 仓储读库。返回<strong>类型一路贯穿到前端</strong>。源码：<code>root.ts:70</code>（appRouter 聚合 ~64 路由）。</div>
+<div class="figcap"><b>从钩子到数据库</b>：<code>createTRPCContext</code>（trpc.ts:57）把 <code>{session, headers, prisma}</code> 注入每个请求；中间件栈把守鉴权/RBAC；resolver 调 <code>@langfuse/shared</code> 仓储读库。返回<strong>类型一路贯穿到前端</strong>。源码：<code>root.ts:70</code>（appRouter 聚合 ~62 路由）。</div>
 </div>
 
 <p>那个被注入每个请求的 <strong>context</strong> 看似不起眼，却是整套机制的地基——它把「这次请求是谁、带了什么、能用哪些工具」一次性备齐：</p>
@@ -560,7 +560,7 @@ _ZH21.append(r"""
 </table>
 
 <div class="cols">
-  <div class="col"><h4>😖 假如每个路由各写鉴权</h4><p>64 个路由各自手写「检查登录、检查项目成员」。只要有一个人忘了写、或写得不一致，那一处就成了<strong>租户隔离的破口</strong>——别的项目的数据可能被读走。安全代码最怕这种「一处疏漏」。</p></div>
+  <div class="col"><h4>😖 假如每个路由各写鉴权</h4><p>62 个路由各自手写「检查登录、检查项目成员」。只要有一个人忘了写、或写得不一致，那一处就成了<strong>租户隔离的破口</strong>——别的项目的数据可能被读走。安全代码最怕这种「一处疏漏」。</p></div>
   <div class="col"><h4>😀 收敛成中间件 + procedure</h4><p>校验写一次、测一次，路由作者只需<strong>选对那道门</strong>（<code>protectedProjectProcedure</code>），RBAC 就自动统一生效。新增路由几乎<strong>不可能漏掉</strong>租户校验——安全靠结构兜底。</p></div>
 </div>
 """)
@@ -571,7 +571,7 @@ _ZH21.append(r"""
 <div class="card spark">
   <div class="tag">🎯 设计取舍</div>
   <strong>为什么把鉴权做成「中间件 + procedure 构建器」，而不是在每个路由里各写一遍 if 判断？</strong> 因为<strong>安全代码最怕「漏写」和「写歪」</strong>。
-  如果 64 个路由各自手写「检查登录、检查项目成员」，迟早有人会忘掉一处、或写得不一致——而那一处就是租户隔离的破口。把校验<strong>收敛成几个中间件</strong>、
+  如果 62 个路由各自手写「检查登录、检查项目成员」，迟早有人会忘掉一处、或写得不一致——而那一处就是租户隔离的破口。把校验<strong>收敛成几个中间件</strong>、
   再用 procedure 构建器<strong>声明式地组合</strong>，路由作者只需选对「门」（<code>protectedProjectProcedure</code>），RBAC 就<strong>自动、统一</strong>地生效。
   更妙的是「<strong>从输入里取 projectId</strong>」这一招：它让校验<strong>先于业务逻辑</strong>发生，任何受保护路由都不可能在没核验租户的情况下碰到数据。
   这正是第 6 课「把复杂度收敛到一处能严格测试的地方」、第 10 课「project_id 是隔离键」在 API 层的落地——<strong>安全靠结构保证，而非靠每个人自觉。</strong>
@@ -580,11 +580,11 @@ _ZH21.append(r"""
 <div class="card key">
   <div class="tag">🎯 本课要点</div>
   <ul>
-    <li>tRPC 是 UI↔后端的<strong>类型安全契约</strong>：一个根路由 <code>appRouter</code>（<code>root.ts:70</code>）聚合约 64 个功能路由，返回类型一路贯穿到前端。</li>
+    <li>tRPC 是 UI↔后端的<strong>类型安全契约</strong>：一个根路由 <code>appRouter</code>（<code>root.ts:70</code>）聚合约 62 个功能路由，返回类型一路贯穿到前端。</li>
     <li><strong>context</strong>（<code>createTRPCContext</code>）给每个请求注入 <code>{ session, headers, prisma }</code>；session 来自 NextAuth。</li>
     <li><strong>procedure = 可叠加的中间件栈</strong>：<code>publicProcedure</code>(OTel+错误处理) → <code>authenticatedProcedure</code>(+登录) → <code>protectedProjectProcedure</code>(+项目 RBAC)。</li>
     <li><strong>RBAC 关键招</strong>：<code>enforceUserIsAuthedAndProjectMember</code> 在中间件阶段从输入取 <code>projectId</code>、校验 session 成员资格——统一、先于 resolver（呼应第 10 课）。</li>
-    <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 64 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（第 6 课）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
+    <li>取舍：把鉴权收敛成中间件 + 声明式 procedure，避免 62 个路由各写各错；<strong>安全靠结构保证、而非靠人人自觉</strong>（第 6 课）。错误处理还会把 ClickHouse 资源错误翻成友好提示。</li>
   </ul>
 </div>
 """)
@@ -593,7 +593,7 @@ _EN21.append(r"""
 <p class="lead">
 Last lesson named the three doors; this one pushes open the "staff entrance" — <strong>tRPC</strong> — and shows its skeleton. tRPC is the <strong>type-safe
 contract</strong> between UI and server: types the backend defines flow <strong>end to end</strong> to the frontend caller, so a change in one place errors the
-whole chain instantly. Its structure is surprisingly lean: one <strong>root router</strong> aggregates ~64 feature routers, plus a handful of <strong>"procedure
+whole chain instantly. Its structure is surprisingly lean: one <strong>root router</strong> aggregates ~62 feature routers, plus a handful of <strong>"procedure
 builders"</strong> that guard auth and RBAC uniformly via <strong>layered middleware</strong>. Grasp this middleware stack and you grasp the security and the flow
 of Langfuse's entire UI backend.
 </p>
@@ -696,7 +696,7 @@ repository/service to read ClickHouse/Postgres:</p>
   <rect x="14" y="48" width="116" height="50" rx="9" fill="var(--blue-soft)" stroke="var(--blue)"/><text x="72" y="68" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">UI hook</text><text x="72" y="83" text-anchor="middle" font-size="7" fill="var(--muted)">api.traces.all.useQuery</text>
   <rect x="148" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="206" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">tRPC entry</text><text x="206" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">[trpc].ts + context</text><text x="206" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">inject session/prisma</text>
   <rect x="282" y="48" width="116" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="340" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">middleware stack</text><text x="340" y="78" text-anchor="middle" font-size="7" fill="var(--accent-ink)">OTel→error→auth</text><text x="340" y="90" text-anchor="middle" font-size="7" fill="var(--accent-ink)">RBAC guards here</text>
-  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">router resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(one of ~64 routers)</text>
+  <rect x="416" y="48" width="116" height="50" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="474" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--ink)">router resolver</text><text x="474" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">traceRouter.all</text><text x="474" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">(one of ~62 routers)</text>
   <rect x="550" y="48" width="156" height="50" rx="9" fill="var(--bg)" stroke="var(--teal)" stroke-width="2"/><text x="628" y="64" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--teal)">shared repo/service</text><text x="628" y="78" text-anchor="middle" font-size="7" fill="var(--muted)">@langfuse/shared</text><text x="628" y="90" text-anchor="middle" font-size="7" fill="var(--muted)">→ ClickHouse / Postgres</text>
   <line x1="130" y1="73" x2="146" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="146,73 138,69 138,77" fill="var(--faint)"/>
   <line x1="264" y1="73" x2="280" y2="73" stroke="var(--faint)" stroke-width="1.5"/><polygon points="280,73 272,69 272,77" fill="var(--faint)"/>
@@ -706,7 +706,7 @@ repository/service to read ClickHouse/Postgres:</p>
   <text x="360" y="150" text-anchor="middle" font-size="8" fill="var(--muted)">change a backend field → the frontend errors at compile time — tRPC's biggest difference from REST</text>
   <rect x="150" y="166" width="420" height="26" rx="7" fill="none" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="360" y="183" text-anchor="middle" font-size="8" fill="var(--faint)">repository, filtering, read-model details → Lessons 22–25</text>
 </svg>
-<div class="figcap"><b>From hook to database</b>: <code>createTRPCContext</code> (trpc.ts:57) injects <code>{session, headers, prisma}</code> into every request; the middleware stack guards auth/RBAC; the resolver calls a <code>@langfuse/shared</code> repository. The return <strong>type threads all the way to the frontend</strong>. Source: <code>root.ts:70</code> (appRouter aggregates ~64 routers).</div>
+<div class="figcap"><b>From hook to database</b>: <code>createTRPCContext</code> (trpc.ts:57) injects <code>{session, headers, prisma}</code> into every request; the middleware stack guards auth/RBAC; the resolver calls a <code>@langfuse/shared</code> repository. The return <strong>type threads all the way to the frontend</strong>. Source: <code>root.ts:70</code> (appRouter aggregates ~62 routers).</div>
 </div>
 
 <p>That <strong>context</strong> injected into every request looks unremarkable but is the bedrock — it gathers, in one shot, "who is this request, what did it
@@ -774,7 +774,7 @@ isolation key"):</p>
 </table>
 
 <div class="cols">
-  <div class="col"><h4>😖 if each router wrote its own auth</h4><p>64 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
+  <div class="col"><h4>😖 if each router wrote its own auth</h4><p>62 routers each hand-write "check login, check project membership". One person forgetting it, or writing it inconsistently, and that spot becomes a <strong>tenant-isolation breach</strong> — another project's data could be read. Security code dreads exactly this "single omission".</p></div>
   <div class="col"><h4>😀 converged into middleware + procedure</h4><p>The check is written once, tested once; a router author just <strong>picks the right door</strong> (<code>protectedProjectProcedure</code>) and RBAC applies automatically and uniformly. A new router can <strong>hardly miss</strong> tenant checking — security backstopped by structure.</p></div>
 </div>
 """)
@@ -783,7 +783,7 @@ _EN21.append(r"""
 <div class="card spark">
   <div class="tag">🎯 Design trade-off</div>
   <strong>Why make auth a "middleware + procedure builder" rather than an if-check hand-written in each router?</strong> Because <strong>security code most fears
-  "omission" and "drift"</strong>. If 64 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
+  "omission" and "drift"</strong>. If 62 routers each hand-write "check login, check project membership", sooner or later someone forgets one, or writes it
   inconsistently — and that one spot is a hole in tenant isolation. Converging the checks into a <strong>few middleware</strong>, then composing them
   <strong>declaratively</strong> via procedure builders, means a router author only picks the right "door" (<code>protectedProjectProcedure</code>) and RBAC takes
   effect <strong>automatically and uniformly</strong>. Even better is the "<strong>pull projectId from the input</strong>" move: it makes the check happen
@@ -795,11 +795,11 @@ _EN21.append(r"""
 <div class="card key">
   <div class="tag">🎯 Key points</div>
   <ul>
-    <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~64 feature routers, the return type threading to the frontend.</li>
+    <li>tRPC is the <strong>type-safe contract</strong> between UI and backend: one root router <code>appRouter</code> (<code>root.ts:70</code>) aggregates ~62 feature routers, the return type threading to the frontend.</li>
     <li><strong>context</strong> (<code>createTRPCContext</code>) injects <code>{ session, headers, prisma }</code> into every request; session from NextAuth.</li>
     <li><strong>A procedure = a stackable middleware chain</strong>: <code>publicProcedure</code>(OTel+error) → <code>authenticatedProcedure</code>(+login) → <code>protectedProjectProcedure</code>(+project RBAC).</li>
     <li><strong>RBAC's key move</strong>: <code>enforceUserIsAuthedAndProjectMember</code> pulls <code>projectId</code> from the input at the middleware stage and checks session membership — uniform, before the resolver (echoing Lesson 10).</li>
-    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 64 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
+    <li>Tradeoff: converging auth into middleware + declarative procedures avoids 62 routers each writing (and mis-writing) it; <strong>security guaranteed by structure</strong> (Lesson 6). The error layer also turns ClickHouse resource errors into friendly advice.</li>
   </ul>
 </div>
 """)
@@ -952,7 +952,7 @@ _ZH22.append(r"""
 </div>
 
 <p>当然，窗也有代价：极少数<strong>跨度异常长</strong>的 observation（晚于 2 天才结束）可能落在窗外、被漏掉。这是一个<strong>有意识的取舍</strong>——
-用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据实测（约 96% 的观测在 trace 之后 2 分钟内开始）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
+用「放过极长尾的一点点正确性」换「JOIN 不再扫全表」的巨大成本节省。Langfuse 据源码记录的分布（<code>repositories/README.md</code>：约 96% 的观测在 trace 之后 2 分钟内开始，但有很长的长尾）把窗设成 2 天，留足极大的安全裕量，几乎不会真漏。
 <strong>正确性与成本之间，工程师按真实数据分布画了一条务实的线。</strong></p>
 """)
 
@@ -1132,8 +1132,8 @@ happened", it searches only within a <strong>bounded time range</strong>.</p>
 </div>
 
 <p>The window has a cost, of course: a rare <strong>unusually long</strong> observation (ending more than 2 days late) could fall outside the window and be missed. This
-is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Based on measurement
-(~96% of observations start within 2 minutes of the trace), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
+is a <strong>deliberate trade-off</strong> — trading "letting go of a tiny long tail of correctness" for "JOINs no longer scanning the whole table". Per a documented distribution
+(~96% of observations start within 2 minutes of the trace per repositories/README.md, with a very long tail), Langfuse sets the window to 2 days, leaving a huge safety margin, so it almost never truly misses.
 <strong>Between correctness and cost, engineers drew a pragmatic line by the real data distribution.</strong></p>
 
 <table class="t">
