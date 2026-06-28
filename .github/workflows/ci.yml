@@ -24,6 +24,7 @@ jobs:
           cd src
           python3 check_html.py
           python3 check_links.py
+          python3 tools/svg_audit.py
       - name: Ensure committed output is in sync with sources
         run: |
           git add -A

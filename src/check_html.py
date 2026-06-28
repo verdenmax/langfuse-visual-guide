@@ -29,6 +29,7 @@ sys.path.insert(0, HERE)
 
 import shell  # noqa: E402
 from registry import CONTENT  # noqa: E402
+import quizzes  # noqa: E402
 
 PAGES = shell.PAGES
 ORDER = [p[0] for p in PAGES]
@@ -49,7 +50,7 @@ MIN_CJK = 1800  # per-lesson zh CJK floor; diagram/code-heavy lessons run leaner
 # text. The good early lessons (L01-14) sit at ~46-70 zh chars; later ones had
 # ballooned to 400-530. The detail lives in the lesson body, not the TOC blurb.
 SUB_MAX_ZH = 80       # max Chinese chars per subtitle
-SUB_MAX_EN = 150      # max English chars per subtitle
+SUB_MAX_EN = 125      # max English chars per subtitle (keeps the TOC balanced both langs)
 SUB_FORBID = re.compile(r"\.(?:ts|tsx|js|py|sql|prisma|json|yml|md):\d")  # no file:line in TOC
 
 # Every class used in generated HTML must be defined in shell.CSS. Catches
@@ -119,6 +120,53 @@ def check_glossary():
             add("ERR", "glossary", f"term {entry[0]!r} links to unknown lesson {fname!r}")
     if not os.path.exists(os.path.join(ROOT, "glossary.html")):
         add("ERR", "glossary.html", "missing (run build.py)")
+
+
+def check_quiz_coverage():
+    """Every lesson must ship a non-empty self-test quiz in both languages.
+    quizzes.render() returns '' for a missing lesson, which would silently pass
+    the structural checks — so assert coverage explicitly."""
+    for fname in ORDER:
+        for lang in ("zh", "en"):
+            if not quizzes.render(fname, lang).strip():
+                add("ERR", fname, f"missing {lang} quiz (quizzes.render returned empty)")
+
+
+def check_subtitle_coverage():
+    """Every lesson must have an index TOC subtitle; a missing entry renders a
+    blank blurb in the index with no other error."""
+    for fname in ORDER:
+        if fname not in shell.SUBTITLES:
+            add("ERR", fname, "missing SUBTITLES entry (index blurb would be blank)")
+
+
+# The read-time FINAL dedup over ReplacingMergeTree is taught in L08. Guard against
+# an inter-lesson reference attributing that mechanism to the wrong lesson — the exact
+# mis-citation class the content audit found in L13/L54. Runs on the lesson SOURCE
+# (pre-autolink) so 第N课 / Lesson N / the compact L08 form are all visible, and anchors
+# on the ReplacingMergeTree…FINAL co-occurrence (which is unambiguously the L08 mechanism).
+_XREF_RMT_FINAL = re.compile(r"ReplacingMergeTree[^。.<]{0,60}?FINAL")
+_XREF_LESSON_REF = re.compile(r"第\s*(\d{1,2})\s*课|Lesson\s+(\d{1,2})\b|\bL0?(\d{1,2})\b")
+_XREF_EXPECTED_LESSON = 8
+
+
+def check_xref_semantics():
+    """WARN if ReplacingMergeTree+FINAL is cited next to a lesson reference that is
+    not L08 (and L08 is absent from the window). Skips windows with no lesson ref
+    (a lesson teaching the mechanism without citing one is fine)."""
+    for fname in ORDER:
+        c = CONTENT.get(fname) or {}
+        for lang in ("zh", "en"):
+            src = c.get(lang, "")
+            for m in _XREF_RMT_FINAL.finditer(src):
+                window = src[max(0, m.start() - 110): m.end() + 110]
+                nums = {
+                    int(next(g for g in nm.groups() if g))
+                    for nm in _XREF_LESSON_REF.finditer(window)
+                }
+                if nums and _XREF_EXPECTED_LESSON not in nums:
+                    add("WARN", fname, f"ReplacingMergeTree+FINAL ({lang}) cited near Lesson(s) {sorted(nums)} but it is taught in L{_XREF_EXPECTED_LESSON}")
+
 
 
 def check_score_terms(lesson_html):
@@ -256,7 +304,10 @@ def main():
             add("ERR", "registry", f"CONTENT key not in PAGES: {fname}")
 
     check_subtitles()
+    check_subtitle_coverage()
+    check_quiz_coverage()
     check_xrefs(lesson_html)
+    check_xref_semantics()
     check_glossary()
     check_part_finales(lesson_html)
     check_prereqs()

@@ -17,7 +17,8 @@ space = 0.3 x); inheritance of font-size / text-anchor from wrapping <g>
 groups is resolved so labels are measured at their true rendered size.
 
 Run from src/:  python3 tools/svg_audit.py [--verbose]
-Exit code is always 0 (advisory); parse the printed summary counts.
+Exit code is non-zero if any box-overflow / canvas-overflow / tiny-cjk is found
+(so it gates CI); the printed summary lists the per-kind counts.
 """
 import glob
 import html
@@ -149,7 +150,10 @@ def main():
     print(f"box-overflow    : {counts['box-overflow']}")
     print(f"canvas-overflow : {counts['canvas-overflow']}")
     print(f"tiny-cjk(<{MIN_FONT}) : {counts['tiny-cjk']}")
+    # Gate: non-zero exit if any real overflow or undersized CJK is found,
+    # so CI fails instead of silently passing.
+    return 1 if (counts['box-overflow'] or counts['canvas-overflow'] or counts['tiny-cjk']) else 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
