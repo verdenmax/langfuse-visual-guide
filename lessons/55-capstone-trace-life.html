@@ -386,6 +386,76 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>一条 trace 的完整生命周期</b>：出生(<a class="xref" href="12-ingestion-api.html">L12</a> SDK) → 摄取(<a class="xref" href="13-event-types-merge.html">L13</a>-19 摄取链路 + <a class="xref" href="49-rbac-apikeys-scim.html">L49</a> API key 认证) → 落库(<a class="xref" href="13-event-types-merge.html">L13</a> ClickHouse/S3/Postgres) → 被读(<a class="xref" href="20-web-app-architecture.html">L20</a>-27) → 被评估(<a class="xref" href="28-scoring-model.html">L28</a>-36) → 被作用(<a class="xref" href="44-automations-webhooks.html">L44</a>-47) → 退场(<a class="xref" href="52-data-lifecycle-and-deletion.html">L52</a>)。三条隐线贯穿：自观测(<a class="xref" href="51-self-observability-and-config.html">L51</a>)、plan 门控(<a class="xref" href="50-open-core-and-entitlements.html">L50</a>)、projectId 多租户隔离。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 248" role="img" aria-label="一条 trace 一生的地铁线旅程图：主线七站——诞生(SDK 埋点,L06)、摄取(API 落 S3+Redis 返 207,L12)、合并入库(worker 写 ClickHouse,L13/L17)、被读(列表/详情,L24)、被评估(裁判/评分,L29)、被作用(监控/自动化,L44)、退休(保留/删除,L52)；下方三条贯穿每站的隐藏轨——projectId 多租户(L06/L49)、OTel 自我可观测(L51)、plan 权益(L50)。课号为导航">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">终章：一条 trace 的一生（地铁线）</text>
+  <line x1="58" y1="86" x2="660" y2="86" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <text x="58" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">诞生</text>
+  <text x="58" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">SDK 埋点</text>
+  <circle cx="58" cy="86" r="11" fill="var(--bg)" stroke="var(--accent)" stroke-width="3"/><text x="58" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">①</text>
+  <text x="58" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L06</text>
+  <text x="158" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">摄取</text>
+  <text x="158" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">API→S3+Redis→207</text>
+  <circle cx="158" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="158" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">②</text>
+  <text x="158" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L12</text>
+  <text x="259" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">入库</text>
+  <text x="259" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">worker→ClickHouse</text>
+  <circle cx="259" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="259" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">③</text>
+  <text x="259" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L13·17</text>
+  <text x="359" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">被读</text>
+  <text x="359" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">列表/详情</text>
+  <circle cx="359" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="359" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">④</text>
+  <text x="359" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L24</text>
+  <text x="459" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">被评估</text>
+  <text x="459" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">裁判/评分</text>
+  <circle cx="459" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="459" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">⑤</text>
+  <text x="459" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L29</text>
+  <text x="560" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">被作用</text>
+  <text x="560" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">监控/自动化</text>
+  <circle cx="560" cy="86" r="11" fill="var(--bg)" stroke="var(--amber)" stroke-width="3"/><text x="560" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">⑥</text>
+  <text x="560" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L44</text>
+  <text x="660" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">退休</text>
+  <text x="660" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">保留/删除</text>
+  <circle cx="660" cy="86" r="11" fill="var(--bg)" stroke="var(--red)" stroke-width="3"/><text x="660" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">⑦</text>
+  <text x="660" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L52</text>
+  <text x="58" y="132" font-size="7.4" font-weight="700" fill="var(--muted)">↓ 三条贯穿每一站的隐藏轨</text>
+  <line x1="58" y1="150" x2="660" y2="150" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="158" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="259" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="359" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="459" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="560" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="660" cy="150" r="2.4" fill="var(--accent)"/>
+  <rect x="54" y="141" width="92" height="16" rx="8" fill="var(--accent)" opacity="0.16"/><text x="100" y="153" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">🔑 projectId</text>
+  <text x="160" y="153" font-size="6.8" fill="var(--muted)">多租户：每行每查询都被它圈住</text>
+  <text x="690" y="153" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--accent)">L06·49</text>
+  <line x1="58" y1="178" x2="660" y2="178" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="158" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="259" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="359" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="459" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="560" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="660" cy="178" r="2.4" fill="var(--blue)"/>
+  <rect x="54" y="169" width="92" height="16" rx="8" fill="var(--blue)" opacity="0.16"/><text x="100" y="181" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">📊 OTel</text>
+  <text x="160" y="181" font-size="6.8" fill="var(--muted)">自我可观测：每一步自己也是一条 trace</text>
+  <text x="690" y="181" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--blue)">L51</text>
+  <line x1="58" y1="206" x2="660" y2="206" stroke="var(--purple)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="158" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="259" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="359" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="459" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="560" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="660" cy="206" r="2.4" fill="var(--purple)"/>
+  <rect x="54" y="197" width="92" height="16" rx="8" fill="var(--purple)" opacity="0.16"/><text x="100" y="209" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">🎫 plan</text>
+  <text x="160" y="209" font-size="6.8" fill="var(--muted)">权益：每一步能不能用由它决定</text>
+  <text x="690" y="209" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--purple)">L50</text>
+  <text x="360" y="234" text-anchor="middle" font-size="7.4" fill="var(--accent-ink)">一条 trace 从生到退，全程被这三条轨贯穿——这就是 Langfuse 的全貌</text>
+</svg>
+<div class="figcap"><b>把整本书连成一条线：一条 trace 的一生</b>（课号为导航）：它在你的应用里<b>诞生</b>（SDK 埋点，<a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>），被<b>摄取</b>（API 落 S3+Redis 即返 <code>207</code>，<a class="xref" href="12-ingestion-api.html">L12</a>），由 worker <b>合并入库</b>（ClickHouse，<a class="xref" href="13-event-types-merge.html">L13</a>/<a class="xref" href="17-clickhouse-writer.html">L17</a>），随后被<b>读</b>（列表/详情，<a class="xref" href="24-lists-and-tables.html">L24</a>）、被<b>评估</b>（裁判/评分，<a class="xref" href="29-llm-as-a-judge.html">L29</a>）、被<b>作用</b>（监控/自动化，<a class="xref" href="44-automations-webhooks.html">L44</a>），最终<b>退休</b>（保留窗口到期后跨存储删除，<a class="xref" href="52-data-lifecycle-and-deletion.html">L52</a>）。而三条<b>隐藏轨</b>贯穿每一站：<code>projectId</code>（多租户，<a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>/<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>）圈住每行每查询、<b>OTel</b>（<a class="xref" href="51-self-observability-and-config.html">L51</a>）让每一步自己也成为一条 trace、<code>plan</code>（权益，<a class="xref" href="50-open-core-and-entitlements.html">L50</a>）决定每一步能不能用。<b>读懂这条线，你就读懂了 Langfuse。</b></div>
+</div>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>出生：SDK 就地打包（<a class="xref" href="12-ingestion-api.html">L12</a>）</h4><p>应用调 LLM，SDK 创建 trace + observation，记下输入/输出/模型/用量，攒批异步 POST——主流程几乎无感。</p></div></div>
@@ -570,9 +640,79 @@ By the end of this journey, your understanding of Langfuse upgrades from "knowin
   <circle cx="600" cy="70" r="6" fill="var(--blue)"/><text x="600" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">⑥act on</text><text x="600" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">automation/export</text><text x="600" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L44-47</text>
   <circle cx="675" cy="70" r="6" fill="var(--muted)"/><text x="672" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--muted)">⑦retire</text><text x="672" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">cross-store delete</text><text x="672" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L52</text>
   <rect x="40" y="138" width="650" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="365" y="156" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">three hidden threads running throughout</text><text x="365" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">observed by the platform's own OTel/logs (L51) · features gated by org plan (L50) · every step isolated by projectId (multi-tenancy)</text>
-  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">the six themes take their places on this assembly line</text><text x="365" y="226" text-anchor="middle" font-size="6.4" fill="var(--muted)">wide events(shape)·immutability(how to write)·async(where work)·dual storage(where stored)·multi-tenancy(whose)·cost(what's worth doing)</text>
+  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">the six themes take their places on this assembly line</text><text x="365" y="226" text-anchor="middle" font-size="6.5" fill="var(--muted)">wide events(shape)·immutability(how to write)·async(where work)·dual storage(where stored)·multi-tenancy(whose)·cost(what's worth doing)</text>
 </svg>
 <div class="figcap"><b>A trace's complete lifecycle</b>: born (<a class="xref" href="12-ingestion-api.html">L12</a> SDK) → ingested (<a class="xref" href="13-event-types-merge.html">L13</a>-19 ingestion path + <a class="xref" href="49-rbac-apikeys-scim.html">L49</a> API-key auth) → stored (<a class="xref" href="13-event-types-merge.html">L13</a> ClickHouse/S3/Postgres) → read (<a class="xref" href="20-web-app-architecture.html">L20</a>-27) → evaluated (<a class="xref" href="28-scoring-model.html">L28</a>-36) → acted on (<a class="xref" href="44-automations-webhooks.html">L44</a>-47) → retired (<a class="xref" href="52-data-lifecycle-and-deletion.html">L52</a>). Three hidden threads throughout: self-observability (<a class="xref" href="51-self-observability-and-config.html">L51</a>), plan gating (<a class="xref" href="50-open-core-and-entitlements.html">L50</a>), projectId multi-tenant isolation.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 248" role="img" aria-label="A subway-line journey map of a trace's whole life: the main line has seven stations — born (SDK instrumentation, L06), ingest (API lands S3+Redis, returns 207, L12), merge+store (worker writes ClickHouse, L13/L17), read (list/detail, L24), evaluate (judge/score, L29), act (monitor/automation, L44), retire (retention/delete, L52); below run three hidden rails through every station — projectId multi-tenancy (L06/L49), OTel self-observability (L51), plan entitlements (L50). Lesson numbers for navigation">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Finale: the life of a trace (subway line)</text>
+  <line x1="58" y1="86" x2="660" y2="86" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <text x="58" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">born</text>
+  <text x="58" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">SDK instrument</text>
+  <circle cx="58" cy="86" r="11" fill="var(--bg)" stroke="var(--accent)" stroke-width="3"/><text x="58" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">①</text>
+  <text x="58" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L06</text>
+  <text x="158" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">ingest</text>
+  <text x="158" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">API→S3+Redis→207</text>
+  <circle cx="158" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="158" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">②</text>
+  <text x="158" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L12</text>
+  <text x="259" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">store</text>
+  <text x="259" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">worker→ClickHouse</text>
+  <circle cx="259" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="259" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">③</text>
+  <text x="259" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L13·17</text>
+  <text x="359" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">read</text>
+  <text x="359" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">list/detail</text>
+  <circle cx="359" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="359" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">④</text>
+  <text x="359" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L24</text>
+  <text x="459" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">evaluate</text>
+  <text x="459" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">judge/score</text>
+  <circle cx="459" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="459" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">⑤</text>
+  <text x="459" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L29</text>
+  <text x="560" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">act</text>
+  <text x="560" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">monitor/automation</text>
+  <circle cx="560" cy="86" r="11" fill="var(--bg)" stroke="var(--amber)" stroke-width="3"/><text x="560" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">⑥</text>
+  <text x="560" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L44</text>
+  <text x="660" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">retire</text>
+  <text x="660" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">retain/delete</text>
+  <circle cx="660" cy="86" r="11" fill="var(--bg)" stroke="var(--red)" stroke-width="3"/><text x="660" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">⑦</text>
+  <text x="660" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L52</text>
+  <text x="58" y="132" font-size="7.4" font-weight="700" fill="var(--muted)">↓ three hidden rails running through every station</text>
+  <line x1="58" y1="150" x2="660" y2="150" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="158" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="259" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="359" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="459" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="560" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="660" cy="150" r="2.4" fill="var(--accent)"/>
+  <rect x="54" y="141" width="92" height="16" rx="8" fill="var(--accent)" opacity="0.16"/><text x="100" y="153" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">🔑 projectId</text>
+  <text x="160" y="153" font-size="6.8" fill="var(--muted)">multi-tenancy: every row &amp; query scoped by it</text>
+  <text x="690" y="153" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--accent)">L06·49</text>
+  <line x1="58" y1="178" x2="660" y2="178" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="158" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="259" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="359" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="459" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="560" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="660" cy="178" r="2.4" fill="var(--blue)"/>
+  <rect x="54" y="169" width="92" height="16" rx="8" fill="var(--blue)" opacity="0.16"/><text x="100" y="181" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">📊 OTel</text>
+  <text x="160" y="181" font-size="6.8" fill="var(--muted)">self-observability: every step is itself a trace</text>
+  <text x="690" y="181" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--blue)">L51</text>
+  <line x1="58" y1="206" x2="660" y2="206" stroke="var(--purple)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="158" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="259" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="359" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="459" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="560" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="660" cy="206" r="2.4" fill="var(--purple)"/>
+  <rect x="54" y="197" width="92" height="16" rx="8" fill="var(--purple)" opacity="0.16"/><text x="100" y="209" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">🎫 plan</text>
+  <text x="160" y="209" font-size="6.8" fill="var(--muted)">entitlements: each step gated by it</text>
+  <text x="690" y="209" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--purple)">L50</text>
+  <text x="360" y="234" text-anchor="middle" font-size="7.4" fill="var(--accent-ink)">from birth to retirement, a trace is threaded by these three rails — that is Langfuse in full</text>
+</svg>
+<div class="figcap"><b>Connecting the whole book into one line: the life of a trace</b> (lesson numbers for navigation): it is <b>born</b> in your app (SDK instrumentation, <a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>), <b>ingested</b> (the API lands S3+Redis and returns <code>207</code>, <a class="xref" href="12-ingestion-api.html">L12</a>), <b>merged and stored</b> by a worker (ClickHouse, <a class="xref" href="13-event-types-merge.html">L13</a>/<a class="xref" href="17-clickhouse-writer.html">L17</a>), then <b>read</b> (list/detail, <a class="xref" href="24-lists-and-tables.html">L24</a>), <b>evaluated</b> (judge/score, <a class="xref" href="29-llm-as-a-judge.html">L29</a>), <b>acted on</b> (monitor/automation, <a class="xref" href="44-automations-webhooks.html">L44</a>), and finally <b>retired</b> (cross-store deletion after the retention window, <a class="xref" href="52-data-lifecycle-and-deletion.html">L52</a>). Three <b>hidden rails</b> thread every station: <code>projectId</code> (multi-tenancy, <a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>/<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>) scopes every row and query, <b>OTel</b> (<a class="xref" href="51-self-observability-and-config.html">L51</a>) makes each step itself a trace, and <code>plan</code> (entitlements, <a class="xref" href="50-open-core-and-entitlements.html">L50</a>) gates what each step can do. <b>Understand this line and you understand Langfuse.</b></div>
 </div>
 
 <div class="vflow">

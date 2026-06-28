@@ -52,6 +52,42 @@ _ZH54.append(r"""
 </svg>
 <div class="figcap"><b>宽事件 + 不可变</b>：<code>ARCHITECTURE_PRINCIPLES.md</code> 原则 1-4——「observation 为主要分析单位」「宽而富的事件优于碎片化的 metrics/logs/traces」「保住高基数上下文调查 unknown unknowns」「偏好不可变/追加，更新会造成读时去重的隐藏成本」。落地见第 5/6 课领域模型、第 13 课 ReplacingMergeTree、第 41 课查询引擎。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="设计主题对照表：六个贯穿全书的设计主题各对应一段真实机制与课号——宽事件(observations 宽行高基数,L02/L08)、不可变+去重(ReplacingMergeTree FINAL + 事件 id 幂等,L13/L17)、异步解耦(API 落 S3+Redis 即返回 207,worker 消费,L12/L15)、双存储(Postgres 配置/事务 + ClickHouse 分析,L09/L08)、多租户(每行带 projectId + RBAC 角色×scope,L06/L49)、成本意识(列式扫描+按 token 定价+缓存命中,L16/L42)。机制取自各课源码">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：六大设计主题 → 各自落到的真实机制</text>
+  <text x="360" y="37" text-anchor="middle" font-size="7.6" fill="var(--muted)">同一套信念，落到全书各处的具体代码</text>
+  <rect x="20" y="46" width="680" height="18" fill="var(--panel-2)"/>
+  <text x="30" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">主题 theme</text>
+  <text x="180" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">落到的真实机制</text>
+  <text x="600" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">课次</text>
+  <rect x="20" y="66" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="71" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">宽事件</text>
+  <text x="180" y="84" font-size="7.5" font-family="monospace" fill="var(--ink)">observations 作宽行、保高基数列</text>
+  <text x="690" y="84" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L02·L08</text>
+  <rect x="20" y="98" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="103" width="142" height="18" rx="5" fill="var(--blue)" opacity="0.16"/><text x="99" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--blue)">不可变 + 去重</text>
+  <text x="180" y="116" font-size="7.5" font-family="monospace" fill="var(--ink)">ReplacingMergeTree FINAL · 事件 id 幂等</text>
+  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L13·L17</text>
+  <rect x="20" y="130" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="135" width="142" height="18" rx="5" fill="var(--purple)" opacity="0.16"/><text x="99" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--purple)">异步解耦</text>
+  <text x="180" y="148" font-size="7.5" font-family="monospace" fill="var(--ink)">API 落 S3+Redis 即返 207 · worker 消费</text>
+  <text x="690" y="148" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L12·L15</text>
+  <rect x="20" y="162" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="167" width="142" height="18" rx="5" fill="var(--amber)" opacity="0.16"/><text x="99" y="180" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">双存储</text>
+  <text x="180" y="180" font-size="7.5" font-family="monospace" fill="var(--ink)">Postgres 配置/事务 + ClickHouse 分析</text>
+  <text x="690" y="180" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L09·L08</text>
+  <rect x="20" y="194" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="199" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="212" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">多租户</text>
+  <text x="180" y="212" font-size="7.5" font-family="monospace" fill="var(--ink)">每行带 projectId · RBAC 角色×scope</text>
+  <text x="690" y="212" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L06·L49</text>
+  <rect x="20" y="226" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="231" width="142" height="18" rx="5" fill="var(--red)" opacity="0.16"/><text x="99" y="244" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">成本意识</text>
+  <text x="180" y="244" font-size="7.5" font-family="monospace" fill="var(--ink)">列式扫描 · 按 token 定价 · 缓存命中</text>
+  <text x="690" y="244" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L16·L42</text>
+  <text x="360" y="274" text-anchor="middle" font-size="7.2" fill="var(--muted)">这六条不是孤立的设计，而是反复在每条链路上重演——这正是「读懂一处，处处相通」</text>
+</svg>
+<div class="figcap"><b>整本指南其实只在反复讲六件事</b>（机制均取自对应课的真实源码；课号为导航）：①<b>宽事件</b>——把 observation 做成宽行、保住高基数，于是能任意切片（L02/L08）；②<b>不可变+去重</b>——只追加事件、靠 <code>ReplacingMergeTree FINAL</code> 和事件 <code>id</code> 幂等收敛（L13/L17）；③<b>异步解耦</b>——摄取只落 S3+Redis 就返 <code>207</code>，重活交 worker（L12/L15）；④<b>双存储</b>——Postgres 管配置/事务、ClickHouse 管分析（L09/L08）；⑤<b>多租户</b>——每行带 <code>projectId</code>、RBAC 角色×scope 判权（L06/L49）；⑥<b>成本意识</b>——列式扫描、按 token 定价、缓存命中（L16/L42）。<b>读懂一处，处处相通</b>。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">主题一</span><span class="name">宽事件（observability 2.0）</span></div><div class="ld">一次操作 = 一条带全部上下文的宽事件。observation 是分析单位、trace 是关联句柄。保住高基数 → 能回答<strong>事前没想到的问题</strong>，而不必为每个未来问题预建指标。这是「探索式可观测」的根。</div></div>
@@ -191,11 +227,11 @@ _EN54.append(r"""
 <svg viewBox="0 0 720 250" role="img" aria-label="Wide events vs fragmented: tradition splits data into metrics/logs/traces piles stitched later; Langfuse packs full context (input output model usage latency attributes) into one wide rich event per observation, preserving high cardinality to investigate unknown unknowns; immutability = append not update, avoiding read-time dedup hidden cost">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One wide rich event beats three piles stitched later</text>
   <rect x="24" y="42" width="200" height="120" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">tradition: three piles</text>
-  <rect x="38" y="72" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="87" text-anchor="middle" font-size="6.4" fill="var(--muted)">metrics (aggregated, detail lost)</text>
-  <rect x="38" y="98" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">logs (scattered text)</text>
-  <rect x="38" y="124" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="139" text-anchor="middle" font-size="6.4" fill="var(--muted)">traces (yet another set)</text>
+  <rect x="38" y="72" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="87" text-anchor="middle" font-size="6.5" fill="var(--muted)">metrics (aggregated, detail lost)</text>
+  <rect x="38" y="98" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="113" text-anchor="middle" font-size="6.5" fill="var(--muted)">logs (scattered text)</text>
+  <rect x="38" y="124" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="139" text-anchor="middle" font-size="6.5" fill="var(--muted)">traces (yet another set)</text>
   <text x="124" y="156" text-anchor="middle" font-size="6" fill="var(--faint)">laboriously stitched back later</text>
-  <rect x="260" y="42" width="230" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Langfuse: one wide event = observation</text><text x="375" y="80" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">input · output · model · usage · latency</text><text x="375" y="94" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ any custom attributes (high cardinality)</text><text x="375" y="112" text-anchor="middle" font-size="6.4" fill="var(--muted)">trace = handle linking related observations</text><text x="375" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">slice/group/filter at will</text><text x="375" y="146" text-anchor="middle" font-size="6.2" fill="var(--faint)">investigate unknown unknowns, no pre-built metrics</text>
+  <rect x="260" y="42" width="230" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Langfuse: one wide event = observation</text><text x="375" y="80" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">input · output · model · usage · latency</text><text x="375" y="94" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ any custom attributes (high cardinality)</text><text x="375" y="112" text-anchor="middle" font-size="6.5" fill="var(--muted)">trace = handle linking related observations</text><text x="375" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">slice/group/filter at will</text><text x="375" y="146" text-anchor="middle" font-size="6.2" fill="var(--faint)">investigate unknown unknowns, no pre-built metrics</text>
   <rect x="520" y="56" width="176" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="608" y="74" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">immutable: append</text><text x="608" y="90" text-anchor="middle" font-size="6.0" fill="var(--muted)">written stays put, only append new rows</text>
   <rect x="520" y="110" width="176" height="52" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="608" y="128" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">why not update?</text><text x="608" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">updates force read-time dedup</text><text x="608" y="154" text-anchor="middle" font-size="6.0" fill="var(--muted)">= hidden query cost at scale</text>
   <line x1="224" y1="102" x2="258" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="258,102 249,98 249,106" fill="var(--accent)"/>
@@ -204,6 +240,42 @@ _EN54.append(r"""
   <text x="360" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">Turning "modify" into "append + merge" — the key to high-scale write survival, and the conspiracy between immutability and wide events</text>
 </svg>
 <div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, Lesson 13 ReplacingMergeTree, Lesson 41 query engine.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="Design-theme cross-reference table: six themes that run through the whole guide, each mapped to a real mechanism and lessons — wide events (observations as wide high-cardinality rows, L02/L08), immutable+dedup (ReplacingMergeTree FINAL + event-id idempotency, L13/L17), async decoupling (API lands S3+Redis and returns 207, worker consumes, L12/L15), dual storage (Postgres config/txn + ClickHouse analytics, L09/L08), multi-tenancy (projectId on every row + RBAC role×scope, L06/L49), cost-awareness (columnar scans + token pricing + cache hits, L16/L42). Mechanisms from each lesson's source">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: six design themes → the real mechanism each lands in</text>
+  <text x="360" y="37" text-anchor="middle" font-size="7.6" fill="var(--muted)">one set of beliefs, realized as concrete code throughout the guide</text>
+  <rect x="20" y="46" width="680" height="18" fill="var(--panel-2)"/>
+  <text x="30" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">theme</text>
+  <text x="180" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">the real mechanism</text>
+  <text x="600" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">lessons</text>
+  <rect x="20" y="66" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="71" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">wide events</text>
+  <text x="180" y="84" font-size="7.5" font-family="monospace" fill="var(--ink)">observations as wide, high-cardinality rows</text>
+  <text x="690" y="84" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L02·L08</text>
+  <rect x="20" y="98" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="103" width="142" height="18" rx="5" fill="var(--blue)" opacity="0.16"/><text x="99" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--blue)">immutable + dedup</text>
+  <text x="180" y="116" font-size="7.5" font-family="monospace" fill="var(--ink)">ReplacingMergeTree FINAL · event-id idempotency</text>
+  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L13·L17</text>
+  <rect x="20" y="130" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="135" width="142" height="18" rx="5" fill="var(--purple)" opacity="0.16"/><text x="99" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--purple)">async decouple</text>
+  <text x="180" y="148" font-size="7.5" font-family="monospace" fill="var(--ink)">API lands S3+Redis → 207 · worker consumes</text>
+  <text x="690" y="148" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L12·L15</text>
+  <rect x="20" y="162" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="167" width="142" height="18" rx="5" fill="var(--amber)" opacity="0.16"/><text x="99" y="180" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">dual storage</text>
+  <text x="180" y="180" font-size="7.5" font-family="monospace" fill="var(--ink)">Postgres config/txn + ClickHouse analytics</text>
+  <text x="690" y="180" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L09·L08</text>
+  <rect x="20" y="194" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="199" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="212" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">multi-tenancy</text>
+  <text x="180" y="212" font-size="7.5" font-family="monospace" fill="var(--ink)">projectId on every row · RBAC role×scope</text>
+  <text x="690" y="212" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L06·L49</text>
+  <rect x="20" y="226" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="231" width="142" height="18" rx="5" fill="var(--red)" opacity="0.16"/><text x="99" y="244" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">cost-aware</text>
+  <text x="180" y="244" font-size="7.5" font-family="monospace" fill="var(--ink)">columnar scans · token pricing · cache hits</text>
+  <text x="690" y="244" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L16·L42</text>
+  <text x="360" y="274" text-anchor="middle" font-size="7.2" fill="var(--muted)">these six aren't isolated choices but recur on every path — understand one and the rest connect</text>
+</svg>
+<div class="figcap"><b>The whole guide really repeats just six things</b> (every mechanism is from that lesson's real source; lesson numbers are for navigation): ① <b>wide events</b> — make each observation a wide row and keep high cardinality, so you can slice freely (L02/L08); ② <b>immutable + dedup</b> — append-only events converged via <code>ReplacingMergeTree FINAL</code> and event-<code>id</code> idempotency (L13/L17); ③ <b>async decoupling</b> — ingestion just lands S3+Redis and returns <code>207</code>, the heavy work goes to a worker (L12/L15); ④ <b>dual storage</b> — Postgres for config/txn, ClickHouse for analytics (L09/L08); ⑤ <b>multi-tenancy</b> — <code>projectId</code> on every row, RBAC role×scope for authz (L06/L49); ⑥ <b>cost-awareness</b> — columnar scans, token pricing, cache hits (L16/L42). <b>Understand one and the rest connect</b>.</div>
 </div>
 
 <div class="layers">
@@ -363,6 +435,76 @@ _ZH55.append(r"""
 </svg>
 <div class="figcap"><b>一条 trace 的完整生命周期</b>：出生(L12 SDK) → 摄取(L13-19 摄取链路 + L49 API key 认证) → 落库(L13 ClickHouse/S3/Postgres) → 被读(L20-27) → 被评估(L28-36) → 被作用(L44-47) → 退场(L52)。三条隐线贯穿：自观测(L51)、plan 门控(L50)、projectId 多租户隔离。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 248" role="img" aria-label="一条 trace 一生的地铁线旅程图：主线七站——诞生(SDK 埋点,L06)、摄取(API 落 S3+Redis 返 207,L12)、合并入库(worker 写 ClickHouse,L13/L17)、被读(列表/详情,L24)、被评估(裁判/评分,L29)、被作用(监控/自动化,L44)、退休(保留/删除,L52)；下方三条贯穿每站的隐藏轨——projectId 多租户(L06/L49)、OTel 自我可观测(L51)、plan 权益(L50)。课号为导航">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">终章：一条 trace 的一生（地铁线）</text>
+  <line x1="58" y1="86" x2="660" y2="86" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <text x="58" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">诞生</text>
+  <text x="58" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">SDK 埋点</text>
+  <circle cx="58" cy="86" r="11" fill="var(--bg)" stroke="var(--accent)" stroke-width="3"/><text x="58" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">①</text>
+  <text x="58" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L06</text>
+  <text x="158" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">摄取</text>
+  <text x="158" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">API→S3+Redis→207</text>
+  <circle cx="158" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="158" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">②</text>
+  <text x="158" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L12</text>
+  <text x="259" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">入库</text>
+  <text x="259" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">worker→ClickHouse</text>
+  <circle cx="259" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="259" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">③</text>
+  <text x="259" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L13·17</text>
+  <text x="359" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">被读</text>
+  <text x="359" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">列表/详情</text>
+  <circle cx="359" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="359" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">④</text>
+  <text x="359" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L24</text>
+  <text x="459" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">被评估</text>
+  <text x="459" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">裁判/评分</text>
+  <circle cx="459" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="459" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">⑤</text>
+  <text x="459" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L29</text>
+  <text x="560" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">被作用</text>
+  <text x="560" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">监控/自动化</text>
+  <circle cx="560" cy="86" r="11" fill="var(--bg)" stroke="var(--amber)" stroke-width="3"/><text x="560" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">⑥</text>
+  <text x="560" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L44</text>
+  <text x="660" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">退休</text>
+  <text x="660" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">保留/删除</text>
+  <circle cx="660" cy="86" r="11" fill="var(--bg)" stroke="var(--red)" stroke-width="3"/><text x="660" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">⑦</text>
+  <text x="660" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L52</text>
+  <text x="58" y="132" font-size="7.4" font-weight="700" fill="var(--muted)">↓ 三条贯穿每一站的隐藏轨</text>
+  <line x1="58" y1="150" x2="660" y2="150" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="158" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="259" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="359" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="459" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="560" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="660" cy="150" r="2.4" fill="var(--accent)"/>
+  <rect x="54" y="141" width="92" height="16" rx="8" fill="var(--accent)" opacity="0.16"/><text x="100" y="153" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">🔑 projectId</text>
+  <text x="160" y="153" font-size="6.8" fill="var(--muted)">多租户：每行每查询都被它圈住</text>
+  <text x="690" y="153" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--accent)">L06·49</text>
+  <line x1="58" y1="178" x2="660" y2="178" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="158" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="259" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="359" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="459" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="560" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="660" cy="178" r="2.4" fill="var(--blue)"/>
+  <rect x="54" y="169" width="92" height="16" rx="8" fill="var(--blue)" opacity="0.16"/><text x="100" y="181" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">📊 OTel</text>
+  <text x="160" y="181" font-size="6.8" fill="var(--muted)">自我可观测：每一步自己也是一条 trace</text>
+  <text x="690" y="181" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--blue)">L51</text>
+  <line x1="58" y1="206" x2="660" y2="206" stroke="var(--purple)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="158" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="259" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="359" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="459" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="560" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="660" cy="206" r="2.4" fill="var(--purple)"/>
+  <rect x="54" y="197" width="92" height="16" rx="8" fill="var(--purple)" opacity="0.16"/><text x="100" y="209" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">🎫 plan</text>
+  <text x="160" y="209" font-size="6.8" fill="var(--muted)">权益：每一步能不能用由它决定</text>
+  <text x="690" y="209" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--purple)">L50</text>
+  <text x="360" y="234" text-anchor="middle" font-size="7.4" fill="var(--accent-ink)">一条 trace 从生到退，全程被这三条轨贯穿——这就是 Langfuse 的全貌</text>
+</svg>
+<div class="figcap"><b>把整本书连成一条线：一条 trace 的一生</b>（课号为导航）：它在你的应用里<b>诞生</b>（SDK 埋点，L06），被<b>摄取</b>（API 落 S3+Redis 即返 <code>207</code>，L12），由 worker <b>合并入库</b>（ClickHouse，L13/L17），随后被<b>读</b>（列表/详情，L24）、被<b>评估</b>（裁判/评分，L29）、被<b>作用</b>（监控/自动化，L44），最终<b>退休</b>（保留窗口到期后跨存储删除，L52）。而三条<b>隐藏轨</b>贯穿每一站：<code>projectId</code>（多租户，L06/L49）圈住每行每查询、<b>OTel</b>（L51）让每一步自己也成为一条 trace、<code>plan</code>（权益，L50）决定每一步能不能用。<b>读懂这条线，你就读懂了 Langfuse。</b></div>
+</div>
 
 <div class="vflow">
   <div class="step"><div class="num">1</div><div class="sc"><h4>出生：SDK 就地打包（L12）</h4><p>应用调 LLM，SDK 创建 trace + observation，记下输入/输出/模型/用量，攒批异步 POST——主流程几乎无感。</p></div></div>
@@ -509,9 +651,79 @@ _EN55.append(r"""
   <circle cx="600" cy="70" r="6" fill="var(--blue)"/><text x="600" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--blue)">⑥act on</text><text x="600" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">automation/export</text><text x="600" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L44-47</text>
   <circle cx="675" cy="70" r="6" fill="var(--muted)"/><text x="672" y="52" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--muted)">⑦retire</text><text x="672" y="90" text-anchor="middle" font-size="5.8" fill="var(--muted)">cross-store delete</text><text x="672" y="100" text-anchor="middle" font-size="5.6" fill="var(--faint)">L52</text>
   <rect x="40" y="138" width="650" height="44" rx="9" fill="var(--purple-soft)" stroke="var(--accent)" stroke-dasharray="5 3"/><text x="365" y="156" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent-ink)">three hidden threads running throughout</text><text x="365" y="172" text-anchor="middle" font-size="6.6" fill="var(--muted)">observed by the platform's own OTel/logs (L51) · features gated by org plan (L50) · every step isolated by projectId (multi-tenancy)</text>
-  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">the six themes take their places on this assembly line</text><text x="365" y="226" text-anchor="middle" font-size="6.4" fill="var(--muted)">wide events(shape)·immutability(how to write)·async(where work)·dual storage(where stored)·multi-tenancy(whose)·cost(what's worth doing)</text>
+  <rect x="40" y="194" width="650" height="40" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="365" y="211" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">the six themes take their places on this assembly line</text><text x="365" y="226" text-anchor="middle" font-size="6.5" fill="var(--muted)">wide events(shape)·immutability(how to write)·async(where work)·dual storage(where stored)·multi-tenancy(whose)·cost(what's worth doing)</text>
 </svg>
 <div class="figcap"><b>A trace's complete lifecycle</b>: born (L12 SDK) → ingested (L13-19 ingestion path + L49 API-key auth) → stored (L13 ClickHouse/S3/Postgres) → read (L20-27) → evaluated (L28-36) → acted on (L44-47) → retired (L52). Three hidden threads throughout: self-observability (L51), plan gating (L50), projectId multi-tenant isolation.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 248" role="img" aria-label="A subway-line journey map of a trace's whole life: the main line has seven stations — born (SDK instrumentation, L06), ingest (API lands S3+Redis, returns 207, L12), merge+store (worker writes ClickHouse, L13/L17), read (list/detail, L24), evaluate (judge/score, L29), act (monitor/automation, L44), retire (retention/delete, L52); below run three hidden rails through every station — projectId multi-tenancy (L06/L49), OTel self-observability (L51), plan entitlements (L50). Lesson numbers for navigation">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Finale: the life of a trace (subway line)</text>
+  <line x1="58" y1="86" x2="660" y2="86" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+  <text x="58" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent)">born</text>
+  <text x="58" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">SDK instrument</text>
+  <circle cx="58" cy="86" r="11" fill="var(--bg)" stroke="var(--accent)" stroke-width="3"/><text x="58" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">①</text>
+  <text x="58" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L06</text>
+  <text x="158" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">ingest</text>
+  <text x="158" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">API→S3+Redis→207</text>
+  <circle cx="158" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="158" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">②</text>
+  <text x="158" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L12</text>
+  <text x="259" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--blue)">store</text>
+  <text x="259" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">worker→ClickHouse</text>
+  <circle cx="259" cy="86" r="11" fill="var(--bg)" stroke="var(--blue)" stroke-width="3"/><text x="259" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--blue)">③</text>
+  <text x="259" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L13·17</text>
+  <text x="359" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">read</text>
+  <text x="359" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">list/detail</text>
+  <circle cx="359" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="359" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">④</text>
+  <text x="359" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L24</text>
+  <text x="459" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--purple)">evaluate</text>
+  <text x="459" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">judge/score</text>
+  <circle cx="459" cy="86" r="11" fill="var(--bg)" stroke="var(--purple)" stroke-width="3"/><text x="459" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">⑤</text>
+  <text x="459" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L29</text>
+  <text x="560" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--amber)">act</text>
+  <text x="560" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">monitor/automation</text>
+  <circle cx="560" cy="86" r="11" fill="var(--bg)" stroke="var(--amber)" stroke-width="3"/><text x="560" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--amber)">⑥</text>
+  <text x="560" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L44</text>
+  <text x="660" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--red)">retire</text>
+  <text x="660" y="72" text-anchor="middle" font-size="6.5" fill="var(--muted)">retain/delete</text>
+  <circle cx="660" cy="86" r="11" fill="var(--bg)" stroke="var(--red)" stroke-width="3"/><text x="660" y="90" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">⑦</text>
+  <text x="660" y="112" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">L52</text>
+  <text x="58" y="132" font-size="7.4" font-weight="700" fill="var(--muted)">↓ three hidden rails running through every station</text>
+  <line x1="58" y1="150" x2="660" y2="150" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="158" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="259" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="359" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="459" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="560" cy="150" r="2.4" fill="var(--accent)"/>
+  <circle cx="660" cy="150" r="2.4" fill="var(--accent)"/>
+  <rect x="54" y="141" width="92" height="16" rx="8" fill="var(--accent)" opacity="0.16"/><text x="100" y="153" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent)">🔑 projectId</text>
+  <text x="160" y="153" font-size="6.8" fill="var(--muted)">multi-tenancy: every row &amp; query scoped by it</text>
+  <text x="690" y="153" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--accent)">L06·49</text>
+  <line x1="58" y1="178" x2="660" y2="178" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="158" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="259" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="359" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="459" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="560" cy="178" r="2.4" fill="var(--blue)"/>
+  <circle cx="660" cy="178" r="2.4" fill="var(--blue)"/>
+  <rect x="54" y="169" width="92" height="16" rx="8" fill="var(--blue)" opacity="0.16"/><text x="100" y="181" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">📊 OTel</text>
+  <text x="160" y="181" font-size="6.8" fill="var(--muted)">self-observability: every step is itself a trace</text>
+  <text x="690" y="181" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--blue)">L51</text>
+  <line x1="58" y1="206" x2="660" y2="206" stroke="var(--purple)" stroke-width="1.6" stroke-dasharray="2 3" opacity="0.7"/>
+  <circle cx="58" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="158" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="259" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="359" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="459" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="560" cy="206" r="2.4" fill="var(--purple)"/>
+  <circle cx="660" cy="206" r="2.4" fill="var(--purple)"/>
+  <rect x="54" y="197" width="92" height="16" rx="8" fill="var(--purple)" opacity="0.16"/><text x="100" y="209" text-anchor="middle" font-size="7" font-weight="700" fill="var(--purple)">🎫 plan</text>
+  <text x="160" y="209" font-size="6.8" fill="var(--muted)">entitlements: each step gated by it</text>
+  <text x="690" y="209" text-anchor="end" font-size="6.8" font-weight="700" fill="var(--purple)">L50</text>
+  <text x="360" y="234" text-anchor="middle" font-size="7.4" fill="var(--accent-ink)">from birth to retirement, a trace is threaded by these three rails — that is Langfuse in full</text>
+</svg>
+<div class="figcap"><b>Connecting the whole book into one line: the life of a trace</b> (lesson numbers for navigation): it is <b>born</b> in your app (SDK instrumentation, L06), <b>ingested</b> (the API lands S3+Redis and returns <code>207</code>, L12), <b>merged and stored</b> by a worker (ClickHouse, L13/L17), then <b>read</b> (list/detail, L24), <b>evaluated</b> (judge/score, L29), <b>acted on</b> (monitor/automation, L44), and finally <b>retired</b> (cross-store deletion after the retention window, L52). Three <b>hidden rails</b> thread every station: <code>projectId</code> (multi-tenancy, L06/L49) scopes every row and query, <b>OTel</b> (L51) makes each step itself a trace, and <code>plan</code> (entitlements, L50) gates what each step can do. <b>Understand this line and you understand Langfuse.</b></div>
 </div>
 
 <div class="vflow">

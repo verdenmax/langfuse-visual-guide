@@ -390,6 +390,42 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 </svg>
 <div class="figcap"><b>宽事件 + 不可变</b>：<code>ARCHITECTURE_PRINCIPLES.md</code> 原则 1-4——「observation 为主要分析单位」「宽而富的事件优于碎片化的 metrics/logs/traces」「保住高基数上下文调查 unknown unknowns」「偏好不可变/追加，更新会造成读时去重的隐藏成本」。落地见第 5/6 课领域模型、<a class="xref" href="13-event-types-merge.html">第 13 课</a> ReplacingMergeTree、<a class="xref" href="41-query-engine.html">第 41 课</a>查询引擎。</div>
 </div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="设计主题对照表：六个贯穿全书的设计主题各对应一段真实机制与课号——宽事件(observations 宽行高基数,L02/L08)、不可变+去重(ReplacingMergeTree FINAL + 事件 id 幂等,L13/L17)、异步解耦(API 落 S3+Redis 即返回 207,worker 消费,L12/L15)、双存储(Postgres 配置/事务 + ClickHouse 分析,L09/L08)、多租户(每行带 projectId + RBAC 角色×scope,L06/L49)、成本意识(列式扫描+按 token 定价+缓存命中,L16/L42)。机制取自各课源码">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">示例：六大设计主题 → 各自落到的真实机制</text>
+  <text x="360" y="37" text-anchor="middle" font-size="7.6" fill="var(--muted)">同一套信念，落到全书各处的具体代码</text>
+  <rect x="20" y="46" width="680" height="18" fill="var(--panel-2)"/>
+  <text x="30" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">主题 theme</text>
+  <text x="180" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">落到的真实机制</text>
+  <text x="600" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">课次</text>
+  <rect x="20" y="66" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="71" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">宽事件</text>
+  <text x="180" y="84" font-size="7.5" font-family="monospace" fill="var(--ink)">observations 作宽行、保高基数列</text>
+  <text x="690" y="84" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L02·L08</text>
+  <rect x="20" y="98" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="103" width="142" height="18" rx="5" fill="var(--blue)" opacity="0.16"/><text x="99" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--blue)">不可变 + 去重</text>
+  <text x="180" y="116" font-size="7.5" font-family="monospace" fill="var(--ink)">ReplacingMergeTree FINAL · 事件 id 幂等</text>
+  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L13·L17</text>
+  <rect x="20" y="130" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="135" width="142" height="18" rx="5" fill="var(--purple)" opacity="0.16"/><text x="99" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--purple)">异步解耦</text>
+  <text x="180" y="148" font-size="7.5" font-family="monospace" fill="var(--ink)">API 落 S3+Redis 即返 207 · worker 消费</text>
+  <text x="690" y="148" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L12·L15</text>
+  <rect x="20" y="162" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="167" width="142" height="18" rx="5" fill="var(--amber)" opacity="0.16"/><text x="99" y="180" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">双存储</text>
+  <text x="180" y="180" font-size="7.5" font-family="monospace" fill="var(--ink)">Postgres 配置/事务 + ClickHouse 分析</text>
+  <text x="690" y="180" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L09·L08</text>
+  <rect x="20" y="194" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="199" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="212" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">多租户</text>
+  <text x="180" y="212" font-size="7.5" font-family="monospace" fill="var(--ink)">每行带 projectId · RBAC 角色×scope</text>
+  <text x="690" y="212" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L06·L49</text>
+  <rect x="20" y="226" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="231" width="142" height="18" rx="5" fill="var(--red)" opacity="0.16"/><text x="99" y="244" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">成本意识</text>
+  <text x="180" y="244" font-size="7.5" font-family="monospace" fill="var(--ink)">列式扫描 · 按 token 定价 · 缓存命中</text>
+  <text x="690" y="244" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L16·L42</text>
+  <text x="360" y="274" text-anchor="middle" font-size="7.2" fill="var(--muted)">这六条不是孤立的设计，而是反复在每条链路上重演——这正是「读懂一处，处处相通」</text>
+</svg>
+<div class="figcap"><b>整本指南其实只在反复讲六件事</b>（机制均取自对应课的真实源码；课号为导航）：①<b>宽事件</b>——把 observation 做成宽行、保住高基数，于是能任意切片（<a class="xref" href="02-observability-2-and-wide-events.html">L02</a>/<a class="xref" href="08-clickhouse-wide-events.html">L08</a>）；②<b>不可变+去重</b>——只追加事件、靠 <code>ReplacingMergeTree FINAL</code> 和事件 <code>id</code> 幂等收敛（<a class="xref" href="13-event-types-merge.html">L13</a>/<a class="xref" href="17-clickhouse-writer.html">L17</a>）；③<b>异步解耦</b>——摄取只落 S3+Redis 就返 <code>207</code>，重活交 worker（<a class="xref" href="12-ingestion-api.html">L12</a>/<a class="xref" href="15-ingestion-service.html">L15</a>）；④<b>双存储</b>——Postgres 管配置/事务、ClickHouse 管分析（<a class="xref" href="09-postgres-metadata-schema.html">L09</a>/<a class="xref" href="08-clickhouse-wide-events.html">L08</a>）；⑤<b>多租户</b>——每行带 <code>projectId</code>、RBAC 角色×scope 判权（<a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>/<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>）；⑥<b>成本意识</b>——列式扫描、按 token 定价、缓存命中（<a class="xref" href="16-token-counting-cost.html">L16</a>/<a class="xref" href="42-models-and-pricing.html">L42</a>）。<b>读懂一处，处处相通</b>。</div>
+</div>
 
 <div class="layers">
   <div class="layer l-core"><div class="lh"><span class="badge">主题一</span><span class="name">宽事件（observability 2.0）</span></div><div class="ld">一次操作 = 一条带全部上下文的宽事件。observation 是分析单位、trace 是关联句柄。保住高基数 → 能回答<strong>事前没想到的问题</strong>，而不必为每个未来问题预建指标。这是「探索式可观测」的根。</div></div>
@@ -567,11 +603,11 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
 <svg viewBox="0 0 720 250" role="img" aria-label="Wide events vs fragmented: tradition splits data into metrics/logs/traces piles stitched later; Langfuse packs full context (input output model usage latency attributes) into one wide rich event per observation, preserving high cardinality to investigate unknown unknowns; immutability = append not update, avoiding read-time dedup hidden cost">
   <text x="360" y="18" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--accent-ink)">One wide rich event beats three piles stitched later</text>
   <rect x="24" y="42" width="200" height="120" rx="9" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="60" text-anchor="middle" font-size="8" font-weight="700" fill="var(--muted)">tradition: three piles</text>
-  <rect x="38" y="72" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="87" text-anchor="middle" font-size="6.4" fill="var(--muted)">metrics (aggregated, detail lost)</text>
-  <rect x="38" y="98" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="113" text-anchor="middle" font-size="6.4" fill="var(--muted)">logs (scattered text)</text>
-  <rect x="38" y="124" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="139" text-anchor="middle" font-size="6.4" fill="var(--muted)">traces (yet another set)</text>
+  <rect x="38" y="72" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="87" text-anchor="middle" font-size="6.5" fill="var(--muted)">metrics (aggregated, detail lost)</text>
+  <rect x="38" y="98" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="113" text-anchor="middle" font-size="6.5" fill="var(--muted)">logs (scattered text)</text>
+  <rect x="38" y="124" width="172" height="22" rx="4" fill="var(--bg)" stroke="var(--faint)"/><text x="124" y="139" text-anchor="middle" font-size="6.5" fill="var(--muted)">traces (yet another set)</text>
   <text x="124" y="156" text-anchor="middle" font-size="6" fill="var(--faint)">laboriously stitched back later</text>
-  <rect x="260" y="42" width="230" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Langfuse: one wide event = observation</text><text x="375" y="80" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">input · output · model · usage · latency</text><text x="375" y="94" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ any custom attributes (high cardinality)</text><text x="375" y="112" text-anchor="middle" font-size="6.4" fill="var(--muted)">trace = handle linking related observations</text><text x="375" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">slice/group/filter at will</text><text x="375" y="146" text-anchor="middle" font-size="6.2" fill="var(--faint)">investigate unknown unknowns, no pre-built metrics</text>
+  <rect x="260" y="42" width="230" height="120" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="375" y="60" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">Langfuse: one wide event = observation</text><text x="375" y="80" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">input · output · model · usage · latency</text><text x="375" y="94" text-anchor="middle" font-size="6.6" fill="var(--accent-ink)">+ any custom attributes (high cardinality)</text><text x="375" y="112" text-anchor="middle" font-size="6.5" fill="var(--muted)">trace = handle linking related observations</text><text x="375" y="130" text-anchor="middle" font-size="6.2" fill="var(--faint)">slice/group/filter at will</text><text x="375" y="146" text-anchor="middle" font-size="6.2" fill="var(--faint)">investigate unknown unknowns, no pre-built metrics</text>
   <rect x="520" y="56" width="176" height="44" rx="9" fill="var(--teal)" opacity="0.16" stroke="var(--teal)"/><text x="608" y="74" text-anchor="middle" font-size="7.6" font-weight="700" fill="var(--teal)">immutable: append</text><text x="608" y="90" text-anchor="middle" font-size="6.0" fill="var(--muted)">written stays put, only append new rows</text>
   <rect x="520" y="110" width="176" height="52" rx="9" fill="var(--bg)" stroke="var(--accent)"/><text x="608" y="128" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">why not update?</text><text x="608" y="143" text-anchor="middle" font-size="6.0" fill="var(--muted)">updates force read-time dedup</text><text x="608" y="154" text-anchor="middle" font-size="6.0" fill="var(--muted)">= hidden query cost at scale</text>
   <line x1="224" y1="102" x2="258" y2="102" stroke="var(--accent)" stroke-width="1.4"/><polygon points="258,102 249,98 249,106" fill="var(--accent)"/>
@@ -580,6 +616,42 @@ The six themes — <strong>wide events, immutability, async, dual storage, multi
   <text x="360" y="206" text-anchor="middle" font-size="8" fill="var(--faint)">Turning "modify" into "append + merge" — the key to high-scale write survival, and the conspiracy between immutability and wide events</text>
 </svg>
 <div class="figcap"><b>Wide events + immutability</b>: <code>ARCHITECTURE_PRINCIPLES.md</code> principles 1-4 — "observation as the primary analytical unit," "wide richly-attributed events over fragmented metrics/logs/traces," "preserve high-cardinality context to investigate unknown unknowns," "favor immutable/append; updates create read-time-dedup hidden cost." Landed in Lessons 5/6 domain models, <a class="xref" href="13-event-types-merge.html">Lesson 13</a> ReplacingMergeTree, <a class="xref" href="41-query-engine.html">Lesson 41</a> query engine.</div>
+</div>
+<div class="fig">
+<svg viewBox="0 0 720 288" role="img" aria-label="Design-theme cross-reference table: six themes that run through the whole guide, each mapped to a real mechanism and lessons — wide events (observations as wide high-cardinality rows, L02/L08), immutable+dedup (ReplacingMergeTree FINAL + event-id idempotency, L13/L17), async decoupling (API lands S3+Redis and returns 207, worker consumes, L12/L15), dual storage (Postgres config/txn + ClickHouse analytics, L09/L08), multi-tenancy (projectId on every row + RBAC role×scope, L06/L49), cost-awareness (columnar scans + token pricing + cache hits, L16/L42). Mechanisms from each lesson's source">
+  <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: six design themes → the real mechanism each lands in</text>
+  <text x="360" y="37" text-anchor="middle" font-size="7.6" fill="var(--muted)">one set of beliefs, realized as concrete code throughout the guide</text>
+  <rect x="20" y="46" width="680" height="18" fill="var(--panel-2)"/>
+  <text x="30" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">theme</text>
+  <text x="180" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">the real mechanism</text>
+  <text x="600" y="59" font-size="7.4" font-weight="700" fill="var(--ink)">lessons</text>
+  <rect x="20" y="66" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="71" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="84" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">wide events</text>
+  <text x="180" y="84" font-size="7.5" font-family="monospace" fill="var(--ink)">observations as wide, high-cardinality rows</text>
+  <text x="690" y="84" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L02·L08</text>
+  <rect x="20" y="98" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="103" width="142" height="18" rx="5" fill="var(--blue)" opacity="0.16"/><text x="99" y="116" text-anchor="middle" font-size="8" font-weight="700" fill="var(--blue)">immutable + dedup</text>
+  <text x="180" y="116" font-size="7.5" font-family="monospace" fill="var(--ink)">ReplacingMergeTree FINAL · event-id idempotency</text>
+  <text x="690" y="116" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L13·L17</text>
+  <rect x="20" y="130" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="135" width="142" height="18" rx="5" fill="var(--purple)" opacity="0.16"/><text x="99" y="148" text-anchor="middle" font-size="8" font-weight="700" fill="var(--purple)">async decouple</text>
+  <text x="180" y="148" font-size="7.5" font-family="monospace" fill="var(--ink)">API lands S3+Redis → 207 · worker consumes</text>
+  <text x="690" y="148" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L12·L15</text>
+  <rect x="20" y="162" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="167" width="142" height="18" rx="5" fill="var(--amber)" opacity="0.16"/><text x="99" y="180" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">dual storage</text>
+  <text x="180" y="180" font-size="7.5" font-family="monospace" fill="var(--ink)">Postgres config/txn + ClickHouse analytics</text>
+  <text x="690" y="180" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L09·L08</text>
+  <rect x="20" y="194" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="199" width="142" height="18" rx="5" fill="var(--accent)" opacity="0.16"/><text x="99" y="212" text-anchor="middle" font-size="8" font-weight="700" fill="var(--accent)">multi-tenancy</text>
+  <text x="180" y="212" font-size="7.5" font-family="monospace" fill="var(--ink)">projectId on every row · RBAC role×scope</text>
+  <text x="690" y="212" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L06·L49</text>
+  <rect x="20" y="226" width="680" height="28" rx="5" fill="var(--bg)" stroke="var(--line)" stroke-width="0.5"/>
+  <rect x="28" y="231" width="142" height="18" rx="5" fill="var(--red)" opacity="0.16"/><text x="99" y="244" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">cost-aware</text>
+  <text x="180" y="244" font-size="7.5" font-family="monospace" fill="var(--ink)">columnar scans · token pricing · cache hits</text>
+  <text x="690" y="244" text-anchor="end" font-size="7.4" font-weight="700" fill="var(--accent-ink)">L16·L42</text>
+  <text x="360" y="274" text-anchor="middle" font-size="7.2" fill="var(--muted)">these six aren't isolated choices but recur on every path — understand one and the rest connect</text>
+</svg>
+<div class="figcap"><b>The whole guide really repeats just six things</b> (every mechanism is from that lesson's real source; lesson numbers are for navigation): ① <b>wide events</b> — make each observation a wide row and keep high cardinality, so you can slice freely (<a class="xref" href="02-observability-2-and-wide-events.html">L02</a>/<a class="xref" href="08-clickhouse-wide-events.html">L08</a>); ② <b>immutable + dedup</b> — append-only events converged via <code>ReplacingMergeTree FINAL</code> and event-<code>id</code> idempotency (<a class="xref" href="13-event-types-merge.html">L13</a>/<a class="xref" href="17-clickhouse-writer.html">L17</a>); ③ <b>async decoupling</b> — ingestion just lands S3+Redis and returns <code>207</code>, the heavy work goes to a worker (<a class="xref" href="12-ingestion-api.html">L12</a>/<a class="xref" href="15-ingestion-service.html">L15</a>); ④ <b>dual storage</b> — Postgres for config/txn, ClickHouse for analytics (<a class="xref" href="09-postgres-metadata-schema.html">L09</a>/<a class="xref" href="08-clickhouse-wide-events.html">L08</a>); ⑤ <b>multi-tenancy</b> — <code>projectId</code> on every row, RBAC role×scope for authz (<a class="xref" href="06-instrumenting-an-llm-app.html">L06</a>/<a class="xref" href="49-rbac-apikeys-scim.html">L49</a>); ⑥ <b>cost-awareness</b> — columnar scans, token pricing, cache hits (<a class="xref" href="16-token-counting-cost.html">L16</a>/<a class="xref" href="42-models-and-pricing.html">L42</a>). <b>Understand one and the rest connect</b>.</div>
 </div>
 
 <div class="layers">
