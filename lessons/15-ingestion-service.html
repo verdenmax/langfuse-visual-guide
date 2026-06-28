@@ -646,14 +646,14 @@ dataset_run_item) and a <code>switch</code> hands the work to the matching <code
   <text x="264" y="74" font-size="7.5" font-family="monospace" fill="var(--purple)">id: obs_7f</text>
   <text x="264" y="92" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="264" y="108" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">total_cost: 0.0041</text>
-  <text x="264" y="130" font-size="7" fill="var(--muted)">只带变更的字段</text>
+  <text x="264" y="130" font-size="7" fill="var(--muted)">only the changed fields</text>
   <line x1="460" y1="110" x2="492" y2="110" stroke="var(--accent)" stroke-width="1.4"/><polygon points="492,110 483,105 483,115" fill="var(--accent)"/>
   <rect x="484" y="36" width="216" height="150" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="496" y="54" font-size="8.5" font-weight="700" fill="var(--accent-ink)">result row (written to CH)</text>
   <text x="496" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
   <text x="496" y="92" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="496" y="108" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">total_cost: 0.0041</text>
   <text x="496" y="124" font-size="7.5" font-family="monospace" fill="var(--ink)">event_ts: 12:00:01.9</text>
-  <text x="496" y="148" font-size="7" font-weight="700" fill="var(--accent-ink)">event_ts 更新 → 留这条</text>
+  <text x="496" y="148" font-size="7" font-weight="700" fill="var(--accent-ink)">event_ts updated → keep this one</text>
 </svg>
 <div class="figcap"><b>Merge is “apply a patch”, not “edit the row in place”</b> (semantics per <code>IngestionService</code>; <b>values illustrative</b>): the update carries only <b>changed fields</b>; the merger overlays them onto the current row to get the result row, then appends it with an <b>updated</b> <code>event_ts</code>. ClickHouse's <code>ReplacingMergeTree</code> keeps the latest by <code>event_ts</code> at read time — so “update” is implemented as “append + keep-latest-at-query”.</div>
 </div>

@@ -619,12 +619,12 @@ input may come from your reported <code>provided_*</code>, or be backfilled by t
   <rect x="420" y="64" width="120" height="30" rx="5" fill="var(--accent)" opacity="0.55"/><text x="480" y="83" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">output 88</text>
   <text x="556" y="84" font-size="8" fill="var(--muted)">= 600 tok</text>
   <text x="40" y="124" font-size="9" font-weight="700" fill="var(--amber)">costDetails (cost)</text>
-  <rect x="40" y="130" width="150" height="30" rx="5" fill="var(--amber)" opacity="0.45"/><text x="115" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">input·单价</text>
-  <rect x="190" y="130" width="230" height="30" rx="5" fill="var(--red)" opacity="0.4"/><text x="305" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">output·单价（通常更贵）</text>
+  <rect x="40" y="130" width="150" height="30" rx="5" fill="var(--amber)" opacity="0.45"/><text x="115" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">input · unit price</text>
+  <rect x="190" y="130" width="230" height="30" rx="5" fill="var(--red)" opacity="0.4"/><text x="305" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">output · unit price (usually pricier)</text>
   <text x="436" y="150" font-size="8.5" font-weight="700" fill="var(--ink)">total_cost ≈ $0.0041</text>
   <rect x="40" y="178" width="640" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
   <text x="52" y="196" font-size="8" fill="var(--ink)">cost = input_tok × in_price + output_tok × out_price</text>
-  <text x="52" y="212" font-size="7.5" fill="var(--muted)">单价按 model 从定价表查（match-pattern）；usage 没带就按 tokenizer 估，再算钱</text>
+  <text x="52" y="212" font-size="7.5" fill="var(--muted)">unit price looked up by model (match-pattern); if usage absent, estimate via tokenizer, then cost it</text>
 </svg>
 <div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”.</div>
 </div>

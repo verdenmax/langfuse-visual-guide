@@ -622,8 +622,8 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
   <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
   <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
   <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
-  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
-  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ compiled to SQL: WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">each {column,operator,value,type} is a structured filter — validatable and pushdown-able</text>
 </svg>
 <div class="figcap"><b>Turning free text into structured filters</b> (shape per <code>packages/shared/src/interfaces/filters.ts</code>; <b>values illustrative</b>): one line in the search bar parses into a <code>FilterState</code> array, each item a <code>{{column, operator, value, type}}</code>. Once structured it can be <b>validated</b> (legal type/operator) and safely <b>compiled to parameterized SQL</b> pushed down to ClickHouse — the basis for the search bar becoming the unified entry for every filterable view.</div>
 </div>

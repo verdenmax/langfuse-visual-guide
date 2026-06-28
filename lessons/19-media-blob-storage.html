@@ -610,19 +610,19 @@ multi-MB image.</p>
   <rect x="20" y="38" width="320" height="160" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="56" font-size="9" font-weight="700" fill="var(--blue)">observation.input (small)</text>
   <text x="32" y="78" font-size="7.5" font-family="monospace" fill="var(--ink)">{ &quot;role&quot;: &quot;user&quot;,</text>
   <text x="32" y="94" font-size="7.5" font-family="monospace" fill="var(--ink)">  &quot;content&quot;: [</text>
-  <text x="32" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">    {&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;这张图…&quot;},</text>
+  <text x="32" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">    {&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;this image…&quot;},</text>
   <rect x="44" y="118" width="284" height="20" rx="4" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="50" y="132" font-size="7" font-family="monospace" fill="var(--amber)">@@@langfuseMedia:…id=med_9@@@</text>
   <text x="32" y="156" font-size="7.5" font-family="monospace" fill="var(--ink)">  ] }</text>
-  <text x="32" y="184" font-size="7" fill="var(--muted)">只存「指针」，行很小、可聚合</text>
-  <line x1="330" y1="128" x2="392" y2="128" stroke="var(--amber)" stroke-width="1.6"/><polygon points="392,128 383,123 383,133" fill="var(--amber)"/><text x="361" y="120" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">解引用</text>
+  <text x="32" y="184" font-size="7" fill="var(--muted)">stores only a pointer; the row stays small and aggregatable</text>
+  <line x1="330" y1="128" x2="392" y2="128" stroke="var(--amber)" stroke-width="1.6"/><polygon points="392,128 383,123 383,133" fill="var(--amber)"/><text x="361" y="120" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">dereference</text>
   <rect x="396" y="38" width="304" height="160" rx="8" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="408" y="56" font-size="9" font-weight="700" fill="var(--amber)">S3 object (big)</text>
   <text x="408" y="78" font-size="7.5" font-family="monospace" fill="var(--ink)">key: {projectId}/{mediaId}</text>
   <text x="408" y="94" font-size="7.5" font-family="monospace" fill="var(--ink)">     proj_ab/med_9.png</text>
   <text x="408" y="112" font-size="7.5" font-family="monospace" fill="var(--ink)">content-type: image/png</text>
   <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">size: 1.8 MB</text>
   <rect x="600" y="120" width="84" height="56" rx="6" fill="var(--bg)" stroke="var(--amber)"/><text x="642" y="152" text-anchor="middle" font-size="18" fill="var(--amber)">🖼</text>
-  <text x="408" y="160" font-size="7.5" fill="var(--ink)">本体（可能很大）安静躺这</text>
-  <text x="408" y="186" font-size="7" fill="var(--muted)">既不撑大宽表，又能按需取</text>
+  <text x="408" y="160" font-size="7.5" fill="var(--ink)">the blob (possibly large) sits quietly here</text>
+  <text x="408" y="186" font-size="7" fill="var(--muted)">neither bloats the wide table nor blocks on-demand fetch</text>
 </svg>
 <div class="figcap"><b>Pointer in the table, body in S3</b> (token shape per <code>MEDIA_REFERENCE_PATTERN</code>; <b>values illustrative</b>): images/audio aren't embedded in the observation; they're replaced by a <code>@@@langfuseMedia:…@@@</code> reference token, while the real bytes go to S3 at <code>{{projectId}}/{{mediaId}}</code>. The wide-table row <b>stays small and aggregatable</b>, and the UI dereferences to S3 on demand — the “light queue, heavy body” idea applied to media.</div>
 </div>

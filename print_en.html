@@ -3540,7 +3540,7 @@ job). This is Lesson 5's "fast lane".
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;obs_7f&quot;,&quot;type&quot;:&quot;GENERATION&quot;,</text>
   <text x="32" y="148" font-size="7.5" font-family="monospace" fill="var(--code-ink)">      &quot;traceId&quot;:&quot;chat_a1b2&quot;} }</text>
   <text x="32" y="162" font-size="8" font-family="monospace" fill="var(--code-ink)">] }</text>
-  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ request（攒批一次发）</text>
+  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ request (batched, sent once)</text>
   <line x1="362" y1="120" x2="396" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,120 387,115 387,125" fill="var(--accent)"/>
   <rect x="398" y="32" width="302" height="190" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
   <text x="412" y="50" font-size="9" font-weight="700" fill="var(--accent-ink)">207 Multi-Status</text>
@@ -3551,7 +3551,7 @@ job). This is Lesson 5's "fast lane".
   <text x="412" y="122" font-size="8" font-family="monospace" fill="var(--code-ink)">  &quot;errors&quot;: []</text>
   <text x="412" y="136" font-size="8" font-family="monospace" fill="var(--code-ink)">}</text>
   <text x="412" y="166" font-size="7.5" fill="var(--muted)">per-event success/failure, one 207 for the batch</text>
-  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ response（早返回，不等落库）</text>
+  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ response (returns early, before persistence)</text>
 </svg>
 <div class="figcap"><b>One round trip</b> (status and batch shape per <code>web/src/pages/api/public/ingestion.ts</code>; <b>values illustrative</b>): the client <b>batches several events</b> into one POST; the server validates, enqueues and returns <code>207 Multi-Status</code> — <code>successes</code>/<code>errors</code> give a per-event result. It's 207, not 200, because a batch can be partly OK and partly failed.</div>
 </div>
@@ -3803,14 +3803,14 @@ gathers the dozen-plus events into one schema. To validate, Zod reads the <code>
   <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--code-ink)">input: {messages}</text>
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--faint)">output: —</text>
   <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--faint)">usage: —</text>
-  <text x="32" y="180" font-size="7" fill="var(--muted)">先发：知道什么算什么</text>
+  <text x="32" y="180" font-size="7" fill="var(--muted)">sent first: what is known so far</text>
   <text x="250" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">+</text>
   <rect x="266" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--purple)"/><text x="278" y="52" font-size="8.5" font-weight="700" fill="var(--purple)">② update (at end)</text>
-  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← 同一个</text>
+  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← same one</text>
   <text x="278" y="88" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="278" y="104" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">usageDetails: {512,88}</text>
   <text x="278" y="120" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">endTime: …+1.8s</text>
-  <text x="278" y="180" font-size="7" fill="var(--muted)">后发：补上结束才知的</text>
+  <text x="278" y="180" font-size="7" fill="var(--muted)">sent later: fills end-time facts</text>
   <text x="496" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">=</text>
   <rect x="512" y="34" width="188" height="160" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="524" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ merged row</text>
   <text x="524" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
@@ -3819,7 +3819,7 @@ gathers the dozen-plus events into one schema. To validate, Zod reads the <code>
   <text x="524" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">output: &quot;Here is…&quot;</text>
   <text x="524" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails: {512,88}</text>
   <text x="524" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">endTime: …+1.8s</text>
-  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">非空字段补齐</text>
+  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">non-null fields filled in</text>
 </svg>
 <div class="figcap"><b>Same id merges</b> (semantics per <code>IngestionService</code> merge; <b>values illustrative</b>): an LLM call sends an <code>observation-create</code> at the <b>start</b> (name/input known) and an <code>observation-update</code> at the <b>end</b> (output/usage/endTime). They share an <code>id</code>, so they <b>merge by id</b> into one final row with later non-null fields filled in — the SDK needn't hold the whole record in memory until the end.</div>
 </div>
@@ -4086,16 +4086,16 @@ file. The worker takes the job, then <strong>reads the event back from S3 by fil
   <rect x="200" y="38" width="320" height="22" rx="5" fill="var(--panel-2)" stroke="var(--line)"/>
   <rect x="200" y="38" width="220" height="22" rx="5" fill="var(--red)" opacity="0.45"/>
   <text x="270" y="53" font-size="7.5" font-weight="700" fill="var(--red)">pending events ≈ 18k</text>
-  <line x1="470" y1="32" x2="470" y2="66" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="3 2"/><text x="474" y="32" font-size="7" fill="var(--amber)">水位线/watermark</text>
+  <line x1="470" y1="32" x2="470" y2="66" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="3 2"/><text x="474" y="32" font-size="7" fill="var(--amber)">watermark</text>
   <line x1="524" y1="48" x2="566" y2="48" stroke="var(--purple)" stroke-width="1.6"/><polygon points="566,48 557,43 557,53" fill="var(--purple)"/>
   <text x="576" y="52" font-size="8.5" font-weight="700" fill="var(--purple)">worker consume</text>
-  <rect x="120" y="92" width="240" height="100" rx="9" fill="var(--bg)" stroke="var(--red)"/><text x="240" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">primary 队列</text>
-  <text x="240" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">大多数项目共用</text>
-  <path d="M150 168 a52 52 0 0 1 104 0" fill="none" stroke="var(--line)" stroke-width="7"/><path d="M150 168 a52 52 0 0 1 78 -36" fill="none" stroke="var(--amber)" stroke-width="7"/><text x="202" y="166" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">lag 偏高</text><text x="202" y="180" text-anchor="middle" font-size="6.5" fill="var(--muted)">消费滞后(s)</text>
-  <rect x="380" y="92" width="240" height="100" rx="9" fill="var(--bg)" stroke="var(--purple)" stroke-dasharray="4 3"/><text x="500" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">secondary 队列</text>
-  <text x="500" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">高吞吐项目隔离到此</text>
-  <text x="500" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">大客户的洪峰不拖垮别人</text>
-  <text x="500" y="170" text-anchor="middle" font-size="7" fill="var(--faint)">primary/secondary 物理隔离</text>
+  <rect x="120" y="92" width="240" height="100" rx="9" fill="var(--bg)" stroke="var(--red)"/><text x="240" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--red)">primary queue</text>
+  <text x="240" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">shared by most projects</text>
+  <path d="M150 168 a52 52 0 0 1 104 0" fill="none" stroke="var(--line)" stroke-width="7"/><path d="M150 168 a52 52 0 0 1 78 -36" fill="none" stroke="var(--amber)" stroke-width="7"/><text x="202" y="166" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">lag high</text><text x="202" y="180" text-anchor="middle" font-size="6.5" fill="var(--muted)">consumer lag (s)</text>
+  <rect x="380" y="92" width="240" height="100" rx="9" fill="var(--bg)" stroke="var(--purple)" stroke-dasharray="4 3"/><text x="500" y="110" text-anchor="middle" font-size="9" font-weight="700" fill="var(--purple)">secondary queue</text>
+  <text x="500" y="128" text-anchor="middle" font-size="7.5" fill="var(--muted)">high-throughput projects isolated here</text>
+  <text x="500" y="150" text-anchor="middle" font-size="7.5" fill="var(--ink)">a big tenant's spike won't drag others down</text>
+  <text x="500" y="170" text-anchor="middle" font-size="7" fill="var(--faint)">primary/secondary physical isolation</text>
 </svg>
 <div class="figcap"><b>The queue absorbs spikes, the watermark warns</b> (queue contract in <code>packages/shared/src/server/queues.ts</code>; <b>values illustrative</b>): web pushes events into Redis and returns fast; workers drain the other end. <b>Queue depth</b> is the backlog; crossing the <b>watermark</b> means add workers; <b>consumer lag</b> is “how stale the queryable data is”. High-throughput projects use a <code>secondary</code> queue physically isolated from <code>primary</code>, so one tenant's flood can't starve others.</div>
 </div>
@@ -4337,14 +4337,14 @@ dataset_run_item) and a <code>switch</code> hands the work to the matching <code
   <text x="264" y="74" font-size="7.5" font-family="monospace" fill="var(--purple)">id: obs_7f</text>
   <text x="264" y="92" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="264" y="108" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">total_cost: 0.0041</text>
-  <text x="264" y="130" font-size="7" fill="var(--muted)">只带变更的字段</text>
+  <text x="264" y="130" font-size="7" fill="var(--muted)">only the changed fields</text>
   <line x1="460" y1="110" x2="492" y2="110" stroke="var(--accent)" stroke-width="1.4"/><polygon points="492,110 483,105 483,115" fill="var(--accent)"/>
   <rect x="484" y="36" width="216" height="150" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="496" y="54" font-size="8.5" font-weight="700" fill="var(--accent-ink)">result row (written to CH)</text>
   <text x="496" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
   <text x="496" y="92" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="496" y="108" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">total_cost: 0.0041</text>
   <text x="496" y="124" font-size="7.5" font-family="monospace" fill="var(--ink)">event_ts: 12:00:01.9</text>
-  <text x="496" y="148" font-size="7" font-weight="700" fill="var(--accent-ink)">event_ts 更新 → 留这条</text>
+  <text x="496" y="148" font-size="7" font-weight="700" fill="var(--accent-ink)">event_ts updated → keep this one</text>
 </svg>
 <div class="figcap"><b>Merge is “apply a patch”, not “edit the row in place”</b> (semantics per <code>IngestionService</code>; <b>values illustrative</b>): the update carries only <b>changed fields</b>; the merger overlays them onto the current row to get the result row, then appends it with an <b>updated</b> <code>event_ts</code>. ClickHouse's <code>ReplacingMergeTree</code> keeps the latest by <code>event_ts</code> at read time — so “update” is implemented as “append + keep-latest-at-query”.</div>
 </div>
@@ -4594,12 +4594,12 @@ input may come from your reported <code>provided_*</code>, or be backfilled by t
   <rect x="420" y="64" width="120" height="30" rx="5" fill="var(--accent)" opacity="0.55"/><text x="480" y="83" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--accent-ink)">output 88</text>
   <text x="556" y="84" font-size="8" fill="var(--muted)">= 600 tok</text>
   <text x="40" y="124" font-size="9" font-weight="700" fill="var(--amber)">costDetails (cost)</text>
-  <rect x="40" y="130" width="150" height="30" rx="5" fill="var(--amber)" opacity="0.45"/><text x="115" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">input·单价</text>
-  <rect x="190" y="130" width="230" height="30" rx="5" fill="var(--red)" opacity="0.4"/><text x="305" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">output·单价（通常更贵）</text>
+  <rect x="40" y="130" width="150" height="30" rx="5" fill="var(--amber)" opacity="0.45"/><text x="115" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--amber)">input · unit price</text>
+  <rect x="190" y="130" width="230" height="30" rx="5" fill="var(--red)" opacity="0.4"/><text x="305" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="var(--red)">output · unit price (usually pricier)</text>
   <text x="436" y="150" font-size="8.5" font-weight="700" fill="var(--ink)">total_cost ≈ $0.0041</text>
   <rect x="40" y="178" width="640" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
   <text x="52" y="196" font-size="8" fill="var(--ink)">cost = input_tok × in_price + output_tok × out_price</text>
-  <text x="52" y="212" font-size="7.5" fill="var(--muted)">单价按 model 从定价表查（match-pattern）；usage 没带就按 tokenizer 估，再算钱</text>
+  <text x="52" y="212" font-size="7.5" fill="var(--muted)">unit price looked up by model (match-pattern); if usage absent, estimate via tokenizer, then cost it</text>
 </svg>
 <div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”.</div>
 </div>
@@ -4829,15 +4829,15 @@ handful of <strong>big batches</strong>, then INSERTs them into ClickHouse in on
 <svg viewBox="0 0 720 226" role="img" aria-label="ClickhouseWriter timeline: events accumulate into per-table memory buffers, a flush fires at batchSize (by size) or every writeInterval (by time), and flushAll(true) drains at shutdown. Constant names per ClickhouseWriter, values illustrative">
   <text x="360" y="20" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-ink)">Example: the batch writer accumulating then flushing</text>
   <line x1="40" y1="180" x2="690" y2="180" stroke="var(--line)" stroke-width="1.2"/><text x="690" y="196" text-anchor="end" font-size="8" fill="var(--muted)">time →</text>
-  <text x="20" y="70" font-size="8" fill="var(--muted)">缓冲量</text>
+  <text x="20" y="70" font-size="8" fill="var(--muted)">buffered</text>
   <path d="M40 175 L150 100 L152 175 L260 70 L262 175 L400 130 L500 175" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
-  <line x1="40" y1="100" x2="690" y2="100" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4 3"/><text x="44" y="96" font-size="7.5" fill="var(--blue)">batchSize 阈值</text>
-  <line x1="150" y1="60" x2="150" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="108" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="151" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
-  <line x1="260" y1="60" x2="260" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="218" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="261" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① 按量 flush</text>
-  <line x1="400" y1="120" x2="400" y2="180" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/><rect x="356" y="104" width="92" height="16" rx="4" fill="var(--blue-soft)"/><text x="402" y="116" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">② 按时 flush</text>
-  <text x="400" y="150" text-anchor="middle" font-size="6.6" fill="var(--blue)">writeInterval 到点</text>
-  <line x1="600" y1="40" x2="600" y2="180" stroke="var(--red)" stroke-width="1.2"/><rect x="556" y="44" width="92" height="16" rx="4" fill="var(--red-soft)"/><text x="602" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--red)">③ flushAll(true)</text><text x="600" y="76" text-anchor="middle" font-size="6.6" fill="var(--red)">关机排空·不丢</text>
-  <text x="40" y="212" font-size="7.5" fill="var(--muted)">谁先到算谁：攒满 batchSize 或到 writeInterval 就批量 INSERT 一次；优雅停机一次写尽</text>
+  <line x1="40" y1="100" x2="690" y2="100" stroke="var(--blue)" stroke-width="1" stroke-dasharray="4 3"/><text x="44" y="96" font-size="7.5" fill="var(--blue)">batchSize threshold</text>
+  <line x1="150" y1="60" x2="150" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="108" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="151" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① flush by size</text>
+  <line x1="260" y1="60" x2="260" y2="180" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/><rect x="218" y="44" width="86" height="16" rx="4" fill="var(--accent-soft)"/><text x="261" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--accent-ink)">① flush by size</text>
+  <line x1="400" y1="120" x2="400" y2="180" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/><rect x="356" y="104" width="92" height="16" rx="4" fill="var(--blue-soft)"/><text x="402" y="116" text-anchor="middle" font-size="7" font-weight="700" fill="var(--blue)">② flush by time</text>
+  <text x="400" y="150" text-anchor="middle" font-size="6.6" fill="var(--blue)">writeInterval elapsed</text>
+  <line x1="600" y1="40" x2="600" y2="180" stroke="var(--red)" stroke-width="1.2"/><rect x="556" y="44" width="92" height="16" rx="4" fill="var(--red-soft)"/><text x="602" y="56" text-anchor="middle" font-size="7" font-weight="700" fill="var(--red)">③ flushAll(true)</text><text x="600" y="76" text-anchor="middle" font-size="6.6" fill="var(--red)">drain on shutdown · no loss</text>
+  <text x="40" y="212" font-size="7.5" fill="var(--muted)">whichever comes first: when batchSize fills or writeInterval elapses, batch-INSERT once; graceful shutdown flushes all</text>
 </svg>
 <div class="figcap"><b>Batched persistence: flush by size and by time</b> (constant names per <code>ClickhouseWriter</code>; <b>values illustrative</b>): events enter a <b>per-table memory buffer</b>; a full <code>batchSize</code> triggers a <b>flush by size</b>, otherwise every <code>writeInterval</code> triggers a <b>flush by time</b>, whichever comes first; at shutdown <code>flushAll(true)</code> drains everything losslessly. Batched INSERTs buy ClickHouse's high write throughput.</div>
 </div>
@@ -5076,7 +5076,7 @@ parse + enqueue, return immediately" — only it parses the OpenTelemetry span f
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.output_tokens: 88</text>
   <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">startTimeUnixNano: …</text>
   <text x="32" y="168" font-size="7.5" font-family="monospace" fill="var(--ink)">endTimeUnixNano: …</text>
-  <text x="32" y="200" font-size="7" fill="var(--muted)">任意 OTel SDK 都能发</text>
+  <text x="32" y="200" font-size="7" fill="var(--muted)">any OTel SDK can send</text>
   <g font-size="7" fill="var(--accent)"><line x1="324" y1="94" x2="392" y2="74" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,74 383,73 385,81" fill="var(--accent)"/><line x1="324" y1="104" x2="392" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,106 383,102 384,110" fill="var(--accent)"/><line x1="324" y1="128" x2="392" y2="138" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,138 383,134 384,142" fill="var(--accent)"/></g>
   <rect x="396" y="34" width="304" height="186" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="408" y="52" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse observation</text>
   <text x="408" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">type: GENERATION  ← operation.name</text>
@@ -5085,7 +5085,7 @@ parse + enqueue, return immediately" — only it parses the OpenTelemetry span f
   <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails:</text>
   <text x="408" y="142" font-size="7.5" font-family="monospace" fill="var(--ink)">  {input:512, output:88}</text>
   <text x="408" y="160" font-size="7.5" font-family="monospace" fill="var(--ink)">startTime/endTime ← UnixNano</text>
-  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">无需改 SDK，OTel 直接进来</text>
+  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">no SDK change; OTel comes straight in</text>
 </svg>
 <div class="figcap"><b>OTel is a second entry point</b> (attribute names per <code>packages/shared/src/server/otel/ObservationTypeMapper.ts</code>; <b>values illustrative</b>): a span from any OpenTelemetry SDK has its <code>gen_ai.*</code> semantic attributes <b>mapped field-by-field</b> into an observation — <code>gen_ai.request.model</code>→<code>model</code>, <code>gen_ai.usage.*</code>→<code>usageDetails</code>, <code>operation.name</code>→<code>type</code>. So you can feed Langfuse without changing your instrumentation.</div>
 </div>
@@ -5315,19 +5315,19 @@ multi-MB image.</p>
   <rect x="20" y="38" width="320" height="160" rx="8" fill="var(--bg)" stroke="var(--blue)"/><text x="32" y="56" font-size="9" font-weight="700" fill="var(--blue)">observation.input (small)</text>
   <text x="32" y="78" font-size="7.5" font-family="monospace" fill="var(--ink)">{ &quot;role&quot;: &quot;user&quot;,</text>
   <text x="32" y="94" font-size="7.5" font-family="monospace" fill="var(--ink)">  &quot;content&quot;: [</text>
-  <text x="32" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">    {&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;这张图…&quot;},</text>
+  <text x="32" y="110" font-size="7.5" font-family="monospace" fill="var(--ink)">    {&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;this image…&quot;},</text>
   <rect x="44" y="118" width="284" height="20" rx="4" fill="var(--amber-soft)" stroke="var(--amber)"/><text x="50" y="132" font-size="7" font-family="monospace" fill="var(--amber)">@@@langfuseMedia:…id=med_9@@@</text>
   <text x="32" y="156" font-size="7.5" font-family="monospace" fill="var(--ink)">  ] }</text>
-  <text x="32" y="184" font-size="7" fill="var(--muted)">只存「指针」，行很小、可聚合</text>
-  <line x1="330" y1="128" x2="392" y2="128" stroke="var(--amber)" stroke-width="1.6"/><polygon points="392,128 383,123 383,133" fill="var(--amber)"/><text x="361" y="120" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">解引用</text>
+  <text x="32" y="184" font-size="7" fill="var(--muted)">stores only a pointer; the row stays small and aggregatable</text>
+  <line x1="330" y1="128" x2="392" y2="128" stroke="var(--amber)" stroke-width="1.6"/><polygon points="392,128 383,123 383,133" fill="var(--amber)"/><text x="361" y="120" text-anchor="middle" font-size="7" font-weight="700" fill="var(--amber)">dereference</text>
   <rect x="396" y="38" width="304" height="160" rx="8" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.6"/><text x="408" y="56" font-size="9" font-weight="700" fill="var(--amber)">S3 object (big)</text>
   <text x="408" y="78" font-size="7.5" font-family="monospace" fill="var(--ink)">key: {projectId}/{mediaId}</text>
   <text x="408" y="94" font-size="7.5" font-family="monospace" fill="var(--ink)">     proj_ab/med_9.png</text>
   <text x="408" y="112" font-size="7.5" font-family="monospace" fill="var(--ink)">content-type: image/png</text>
   <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">size: 1.8 MB</text>
   <rect x="600" y="120" width="84" height="56" rx="6" fill="var(--bg)" stroke="var(--amber)"/><text x="642" y="152" text-anchor="middle" font-size="18" fill="var(--amber)">🖼</text>
-  <text x="408" y="160" font-size="7.5" fill="var(--ink)">本体（可能很大）安静躺这</text>
-  <text x="408" y="186" font-size="7" fill="var(--muted)">既不撑大宽表，又能按需取</text>
+  <text x="408" y="160" font-size="7.5" fill="var(--ink)">the blob (possibly large) sits quietly here</text>
+  <text x="408" y="186" font-size="7" fill="var(--muted)">neither bloats the wide table nor blocks on-demand fetch</text>
 </svg>
 <div class="figcap"><b>Pointer in the table, body in S3</b> (token shape per <code>MEDIA_REFERENCE_PATTERN</code>; <b>values illustrative</b>): images/audio aren't embedded in the observation; they're replaced by a <code>@@@langfuseMedia:…@@@</code> reference token, while the real bytes go to S3 at <code>{{projectId}}/{{mediaId}}</code>. The wide-table row <b>stays small and aggregatable</b>, and the UI dereferences to S3 on demand — the “light queue, heavy body” idea applied to media.</div>
 </div>
@@ -6046,7 +6046,7 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
   <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
   <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
-  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL = the merged latest</text>
   <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
   <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
   <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
@@ -6054,7 +6054,7 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
   <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
   <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
-  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">the repository assembles these rows into the objects the UI needs</text>
 </svg>
 <div class="figcap"><b>The heart of the read path: a parameterized column query</b> (per <code>packages/shared/src/server/repositories</code> and <code>0002_observations</code>; <b>values illustrative</b>): the repository always carries <code>WHERE project_id = ?</code> (tenant isolation), <code>ORDER BY start_time</code>, <code>LIMIT</code>, and adds <code>FINAL</code> to read the merged-latest rows from ReplacingMergeTree. The returned rows are then assembled into the shape the list/detail UI needs.</div>
 </div>
@@ -6277,8 +6277,8 @@ contract that both blocks SQL injection and makes the search bar and AI filters 
   <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
   <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
   <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
-  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
-  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ compiled to SQL: WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">each {column,operator,value,type} is a structured filter — validatable and pushdown-able</text>
 </svg>
 <div class="figcap"><b>Turning free text into structured filters</b> (shape per <code>packages/shared/src/interfaces/filters.ts</code>; <b>values illustrative</b>): one line in the search bar parses into a <code>FilterState</code> array, each item a <code>{{column, operator, value, type}}</code>. Once structured it can be <b>validated</b> (legal type/operator) and safely <b>compiled to parameterized SQL</b> pushed down to ClickHouse — the basis for the search bar becoming the unified entry for every filterable view.</div>
 </div>
@@ -7226,7 +7226,7 @@ runs these gates:</p>
   <text x="34" y="164" font-size="8" font-family="monospace" fill="var(--accent-ink)">  ],</text>
   <text x="34" y="180" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "scores":[ {"name":"helpfulness","value":0.9} ]</text>
   <text x="34" y="196" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
-  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">同一套领域对象，REST/SDK/Fern 多语言客户端共用</text>
+  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">one set of domain objects, shared by REST / SDK / Fern multi-language clients</text>
 </svg>
 <div class="figcap"><b>The same domain objects, exposed</b> (endpoint per <code>web/src/pages/api/public/traces</code>; <b>values illustrative</b>): Basic-auth with <code>pk:sk</code> and <code>GET /api/public/traces/{{id}}</code> returns a JSON — the same trace you see in the UI: <code>observations[]</code>, <code>scores[]</code>, <code>totalCost</code>, <code>latency</code>. Fern generates multi-language SDKs from the API definition, so REST and every client get the same shape.</div>
 </div>

@@ -640,7 +640,7 @@ parse + enqueue, return immediately" — only it parses the OpenTelemetry span f
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">gen_ai.usage.output_tokens: 88</text>
   <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">startTimeUnixNano: …</text>
   <text x="32" y="168" font-size="7.5" font-family="monospace" fill="var(--ink)">endTimeUnixNano: …</text>
-  <text x="32" y="200" font-size="7" fill="var(--muted)">任意 OTel SDK 都能发</text>
+  <text x="32" y="200" font-size="7" fill="var(--muted)">any OTel SDK can send</text>
   <g font-size="7" fill="var(--accent)"><line x1="324" y1="94" x2="392" y2="74" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,74 383,73 385,81" fill="var(--accent)"/><line x1="324" y1="104" x2="392" y2="106" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,106 383,102 384,110" fill="var(--accent)"/><line x1="324" y1="128" x2="392" y2="138" stroke="var(--accent)" stroke-width="1.2"/><polygon points="392,138 383,134 384,142" fill="var(--accent)"/></g>
   <rect x="396" y="34" width="304" height="186" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="408" y="52" font-size="9" font-weight="700" fill="var(--accent-ink)">Langfuse observation</text>
   <text x="408" y="74" font-size="7.5" font-family="monospace" fill="var(--ink)">type: GENERATION  ← operation.name</text>
@@ -649,7 +649,7 @@ parse + enqueue, return immediately" — only it parses the OpenTelemetry span f
   <text x="408" y="128" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails:</text>
   <text x="408" y="142" font-size="7.5" font-family="monospace" fill="var(--ink)">  {input:512, output:88}</text>
   <text x="408" y="160" font-size="7.5" font-family="monospace" fill="var(--ink)">startTime/endTime ← UnixNano</text>
-  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">无需改 SDK，OTel 直接进来</text>
+  <text x="408" y="200" font-size="7" font-weight="700" fill="var(--accent-ink)">no SDK change; OTel comes straight in</text>
 </svg>
 <div class="figcap"><b>OTel is a second entry point</b> (attribute names per <code>packages/shared/src/server/otel/ObservationTypeMapper.ts</code>; <b>values illustrative</b>): a span from any OpenTelemetry SDK has its <code>gen_ai.*</code> semantic attributes <b>mapped field-by-field</b> into an observation — <code>gen_ai.request.model</code>→<code>model</code>, <code>gen_ai.usage.*</code>→<code>usageDetails</code>, <code>operation.name</code>→<code>type</code>. So you can feed Langfuse without changing your instrumentation.</div>
 </div>

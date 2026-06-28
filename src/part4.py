@@ -1041,7 +1041,7 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <text x="34" y="68" font-size="8.5" font-family="monospace" fill="var(--accent)">FROM</text><text x="80" y="68" font-size="8.5" font-family="monospace" fill="var(--code-ink)">observations</text>
   <text x="34" y="84" font-size="8.5" font-family="monospace" fill="var(--accent)">WHERE</text><text x="86" y="84" font-size="8.5" font-family="monospace" fill="var(--blue)">project_id = {projectId}</text><text x="270" y="84" font-size="8.5" font-family="monospace" fill="var(--code-ink)">AND start_time &gt;= {from}</text>
   <text x="34" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">ORDER BY</text><text x="108" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">start_time DESC</text><text x="270" y="100" font-size="8.5" font-family="monospace" fill="var(--accent)">LIMIT</text><text x="318" y="100" font-size="8.5" font-family="monospace" fill="var(--code-ink)">50</text><text x="360" y="100" font-size="8.5" font-family="monospace" fill="var(--red)">FINAL</text>
-  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL=取合并后最新</text>
+  <text x="690" y="100" text-anchor="end" font-size="7.5" fill="var(--faint)">FINAL = the merged latest</text>
   <line x1="360" y1="118" x2="360" y2="132" stroke="var(--accent)" stroke-width="1.4"/><polygon points="360,132 355,124 365,124" fill="var(--accent)"/>
   <rect x="20" y="134" width="680" height="92" rx="8" fill="var(--bg)" stroke="var(--accent)"/>
   <text x="34" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">id</text><text x="130" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">name</text><text x="250" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">type</text><text x="360" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">start_time</text><text x="500" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">total_cost</text><text x="600" y="150" font-size="8" font-weight="700" fill="var(--accent-ink)">usage</text>
@@ -1049,7 +1049,7 @@ query, it <strong>uniformly</strong> wraps several cross-cutting concerns:</p>
   <text x="34" y="172" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_7f</text><text x="130" y="172" font-size="7.5" fill="var(--ink)">answer</text><text x="250" y="172" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="172" font-size="7.5" fill="var(--ink)">12:00:01.9</text><text x="500" y="172" font-size="7.5" fill="var(--ink)">0.0041</text><text x="600" y="172" font-size="7.5" fill="var(--ink)">512/88</text>
   <text x="34" y="190" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_3a</text><text x="130" y="190" font-size="7.5" fill="var(--ink)">retrieve</text><text x="250" y="190" font-size="7.5" fill="var(--blue)">SPAN</text><text x="360" y="190" font-size="7.5" fill="var(--ink)">12:00:00.1</text><text x="500" y="190" font-size="7.5" fill="var(--ink)">—</text><text x="600" y="190" font-size="7.5" fill="var(--ink)">—</text>
   <text x="34" y="208" font-size="7.5" font-family="monospace" fill="var(--ink)">obs_9c</text><text x="130" y="208" font-size="7.5" fill="var(--ink)">plan</text><text x="250" y="208" font-size="7.5" fill="var(--accent-ink)">GENERATION</text><text x="360" y="208" font-size="7.5" fill="var(--ink)">11:59:58.0</text><text x="500" y="208" font-size="7.5" fill="var(--ink)">0.0009</text><text x="600" y="208" font-size="7.5" fill="var(--ink)">120/40</text>
-  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">仓储层把这些行组装成 UI 要的对象</text>
+  <text x="690" y="220" text-anchor="end" font-size="7" fill="var(--muted)">the repository assembles these rows into the objects the UI needs</text>
 </svg>
 <div class="figcap"><b>The heart of the read path: a parameterized column query</b> (per <code>packages/shared/src/server/repositories</code> and <code>0002_observations</code>; <b>values illustrative</b>): the repository always carries <code>WHERE project_id = ?</code> (tenant isolation), <code>ORDER BY start_time</code>, <code>LIMIT</code>, and adds <code>FINAL</code> to read the merged-latest rows from ReplacingMergeTree. The returned rows are then assembled into the shape the list/detail UI needs.</div>
 </div>
@@ -1409,8 +1409,8 @@ _EN23.append(r"""
   <text x="66" y="152" font-size="8" font-family="monospace" fill="var(--code-ink)">{ column:"total_cost",operator:"&gt;", value:0.003,    type:"number" }</text>
   <text x="54" y="168" font-size="8" font-family="monospace" fill="var(--muted)">]</text>
   <line x1="60" y1="178" x2="660" y2="178" stroke="var(--code-line)"/>
-  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ 编译成 SQL：WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
-  <text x="66" y="212" font-size="7.5" fill="var(--faint)">每个 {column,operator,value,type} 是一条结构化过滤，可校验、可下推</text>
+  <text x="66" y="196" font-size="7.8" font-family="monospace" fill="var(--accent)">→ compiled to SQL: WHERE name = ? AND userId = ? AND total_cost &gt; ?</text>
+  <text x="66" y="212" font-size="7.5" fill="var(--faint)">each {column,operator,value,type} is a structured filter — validatable and pushdown-able</text>
 </svg>
 <div class="figcap"><b>Turning free text into structured filters</b> (shape per <code>packages/shared/src/interfaces/filters.ts</code>; <b>values illustrative</b>): one line in the search bar parses into a <code>FilterState</code> array, each item a <code>{{column, operator, value, type}}</code>. Once structured it can be <b>validated</b> (legal type/operator) and safely <b>compiled to parameterized SQL</b> pushed down to ClickHouse — the basis for the search bar becoming the unified entry for every filterable view.</div>
 </div>
@@ -2926,7 +2926,7 @@ runs these gates:</p>
   <text x="34" y="164" font-size="8" font-family="monospace" fill="var(--accent-ink)">  ],</text>
   <text x="34" y="180" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "scores":[ {"name":"helpfulness","value":0.9} ]</text>
   <text x="34" y="196" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
-  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">同一套领域对象，REST/SDK/Fern 多语言客户端共用</text>
+  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">one set of domain objects, shared by REST / SDK / Fern multi-language clients</text>
 </svg>
 <div class="figcap"><b>The same domain objects, exposed</b> (endpoint per <code>web/src/pages/api/public/traces</code>; <b>values illustrative</b>): Basic-auth with <code>pk:sk</code> and <code>GET /api/public/traces/{{id}}</code> returns a JSON — the same trace you see in the UI: <code>observations[]</code>, <code>scores[]</code>, <code>totalCost</code>, <code>latency</code>. Fern generates multi-language SDKs from the API definition, so REST and every client get the same shape.</div>
 </div>

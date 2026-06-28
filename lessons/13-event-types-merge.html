@@ -677,14 +677,14 @@ gathers the dozen-plus events into one schema. To validate, Zod reads the <code>
   <text x="32" y="120" font-size="7.5" font-family="monospace" fill="var(--code-ink)">input: {messages}</text>
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--faint)">output: —</text>
   <text x="32" y="152" font-size="7.5" font-family="monospace" fill="var(--faint)">usage: —</text>
-  <text x="32" y="180" font-size="7" fill="var(--muted)">先发：知道什么算什么</text>
+  <text x="32" y="180" font-size="7" fill="var(--muted)">sent first: what is known so far</text>
   <text x="250" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">+</text>
   <rect x="266" y="34" width="210" height="160" rx="8" fill="var(--bg)" stroke="var(--purple)"/><text x="278" y="52" font-size="8.5" font-weight="700" fill="var(--purple)">② update (at end)</text>
-  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← 同一个</text>
+  <text x="278" y="72" font-size="7.5" font-family="monospace" fill="var(--code-ink)">id: obs_7f  ← same one</text>
   <text x="278" y="88" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">output: &quot;Here is…&quot;</text>
   <text x="278" y="104" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">usageDetails: {512,88}</text>
   <text x="278" y="120" font-size="7.5" font-family="monospace" fill="var(--accent-ink)">endTime: …+1.8s</text>
-  <text x="278" y="180" font-size="7" fill="var(--muted)">后发：补上结束才知的</text>
+  <text x="278" y="180" font-size="7" fill="var(--muted)">sent later: fills end-time facts</text>
   <text x="496" y="120" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">=</text>
   <rect x="512" y="34" width="188" height="160" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="524" y="52" font-size="8.5" font-weight="700" fill="var(--accent-ink)">③ merged row</text>
   <text x="524" y="72" font-size="7.5" font-family="monospace" fill="var(--ink)">id: obs_7f</text>
@@ -693,7 +693,7 @@ gathers the dozen-plus events into one schema. To validate, Zod reads the <code>
   <text x="524" y="120" font-size="7.5" font-family="monospace" fill="var(--ink)">output: &quot;Here is…&quot;</text>
   <text x="524" y="136" font-size="7.5" font-family="monospace" fill="var(--ink)">usageDetails: {512,88}</text>
   <text x="524" y="152" font-size="7.5" font-family="monospace" fill="var(--ink)">endTime: …+1.8s</text>
-  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">非空字段补齐</text>
+  <text x="524" y="180" font-size="7" font-weight="700" fill="var(--accent-ink)">non-null fields filled in</text>
 </svg>
 <div class="figcap"><b>Same id merges</b> (semantics per <code>IngestionService</code> merge; <b>values illustrative</b>): an LLM call sends an <code>observation-create</code> at the <b>start</b> (name/input known) and an <code>observation-update</code> at the <b>end</b> (output/usage/endTime). They share an <code>id</code>, so they <b>merge by id</b> into one final row with later non-null fields filled in — the SDK needn't hold the whole record in memory until the end.</div>
 </div>

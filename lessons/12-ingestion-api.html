@@ -643,7 +643,7 @@ job). This is <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "fas
   <text x="32" y="136" font-size="7.5" font-family="monospace" fill="var(--code-ink)">    &quot;body&quot;:{&quot;id&quot;:&quot;obs_7f&quot;,&quot;type&quot;:&quot;GENERATION&quot;,</text>
   <text x="32" y="148" font-size="7.5" font-family="monospace" fill="var(--code-ink)">      &quot;traceId&quot;:&quot;chat_a1b2&quot;} }</text>
   <text x="32" y="162" font-size="8" font-family="monospace" fill="var(--code-ink)">] }</text>
-  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ request（攒批一次发）</text>
+  <text x="32" y="210" font-size="7.5" fill="var(--blue)">↑ request (batched, sent once)</text>
   <line x1="362" y1="120" x2="396" y2="120" stroke="var(--accent)" stroke-width="1.6"/><polygon points="396,120 387,115 387,125" fill="var(--accent)"/>
   <rect x="398" y="32" width="302" height="190" rx="9" fill="var(--bg)" stroke="var(--accent)"/>
   <text x="412" y="50" font-size="9" font-weight="700" fill="var(--accent-ink)">207 Multi-Status</text>
@@ -654,7 +654,7 @@ job). This is <a class="xref" href="05-life-of-a-trace.html">Lesson 5</a>'s "fas
   <text x="412" y="122" font-size="8" font-family="monospace" fill="var(--code-ink)">  &quot;errors&quot;: []</text>
   <text x="412" y="136" font-size="8" font-family="monospace" fill="var(--code-ink)">}</text>
   <text x="412" y="166" font-size="7.5" fill="var(--muted)">per-event success/failure, one 207 for the batch</text>
-  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ response（早返回，不等落库）</text>
+  <text x="412" y="210" font-size="7.5" fill="var(--accent-ink)">↑ response (returns early, before persistence)</text>
 </svg>
 <div class="figcap"><b>One round trip</b> (status and batch shape per <code>web/src/pages/api/public/ingestion.ts</code>; <b>values illustrative</b>): the client <b>batches several events</b> into one POST; the server validates, enqueues and returns <code>207 Multi-Status</code> — <code>successes</code>/<code>errors</code> give a per-event result. It's 207, not 200, because a batch can be partly OK and partly failed.</div>
 </div>

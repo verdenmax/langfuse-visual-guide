@@ -629,7 +629,7 @@ runs these gates:</p>
   <text x="34" y="164" font-size="8" font-family="monospace" fill="var(--accent-ink)">  ],</text>
   <text x="34" y="180" font-size="8" font-family="monospace" fill="var(--accent-ink)">  "scores":[ {"name":"helpfulness","value":0.9} ]</text>
   <text x="34" y="196" font-size="8" font-family="monospace" fill="var(--ink)">}</text>
-  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">同一套领域对象，REST/SDK/Fern 多语言客户端共用</text>
+  <text x="688" y="216" text-anchor="end" font-size="7.5" fill="var(--muted)">one set of domain objects, shared by REST / SDK / Fern multi-language clients</text>
 </svg>
 <div class="figcap"><b>The same domain objects, exposed</b> (endpoint per <code>web/src/pages/api/public/traces</code>; <b>values illustrative</b>): Basic-auth with <code>pk:sk</code> and <code>GET /api/public/traces/{{id}}</code> returns a JSON — the same trace you see in the UI: <code>observations[]</code>, <code>scores[]</code>, <code>totalCost</code>, <code>latency</code>. Fern generates multi-language SDKs from the API definition, so REST and every client get the same shape.</div>
 </div>
