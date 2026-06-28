@@ -1798,7 +1798,7 @@ _ZH16.append(r"""
   <text x="52" y="196" font-size="8" fill="var(--ink)">cost = input_tok × in_price + output_tok × out_price</text>
   <text x="52" y="212" font-size="7.5" fill="var(--muted)">单价按 model 从定价表查（match-pattern）；usage 没带就按 tokenizer 估，再算钱</text>
 </svg>
-<div class="figcap"><b>token 决定钱</b>（字段对齐 <code>domain/observations.ts</code> 的 <code>usageDetails/costDetails</code>，单价结构对齐 <code>worker/src/constants/default-model-prices.json</code>；<b>值为示例</b>）：先把用量拆成 <b>input/output token</b>，再按该 <code>model</code> 的<b>各自单价</b>折算成 <code>costDetails</code> 求和得 <code>total_cost</code>。注意 output 单价通常比 input 贵，所以「话多」比「读得多」更费钱。</div>
+<div class="figcap"><b>token 决定钱</b>（字段对齐 <code>domain/observations.ts</code> 的 <code>usageDetails/costDetails</code>，单价结构对齐 <code>worker/src/constants/default-model-prices.json</code>；<b>值为示例</b>）：先把用量拆成 <b>input/output token</b>，再按该 <code>model</code> 的<b>各自单价</b>折算成 <code>costDetails</code> 求和得 <code>total_cost</code>。注意 output 单价通常比 input 贵，所以「话多」比「读得多」更费钱。若命中提示缓存，input 走更低的 <code>input_cached_tokens</code> 阶梯价（gpt-4o 约 $1.25/1M，为普通 input 的一半）。</div>
 </div>
 
 <div class="codefile">
@@ -1981,7 +1981,7 @@ input may come from your reported <code>provided_*</code>, or be backfilled by t
   <text x="52" y="196" font-size="8" fill="var(--ink)">cost = input_tok × in_price + output_tok × out_price</text>
   <text x="52" y="212" font-size="7.5" fill="var(--muted)">unit price looked up by model (match-pattern); if usage absent, estimate via tokenizer, then cost it</text>
 </svg>
-<div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”.</div>
+<div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”. On a prompt-cache hit, input is charged at the lower <code>input_cached_tokens</code> tier (e.g. gpt-4o ≈ $1.25/1M, half of normal input).</div>
 </div>
 
 <div class="codefile">
@@ -2616,7 +2616,7 @@ _ZH18.append(r"""
 
 <table class="t">
   <tr><th>Langfuse 字段</th><th>依次尝试的 span 属性键（节选）</th><th>来自哪套约定</th></tr>
-  <tr><td><b>模型名</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · 通用</td></tr>
+  <tr><td><b>模型名</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.response.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · 通用</td></tr>
   <tr><td><b>usage（token）</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai 的 token 计数 · Genkit 输出…</td><td>原生 · OTel · Genkit</td></tr>
   <tr><td><b>input / output</b></td><td>span 属性 + span <strong>事件</strong>（<code>gen_ai.user.message</code>、<code>gen_ai.choice</code>）</td><td>OTel GenAI 语义约定</td></tr>
   <tr><td><b>observation 类型</b></td><td><code>observationTypeMapper</code> 据属性判定 GENERATION / SPAN / …</td><td>映射器规则</td></tr>
@@ -2813,7 +2813,7 @@ to bottom</strong>, taking the first one with a value. Take extracting the model
 
 <table class="t">
   <tr><th>Langfuse field</th><th>span attribute keys tried in order (excerpt)</th><th>from which convention</th></tr>
-  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
+  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.response.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
   <tr><td><b>usage (tokens)</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai token counts · Genkit output…</td><td>native · OTel · Genkit</td></tr>
   <tr><td><b>input / output</b></td><td>span attributes + span <strong>events</strong> (<code>gen_ai.user.message</code>, <code>gen_ai.choice</code>)</td><td>OTel GenAI semantic conventions</td></tr>
   <tr><td><b>observation type</b></td><td><code>observationTypeMapper</code> decides GENERATION / SPAN / … by attributes</td><td>mapper rules</td></tr>

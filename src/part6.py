@@ -84,7 +84,7 @@ _ZH34.append(r"""
 
 _ZH34.append(r"""
 <h2>版本化：改一次题，关旧版、开新版</h2>
-<p>数据项最精巧的设计是<strong>版本化</strong>。看主键就懂了：<code>@@id([id, projectId, validFrom])</code>——同一道题（同 <code>id</code>）可以有<strong>多行</strong>，靠 <code>validFrom</code> 区分版本。每行还有一个 <code>validTo</code>：为空（<code>null</code>）的那行就是<strong>当前生效</strong>版。改题时，系统在一个事务里做两步——给旧版盖上 <code>validTo</code>（关闭它的有效区间）、再插入一行新版。这正是数据库里经典的「<strong>缓慢变化维 / 双时态</strong>」手法。</p>
+<p>数据项最精巧的设计是<strong>版本化</strong>。看主键就懂了：<code>@@id([id, projectId, validFrom])</code>——同一道题（同 <code>id</code>）可以有<strong>多行</strong>，靠 <code>validFrom</code> 区分版本。每行还有一个 <code>validTo</code>：为空（<code>null</code>）的那行就是<strong>当前生效</strong>版。改题时，系统在一个事务里做两步——给旧版盖上 <code>validTo</code>（关闭它的有效区间）、再插入一行新版。这正是数据库里经典的「<strong>缓慢变化维 / 双时态</strong>」手法。（该版本化实现由 <code>LANGFUSE_DATASET_SERVICE_WRITE_TO/READ_FROM_VERSIONED_IMPLEMENTATION</code> 开关控制，<code>executeWithDatasetServiceStrategy</code> 据此在 STATEFUL 与 VERSIONED 间切换。）</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="数据项版本化时间轴：同一道题 id 有多个版本，每版有 validFrom 到 validTo 的有效区间，当前版的 validTo 为空；改题时旧版盖上 validTo、新版以 validFrom 开始；一次 dataset run 钉住某个 validFrom 所以永远看到当时那版">
@@ -247,7 +247,7 @@ _EN34.append(r"""
 
 _EN34.append(r"""
 <h2>Versioning: edit a question by closing the old version, opening a new</h2>
-<p>An item's most refined design is <strong>versioning</strong>. The primary key says it all: <code>@@id([id, projectId, validFrom])</code>—the same question (same <code>id</code>) can have <strong>multiple rows</strong>, distinguished by <code>validFrom</code>. Each row also has a <code>validTo</code>: the row where it's <code>null</code> is the <strong>currently active</strong> version. On edit, the system does two steps in a transaction—stamp the old version with <code>validTo</code> (close its validity interval), then insert a new version row. This is the database's classic "<strong>slowly-changing dimension / bitemporal</strong>" technique.</p>
+<p>An item's most refined design is <strong>versioning</strong>. The primary key says it all: <code>@@id([id, projectId, validFrom])</code>—the same question (same <code>id</code>) can have <strong>multiple rows</strong>, distinguished by <code>validFrom</code>. Each row also has a <code>validTo</code>: the row where it's <code>null</code> is the <strong>currently active</strong> version. On edit, the system does two steps in a transaction—stamp the old version with <code>validTo</code> (close its validity interval), then insert a new version row. This is the database's classic "<strong>slowly-changing dimension / bitemporal</strong>" technique. (The versioned implementation is gated by <code>LANGFUSE_DATASET_SERVICE_WRITE_TO/READ_FROM_VERSIONED_IMPLEMENTATION</code>; <code>executeWithDatasetServiceStrategy</code> switches between STATEFUL and VERSIONED accordingly.)</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="Dataset item versioning timeline: the same question id has multiple versions, each with a validFrom-to-validTo interval, the current version's validTo being null; on edit the old version gets validTo and the new starts at validFrom; a dataset run pins a validFrom so it always sees that version">

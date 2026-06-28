@@ -464,7 +464,7 @@ html[data-lang="zh"] .lang-en { display: none !important; }
   <text x="360" y="194" font-size="10" text-anchor="middle" fill="var(--muted)">CREATE 与 UPDATE 并存 → 正是第 5 课「合并」的来源</text>
 </svg>
 
-<p>概念上，你在应用里写的埋点代码大致长这样（不同语言 SDK 形态略有差异，这里只示意「调用 → 事件」的对应关系）：</p>
+<p>概念上，你在应用里写的埋点代码大致长这样（不同语言 SDK 形态略有差异，这里只示意「调用 → 事件」的对应关系；图中 <code>langfuse.trace()/.generation()</code> 是显式写法，现代 Python SDK 多用 <code>@observe</code> 装饰器，底层产生同样的 CREATE/UPDATE 事件）：</p>
 
 <pre class="code"><span class="cm"># 创建一个 trace（发出 TRACE_CREATE）</span>
 trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)
@@ -726,7 +726,7 @@ into one HTTP request to the ingestion API, and the server merges them. So your 
 </svg>
 
 <p>Conceptually, your instrumentation code looks roughly like this (SDK shapes differ by language; this just shows the "call →
-event" mapping):</p>
+event" mapping; the <code>langfuse.trace()/.generation()</code> calls shown are an explicit illustration — modern Python SDKs use the <code>@observe</code> decorator, which emits the same CREATE/UPDATE events):</p>
 
 <pre class="code"><span class="cm"># create a trace (emits TRACE_CREATE)</span>
 trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)

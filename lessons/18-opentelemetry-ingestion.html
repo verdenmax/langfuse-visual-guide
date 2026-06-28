@@ -457,7 +457,7 @@ OtelIngestionQueue.<span class="fn">getInstance</span>({ shardingKey: <span clas
 
 <table class="t">
   <tr><th>Langfuse 字段</th><th>依次尝试的 span 属性键（节选）</th><th>来自哪套约定</th></tr>
-  <tr><td><b>模型名</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · 通用</td></tr>
+  <tr><td><b>模型名</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.response.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · 通用</td></tr>
   <tr><td><b>usage（token）</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai 的 token 计数 · Genkit 输出…</td><td>原生 · OTel · Genkit</td></tr>
   <tr><td><b>input / output</b></td><td>span 属性 + span <strong>事件</strong>（<code>gen_ai.user.message</code>、<code>gen_ai.choice</code>）</td><td>OTel GenAI 语义约定</td></tr>
   <tr><td><b>observation 类型</b></td><td><code>observationTypeMapper</code> 据属性判定 GENERATION / SPAN / …</td><td>映射器规则</td></tr>
@@ -695,7 +695,7 @@ to bottom</strong>, taking the first one with a value. Take extracting the model
 
 <table class="t">
   <tr><th>Langfuse field</th><th>span attribute keys tried in order (excerpt)</th><th>from which convention</th></tr>
-  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
+  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.response.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
   <tr><td><b>usage (tokens)</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai token counts · Genkit output…</td><td>native · OTel · Genkit</td></tr>
   <tr><td><b>input / output</b></td><td>span attributes + span <strong>events</strong> (<code>gen_ai.user.message</code>, <code>gen_ai.choice</code>)</td><td>OTel GenAI semantic conventions</td></tr>
   <tr><td><b>observation type</b></td><td><code>observationTypeMapper</code> decides GENERATION / SPAN / … by attributes</td><td>mapper rules</td></tr>

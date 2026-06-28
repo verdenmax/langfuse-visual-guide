@@ -2148,7 +2148,7 @@ into one HTTP request to the ingestion API, and the server merges them. So your 
 </svg>
 
 <p>Conceptually, your instrumentation code looks roughly like this (SDK shapes differ by language; this just shows the "call →
-event" mapping):</p>
+event" mapping; the <code>langfuse.trace()/.generation()</code> calls shown are an explicit illustration — modern Python SDKs use the <code>@observe</code> decorator, which emits the same CREATE/UPDATE events):</p>
 
 <pre class="code"><span class="cm"># create a trace (emits TRACE_CREATE)</span>
 trace = langfuse.<span class="fn">trace</span>(name=<span class="st">"chat"</span>, user_id=<span class="st">"u_42"</span>)
@@ -4601,7 +4601,7 @@ input may come from your reported <code>provided_*</code>, or be backfilled by t
   <text x="52" y="196" font-size="8" fill="var(--ink)">cost = input_tok × in_price + output_tok × out_price</text>
   <text x="52" y="212" font-size="7.5" fill="var(--muted)">unit price looked up by model (match-pattern); if usage absent, estimate via tokenizer, then cost it</text>
 </svg>
-<div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”.</div>
+<div class="figcap"><b>Tokens drive cost</b> (fields per <code>usageDetails/costDetails</code> in <code>domain/observations.ts</code>, price structure per <code>worker/src/constants/default-model-prices.json</code>; <b>values illustrative</b>): usage splits into <b>input/output tokens</b>, each converted at the <code>model</code>'s <b>own unit price</b> into <code>costDetails</code> and summed into <code>total_cost</code>. Output is usually pricier than input, so “talking a lot” costs more than “reading a lot”. On a prompt-cache hit, input is charged at the lower <code>input_cached_tokens</code> tier (e.g. gpt-4o ≈ $1.25/1M, half of normal input).</div>
 </div>
 
 <div class="codefile">
@@ -5131,7 +5131,7 @@ to bottom</strong>, taking the first one with a value. Take extracting the model
 
 <table class="t">
   <tr><th>Langfuse field</th><th>span attribute keys tried in order (excerpt)</th><th>from which convention</th></tr>
-  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
+  <tr><td><b>model name</b></td><td><code>gen_ai.response.model</code> · <code>ai.model.id</code> · <code>gen_ai.request.model</code> · <code>llm.response.model</code> · <code>llm.model_name</code> · <code>model</code></td><td>OTel GenAI · Vercel · OpenLLMetry · generic</td></tr>
   <tr><td><b>usage (tokens)</b></td><td>Langfuse <code>observation.usage_details</code> · gen_ai token counts · Genkit output…</td><td>native · OTel · Genkit</td></tr>
   <tr><td><b>input / output</b></td><td>span attributes + span <strong>events</strong> (<code>gen_ai.user.message</code>, <code>gen_ai.choice</code>)</td><td>OTel GenAI semantic conventions</td></tr>
   <tr><td><b>observation type</b></td><td><code>observationTypeMapper</code> decides GENERATION / SPAN / … by attributes</td><td>mapper rules</td></tr>
@@ -8870,7 +8870,7 @@ This lesson covers the <strong>data model</strong> of datasets and items, focusi
 
 
 <h2>Versioning: edit a question by closing the old version, opening a new</h2>
-<p>An item's most refined design is <strong>versioning</strong>. The primary key says it all: <code>@@id([id, projectId, validFrom])</code>—the same question (same <code>id</code>) can have <strong>multiple rows</strong>, distinguished by <code>validFrom</code>. Each row also has a <code>validTo</code>: the row where it's <code>null</code> is the <strong>currently active</strong> version. On edit, the system does two steps in a transaction—stamp the old version with <code>validTo</code> (close its validity interval), then insert a new version row. This is the database's classic "<strong>slowly-changing dimension / bitemporal</strong>" technique.</p>
+<p>An item's most refined design is <strong>versioning</strong>. The primary key says it all: <code>@@id([id, projectId, validFrom])</code>—the same question (same <code>id</code>) can have <strong>multiple rows</strong>, distinguished by <code>validFrom</code>. Each row also has a <code>validTo</code>: the row where it's <code>null</code> is the <strong>currently active</strong> version. On edit, the system does two steps in a transaction—stamp the old version with <code>validTo</code> (close its validity interval), then insert a new version row. This is the database's classic "<strong>slowly-changing dimension / bitemporal</strong>" technique. (The versioned implementation is gated by <code>LANGFUSE_DATASET_SERVICE_WRITE_TO/READ_FROM_VERSIONED_IMPLEMENTATION</code>; <code>executeWithDatasetServiceStrategy</code> switches between STATEFUL and VERSIONED accordingly.)</p>
 
 <div class="fig">
 <svg viewBox="0 0 720 200" role="img" aria-label="Dataset item versioning timeline: the same question id has multiple versions, each with a validFrom-to-validTo interval, the current version's validTo being null; on edit the old version gets validTo and the new starts at validFrom; a dataset run pins a validFrom so it always sees that version">
@@ -11988,7 +11988,7 @@ The cleverest touch is the <strong>session callback</strong> at the moment of su
   <rect x="280" y="186" width="170" height="48" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-dasharray="4 3"/><text x="365" y="204" text-anchor="middle" font-size="7.4" font-weight="700" fill="var(--accent-ink)">SSO can be enforced</text><text x="365" y="218" text-anchor="middle" font-size="6.0" fill="var(--muted)">instance / domain / EE multi-tenant</text><text x="365" y="228" text-anchor="middle" font-size="5.8" fill="var(--faint)">disable password login, force SSO</text>
   <line x1="365" y1="166" x2="365" y2="184" stroke="var(--faint)" stroke-width="1" stroke-dasharray="2 2"/>
 </svg>
-<div class="figcap"><b>Login entry</b>: <code>auth.ts:24-38</code> imports 14 providers (Credentials/Email + 12 SSO). Static providers come from env; dynamic SSO providers are read from the DB and merged at runtime (around <code>auth.ts:739</code>, <code>[...staticProviders, ...dynamicSsoProviders]</code>). SSO can be enforced: <code>AUTH_DISABLE_USERNAME_PASSWORD</code> (instance), <code>getSSOBlockedDomains()</code> (domain), <code>getSsoAuthProviderIdForDomain</code> (EE multi-tenant).</div>
+<div class="figcap"><b>Login entry</b>: <code>auth.ts:24-38</code> imports 14 providers (Credentials/Email + 12 SSO), plus <code>CustomSSOProvider</code>/<code>GitHubEnterpriseProvider</code>/<code>JumpCloudProvider</code> imported server-side, so ~15 SSO in all. Static providers come from env; dynamic SSO providers are read from the DB and merged at runtime (around <code>auth.ts:739</code>, <code>[...staticProviders, ...dynamicSsoProviders]</code>). SSO can be enforced: <code>AUTH_DISABLE_USERNAME_PASSWORD</code> (instance), <code>getSSOBlockedDomains()</code> (domain), <code>getSsoAuthProviderIdForDomain</code> (EE multi-tenant).</div>
 </div>
 <div class="fig">
 <svg viewBox="0 0 720 258" role="img" aria-label="Session JWT real example: the encoded token has three dot-separated, color-coded parts header, payload, signature; decoded, the header is alg HS256/typ JWT, the payload has sub, iat, exp and a user object (id, email, admin, an organizations array where each org has a role and projects, and each project has a role), and the signature is an HMAC of the first two parts with the secret, verified by NextAuth. The session uses the jwt strategy with maxAge from AUTH_SESSION_MAX_AGE. Shape from next-auth.d.ts and auth.ts, values illustrative">
